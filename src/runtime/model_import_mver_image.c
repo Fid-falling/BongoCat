@@ -1,4 +1,4 @@
-#include "model_import_legacy_internal.h"
+#include "model_import_mver_internal.h"
 #include "bongo_cat_neo/file.h"
 #include "bongo_cat_neo/image.h"
 #include "bongo_cat_neo/path.h"
@@ -50,12 +50,12 @@ static bool compose(const char *base_path, const char *hand_path,
     if (file && fclose(file) != 0) ok = false;
     free(pixels); bongo_cat_neo_image_free(&hand); bongo_cat_neo_image_free(&base);
     if (!ok) bongo_cat_neo_error_set(error, allocated ? BONGO_CAT_NEO_ERROR_IO : BONGO_CAT_NEO_ERROR_MEMORY,
-        "Cannot compose legacy input image: %s", target);
+        "Cannot compose Mver input image: %s", target);
     return ok;
 }
 
-bool bongo_cat_neo_legacy_emit_pair(const char *hand, const char *keyboard,
-    const char *directory, BongoCatNeoLegacyKeyNames names, BongoCatNeoError *error) {
+bool bongo_cat_neo_mver_emit_pair(const char *hand, const char *keyboard,
+    const char *directory, BongoCatNeoMverKeyNames names, BongoCatNeoError *error) {
     if (!names.count) return true;
     char first_name[32], first[BONGO_CAT_NEO_PATH_CAP];
     const char *first_item = names.items[0] ? names.items[0] : names.generated;
@@ -69,7 +69,8 @@ bool bongo_cat_neo_legacy_emit_pair(const char *hand, const char *keyboard,
         if (ok) { bongo_cat_neo_image_free(&image); ok = SDL_CopyFile(hand, first); }
     }
     if (!ok && error && !error->message[0])
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO, "Cannot copy legacy input image: %s", hand);
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO,
+            "Cannot copy Mver input image: %s", hand);
     for (size_t i = 1; ok && i < names.count; ++i) {
         char filename[32], target[BONGO_CAT_NEO_PATH_CAP];
         const char *item = names.items[i] ? names.items[i] : names.generated;

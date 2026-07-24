@@ -123,6 +123,8 @@ static bool add_candidate(BongoCatNeoImportDiscovery *discovery, const char *dir
     snprintf(candidate->directory, sizeof(candidate->directory), "%s", directory);
     snprintf(candidate->setting, sizeof(candidate->setting), "%s", setting);
     snprintf(candidate->assets, sizeof(candidate->assets), "%s", directory);
+    snprintf(candidate->package_root, sizeof(candidate->package_root), "%s", directory);
+    candidate->format = BONGO_CAT_NEO_IMPORT_TAURI;
     char parent[BONGO_CAT_NEO_PATH_CAP];
     if ((!has_cover_asset(directory) || !has_background_asset(directory)) &&
         path_parent(directory, parent, sizeof(parent)) && has_preview_assets(parent))
@@ -170,6 +172,8 @@ static int compare_candidates(const void *left, const void *right) {
 bool bongo_cat_neo_import_discover(const char *source, BongoCatNeoImportDiscovery *discovery,
     BongoCatNeoError *error) {
     memset(discovery, 0, sizeof(*discovery));
+    int mver = bongo_cat_neo_import_mver_discover(source, discovery, error);
+    if (mver != 0) return mver > 0;
     char direct[BONGO_CAT_NEO_PATH_CAP];
     if (bongo_cat_neo_path_find_suffix(source, ".model3.json", direct, sizeof(direct)) &&
         bongo_cat_neo_import_manifest_valid(source, direct, NULL))

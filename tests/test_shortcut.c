@@ -42,4 +42,13 @@ void test_shortcut(void) {
     CHECK(!bongo_cat_neo_shortcut_update(&state, &alt));
     CHECK(bongo_cat_neo_shortcut_update(&state, &digit));
     CHECK(bongo_cat_neo_shortcut_matches(&state, &digit, "Alt+1"));
+
+    BongoCatNeoInputEvent gamepad = {
+        .kind = BONGO_CAT_NEO_INPUT_GAMEPAD_BUTTON, .value = 1.0f
+    };
+    snprintf(gamepad.name, sizeof(gamepad.name), "South");
+    CHECK(bongo_cat_neo_shortcut_matches(&state, &gamepad, "Gamepad:South"));
+    CHECK(!bongo_cat_neo_shortcut_matches(&state, &gamepad, "South"));
+    gamepad.value = 0.0f;
+    CHECK(!bongo_cat_neo_shortcut_matches(&state, &gamepad, "Gamepad:South"));
 }

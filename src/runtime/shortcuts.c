@@ -13,7 +13,11 @@ static void visible(BongoCatNeoApp *app) {
 }
 
 static bool run_behavior(BongoCatNeoApp *app, BongoCatNeoBehaviorEntry *behavior) {
-    if (behavior->kind == BONGO_CAT_NEO_BEHAVIOR_MOTION) {
+    if (behavior->kind == BONGO_CAT_NEO_BEHAVIOR_SOUND) {
+        if (!behavior->sound[0]) return false;
+        BongoCatNeoError error = {0};
+        bongo_cat_neo_audio_play(app->audio, behavior->sound, &error);
+    } else if (behavior->kind == BONGO_CAT_NEO_BEHAVIOR_MOTION) {
         bool started = bongo_cat_neo_live2d_start_motion(app->live2d,
             behavior->group, behavior->index);
         if (!started) return false;
@@ -27,13 +31,15 @@ static bool run_behavior(BongoCatNeoApp *app, BongoCatNeoBehaviorEntry *behavior
 }
 
 static bool behavior_shortcut(BongoCatNeoApp *app, const BongoCatNeoInputEvent *event) {
+    bool handled = false;
     for (size_t i = 0; i < app->config.behavior_shortcut_count; ++i) {
         BongoCatNeoBehaviorShortcut *shortcut = &app->config.behavior_shortcuts[i];
         if (!bongo_cat_neo_shortcut_matches(&app->shortcut_state, event, shortcut->shortcut)) continue;
         for (size_t j = 0; j < app->behaviors.count; ++j)
             if (strcmp(shortcut->id, app->behaviors.entries[j].id) == 0)
-                return run_behavior(app, &app->behaviors.entries[j]);
+                handled = run_behavior(app, &app->behaviors.entries[j]) || handled;
     }
+    if (handled) return true;
     size_t limit = app->behaviors.count < 10 ? app->behaviors.count : 10;
     for (size_t i = 0; i < limit; ++i) {
         char alias[8];
@@ -45,7 +51,12 @@ static bool behavior_shortcut(BongoCatNeoApp *app, const BongoCatNeoInputEvent *
 }
 
 void bongo_cat_neo_app_shortcuts(BongoCatNeoApp *app, const BongoCatNeoInputEvent *event) {
-    if (!app || !bongo_cat_neo_shortcut_update(&app->shortcut_state, event)) return;
+    if (!app) return;
+    if (event->kind == BONGO_CAT_NEO_INPUT_GAMEPAD_BUTTON) {
+        if (app->config.model.behavior) behavior_shortcut(app, event);
+        return;
+    }
+    if (!bongo_cat_neo_shortcut_update(&app->shortcut_state, event)) return;
     BongoCatNeoShortcutOptions *shortcuts = &app->config.shortcuts;
     if (bongo_cat_neo_shortcut_matches(&app->shortcut_state, event, shortcuts->visible_cat)) {
         visible(app);

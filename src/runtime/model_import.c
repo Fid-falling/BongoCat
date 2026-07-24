@@ -91,11 +91,12 @@ static bool copy_preview(const BongoCatNeoImportCandidate *candidate, const char
         target_exists = true;
     }
     if (!target_exists && !SDL_CreateDirectory(target_resources)) return false;
-    const char *covers[] = {"cover.png", "cat.png", "bg.png"};
+    const char *covers[] = {"cover.png", "cat.png", "bg.png", "mousebg.png",
+        "tabletbg.png"};
     const char *backgrounds[] = {"background.png", "bg.png", "mousebg.png",
         "tabletbg.png"};
     bool ok = (preview_file_exists(target_resources, "cover.png") ||
-        copy_preview_file(source_resources, candidate->assets, covers, 3,
+        copy_preview_file(source_resources, candidate->assets, covers, 5,
             target_resources, "cover.png")) &&
         (preview_file_exists(target_resources, "background.png") ||
         copy_preview_file(source_resources, candidate->assets, backgrounds, 4,
@@ -126,7 +127,7 @@ static void cleanup(ImportInstall *installs, size_t count, bool committed) {
 }
 
 static bool prepare_install(const BongoCatNeoImportCandidate *candidate,
-    ImportInstall *install, const char *source, const char *root, unsigned long long stamp,
+    ImportInstall *install, const char *root, unsigned long long stamp,
     size_t index, size_t count, BongoCatNeoError *error) {
     const char *mode = candidate->mode == BONGO_CAT_NEO_MODE_KEYBOARD ? "keyboard" :
         candidate->mode == BONGO_CAT_NEO_MODE_GAMEPAD ? "gamepad" : "standard";
@@ -141,7 +142,8 @@ static bool prepare_install(const BongoCatNeoImportCandidate *candidate,
         !bongo_cat_neo_path_join(install->target, sizeof(install->target), root, install->id) ||
         bongo_cat_neo_copy_directory(candidate->directory, install->temporary, error) != BONGO_CAT_NEO_OK ||
         !copy_preview(candidate, install->temporary, error) ||
-        !bongo_cat_neo_import_legacy_assets(candidate, source, install->temporary, error) ||
+        !bongo_cat_neo_import_mver_assets(candidate, install->temporary, error) ||
+        !bongo_cat_neo_import_mver_metadata(candidate, install->temporary, error) ||
         !write_mode(install->temporary, candidate->mode, error)) return false;
     char setting[BONGO_CAT_NEO_PATH_CAP];
     return bongo_cat_neo_path_find_suffix(install->temporary, ".model3.json", setting,
@@ -158,7 +160,7 @@ BongoCatNeoResult bongo_cat_neo_app_import_model(BongoCatNeoApp *app, const char
     ImportInstall installs[BONGO_CAT_NEO_IMPORT_CANDIDATE_CAP] = {0};
     unsigned long long stamp = (unsigned long long)SDL_GetTicksNS();
     for (size_t i = 0; i < discovery.count; ++i) {
-        if (prepare_install(&discovery.candidates[i], &installs[i], source, root,
+        if (prepare_install(&discovery.candidates[i], &installs[i], root,
             stamp, i, discovery.count, error)) continue;
         cleanup(installs, i + 1, false);
         return error && error->code == BONGO_CAT_NEO_ERROR_FORMAT

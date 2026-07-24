@@ -150,5 +150,7 @@ void bongo_cat_neo_gamepad_event(BongoCatNeoApp *app, const void *raw) {
     if (!app->active_gamepad || source != app->active_gamepad) return;
     if (strncmp(input.name, "Unknown", 7) == 0) return;
     input.timestamp_ms = SDL_GetTicks();
+    if (input.kind == BONGO_CAT_NEO_INPUT_GAMEPAD_BUTTON)
+        bongo_cat_neo_app_shortcuts(app, &input);
     bongo_cat_neo_app_apply_input(app, &input);
 }

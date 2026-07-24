@@ -44,6 +44,11 @@ New-Item -ItemType Directory -Path (Join-Path $nativeInvalid "hand") | Out-Null
 Set-Content -LiteralPath (Join-Path $nativeInvalid "config.json") -Value "{" -NoNewline
 $fixtures += [pscustomobject]@{ Name="native-invalid-config"; Path=$nativeInvalid
     Valid=$true; Count=1 }
+$nativeImage = New-Fixture "native-unrelated-image-tree"
+New-Item -ItemType Directory -Force -Path (Join-Path $nativeImage "img\hand") | Out-Null
+Set-Content -LiteralPath (Join-Path $nativeImage "config.json") -Value "{" -NoNewline
+$fixtures += [pscustomobject]@{ Name="native-unrelated-image-tree"; Path=$nativeImage
+    Valid=$true; Count=1 }
 $missingTexture = New-Fixture "missing-texture"
 Remove-Item -LiteralPath (Join-Path $missingTexture "demomodel.1024\texture_00.png")
 $fixtures += [pscustomobject]@{ Name="missing-texture"; Path=$missingTexture; Valid=$false; Count=0 }
@@ -77,19 +82,21 @@ foreach ($mode in @("standard", "keyboard", "gamepad")) {
 }
 $fixtures += [pscustomobject]@{ Name="nested-package"; Path=$package; Valid=$true; Count=3 }
 
-$legacy = Join-Path $OutputDir "legacy-package"
-$legacyImage = Join-Path $legacy "img"
-New-Item -ItemType Directory -Force -Path $legacyImage | Out-Null
+$mver = Join-Path $OutputDir "mver-package"
+$mverImage = Join-Path $mver "img"
+New-Item -ItemType Directory -Force -Path $mverImage | Out-Null
 @{
-    standard = @{ hand = @(@(65, 66), (,16), (,16)) }
+    standard = @{ hand = @(@(65, 66), (,16), (,16))
+        l2d_expression = @(,@(18, 49)); l2d_motion = @(,@(18, 50))
+        l2d_motion_lockhand = @(,@(18, 51)); sounds = @(,@(18, 52)) }
     keyboard = @{ lefthand = @(@(65, 66), (,16)); righthand = @((,37), (,16))
-        keyboard = @((,66), (,37)) }
+        keyboard = @((,66), (,37)); l2d_expression = @(,@(17, 65)) }
     gamepad = @{ lefthand = ,@(10, 11); righthand = ,@(0)
-        keyboard = @((,0), (,11)) }
-} | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $legacy "config.json")
+        keyboard = @((,0), (,11)); l2d_expression = @(,@(0)); l2d_motion = @(,@(1)) }
+} | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $mver "config.json")
 foreach ($mode in @("standard", "keyboard", "gamepad")) {
     $modeSource = Join-Path $root "resources\assets\models\$mode"
-    $modeRoot = Join-Path $legacyImage $mode
+    $modeRoot = Join-Path $mverImage $mode
     $modelRoot = Join-Path $modeRoot "cat_model"
     New-Item -ItemType Directory -Force -Path $modeRoot | Out-Null
     Copy-Item -LiteralPath $modeSource -Destination $modelRoot -Recurse
@@ -108,6 +115,9 @@ foreach ($mode in @("standard", "keyboard", "gamepad")) {
             -Path (Join-Path $modeRoot "mousebg-assets") | Out-Null
         Copy-Item (Join-Path $modeSource "resources\cover.png") `
             (Join-Path $modeRoot "mousebg-assets\mousebg.png")
+        New-Item -ItemType Directory -Force -Path (Join-Path $modeRoot "sounds") | Out-Null
+        Copy-Item (Join-Path $modeSource "live2d_motion1.flac") `
+            (Join-Path $modeRoot "sounds\0.flac")
         continue
     }
     foreach ($directory in @("keyboard", "lefthand", "righthand")) {
@@ -136,60 +146,62 @@ foreach ($mode in @("standard", "keyboard", "gamepad")) {
         New-PixelPng (Join-Path $modeRoot "righthand\1.png") 0 255 64 255
     }
 }
-$standardKeyHash = (Get-FileHash (Join-Path $legacyImage `
+$standardKeyHash = (Get-FileHash (Join-Path $mverImage `
     "standard\hand\0.png") -Algorithm SHA256).Hash
-$shiftLeftHash = (Get-FileHash (Join-Path $legacyImage `
+$shiftLeftHash = (Get-FileHash (Join-Path $mverImage `
     "standard\hand\1.png") -Algorithm SHA256).Hash
-$shiftRightHash = (Get-FileHash (Join-Path $legacyImage `
+$shiftRightHash = (Get-FileHash (Join-Path $mverImage `
     "standard\hand\2.png") -Algorithm SHA256).Hash
-$keyboardDirectHash = (Get-FileHash (Join-Path $legacyImage `
+$keyboardDirectHash = (Get-FileHash (Join-Path $mverImage `
     "keyboard\lefthand\0.png") -Algorithm SHA256).Hash
-$gamepadDirectHash = (Get-FileHash (Join-Path $legacyImage `
+$gamepadDirectHash = (Get-FileHash (Join-Path $mverImage `
     "gamepad\lefthand\0.png") -Algorithm SHA256).Hash
-$keyboardShiftLeftHash = (Get-FileHash (Join-Path $legacyImage `
+$keyboardShiftLeftHash = (Get-FileHash (Join-Path $mverImage `
     "keyboard\lefthand\1.png") -Algorithm SHA256).Hash
-$keyboardShiftRightHash = (Get-FileHash (Join-Path $legacyImage `
+$keyboardShiftRightHash = (Get-FileHash (Join-Path $mverImage `
     "keyboard\righthand\1.png") -Algorithm SHA256).Hash
-$legacyBackgroundHashes = @{
-    standard = (Get-FileHash (Join-Path $legacyImage "standard\mousebg.png") -Algorithm SHA256).Hash
-    keyboard = (Get-FileHash (Join-Path $legacyImage "keyboard\bg.png") -Algorithm SHA256).Hash
-    gamepad = (Get-FileHash (Join-Path $legacyImage "gamepad\bg.png") -Algorithm SHA256).Hash
+$mverBackgroundHashes = @{
+    standard = (Get-FileHash (Join-Path $mverImage "standard\mousebg.png") -Algorithm SHA256).Hash
+    keyboard = (Get-FileHash (Join-Path $mverImage "keyboard\bg.png") -Algorithm SHA256).Hash
+    gamepad = (Get-FileHash (Join-Path $mverImage "gamepad\bg.png") -Algorithm SHA256).Hash
 }
-$legacyCoverHashes = @{
-    standard = (Get-FileHash (Join-Path $legacyImage "standard\cat.png") -Algorithm SHA256).Hash
-    keyboard = (Get-FileHash (Join-Path $legacyImage "keyboard\cat.png") -Algorithm SHA256).Hash
-    gamepad = (Get-FileHash (Join-Path $legacyImage "gamepad\cat.png") -Algorithm SHA256).Hash
+$mverCoverHashes = @{
+    standard = (Get-FileHash (Join-Path $mverImage "standard\cat.png") -Algorithm SHA256).Hash
+    keyboard = (Get-FileHash (Join-Path $mverImage "keyboard\cat.png") -Algorithm SHA256).Hash
+    gamepad = (Get-FileHash (Join-Path $mverImage "gamepad\cat.png") -Algorithm SHA256).Hash
 }
-$fixtures += [pscustomobject]@{ Name="legacy-package"; Path=$legacy
-    Valid=$true; Count=3; Legacy=$true; StandardKeyHash=$standardKeyHash
+$fixtures += [pscustomobject]@{ Name="mver-package"; Path=$mver
+    Valid=$true; Count=3; Mver=$true; StandardKeyHash=$standardKeyHash
     ShiftLeftHash=$shiftLeftHash; ShiftRightHash=$shiftRightHash
     KeyboardShiftLeftHash=$keyboardShiftLeftHash
     KeyboardShiftRightHash=$keyboardShiftRightHash
     KeyboardDirectHash=$keyboardDirectHash; GamepadDirectHash=$gamepadDirectHash
-    BackgroundHashes=$legacyBackgroundHashes; CoverHashes=$legacyCoverHashes }
-$legacyMalformed = Join-Path $OutputDir "legacy-malformed-mode"
-Copy-Item -LiteralPath $legacy -Destination $legacyMalformed -Recurse
+    BackgroundHashes=$mverBackgroundHashes; CoverHashes=$mverCoverHashes }
+$fixtures += [pscustomobject]@{ Name="mver-subdirectory";
+    Path=(Join-Path $mver "img\standard\cat_model"); Valid=$true; Count=3; Mver=$false }
+$mverMalformed = Join-Path $OutputDir "mver-malformed-mode"
+Copy-Item -LiteralPath $mver -Destination $mverMalformed -Recurse
 @{ standard = @{ hand = "broken" } } | ConvertTo-Json -Depth 4 | Set-Content `
-    (Join-Path $legacyMalformed "config.json")
-$fixtures += [pscustomobject]@{ Name="legacy-malformed-mode"; Path=$legacyMalformed
+    (Join-Path $mverMalformed "config.json")
+$fixtures += [pscustomobject]@{ Name="mver-malformed-mode"; Path=$mverMalformed
     Valid=$false; Count=0 }
-$legacyInvalid = Join-Path $OutputDir "legacy-invalid-json"
-Copy-Item -LiteralPath $legacy -Destination $legacyInvalid -Recurse
-Set-Content -LiteralPath (Join-Path $legacyInvalid "config.json") -Value "{" -NoNewline
-$fixtures += [pscustomobject]@{ Name="legacy-invalid-json"; Path=$legacyInvalid
+$mverInvalid = Join-Path $OutputDir "mver-invalid-json"
+Copy-Item -LiteralPath $mver -Destination $mverInvalid -Recurse
+Set-Content -LiteralPath (Join-Path $mverInvalid "config.json") -Value "{" -NoNewline
+$fixtures += [pscustomobject]@{ Name="mver-invalid-json"; Path=$mverInvalid
     Valid=$false; Count=0 }
-$legacyCorrupt = Join-Path $OutputDir "legacy-corrupt-input"
-Copy-Item -LiteralPath $legacy -Destination $legacyCorrupt -Recurse
-[IO.File]::WriteAllBytes((Join-Path $legacyCorrupt "img\standard\hand\0.png"),
+$mverCorrupt = Join-Path $OutputDir "mver-corrupt-input"
+Copy-Item -LiteralPath $mver -Destination $mverCorrupt -Recurse
+[IO.File]::WriteAllBytes((Join-Path $mverCorrupt "img\standard\hand\0.png"),
     [byte[]](0x89, 0x50, 0x4e, 0x47))
-$fixtures += [pscustomobject]@{ Name="legacy-corrupt-input"; Path=$legacyCorrupt
+$fixtures += [pscustomobject]@{ Name="mver-corrupt-input"; Path=$mverCorrupt
     Valid=$false; Count=0 }
-$legacyCorruptSecond = Join-Path $OutputDir "legacy-corrupt-second-model"
-Copy-Item -LiteralPath $legacy -Destination $legacyCorruptSecond -Recurse
-[IO.File]::WriteAllBytes((Join-Path $legacyCorruptSecond "img\keyboard\lefthand\0.png"),
+$mverCorruptSecond = Join-Path $OutputDir "mver-corrupt-second-model"
+Copy-Item -LiteralPath $mver -Destination $mverCorruptSecond -Recurse
+[IO.File]::WriteAllBytes((Join-Path $mverCorruptSecond "img\keyboard\lefthand\0.png"),
     [byte[]](0x89, 0x50, 0x4e, 0x47))
-$fixtures += [pscustomobject]@{ Name="legacy-corrupt-second-model"
-    Path=$legacyCorruptSecond; Valid=$false; Count=0 }
+$fixtures += [pscustomobject]@{ Name="mver-corrupt-second-model"
+    Path=$mverCorruptSecond; Valid=$false; Count=0 }
 
 $localPreview = Join-Path $OutputDir "local-preview-precedence"
 $localModel = Join-Path $localPreview "model"
@@ -245,9 +257,9 @@ $results = foreach ($fixture in $fixtures) {
             -Algorithm SHA256).Hash
     } else { "" }
     $coverMatches = -not $fixture.CoverHash -or $actualCoverHash -eq $fixture.CoverHash
-    $legacyKeys = 0
-    $legacyMatches = $true
-    if ($fixture.Legacy) {
+    $mverKeys = 0
+    $mverMatches = $true
+    if ($fixture.Mver) {
         $expected = @{
             standard = "resources\left-keys\KeyA.png", "resources\left-keys\KeyB.png", `
                 "resources\left-keys\ShiftLeft.png", "resources\left-keys\ShiftRight.png"
@@ -266,33 +278,46 @@ $results = foreach ($fixture in $fixtures) {
             $mode = if (Test-Path $modePath) { (Get-Content $modePath -Raw).Trim() } else { "" }
             $backgroundPath = Join-Path $model.FullName "resources\background.png"
             $coverPath = Join-Path $model.FullName "resources\cover.png"
-            $legacyMatches = $legacyMatches -and (Test-Path $backgroundPath) -and
+            $mverMatches = $mverMatches -and (Test-Path $backgroundPath) -and
                 (Get-FileHash $backgroundPath -Algorithm SHA256).Hash -eq
                     $fixture.BackgroundHashes[$mode]
-            $legacyMatches = $legacyMatches -and (Test-Path $coverPath) -and
+            $mverMatches = $mverMatches -and (Test-Path $coverPath) -and
                 (Get-FileHash $coverPath -Algorithm SHA256).Hash -eq $fixture.CoverHashes[$mode]
+            $metadataPath = Join-Path $model.FullName ".bongo-cat-neo-mver.json"
+            $mverMatches = $mverMatches -and (Test-Path $metadataPath)
+            $metadata = if (Test-Path $metadataPath) { Get-Content $metadataPath -Raw |
+                ConvertFrom-Json } else { $null }
             if ($mode -eq "keyboard") {
-                $legacyMatches = $legacyMatches -and
+                $mverMatches = $mverMatches -and
                     -not (Test-Path (Join-Path $model.FullName "resources\left-keys\ShiftRight.png")) -and
                     -not (Test-Path (Join-Path $model.FullName "resources\right-keys\ShiftLeft.png"))
             }
+            if ($mode -eq "standard") {
+                $mverMatches = $mverMatches -and
+                    (Test-Path (Join-Path $model.FullName "resources\sounds\0.flac")) -and
+                    @($metadata.bindings).Count -eq 4
+            }
+            if ($mode -eq "gamepad") {
+                $mverMatches = $mverMatches -and
+                    @($metadata.bindings | Where-Object { $_.shortcut -like "Gamepad:*" }).Count -eq 2
+            }
             foreach ($relative in @($expected[$mode])) {
                 $keyPath = Join-Path $model.FullName $relative
-                if (Test-Path $keyPath) { $legacyKeys++ } else { $legacyMatches = $false }
+                if (Test-Path $keyPath) { $mverKeys++ } else { $mverMatches = $false }
                 if ($mode -eq "standard" -and (Test-Path $keyPath)) {
                     $expectedHash = if ($relative -like "*ShiftLeft.png") {
                         $fixture.ShiftLeftHash
                     } elseif ($relative -like "*ShiftRight.png") {
                         $fixture.ShiftRightHash
                     } else { $fixture.StandardKeyHash }
-                    $legacyMatches = $legacyMatches -and (Get-FileHash $keyPath `
+                    $mverMatches = $mverMatches -and (Get-FileHash $keyPath `
                         -Algorithm SHA256).Hash -eq $expectedHash
                 }
                 if ($relative -in @($direct[$mode]) -and (Test-Path $keyPath)) {
                     $expectedHash = if ($mode -eq "keyboard") { $fixture.KeyboardDirectHash } `
                         elseif ($mode -eq "gamepad") { $fixture.GamepadDirectHash } `
                         else { $fixture.StandardKeyHash }
-                    $legacyMatches = $legacyMatches -and
+                    $mverMatches = $mverMatches -and
                         (Get-FileHash $keyPath -Algorithm SHA256).Hash -eq $expectedHash
                 }
                 if ($mode -eq "keyboard" -and $relative -like "*KeyB.png" -and
@@ -300,7 +325,7 @@ $results = foreach ($fixture in $fixtures) {
                     $bitmap = [Drawing.Bitmap]::new($keyPath)
                     $pixel = $bitmap.GetPixel(0, 0)
                     $bitmap.Dispose()
-                    $legacyMatches = $legacyMatches -and $pixel.R -eq 170 -and
+                    $mverMatches = $mverMatches -and $pixel.R -eq 170 -and
                         $pixel.G -eq 0 -and $pixel.B -eq 85 -and $pixel.A -eq 192
                 }
                 if ($mode -eq "keyboard" -and $relative -like "*Shift*.png" -and
@@ -308,7 +333,7 @@ $results = foreach ($fixture in $fixtures) {
                     $hash = if ($relative -like "*ShiftLeft.png") {
                         $fixture.KeyboardShiftLeftHash
                     } else { $fixture.KeyboardShiftRightHash }
-                    $legacyMatches = $legacyMatches -and
+                    $mverMatches = $mverMatches -and
                         (Get-FileHash $keyPath -Algorithm SHA256).Hash -eq $hash
                 }
             }
@@ -318,7 +343,7 @@ $results = foreach ($fixture in $fixtures) {
         $process.ExitCode -eq 0 -and $installed -eq $fixture.Count -and
             ($fixture.Name -ne "nested-package" -or $covers -eq 3) -and
             $coverMatches -and
-            (-not $fixture.Legacy -or ($legacyMatches -and $legacyKeys -eq 12))
+            (-not $fixture.Mver -or ($mverMatches -and $mverKeys -eq 12))
     } else {
         $process.ExitCode -ne 0 -and $installed -eq 0
     }

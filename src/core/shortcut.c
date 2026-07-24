@@ -74,8 +74,12 @@ static bool modifier_token(const char *token, size_t length, bool *control,
 
 bool bongo_cat_neo_shortcut_matches(const BongoCatNeoShortcutState *state,
     const BongoCatNeoInputEvent *event, const char *shortcut) {
-    if (!state || !event || event->kind != BONGO_CAT_NEO_INPUT_KEY_DOWN || !shortcut || !*shortcut)
+    if (!state || !event || !shortcut || !*shortcut)
         return false;
+    if (event->kind == BONGO_CAT_NEO_INPUT_GAMEPAD_BUTTON)
+        return event->value > 0.5f && strncmp(shortcut, "Gamepad:", 8) == 0 &&
+            equal_ci(shortcut + 8, event->name);
+    if (event->kind != BONGO_CAT_NEO_INPUT_KEY_DOWN) return false;
     bool control = false, shift = false, alt = false, meta = false;
     const char *primary = NULL;
     size_t primary_length = 0;

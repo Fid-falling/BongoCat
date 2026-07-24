@@ -1,4 +1,5 @@
 #include "runtime.h"
+#include "model_import.h"
 #include "bongo_cat_neo/file.h"
 #include "bongo_cat_neo/overlay.h"
 #include "bongo_cat_neo/path.h"
@@ -134,6 +135,29 @@ static bool custom_root(BongoCatNeoApp *app, char *path, size_t capacity) {
         SDL_CreateDirectory(path);
 }
 
+static bool shortcut_model_exists(const BongoCatNeoModelCatalog *models,
+    const char *shortcut_id) {
+    const char *separator = shortcut_id ? strchr(shortcut_id, ':') : NULL;
+    if (!separator) return false;
+    size_t length = (size_t)(separator - shortcut_id);
+    for (size_t i = 0; i < models->count; ++i) {
+        const char *id = models->entries[i].id;
+        if (strlen(id) == length && strncmp(id, shortcut_id, length) == 0) return true;
+    }
+    return false;
+}
+
+static void prune_behavior_shortcuts(BongoCatNeoApp *app) {
+    size_t output = 0;
+    for (size_t i = 0; i < app->config.behavior_shortcut_count; ++i) {
+        BongoCatNeoBehaviorShortcut *value = &app->config.behavior_shortcuts[i];
+        if (!shortcut_model_exists(&app->models, value->id)) continue;
+        if (output != i) app->config.behavior_shortcuts[output] = *value;
+        output++;
+    }
+    app->config.behavior_shortcut_count = output;
+}
+
 void bongo_cat_neo_app_rescan_models(BongoCatNeoApp *app) {
     if (!app) return;
     BongoCatNeoError error = {0};
@@ -143,6 +167,11 @@ void bongo_cat_neo_app_rescan_models(BongoCatNeoApp *app) {
     bongo_cat_neo_models_scan(&app->models, root, true, &error);
     if (custom_root(app, root, sizeof(root)))
         bongo_cat_neo_models_scan(&app->models, root, false, &error);
+    prune_behavior_shortcuts(app);
+    for (size_t i = 0; i < app->models.count; ++i)
+        if (!app->models.entries[i].preset)
+            bongo_cat_neo_import_apply_metadata(app, app->models.entries[i].id,
+                app->models.entries[i].directory);
 }
 
 BongoCatNeoResult bongo_cat_neo_app_remove_model(BongoCatNeoApp *app, const char *id,

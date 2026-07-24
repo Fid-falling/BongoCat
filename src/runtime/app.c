@@ -81,14 +81,7 @@ static void ci_failure(BongoCatNeoApp *app, const BongoCatNeoError *error) {
     fclose(file);
 }
 static void scan_models(BongoCatNeoApp *app) {
-    BongoCatNeoError error = {0};
-    char path[BONGO_CAT_NEO_PATH_CAP];
-    bongo_cat_neo_path_join(path, sizeof(path), app->asset_root, "models");
-    bongo_cat_neo_models_scan(&app->models, path, true, &error);
-    if (app->data_root[0]) {
-        bongo_cat_neo_path_join(path, sizeof(path), app->data_root, "custom-models");
-        bongo_cat_neo_models_scan(&app->models, path, false, &error);
-    }
+    bongo_cat_neo_app_rescan_models(app);
 }
 static void load_selected_model(BongoCatNeoApp *app) {
     const BongoCatNeoModelEntry *entry = bongo_cat_neo_models_find(&app->models, app->config.current_model);

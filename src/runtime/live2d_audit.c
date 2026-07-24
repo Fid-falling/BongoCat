@@ -9,6 +9,7 @@
 static void input(BongoCatNeoApp *app, BongoCatNeoInputKind kind, const char *name, float value) {
     BongoCatNeoInputEvent event = {.kind = kind, .value = value};
     snprintf(event.name, sizeof(event.name), "%s", name);
+    bongo_cat_neo_app_shortcuts(app, &event);
     bongo_cat_neo_app_apply_input(app, &event);
 }
 
@@ -40,6 +41,8 @@ static bool apply(BongoCatNeoApp *app, const char *scenario) {
     else if (strcmp(scenario, "mouse-move-mirror") == 0) return pointer(app, true);
     else if (strcmp(scenario, "key-left") == 0)
         input(app, BONGO_CAT_NEO_INPUT_KEY_DOWN, "KeyA", 1.0f);
+    else if (strcmp(scenario, "key-tab-left") == 0)
+        input(app, BONGO_CAT_NEO_INPUT_KEY_DOWN, "Tab", 1.0f);
     else if (strcmp(scenario, "key-right") == 0)
         input(app, BONGO_CAT_NEO_INPUT_KEY_DOWN, "RightArrow", 1.0f);
     else if (strcmp(scenario, "key-left-release") == 0) {
@@ -115,7 +118,7 @@ static bool assertions(BongoCatNeoApp *app, const char *scenario, bool operation
         strcmp(scenario, "key-stress") == 0 ||
         strncmp(scenario, "motion-", 7) == 0 ||
         strncmp(scenario, "expression-", 11) == 0) return true;
-    if (strcmp(scenario, "key-left") == 0)
+    if (strcmp(scenario, "key-left") == 0 || strcmp(scenario, "key-tab-left") == 0)
         return active(app, "CatParamLeftHandDown");
     if (strcmp(scenario, "key-right") == 0)
         return active(app, "CatParamRightHandDown");

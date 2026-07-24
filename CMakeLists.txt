@@ -94,7 +94,9 @@ add_library(bongo_cat_neo_runtime STATIC
   src/runtime/model_files.c
   src/runtime/model_import.c
   src/runtime/model_import_discovery.c
-  src/runtime/model_import_legacy.c src/runtime/model_import_legacy_image.c
+  src/runtime/model_import_format.c
+  src/runtime/model_import_mver.c src/runtime/model_import_mver_image.c
+  src/runtime/model_import_mver_metadata.c
   src/runtime/runtime_flow.c
   src/runtime/shortcuts.c
   src/runtime/tray.c
@@ -258,6 +260,14 @@ if(BUILD_TESTING)
   target_link_libraries(bongo_cat_neo_app_state_tests PRIVATE bongo_cat_neo_warnings)
   target_include_directories(bongo_cat_neo_app_state_tests PRIVATE include)
   add_test(NAME app-state COMMAND bongo_cat_neo_app_state_tests)
+  if(WIN32)
+    add_test(NAME model-import-formats
+      COMMAND powershell.exe -NoProfile -ExecutionPolicy Bypass
+        -File ${CMAKE_CURRENT_SOURCE_DIR}/cmake/ThemeImportAudit.ps1
+        -Exe $<TARGET_FILE:bongo_cat_neo>
+        -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/model-import-format-test)
+    set_tests_properties(model-import-formats PROPERTIES TIMEOUT 180)
+  endif()
   if(UNIX AND NOT APPLE)
     target_link_libraries(bongo_cat_neo_ui_tests PRIVATE m)
     target_link_libraries(bongo_cat_neo_app_state_tests PRIVATE m)
