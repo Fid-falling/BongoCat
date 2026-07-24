@@ -94,6 +94,7 @@ add_library(bongo_cat_neo_runtime STATIC
   src/runtime/model_files.c
   src/runtime/model_storage.c
   src/runtime/model_import.c
+  src/runtime/model_import_package.c
   src/runtime/model_import_discovery.c
   src/runtime/model_import_format.c
   src/runtime/model_import_mver_patch.c

@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <yyjson.h>
 
 #ifdef _WIN32
 #include "windows_utf8.h"
@@ -39,13 +40,75 @@ static BongoCatNeoModelMode infer_mode(const char *directory) {
     return bongo_cat_neo_path_is_dir(path) ? BONGO_CAT_NEO_MODE_KEYBOARD : BONGO_CAT_NEO_MODE_STANDARD;
 }
 
+static bool safe_relative(const char *value) {
+    if (!value || !value[0] || value[0] == '/' || value[0] == '\\' || strchr(value, ':'))
+        return false;
+    const char *cursor = value;
+    while (*cursor) {
+        while (*cursor == '/' || *cursor == '\\') cursor++;
+        if (cursor[0] == '.' && cursor[1] == '.' &&
+            (!cursor[2] || cursor[2] == '/' || cursor[2] == '\\')) return false;
+        cursor = strpbrk(cursor, "/\\");
+        if (!cursor) break;
+    }
+    return true;
+}
+
+static BongoCatNeoModelMode stored_mode(const char *value) {
+    if (value && strcmp(value, "keyboard") == 0) return BONGO_CAT_NEO_MODE_KEYBOARD;
+    if (value && strcmp(value, "gamepad") == 0) return BONGO_CAT_NEO_MODE_GAMEPAD;
+    return BONGO_CAT_NEO_MODE_STANDARD;
+}
+
+static bool add_package(BongoCatNeoModelCatalog *catalog, const char *directory,
+    bool preset, bool *handled) {
+    char descriptor[BONGO_CAT_NEO_PATH_CAP];
+    *handled = bongo_cat_neo_path_join(descriptor, sizeof(descriptor), directory,
+        ".bongo-cat-neo-package.json") && bongo_cat_neo_path_is_file(descriptor);
+    if (!*handled) return true;
+    yyjson_doc *document = yyjson_read_file(descriptor, 0, NULL, NULL);
+    yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
+    const char *model = yyjson_get_str(yyjson_obj_get(root, "directory"));
+    const char *adapter = yyjson_get_str(yyjson_obj_get(root, "adapter"));
+    const char *setting = yyjson_get_str(yyjson_obj_get(root, "setting"));
+    bool valid = yyjson_is_obj(root) &&
+        yyjson_get_int(yyjson_obj_get(root, "schemaVersion")) == 1 &&
+        safe_relative(model) && safe_relative(adapter) && safe_relative(setting) &&
+        catalog->count < BONGO_CAT_NEO_MODEL_CAP;
+    BongoCatNeoModelEntry *entry = valid ? &catalog->entries[catalog->count] : NULL;
+    if (entry) valid = bongo_cat_neo_path_join(entry->directory,
+        sizeof(entry->directory), directory, model) &&
+        bongo_cat_neo_path_join(entry->adapter_directory,
+            sizeof(entry->adapter_directory), directory, adapter);
+    char setting_path[BONGO_CAT_NEO_PATH_CAP];
+    if (entry) valid = bongo_cat_neo_path_join(setting_path, sizeof(setting_path),
+        entry->directory, setting) && bongo_cat_neo_path_is_file(setting_path) &&
+        bongo_cat_neo_path_is_dir(entry->adapter_directory);
+    if (valid) {
+        snprintf(entry->id, sizeof(entry->id), "%s", bongo_cat_neo_path_name(directory));
+        snprintf(entry->storage_directory, sizeof(entry->storage_directory), "%s", directory);
+        snprintf(entry->setting_file, sizeof(entry->setting_file), "%s", setting);
+        entry->mode = stored_mode(yyjson_get_str(yyjson_obj_get(root, "mode")));
+        entry->preset = preset;
+        catalog->count++;
+    }
+    yyjson_doc_free(document);
+    return valid;
+}
+
 static bool add_model(BongoCatNeoModelCatalog *catalog, const char *directory, bool preset) {
+    bool handled = false;
+    bool package_ok = add_package(catalog, directory, preset, &handled);
+    if (handled) return package_ok;
+    if (!package_ok) return false;
     if (catalog->count >= BONGO_CAT_NEO_MODEL_CAP) return false;
     char setting[BONGO_CAT_NEO_PATH_CAP];
     if (!bongo_cat_neo_path_find_suffix(directory, ".model3.json", setting, sizeof(setting))) return true;
     BongoCatNeoModelEntry *entry = &catalog->entries[catalog->count++];
     snprintf(entry->id, sizeof(entry->id), "%s", bongo_cat_neo_path_name(directory));
     snprintf(entry->directory, sizeof(entry->directory), "%s", directory);
+    snprintf(entry->adapter_directory, sizeof(entry->adapter_directory), "%s", directory);
+    snprintf(entry->storage_directory, sizeof(entry->storage_directory), "%s", directory);
     snprintf(entry->setting_file, sizeof(entry->setting_file), "%s", setting);
     entry->mode = infer_mode(directory);
     entry->preset = preset;

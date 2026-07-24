@@ -6,6 +6,7 @@ if (-not $OutputDir) { $OutputDir = Join-Path $root "build\theme-import-audit" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
 $source = Join-Path $root "resources\assets\models\standard"
+. (Join-Path $PSScriptRoot "ThemeImportLayout.ps1")
 Add-Type -AssemblyName System.Drawing
 Remove-Item -LiteralPath $OutputDir -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
@@ -141,18 +142,35 @@ $results = foreach ($fixture in $fixtures) {
     $process.WaitForExit()
     $models = @(Get-ChildItem (Join-Path $data "custom-models") -Directory `
         -ErrorAction SilentlyContinue | Where-Object Name -NotLike ".*")
+    $layouts = @($models | ForEach-Object { Get-InstalledModelLayout $_ })
     $installed = $models.Count
-    $reports = @($models | Where-Object {
-        Test-Path (Join-Path $_.FullName ".bongo-cat-neo-import-report.json")
+    $reports = @($layouts | Where-Object {
+        Test-Path (Join-Path $_.Adapter ".bongo-cat-neo-import-report.json")
     }).Count
-    $covers = @($models | Where-Object {
-        Test-Path (Join-Path $_.FullName "resources\cover.png")
+    $covers = @($layouts | Where-Object {
+        Test-Path (Join-Path $_.Adapter "resources\cover.png")
     }).Count
     $actualCoverHash = if ($models.Count -eq 1 -and $covers -eq 1) {
-        (Get-FileHash (Join-Path $models[0].FullName "resources\cover.png") `
+        (Get-FileHash (Join-Path $layouts[0].Adapter "resources\cover.png") `
             -Algorithm SHA256).Hash
     } else { "" }
     $coverMatches = -not $fixture.CoverHash -or $actualCoverHash -eq $fixture.CoverHash
+    $payloadMatches = $layouts.Count -eq $models.Count
+    foreach ($layout in $layouts) {
+        $sourcePayload = if ($fixture.PSObject.Properties["PayloadSource"]) {
+            $fixture.PayloadSource
+        } else { $fixture.Path }
+        $targetPayload = if ($layout.Format -eq "bongo-cat-mver-patch") {
+            Join-Path $layout.Payload "patch"
+        } else { $layout.Payload }
+        $payloadMatches = $payloadMatches -and $layout.Preserved -and
+            (Test-TreeEqual $sourcePayload $targetPayload)
+        if ($layout.Format -eq "bongo-cat-mver-patch" -and
+            $fixture.PSObject.Properties["BaseSource"]) {
+            $payloadMatches = $payloadMatches -and (Test-TreeEqual `
+                $fixture.BaseSource (Join-Path $layout.Payload "base"))
+        }
+    }
     $mverKeys = 0
     $mverMatches = $true
     if ($fixture.Mver) {
@@ -169,39 +187,40 @@ $results = foreach ($fixture in $fixtures) {
             keyboard = "resources\left-keys\KeyA.png"
             gamepad = "resources\left-keys\DPadLeft.png"
         }
-        foreach ($model in $models) {
-            $modePath = Join-Path $model.FullName ".bongo-cat-neo-mode"
-            $mode = if (Test-Path $modePath) { (Get-Content $modePath -Raw).Trim() } else { "" }
-            $backgroundPath = Join-Path $model.FullName "resources\background.png"
-            $coverPath = Join-Path $model.FullName "resources\cover.png"
+        foreach ($model in $layouts) {
+            $mode = $model.Mode
+            $backgroundPath = Join-Path $model.Adapter "resources\background.png"
+            $coverPath = Join-Path $model.Adapter "resources\cover.png"
             $mverMatches = $mverMatches -and (Test-Path $backgroundPath) -and
                 (Get-FileHash $backgroundPath -Algorithm SHA256).Hash -eq
                     $fixture.BackgroundHashes[$mode]
             $mverMatches = $mverMatches -and (Test-Path $coverPath) -and
                 (Get-FileHash $coverPath -Algorithm SHA256).Hash -eq $fixture.CoverHashes[$mode]
-            $metadataPath = Join-Path $model.FullName ".bongo-cat-neo-mver.json"
+            $metadataPath = Join-Path $model.Adapter ".bongo-cat-neo-mver.json"
             $mverMatches = $mverMatches -and (Test-Path $metadataPath)
             $metadata = if (Test-Path $metadataPath) { Get-Content $metadataPath -Raw |
                 ConvertFrom-Json } else { $null }
-            $reportPath = Join-Path $model.FullName ".bongo-cat-neo-import-report.json"
+            $reportPath = Join-Path $model.Adapter ".bongo-cat-neo-import-report.json"
             $report = if (Test-Path $reportPath) { Get-Content $reportPath -Raw |
                 ConvertFrom-Json } else { $null }
             $mverMatches = $mverMatches -and $report.schemaVersion -eq 1 -and
-                $report.status -eq "imported-with-documented-degradations"
+                $report.status -eq "imported-with-documented-degradations" -and
+                $report.capabilities.sourceStructurePreserved -and
+                $report.capabilities.adapterIsolation
             if ($mode -eq "keyboard") {
                 $mverMatches = $mverMatches -and
-                    -not (Test-Path (Join-Path $model.FullName "resources\left-keys\ShiftRight.png")) -and
-                    -not (Test-Path (Join-Path $model.FullName "resources\right-keys\ShiftLeft.png"))
+                    -not (Test-Path (Join-Path $model.Adapter "resources\left-keys\ShiftRight.png")) -and
+                    -not (Test-Path (Join-Path $model.Adapter "resources\right-keys\ShiftLeft.png"))
             }
             if ($mode -eq "standard") {
                 $mverMatches = $mverMatches -and
-                    (Test-Path (Join-Path $model.FullName "resources\sounds\0.flac")) -and
+                    (Test-Path (Join-Path $model.Adapter "resources\sounds\0.flac")) -and
                     @($metadata.bindings).Count -eq 5 -and
                     @($metadata.bindings | Where-Object kind -eq "sound-clear").Count -eq 1
             }
             if ($mode -eq "keyboard") {
                 $mverMatches = $mverMatches -and @($metadata.bindings).Count -eq 4 -and
-                    @(Get-ChildItem (Join-Path $model.FullName "resources\effects") `
+                    @(Get-ChildItem (Join-Path $model.Adapter "resources\effects") `
                         -Filter "*.png").Count -eq 2
             }
             if ($mode -eq "gamepad") {
@@ -209,7 +228,7 @@ $results = foreach ($fixture in $fixtures) {
                     @($metadata.bindings | Where-Object { $_.shortcut -like "Gamepad:*" }).Count -eq 3
             }
             foreach ($relative in @($expected[$mode])) {
-                $keyPath = Join-Path $model.FullName $relative
+                $keyPath = Join-Path $model.Adapter $relative
                 if (Test-Path $keyPath) { $mverKeys++ } else { $mverMatches = $false }
                 if ($mode -eq "standard" -and (Test-Path $keyPath)) {
                     $expectedHash = if ($relative -like "*ShiftLeft.png") {
@@ -253,14 +272,15 @@ $results = foreach ($fixture in $fixtures) {
     $passed = if ($fixture.Valid) {
         $process.ExitCode -eq 0 -and $installed -eq $fixture.Count -and
             ($fixture.Name -ne "nested-package" -or $covers -eq 3) -and
-            $coverMatches -and $edgeMatches -and
+            $coverMatches -and $payloadMatches -and $edgeMatches -and
             (-not $fixture.Mver -or ($mverMatches -and $mverKeys -eq 12))
     } else {
         $process.ExitCode -ne 0 -and $installed -eq 0
     }
     [pscustomobject]@{ Case=$fixture.Name; ExpectedValid=$fixture.Valid
         ExitCode=$process.ExitCode; Installed=$installed; Covers=$covers
-        Reports=$reports; CoverMatches=$coverMatches; Passed=$passed }
+        Reports=$reports; CoverMatches=$coverMatches; PayloadMatches=$payloadMatches
+        Passed=$passed }
 }
 $results | Export-Csv (Join-Path $OutputDir "audit.csv") -NoTypeInformation -Encoding UTF8
 $results | Format-Table -AutoSize

@@ -147,6 +147,8 @@ bool bongo_cat_neo_import_write_report(const BongoCatNeoImportCandidate *candida
             bongo_cat_neo_mode_name(candidate->mode)) &&
         yyjson_mut_obj_add_bool(output, capabilities, "live2dModel", true) &&
         yyjson_mut_obj_add_bool(output, capabilities, "previewAssets", true) &&
+        yyjson_mut_obj_add_bool(output, capabilities, "sourceStructurePreserved", true) &&
+        yyjson_mut_obj_add_bool(output, capabilities, "adapterIsolation", true) &&
         yyjson_mut_obj_add_bool(output, capabilities, "handInputImages", mver) &&
         yyjson_mut_obj_add_bool(output, capabilities, "keyboardChords", mver) &&
         yyjson_mut_obj_add_bool(output, capabilities, "gamepadButtons",

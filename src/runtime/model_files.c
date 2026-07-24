@@ -55,7 +55,7 @@ bool bongo_cat_neo_app_select_model(BongoCatNeoApp *app, const char *id) {
     }
     app->behaviors = *behaviors;
     free(behaviors);
-    bongo_cat_neo_overlay_load(app->overlay, entry->directory, &error);
+    bongo_cat_neo_overlay_load(app->overlay, entry->adapter_directory, &error);
     snprintf(app->loaded_model, sizeof(app->loaded_model), "%s", entry->id);
     select_model_state(app, entry);
     int pixel_width = app->config.window.width, pixel_height = app->config.window.height;
@@ -151,7 +151,7 @@ void bongo_cat_neo_app_rescan_models(BongoCatNeoApp *app) {
     for (size_t i = 0; i < app->models.count; ++i)
         if (!app->models.entries[i].preset)
             bongo_cat_neo_import_apply_metadata(app, app->models.entries[i].id,
-                app->models.entries[i].directory);
+                app->models.entries[i].adapter_directory);
 }
 
 BongoCatNeoResult bongo_cat_neo_app_remove_model(BongoCatNeoApp *app, const char *id,
@@ -171,7 +171,7 @@ BongoCatNeoResult bongo_cat_neo_app_remove_model(BongoCatNeoApp *app, const char
     }
     bool selected = strcmp(id, app->config.current_model) == 0;
     char directory[BONGO_CAT_NEO_PATH_CAP];
-    snprintf(directory, sizeof(directory), "%s", entry->directory);
+    snprintf(directory, sizeof(directory), "%s", entry->storage_directory);
     if (!bongo_cat_neo_model_remove_tree(directory, error)) return BONGO_CAT_NEO_ERROR_IO;
     bongo_cat_neo_app_rescan_models(app);
     if (selected && app->models.count) bongo_cat_neo_app_select_model(app, app->models.entries[0].id);

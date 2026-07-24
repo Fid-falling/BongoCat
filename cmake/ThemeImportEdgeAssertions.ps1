@@ -1,24 +1,22 @@
 $edgeMatches = $reports -eq $installed
 if ($fixture.NoGamepadShortcuts) {
-    foreach ($model in $models) {
-        $metadata = Get-Content (Join-Path $model.FullName ".bongo-cat-neo-mver.json") `
+    foreach ($model in $layouts) {
+        $metadata = Get-Content (Join-Path $model.Adapter ".bongo-cat-neo-mver.json") `
             -Raw | ConvertFrom-Json
         $edgeMatches = $edgeMatches -and
             @($metadata.bindings | Where-Object shortcut -like "Gamepad:*").Count -eq 0
     }
 }
 if ($fixture.PatchHash) {
-    $standard = $models | Where-Object {
-        (Get-Content (Join-Path $_.FullName ".bongo-cat-neo-mode") -Raw).Trim() -eq "standard"
-    } | Select-Object -First 1
+    $standard = $layouts | Where-Object Mode -eq "standard" | Select-Object -First 1
     $edgeMatches = $edgeMatches -and $null -ne $standard -and
-        (Get-FileHash (Join-Path $standard.FullName "resources\left-keys\KeyA.png") `
+        (Get-FileHash (Join-Path $standard.Adapter "resources\left-keys\KeyA.png") `
             -Algorithm SHA256).Hash -eq $fixture.PatchHash
 }
 if ($fixture.MomentaryMedia) {
     $mediaCount = 0
-    foreach ($model in $models) {
-        $metadata = Get-Content (Join-Path $model.FullName ".bongo-cat-neo-mver.json") `
+    foreach ($model in $layouts) {
+        $metadata = Get-Content (Join-Path $model.Adapter ".bongo-cat-neo-mver.json") `
             -Raw | ConvertFrom-Json
         $media = @($metadata.bindings | Where-Object kind -in "sound","effect")
         $mediaCount += $media.Count
@@ -29,10 +27,8 @@ if ($fixture.MomentaryMedia) {
     $edgeMatches = $edgeMatches -and $mediaCount -ge 5
 }
 if ($fixture.SparseAssets) {
-    $keyboard = $models | Where-Object {
-        (Get-Content (Join-Path $_.FullName ".bongo-cat-neo-mode") -Raw).Trim() -eq "keyboard"
-    } | Select-Object -First 1
-    $report = Get-Content (Join-Path $keyboard.FullName `
+    $keyboard = $layouts | Where-Object Mode -eq "keyboard" | Select-Object -First 1
+    $report = Get-Content (Join-Path $keyboard.Adapter `
         ".bongo-cat-neo-import-report.json") -Raw | ConvertFrom-Json
     $edgeMatches = $edgeMatches -and $report.assets.lefthand.declared -eq 2 -and
         $report.assets.lefthand.available -eq 1 -and

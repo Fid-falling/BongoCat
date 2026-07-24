@@ -82,7 +82,8 @@ $fixtures += [pscustomobject]@{ Name="mver-package"; Path=$mver; Valid=$true; Co
     GamepadDirectHash=(&$hash (Join-Path $mverImage "gamepad\lefthand\0.png"))
     BackgroundHashes=$mverBackgroundHashes; CoverHashes=$mverCoverHashes }
 $fixtures += [pscustomobject]@{ Name="mver-subdirectory"
-    Path=(Join-Path $mver "img\standard\cat_model"); Valid=$true; Count=3 }
+    Path=(Join-Path $mver "img\standard\cat_model"); PayloadSource=$mver
+    Valid=$true; Count=3 }
 
 $mverMalformed = Join-Path $OutputDir "mver-malformed-mode"
 Copy-Item -LiteralPath $mver -Destination $mverMalformed -Recurse

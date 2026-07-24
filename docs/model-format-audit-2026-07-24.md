@@ -1,6 +1,7 @@
 # Tauri / Bongo-Cat-Mver 模型格式审计
 
 日期：2026-07-24
+原样结构支持更新：2026-07-25
 产品：Bongo Cat Neo 0.1.0
 
 ## 结论
@@ -12,8 +13,10 @@ Bongo Cat Neo 现在以同一条事务式导入流水线支持三类输入：
 - 只有图片差异的 Mver patch 包，例如“Z-无按键显示”和“Z-有按键显示”。
 
 真实 Tauri、完整 Mver 和两个 Z patch 均会安装 `standard`、`keyboard`、
-`gamepad` 三个模型，并逐个通过 Cubism 原生运行时加载。导入不是对 Mver 的 Windows
-窗口管理器做二进制复刻；无法安全跨机器迁移的固定画布坐标、工作区坐标和设备精灵几何会写入
+`gamepad` 三个模型，并逐个通过 Cubism 原生运行时加载。导入后的 `payload` 是用户模型目录的
+逐文件原样副本，Neo 生成的预览、输入贴图、媒体和元数据只写入并列的 `adapter` 目录；不会向
+用户源目录或 `payload` 增删、改名、合成或覆盖文件。无法安全跨机器迁移的固定画布坐标、
+工作区坐标和设备精灵几何会写入
 `.bongo-cat-neo-import-report.json`，不再被静默忽略。
 
 ## 格式契约
@@ -22,7 +25,7 @@ Bongo Cat Neo 现在以同一条事务式导入流水线支持三类输入：
 |---|---|---|
 | Tauri / Live2D | 唯一合法 `.model3.json` 及其必需引用 | 导入一个或多个模型 |
 | 完整 Mver | `config.json`、`img`、合法 mode 配置、编号资源和 Live2D manifest | 每个合法 mode 导入一个模型 |
-| Mver patch | 唯一 patch `img` 根及唯一同名完整基础包 | 基于基础包生成完整模型并逐文件覆盖 |
+| Mver patch | 唯一 patch `img` 根及唯一同名完整基础包 | 分别原样保存 base/patch，由 adapter 按文件覆盖语义解析 |
 
 同目录多 manifest、多个 patch 根、无基础包或多个基础包都被拒绝。图片 patch 不会被伪装成
 可独立运行的模型。
@@ -88,6 +91,7 @@ Neo 对应功能继续由用户的窗口、鼠标镜像、模型缩放和手柄�
 - [x] M21 将 discovery、patch、shortcut、motion、effect、metadata、report、storage 分层。
 - [x] M22 将 Mver 的 Windows VK 解析限制在 adapter，运行时只接收 Neo 输入名。
 - [x] M23 清理历史命名噪声；旧 schema 测试变量不再使用 `legacy_path`。
+- [x] M24 将原模型与 Neo 适配产物分离为 `payload` / `adapter`，并验证源目录未变化。
 
 ## 自动化证据
 
@@ -96,6 +100,8 @@ Neo 对应功能继续由用户的窗口、鼠标镜像、模型缩放和手柄�
   momentary、清除、缺失可选音频、非法 chord 和不同尺寸合成。
 - `model-import-real-samples`：由 `BONGO_CAT_NEO_TAURI_SOURCE`、
   `BONGO_CAT_NEO_MVER_SOURCE`、`BONGO_CAT_NEO_MVER_PATCH_SOURCES` 驱动；未配置时明确 Skip。
+- 合成与真实样本审计会比较导入前后源目录签名，并验证安装 payload 的相对路径和 SHA-256
+  与对应 Tauri、Mver、base、patch 源目录完全一致。
 - Windows 多配置生成器的标准命令为：
   `ctest --test-dir build-cubism -C Release --output-on-failure`。
 

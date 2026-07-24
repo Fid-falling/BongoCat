@@ -59,7 +59,6 @@ static bool preview_file_exists(const char *directory, const char *name) {
 
 static bool copy_preview(const BongoCatNeoImportCandidate *candidate, const char *target,
     BongoCatNeoError *error) {
-    if (strcmp(candidate->assets, candidate->directory) == 0) return true;
     char source_resources[BONGO_CAT_NEO_PATH_CAP], target_resources[BONGO_CAT_NEO_PATH_CAP];
     if (!bongo_cat_neo_path_join(source_resources, sizeof(source_resources),
         candidate->assets, "resources") ||
@@ -118,18 +117,22 @@ static bool prepare_install(const BongoCatNeoImportCandidate *candidate,
     char temporary_name[BONGO_CAT_NEO_ID_CAP + 8];
     snprintf(temporary_name, sizeof(temporary_name), ".import-%llx-%zu.tmp",
         stamp, index + 1);
+    BongoCatNeoImportCandidate installed;
+    char adapter[BONGO_CAT_NEO_PATH_CAP];
     if (!bongo_cat_neo_path_join(install->temporary, sizeof(install->temporary),
         root, temporary_name) ||
         !bongo_cat_neo_path_join(install->target, sizeof(install->target), root, install->id) ||
-        bongo_cat_neo_copy_directory(candidate->directory, install->temporary, error) != BONGO_CAT_NEO_OK ||
-        !copy_preview(candidate, install->temporary, error) ||
-        !bongo_cat_neo_import_mver_assets(candidate, install->temporary, error) ||
-        !bongo_cat_neo_import_mver_metadata(candidate, install->temporary, error) ||
-        !bongo_cat_neo_import_write_report(candidate, install->temporary, error) ||
-        !write_mode(install->temporary, candidate->mode, error)) return false;
-    char setting[BONGO_CAT_NEO_PATH_CAP];
-    return bongo_cat_neo_path_find_suffix(install->temporary, ".model3.json", setting,
-        sizeof(setting)) && bongo_cat_neo_import_manifest_valid(install->temporary, setting, error);
+        !bongo_cat_neo_import_prepare_package(candidate, install->temporary,
+            &installed, error) ||
+        !bongo_cat_neo_path_join(adapter, sizeof(adapter), install->temporary, "adapter") ||
+        !copy_preview(&installed, adapter, error) ||
+        !bongo_cat_neo_import_mver_assets(&installed, adapter, error) ||
+        !bongo_cat_neo_import_mver_metadata(&installed, adapter, error) ||
+        !bongo_cat_neo_import_write_report(&installed, adapter, error) ||
+        !write_mode(adapter, installed.mode, error) ||
+        !bongo_cat_neo_import_write_package(&installed, install->temporary, error)) return false;
+    return bongo_cat_neo_import_manifest_valid(installed.directory,
+        installed.setting, error);
 }
 
 BongoCatNeoResult bongo_cat_neo_app_import_model(BongoCatNeoApp *app, const char *source,

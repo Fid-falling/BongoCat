@@ -106,6 +106,7 @@ $patch = New-PatchTree $patchRoot
 $patchHash = (Get-FileHash (Join-Path $patch `
     "BaseModel\img\standard\hand\0.png") -Algorithm SHA256).Hash
 $fixtures += [pscustomobject]@{ Name="mver-patch"; Path=$patch
+    BaseSource=(Join-Path $patchRoot "BaseModel")
     Valid=$true; Count=3; PatchHash=$patchHash }
 
 $noBaseRoot = Join-Path $OutputDir "mver-patch-no-base"

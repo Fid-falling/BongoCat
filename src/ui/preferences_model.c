@@ -35,7 +35,8 @@ void bongo_cat_neo_preferences_model_cache_clear(BongoCatNeoApp *app) {
 
 static ModelCoverSlot *model_cover(BongoCatNeoApp *app, const BongoCatNeoModelEntry *entry) {
     char path[BONGO_CAT_NEO_PATH_CAP];
-    if (!bongo_cat_neo_path_join(path, sizeof(path), entry->directory, "resources/cover.png") ||
+    if (!bongo_cat_neo_path_join(path, sizeof(path), entry->adapter_directory,
+        "resources/cover.png") ||
         !bongo_cat_neo_path_is_file(path)) return NULL;
     ModelCoverSlot *empty = NULL;
     for (size_t i = 0; i < BONGO_CAT_NEO_MODEL_CAP; ++i) {

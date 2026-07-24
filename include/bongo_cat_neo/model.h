@@ -6,6 +6,8 @@
 typedef struct BongoCatNeoModelEntry {
     char id[BONGO_CAT_NEO_ID_CAP];
     char directory[BONGO_CAT_NEO_PATH_CAP];
+    char adapter_directory[BONGO_CAT_NEO_PATH_CAP];
+    char storage_directory[BONGO_CAT_NEO_PATH_CAP];
     char setting_file[BONGO_CAT_NEO_PATH_CAP];
     BongoCatNeoModelMode mode;
     bool preset;

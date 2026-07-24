@@ -17,6 +17,7 @@ typedef struct BongoCatNeoImportCandidate {
     char setting[BONGO_CAT_NEO_PATH_CAP];
     char assets[BONGO_CAT_NEO_PATH_CAP];
     char package_root[BONGO_CAT_NEO_PATH_CAP];
+    char patch_root[BONGO_CAT_NEO_PATH_CAP];
     char config[BONGO_CAT_NEO_PATH_CAP];
     char overrides[BONGO_CAT_NEO_PATH_CAP];
     BongoCatNeoModelMode mode;
@@ -46,6 +47,10 @@ bool bongo_cat_neo_import_mver_assets(const BongoCatNeoImportCandidate *candidat
 bool bongo_cat_neo_import_mver_metadata(const BongoCatNeoImportCandidate *candidate,
     const char *target, BongoCatNeoError *error);
 bool bongo_cat_neo_import_write_report(const BongoCatNeoImportCandidate *candidate,
+    const char *target, BongoCatNeoError *error);
+bool bongo_cat_neo_import_prepare_package(const BongoCatNeoImportCandidate *candidate,
+    const char *target, BongoCatNeoImportCandidate *installed, BongoCatNeoError *error);
+bool bongo_cat_neo_import_write_package(const BongoCatNeoImportCandidate *candidate,
     const char *target, BongoCatNeoError *error);
 void bongo_cat_neo_import_apply_metadata(BongoCatNeoApp *app, const char *model_id,
     const char *directory);

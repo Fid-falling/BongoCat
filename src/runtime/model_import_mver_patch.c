@@ -115,6 +115,7 @@ int bongo_cat_neo_import_mver_patch_discover(const char *source,
         if (bongo_cat_neo_path_join(mode, sizeof(mode), search.image_root,
             bongo_cat_neo_mode_name(candidate->mode)) && bongo_cat_neo_path_is_dir(mode))
             snprintf(candidate->overrides, sizeof(candidate->overrides), "%s", mode);
+        snprintf(candidate->patch_root, sizeof(candidate->patch_root), "%s", source);
         candidate->format = BONGO_CAT_NEO_IMPORT_MVER_PATCH;
     }
     return 1;

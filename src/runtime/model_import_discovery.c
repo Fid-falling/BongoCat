@@ -224,6 +224,10 @@ bool bongo_cat_neo_import_discover(const char *source, BongoCatNeoImportDiscover
             "Selected directory contains no valid Live2D model3 JSON");
         return false;
     }
+    for (size_t i = 0; i < discovery->count; ++i)
+        if (discovery->candidates[i].format == BONGO_CAT_NEO_IMPORT_TAURI)
+            snprintf(discovery->candidates[i].package_root,
+                sizeof(discovery->candidates[i].package_root), "%s", source);
     qsort(discovery->candidates, discovery->count,
         sizeof(discovery->candidates[0]), compare_candidates);
     return true;

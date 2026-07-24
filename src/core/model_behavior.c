@@ -8,7 +8,7 @@
 
 static bool add_behavior(BongoCatNeoBehaviorCatalog *catalog, const BongoCatNeoModelEntry *model,
     BongoCatNeoBehaviorKind kind, const char *group, int index, const char *label,
-    const char *asset) {
+    const char *asset, const char *asset_root) {
     if (catalog->count >= BONGO_CAT_NEO_BEHAVIOR_CAP) return false;
     BongoCatNeoBehaviorEntry *entry = &catalog->entries[catalog->count++];
     entry->kind = kind;
@@ -25,11 +25,13 @@ static bool add_behavior(BongoCatNeoBehaviorCatalog *catalog, const BongoCatNeoM
     else snprintf(entry->id, sizeof(entry->id), "%s:effect:%d", model->id, index);
     if (asset && *asset && (kind == BONGO_CAT_NEO_BEHAVIOR_SOUND ||
         kind == BONGO_CAT_NEO_BEHAVIOR_MOTION)) {
-        bongo_cat_neo_path_join(entry->sound, sizeof(entry->sound), model->directory, asset);
+        bongo_cat_neo_path_join(entry->sound, sizeof(entry->sound),
+            asset_root ? asset_root : model->directory, asset);
         if (!bongo_cat_neo_path_is_file(entry->sound)) entry->sound[0] = '\0';
     }
     if (asset && *asset && kind == BONGO_CAT_NEO_BEHAVIOR_EFFECT)
-        bongo_cat_neo_path_join(entry->effect, sizeof(entry->effect), model->directory, asset);
+        bongo_cat_neo_path_join(entry->effect, sizeof(entry->effect),
+            asset_root ? asset_root : model->directory, asset);
     return true;
 }
 
@@ -47,7 +49,7 @@ static bool read_motions(BongoCatNeoBehaviorCatalog *catalog, const BongoCatNeoM
             char label[BONGO_CAT_NEO_ID_CAP];
             snprintf(label, sizeof(label), "%s %zu", group, index + 1);
             if (!add_behavior(catalog, model, BONGO_CAT_NEO_BEHAVIOR_MOTION, group,
-                (int)index, label, sound)) return false;
+                (int)index, label, sound, NULL)) return false;
         }
     }
     return true;
@@ -62,7 +64,7 @@ static bool read_expressions(BongoCatNeoBehaviorCatalog *catalog,
         char label[BONGO_CAT_NEO_ID_CAP];
         snprintf(label, sizeof(label), "%s", name ? name : "Expression");
         if (!add_behavior(catalog, model, BONGO_CAT_NEO_BEHAVIOR_EXPRESSION, NULL,
-            (int)index, label, NULL)) return false;
+            (int)index, label, NULL, NULL)) return false;
     }
     return true;
 }
@@ -70,7 +72,7 @@ static bool read_expressions(BongoCatNeoBehaviorCatalog *catalog,
 static bool read_mver_assets(BongoCatNeoBehaviorCatalog *catalog,
     const BongoCatNeoModelEntry *model) {
     char path[BONGO_CAT_NEO_PATH_CAP];
-    if (!bongo_cat_neo_path_join(path, sizeof(path), model->directory,
+    if (!bongo_cat_neo_path_join(path, sizeof(path), model->adapter_directory,
         ".bongo-cat-neo-mver.json")) return false;
     yyjson_doc *document = yyjson_read_file(path, 0, NULL, NULL);
     if (!document) return true;
@@ -90,7 +92,8 @@ static bool read_mver_assets(BongoCatNeoBehaviorCatalog *catalog,
             snprintf(label, sizeof(label), "Clear %s", effect ? "effect" : "sound");
             if (!add_behavior(catalog, model, effect ? BONGO_CAT_NEO_BEHAVIOR_EFFECT :
                 BONGO_CAT_NEO_BEHAVIOR_SOUND, NULL,
-                effect ? effect_index++ : sound_index++, label, NULL)) {
+                effect ? effect_index++ : sound_index++, label, NULL,
+                model->adapter_directory)) {
                 ok = false; break;
             }
             continue;
@@ -100,7 +103,8 @@ static bool read_mver_assets(BongoCatNeoBehaviorCatalog *catalog,
         int current = effect ? effect_index++ : sound_index++;
         snprintf(label, sizeof(label), "%s %d", effect ? "Effect" : "Sound", current + 1);
         if (!add_behavior(catalog, model, effect ? BONGO_CAT_NEO_BEHAVIOR_EFFECT :
-            BONGO_CAT_NEO_BEHAVIOR_SOUND, NULL, current, label, asset)) { ok = false; break; }
+            BONGO_CAT_NEO_BEHAVIOR_SOUND, NULL, current, label, asset,
+            model->adapter_directory)) { ok = false; break; }
         catalog->entries[catalog->count - 1].momentary =
             yyjson_get_bool(yyjson_obj_get(item, "momentary"));
     }
