@@ -31,11 +31,13 @@ struct BongoCatNeoOverlay {
     TextureSlot cache[4];
     GLuint left;
     GLuint right;
+    GLuint effect;
     char left_name[BONGO_CAT_NEO_ID_CAP];
     char right_name[BONGO_CAT_NEO_ID_CAP];
     char background_path[BONGO_CAT_NEO_PATH_CAP];
     char left_path[BONGO_CAT_NEO_PATH_CAP];
     char right_path[BONGO_CAT_NEO_PATH_CAP];
+    char effect_path[BONGO_CAT_NEO_PATH_CAP];
     char directory[BONGO_CAT_NEO_PATH_CAP];
     uint64_t clock;
 };
@@ -66,8 +68,10 @@ static void clear_textures(BongoCatNeoOverlay *value) {
         memset(&value->cache[i], 0, sizeof(value->cache[i]));
     }
     value->left = value->right = 0;
+    value->effect = 0;
     value->left_name[0] = value->right_name[0] = '\0';
     value->left_path[0] = value->right_path[0] = '\0';
+    value->effect_path[0] = '\0';
 }
 
 BongoCatNeoOverlay *bongo_cat_neo_overlay_create(BongoCatNeoError *error) {
@@ -136,7 +140,8 @@ static GLuint cached_texture(BongoCatNeoOverlay *value, const char *path) {
             return slot->texture;
         }
         if (slot->texture &&
-            (slot->texture == value->left || slot->texture == value->right)) continue;
+            (slot->texture == value->left || slot->texture == value->right ||
+            slot->texture == value->effect)) continue;
         if (!oldest || !slot->texture || slot->used < oldest->used) oldest = slot;
     }
     if (!oldest) return 0;
@@ -196,6 +201,21 @@ bool bongo_cat_neo_overlay_hand_active(const BongoCatNeoOverlay *value, bool rig
     return value && (right ? value->right : value->left) != 0;
 }
 
+bool bongo_cat_neo_overlay_effect(BongoCatNeoOverlay *value, const char *path) {
+    if (!value) return false;
+    value->effect = 0;
+    value->effect_path[0] = '\0';
+    if (!path || !*path) return true;
+    if (!bongo_cat_neo_path_is_file(path)) return false;
+#ifdef BONGO_CAT_NEO_HAS_CUBISM
+    value->effect = cached_texture(value, path);
+#else
+    value->effect = 1;
+#endif
+    snprintf(value->effect_path, sizeof(value->effect_path), "%s", path);
+    return value->effect != 0;
+}
+
 static void draw(BongoCatNeoOverlay *value, GLuint texture, bool mirror, bool blend) {
     if (!value || !texture) return;
     if (blend) {
@@ -241,6 +261,15 @@ void bongo_cat_neo_overlay_draw_keys(BongoCatNeoOverlay *value, bool mirror) {
 #ifdef BONGO_CAT_NEO_HAS_CUBISM
     draw(value, value->left, mirror, true);
     draw(value, value->right, mirror, true);
+#else
+    (void)mirror;
+#endif
+}
+
+void bongo_cat_neo_overlay_draw_effect(BongoCatNeoOverlay *value, bool mirror) {
+    if (!value) return;
+#ifdef BONGO_CAT_NEO_HAS_CUBISM
+    draw(value, value->effect, mirror, true);
 #else
     (void)mirror;
 #endif

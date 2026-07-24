@@ -56,16 +56,16 @@ void test_config(void) {
     CHECK(strcmp(loaded.behavior_shortcuts[0].shortcut, "Control+1") == 0);
     CHECK(bongo_cat_neo_file_remove(path));
 
-    const char *legacy_path = "bongo-cat-neo-legacy.json";
-    FILE *legacy = bongo_cat_neo_file_open(legacy_path, "wb");
+    const char *old_schema_path = "bongo-cat-neo-legacy.json";
+    FILE *legacy = bongo_cat_neo_file_open(old_schema_path, "wb");
     CHECK(legacy != NULL);
     if (legacy) {
         fputs("{\"schemaVersion\":1,\"window\":{\"visible\":false,"
             "\"alwaysOnTop\":false}}", legacy);
         fclose(legacy);
     }
-    CHECK(bongo_cat_neo_config_load(legacy_path, &loaded, &error) == BONGO_CAT_NEO_OK);
+    CHECK(bongo_cat_neo_config_load(old_schema_path, &loaded, &error) == BONGO_CAT_NEO_OK);
     CHECK(loaded.schema_version == 2);
     CHECK(loaded.window.visible && loaded.window.always_on_top);
-    CHECK(bongo_cat_neo_file_remove(legacy_path));
+    CHECK(bongo_cat_neo_file_remove(old_schema_path));
 }

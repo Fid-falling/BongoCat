@@ -28,7 +28,7 @@ standalone desktop delivery. Non-Windows execution remains an external gate.
 | Area | Result |
 |---|---|
 | Release build | PASS - MSVC v143, static CRT, Cubism SDK 5 r.5 |
-| Native tests | PASS - 4/4 |
+| Native tests | PASS - 7/7 |
 | Source policy | PASS - all checked files at most 300 lines |
 | Preferences | PASS - 5 languages x 2 themes x 5 pages = 50/50 |
 | Real models | PASS - standard, keyboard and gamepad |

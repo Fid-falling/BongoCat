@@ -1,4 +1,6 @@
 #include "model_import.h"
+#include "model_storage.h"
+#include "runtime.h"
 #include "bongo_cat_neo/file.h"
 #include "bongo_cat_neo/path.h"
 
@@ -11,27 +13,6 @@ typedef struct ImportInstall {
     char target[BONGO_CAT_NEO_PATH_CAP];
     bool committed;
 } ImportInstall;
-
-static bool remove_tree(const char *path, BongoCatNeoError *error);
-
-static SDL_EnumerationResult SDLCALL remove_item(void *userdata,
-    const char *dirname, const char *name) {
-    BongoCatNeoError *error = userdata;
-    char path[BONGO_CAT_NEO_PATH_CAP];
-    return bongo_cat_neo_path_join(path, sizeof(path), dirname, name) && remove_tree(path, error)
-        ? SDL_ENUM_CONTINUE : SDL_ENUM_FAILURE;
-}
-
-static bool remove_tree(const char *path, BongoCatNeoError *error) {
-    SDL_PathInfo info;
-    if (!path[0] || !SDL_GetPathInfo(path, &info)) return true;
-    if (info.type == SDL_PATHTYPE_DIRECTORY &&
-        !SDL_EnumerateDirectory(path, remove_item, error)) return false;
-    if (SDL_RemovePath(path)) return true;
-    if (error) bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO,
-        "Cannot remove %s: %s", path, SDL_GetError());
-    return false;
-}
 
 static bool custom_root(BongoCatNeoApp *app, char *path, size_t capacity) {
     return app->data_root[0] &&
@@ -122,7 +103,7 @@ static bool write_mode(const char *target, BongoCatNeoModelMode mode, BongoCatNe
 
 static void cleanup(ImportInstall *installs, size_t count, bool committed) {
     for (size_t i = 0; i < count; ++i)
-        remove_tree(committed && installs[i].committed ? installs[i].target :
+        bongo_cat_neo_model_remove_tree(committed && installs[i].committed ? installs[i].target :
             installs[i].temporary, NULL);
 }
 
@@ -144,6 +125,7 @@ static bool prepare_install(const BongoCatNeoImportCandidate *candidate,
         !copy_preview(candidate, install->temporary, error) ||
         !bongo_cat_neo_import_mver_assets(candidate, install->temporary, error) ||
         !bongo_cat_neo_import_mver_metadata(candidate, install->temporary, error) ||
+        !bongo_cat_neo_import_write_report(candidate, install->temporary, error) ||
         !write_mode(install->temporary, candidate->mode, error)) return false;
     char setting[BONGO_CAT_NEO_PATH_CAP];
     return bongo_cat_neo_path_find_suffix(install->temporary, ".model3.json", setting,
@@ -157,6 +139,7 @@ BongoCatNeoResult bongo_cat_neo_app_import_model(BongoCatNeoApp *app, const char
     if (!bongo_cat_neo_import_discover(source, &discovery, error)) return BONGO_CAT_NEO_ERROR_FORMAT;
     char root[BONGO_CAT_NEO_PATH_CAP];
     if (!custom_root(app, root, sizeof(root))) return BONGO_CAT_NEO_ERROR_IO;
+    if (!bongo_cat_neo_model_cleanup_imports(root, error)) return BONGO_CAT_NEO_ERROR_IO;
     ImportInstall installs[BONGO_CAT_NEO_IMPORT_CANDIDATE_CAP] = {0};
     unsigned long long stamp = (unsigned long long)SDL_GetTicksNS();
     for (size_t i = 0; i < discovery.count; ++i) {

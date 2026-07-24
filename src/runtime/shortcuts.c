@@ -1,5 +1,6 @@
 #include "runtime.h"
 #include "bongo_cat_neo/audio.h"
+#include "bongo_cat_neo/overlay.h"
 #include "bongo_cat_neo/preferences.h"
 #include "bongo_cat_neo/shortcut.h"
 
@@ -13,8 +14,13 @@ static void visible(BongoCatNeoApp *app) {
 }
 
 static bool run_behavior(BongoCatNeoApp *app, BongoCatNeoBehaviorEntry *behavior) {
-    if (behavior->kind == BONGO_CAT_NEO_BEHAVIOR_SOUND) {
-        if (!behavior->sound[0]) return false;
+    if (behavior->kind == BONGO_CAT_NEO_BEHAVIOR_EFFECT) {
+        if (!bongo_cat_neo_overlay_effect(app->overlay, behavior->effect)) return false;
+    } else if (behavior->kind == BONGO_CAT_NEO_BEHAVIOR_SOUND) {
+        if (!behavior->sound[0]) {
+            bongo_cat_neo_audio_stop(app->audio);
+            return true;
+        }
         BongoCatNeoError error = {0};
         bongo_cat_neo_audio_play(app->audio, behavior->sound, &error);
     } else if (behavior->kind == BONGO_CAT_NEO_BEHAVIOR_MOTION) {
@@ -34,10 +40,20 @@ static bool behavior_shortcut(BongoCatNeoApp *app, const BongoCatNeoInputEvent *
     bool handled = false;
     for (size_t i = 0; i < app->config.behavior_shortcut_count; ++i) {
         BongoCatNeoBehaviorShortcut *shortcut = &app->config.behavior_shortcuts[i];
-        if (!bongo_cat_neo_shortcut_matches(&app->shortcut_state, event, shortcut->shortcut)) continue;
-        for (size_t j = 0; j < app->behaviors.count; ++j)
-            if (strcmp(shortcut->id, app->behaviors.entries[j].id) == 0)
-                handled = run_behavior(app, &app->behaviors.entries[j]) || handled;
+        for (size_t j = 0; j < app->behaviors.count; ++j) {
+            BongoCatNeoBehaviorEntry *behavior = &app->behaviors.entries[j];
+            if (strcmp(shortcut->id, behavior->id) != 0) continue;
+            if (behavior->momentary &&
+                bongo_cat_neo_shortcut_release_matches(event, shortcut->shortcut)) {
+                if (behavior->kind == BONGO_CAT_NEO_BEHAVIOR_EFFECT)
+                    handled = bongo_cat_neo_overlay_effect(app->overlay, NULL) || handled;
+                else if (behavior->kind == BONGO_CAT_NEO_BEHAVIOR_SOUND) {
+                    bongo_cat_neo_audio_stop(app->audio);
+                    handled = true;
+                }
+            } else if (bongo_cat_neo_shortcut_matches(&app->shortcut_state,
+                event, shortcut->shortcut)) handled = run_behavior(app, behavior) || handled;
+        }
     }
     if (handled) return true;
     size_t limit = app->behaviors.count < 10 ? app->behaviors.count : 10;
@@ -56,7 +72,11 @@ void bongo_cat_neo_app_shortcuts(BongoCatNeoApp *app, const BongoCatNeoInputEven
         if (app->config.model.behavior) behavior_shortcut(app, event);
         return;
     }
-    if (!bongo_cat_neo_shortcut_update(&app->shortcut_state, event)) return;
+    bool primary = bongo_cat_neo_shortcut_update(&app->shortcut_state, event);
+    if (!primary) {
+        if (app->config.model.behavior) behavior_shortcut(app, event);
+        return;
+    }
     BongoCatNeoShortcutOptions *shortcuts = &app->config.shortcuts;
     if (bongo_cat_neo_shortcut_matches(&app->shortcut_state, event, shortcuts->visible_cat)) {
         visible(app);

@@ -19,7 +19,8 @@ typedef struct BongoCatNeoModelCatalog {
 typedef enum BongoCatNeoBehaviorKind {
     BONGO_CAT_NEO_BEHAVIOR_MOTION,
     BONGO_CAT_NEO_BEHAVIOR_EXPRESSION,
-    BONGO_CAT_NEO_BEHAVIOR_SOUND
+    BONGO_CAT_NEO_BEHAVIOR_SOUND,
+    BONGO_CAT_NEO_BEHAVIOR_EFFECT
 } BongoCatNeoBehaviorKind;
 
 typedef struct BongoCatNeoBehaviorEntry {
@@ -27,8 +28,10 @@ typedef struct BongoCatNeoBehaviorEntry {
     char label[BONGO_CAT_NEO_ID_CAP];
     char group[BONGO_CAT_NEO_ID_CAP];
     char sound[BONGO_CAT_NEO_PATH_CAP];
+    char effect[BONGO_CAT_NEO_PATH_CAP];
     int index;
     BongoCatNeoBehaviorKind kind;
+    bool momentary;
 } BongoCatNeoBehaviorEntry;
 
 typedef struct BongoCatNeoBehaviorCatalog {

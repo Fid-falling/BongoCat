@@ -15,5 +15,7 @@ void bongo_cat_neo_shortcut_init(BongoCatNeoShortcutState *state);
 bool bongo_cat_neo_shortcut_update(BongoCatNeoShortcutState *state, const BongoCatNeoInputEvent *event);
 bool bongo_cat_neo_shortcut_matches(const BongoCatNeoShortcutState *state,
     const BongoCatNeoInputEvent *event, const char *shortcut);
+bool bongo_cat_neo_shortcut_release_matches(const BongoCatNeoInputEvent *event,
+    const char *shortcut);
 
 #endif

@@ -10,8 +10,10 @@ void bongo_cat_neo_overlay_destroy(BongoCatNeoOverlay *overlay);
 BongoCatNeoResult bongo_cat_neo_overlay_load(BongoCatNeoOverlay *overlay, const char *model_directory,
     BongoCatNeoError *error);
 int bongo_cat_neo_overlay_key(BongoCatNeoOverlay *overlay, const char *name, bool pressed);
+bool bongo_cat_neo_overlay_effect(BongoCatNeoOverlay *overlay, const char *path);
 bool bongo_cat_neo_overlay_hand_active(const BongoCatNeoOverlay *overlay, bool right);
 void bongo_cat_neo_overlay_draw_background(BongoCatNeoOverlay *overlay, bool mirror);
 void bongo_cat_neo_overlay_draw_keys(BongoCatNeoOverlay *overlay, bool mirror);
+void bongo_cat_neo_overlay_draw_effect(BongoCatNeoOverlay *overlay, bool mirror);
 
 #endif

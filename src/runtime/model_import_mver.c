@@ -1,5 +1,6 @@
 #include "model_import.h"
 #include "model_import_mver_internal.h"
+#include "runtime.h"
 #include "bongo_cat_neo/file.h"
 #include "bongo_cat_neo/path.h"
 
@@ -13,6 +14,18 @@ typedef BongoCatNeoMverKeyNames KeyNames;
 static bool child_is_dir(const char *root, const char *name) {
     char path[BONGO_CAT_NEO_PATH_CAP];
     return bongo_cat_neo_path_join(path, sizeof(path), root, name) && bongo_cat_neo_path_is_dir(path);
+}
+
+static bool asset_file(const BongoCatNeoImportCandidate *candidate, const char *group,
+    const char *name, char *output, size_t capacity) {
+    char directory[BONGO_CAT_NEO_PATH_CAP];
+    if (candidate->overrides[0] &&
+        bongo_cat_neo_path_join(directory, sizeof(directory), candidate->overrides, group) &&
+        bongo_cat_neo_path_join(output, capacity, directory, name) &&
+        bongo_cat_neo_path_is_file(output)) return true;
+    return bongo_cat_neo_path_join(directory, sizeof(directory), candidate->assets, group) &&
+        bongo_cat_neo_path_join(output, capacity, directory, name) &&
+        bongo_cat_neo_path_is_file(output);
 }
 
 int bongo_cat_neo_mver_modifier_index(int code) {
@@ -109,11 +122,8 @@ static bool process_matrix(const BongoCatNeoImportCandidate *candidate, yyjson_v
     const char *hand_name, const char *key_group, const char *target,
     BongoCatNeoError *error) {
     if (!yyjson_is_arr(matrix)) return false;
-    char hand_dir[BONGO_CAT_NEO_PATH_CAP], keyboard_dir[BONGO_CAT_NEO_PATH_CAP];
     char resources[BONGO_CAT_NEO_PATH_CAP], output_dir[BONGO_CAT_NEO_PATH_CAP];
-    if (!bongo_cat_neo_path_join(hand_dir, sizeof(hand_dir), candidate->assets, hand_name) ||
-        !bongo_cat_neo_path_join(keyboard_dir, sizeof(keyboard_dir), candidate->assets, "keyboard") ||
-        !bongo_cat_neo_path_join(resources, sizeof(resources), target, "resources") ||
+    if (!bongo_cat_neo_path_join(resources, sizeof(resources), target, "resources") ||
         !bongo_cat_neo_path_join(output_dir, sizeof(output_dir), resources, key_group) ||
         !SDL_CreateDirectory(output_dir)) return false;
     size_t modifier_total[3] = {0}, modifier_seen[3] = {0};
@@ -125,8 +135,7 @@ static bool process_matrix(const BongoCatNeoImportCandidate *candidate, yyjson_v
     yyjson_arr_foreach(matrix, index, count, keys) {
         char hand[BONGO_CAT_NEO_PATH_CAP], filename[32];
         snprintf(filename, sizeof(filename), "%zu.png", index);
-        if (!bongo_cat_neo_path_join(hand, sizeof(hand), hand_dir, filename) ||
-            !bongo_cat_neo_path_is_file(hand)) {
+        if (!asset_file(candidate, hand_name, filename, hand, sizeof(hand))) {
             size_t missing_index, missing_count; yyjson_val *missing;
             yyjson_arr_foreach(keys, missing_index, missing_count, missing) {
                 int modifier = (yyjson_is_int(missing) || yyjson_is_uint(missing))
@@ -137,21 +146,30 @@ static bool process_matrix(const BongoCatNeoImportCandidate *candidate, yyjson_v
         }
         size_t key_index, key_count; yyjson_val *key;
         yyjson_arr_foreach(keys, key_index, key_count, key) {
-            if (!yyjson_is_int(key) && !yyjson_is_uint(key)) continue;
+            if (!yyjson_is_int(key) && !yyjson_is_uint(key)) {
+                bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
+                    "Mver input row %zu contains a non-integer key", index);
+                return false;
+            }
             int code = (int)yyjson_get_int(key);
             char keyboard[BONGO_CAT_NEO_PATH_CAP];
             size_t keyboard_row;
             const char *keyboard_path = NULL;
             if (keyboard_index(keyboard_matrix, code, &keyboard_row)) {
                 snprintf(filename, sizeof(filename), "%zu.png", keyboard_row);
-                if (bongo_cat_neo_path_join(keyboard, sizeof(keyboard), keyboard_dir, filename) &&
-                    bongo_cat_neo_path_is_file(keyboard)) keyboard_path = keyboard;
+                if (asset_file(candidate, "keyboard", filename, keyboard,
+                    sizeof(keyboard))) keyboard_path = keyboard;
             }
             int modifier = bongo_cat_neo_mver_modifier_index(code);
             size_t occurrence = modifier >= 0 ? modifier_seen[modifier]++ : 0;
-            KeyNames names = candidate->mode == BONGO_CAT_NEO_MODE_GAMEPAD
+            KeyNames names = candidate->gamepad_buttons
                 ? bongo_cat_neo_mver_gamepad_names(code) : bongo_cat_neo_mver_device_names(code, occurrence,
                     modifier >= 0 ? modifier_total[modifier] : 0);
+            if (!names.count) {
+                bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
+                    "Mver input row %zu uses unsupported key code %d", index, code);
+                return false;
+            }
             if (!bongo_cat_neo_mver_emit_pair(hand, keyboard_path, output_dir, names, error)) return false;
         }
     }
@@ -160,7 +178,8 @@ static bool process_matrix(const BongoCatNeoImportCandidate *candidate, yyjson_v
 
 bool bongo_cat_neo_import_mver_assets(const BongoCatNeoImportCandidate *candidate,
     const char *target, BongoCatNeoError *error) {
-    if (candidate->format != BONGO_CAT_NEO_IMPORT_MVER) return true;
+    if (candidate->format != BONGO_CAT_NEO_IMPORT_MVER &&
+        candidate->format != BONGO_CAT_NEO_IMPORT_MVER_PATCH) return true;
     const char *left = candidate->mode == BONGO_CAT_NEO_MODE_STANDARD ? "hand" : "lefthand";
     if (!child_is_dir(candidate->assets, left)) return false;
     FILE *file = bongo_cat_neo_file_open(candidate->config, "rb");

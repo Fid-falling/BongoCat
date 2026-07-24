@@ -1,4 +1,5 @@
 #include "model_import.h"
+#include "runtime.h"
 #include "bongo_cat_neo/file.h"
 #include "bongo_cat_neo/path.h"
 
@@ -68,7 +69,8 @@ static bool mode_config_valid(yyjson_val *mode, BongoCatNeoModelMode value,
 }
 
 static bool model_at(const char *directory, char *setting, size_t capacity) {
-    return bongo_cat_neo_path_find_suffix(directory, ".model3.json", setting, capacity) &&
+    return bongo_cat_neo_path_find_unique_suffix(directory, ".model3.json",
+        setting, capacity) == 1 &&
         bongo_cat_neo_import_manifest_valid(directory, setting, NULL);
 }
 
@@ -111,6 +113,10 @@ static bool add_mode(BongoCatNeoImportDiscovery *discovery, const char *source,
     snprintf(candidate->config, sizeof(candidate->config), "%s", config);
     candidate->mode = mode;
     candidate->format = BONGO_CAT_NEO_IMPORT_MVER;
+    yyjson_val *input_mode = yyjson_obj_get(mode_config, "input_mode");
+    candidate->gamepad_buttons = mode == BONGO_CAT_NEO_MODE_GAMEPAD &&
+        ((!yyjson_is_int(input_mode) && !yyjson_is_uint(input_mode)) ||
+        yyjson_get_int(input_mode) != 0);
     discovery->count++;
     return true;
 }

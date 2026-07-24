@@ -12,7 +12,7 @@ file(GLOB_RECURSE FILES
   "${ROOT}/tests/*.cxx" "${ROOT}/tests/*.m" "${ROOT}/tests/*.mm"
   "${ROOT}/tests/*.h" "${ROOT}/tests/*.hh"
   "${ROOT}/tests/*.hpp" "${ROOT}/tests/*.hxx"
-  "${ROOT}/cmake/*.cmake")
+  "${ROOT}/cmake/*.cmake" "${ROOT}/cmake/*.ps1")
 list(APPEND FILES "${ROOT}/CMakeLists.txt")
 
 set(FAILED "")

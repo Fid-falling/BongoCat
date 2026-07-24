@@ -13,6 +13,8 @@ bool bongo_cat_neo_path_is_file(const char *path);
 bool bongo_cat_neo_path_is_dir(const char *path);
 bool bongo_cat_neo_path_find_suffix(const char *directory, const char *suffix,
     char *name, size_t capacity);
+int bongo_cat_neo_path_find_unique_suffix(const char *directory, const char *suffix,
+    char *name, size_t capacity);
 
 #ifdef __cplusplus
 }

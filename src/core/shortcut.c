@@ -100,3 +100,16 @@ bool bongo_cat_neo_shortcut_matches(const BongoCatNeoShortcutState *state,
     memcpy(expected, primary, primary_length); expected[primary_length] = '\0';
     return equal_ci(expected, canonical_key(event->name, key));
 }
+
+bool bongo_cat_neo_shortcut_release_matches(const BongoCatNeoInputEvent *event,
+    const char *shortcut) {
+    if (!event || !shortcut || !*shortcut) return false;
+    if (event->kind == BONGO_CAT_NEO_INPUT_GAMEPAD_BUTTON)
+        return event->value <= 0.5f && strncmp(shortcut, "Gamepad:", 8) == 0 &&
+            equal_ci(shortcut + 8, event->name);
+    if (event->kind != BONGO_CAT_NEO_INPUT_KEY_UP) return false;
+    const char *primary = strrchr(shortcut, '+');
+    primary = primary ? primary + 1 : shortcut;
+    char key[16];
+    return equal_ci(primary, canonical_key(event->name, key));
+}

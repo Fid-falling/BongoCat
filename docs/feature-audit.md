@@ -8,7 +8,7 @@ A diagnostic drawing never counts as a Live2D visual pass.
 ## Current evidence
 
 - Windows Cubism Release build: `build-cubism/Release/BongoCatNeo.exe` - PASS.
-- Native tests: `ctest --test-dir build-cubism -C Release` - PASS, 4/4.
+- Native tests: `ctest --test-dir build-cubism -C Release` - PASS, 7/7.
 - Source policy: `check-lines` - PASS, every checked file is at most 300 lines.
 - Preferences matrix: `build-cubism/visual-audit-preferences/audit.csv` - PASS, 50/50.
 - Real Live2D matrix: `build-cubism/visual-audit-cubism/audit.csv` - PASS, 14/14.

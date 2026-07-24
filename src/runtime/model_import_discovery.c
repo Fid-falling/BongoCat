@@ -1,4 +1,5 @@
 #include "model_import.h"
+#include "runtime.h"
 #include "bongo_cat_neo/file.h"
 #include "bongo_cat_neo/path.h"
 
@@ -27,6 +28,36 @@ static bool referenced_file(const char *root, const char *relative) {
         bongo_cat_neo_path_join(path, sizeof(path), root, relative) && bongo_cat_neo_path_is_file(path);
 }
 
+static bool optional_reference(const char *root, yyjson_val *refs,
+    const char *name) {
+    yyjson_val *value = yyjson_obj_get(refs, name);
+    if (!value) return true;
+    const char *relative = yyjson_get_str(value);
+    return relative && referenced_file(root, relative);
+}
+
+static bool behavior_references(const char *root, yyjson_val *refs) {
+    yyjson_val *expressions = yyjson_obj_get(refs, "Expressions");
+    if (expressions && !yyjson_is_arr(expressions)) return false;
+    size_t index, count; yyjson_val *item;
+    yyjson_arr_foreach(expressions, index, count, item)
+        if (!referenced_file(root, yyjson_get_str(yyjson_obj_get(item, "File"))))
+            return false;
+    yyjson_val *motions = yyjson_obj_get(refs, "Motions");
+    if (motions && !yyjson_is_obj(motions)) return false;
+    size_t group_index, group_count; yyjson_val *key, *group;
+    yyjson_obj_foreach(motions, group_index, group_count, key, group) {
+        if (!yyjson_is_arr(group)) return false;
+        yyjson_arr_foreach(group, index, count, item) {
+            if (!referenced_file(root, yyjson_get_str(yyjson_obj_get(item, "File"))))
+                return false;
+            const char *sound = yyjson_get_str(yyjson_obj_get(item, "Sound"));
+            if (sound && !safe_reference(sound)) return false;
+        }
+    }
+    return true;
+}
+
 bool bongo_cat_neo_import_manifest_valid(const char *root, const char *setting,
     BongoCatNeoError *error) {
     char path[BONGO_CAT_NEO_PATH_CAP];
@@ -45,6 +76,9 @@ bool bongo_cat_neo_import_manifest_valid(const char *root, const char *setting,
     size_t index, maximum; yyjson_val *texture;
     yyjson_arr_foreach(textures, index, maximum, texture)
         valid = valid && referenced_file(root, yyjson_get_str(texture));
+    valid = valid && optional_reference(root, refs, "Physics") &&
+        optional_reference(root, refs, "Pose") &&
+        optional_reference(root, refs, "DisplayInfo") && behavior_references(root, refs);
     yyjson_doc_free(document);
     if (!valid && error) bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
         "Model manifest or referenced assets are invalid: %s", path);
@@ -117,8 +151,11 @@ static bool add_candidate(BongoCatNeoImportDiscovery *discovery, const char *dir
     const char *setting) {
     if (discovery->count >= BONGO_CAT_NEO_IMPORT_CANDIDATE_CAP) return false;
     for (size_t i = 0; i < discovery->count; ++i)
-        if (strcmp(discovery->candidates[i].directory, directory) == 0 &&
-            strcmp(discovery->candidates[i].setting, setting) == 0) return true;
+        if (strcmp(discovery->candidates[i].directory, directory) == 0) {
+            if (strcmp(discovery->candidates[i].setting, setting) == 0) return true;
+            discovery->ambiguous = true;
+            return false;
+        }
     BongoCatNeoImportCandidate *candidate = &discovery->candidates[discovery->count++];
     snprintf(candidate->directory, sizeof(candidate->directory), "%s", directory);
     snprintf(candidate->setting, sizeof(candidate->setting), "%s", setting);
@@ -174,12 +211,11 @@ bool bongo_cat_neo_import_discover(const char *source, BongoCatNeoImportDiscover
     memset(discovery, 0, sizeof(*discovery));
     int mver = bongo_cat_neo_import_mver_discover(source, discovery, error);
     if (mver != 0) return mver > 0;
-    char direct[BONGO_CAT_NEO_PATH_CAP];
-    if (bongo_cat_neo_path_find_suffix(source, ".model3.json", direct, sizeof(direct)) &&
-        bongo_cat_neo_import_manifest_valid(source, direct, NULL))
-        return add_candidate(discovery, source, direct);
+    int patch = bongo_cat_neo_import_mver_patch_discover(source, discovery, error);
+    if (patch != 0) return patch > 0;
     if (!SDL_EnumerateDirectory(source, discover_item, discovery)) {
         bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
+            discovery->ambiguous ? "A model directory contains multiple model3 manifests" :
             "Cannot scan model directory or it contains too many models");
         return false;
     }

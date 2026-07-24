@@ -90,3 +90,39 @@ bool bongo_cat_neo_path_find_suffix(const char *dir, const char *suffix, char *n
     return found;
 #endif
 }
+
+int bongo_cat_neo_path_find_unique_suffix(const char *dir, const char *suffix,
+    char *name, size_t cap) {
+#ifdef _WIN32
+    char pattern[BONGO_CAT_NEO_PATH_CAP];
+    if (!bongo_cat_neo_path_join(pattern, sizeof(pattern), dir, "*")) return 0;
+    wchar_t *wide = bongo_cat_neo_windows_wide(pattern);
+    WIN32_FIND_DATAW data = {0};
+    HANDLE find = wide ? FindFirstFileW(wide, &data) : INVALID_HANDLE_VALUE;
+    free(wide);
+    if (find == INVALID_HANDLE_VALUE) return 0;
+    int count = 0;
+    do {
+        char filename[BONGO_CAT_NEO_PATH_CAP];
+        if (!(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) &&
+            bongo_cat_neo_windows_utf8(data.cFileName, filename, sizeof(filename)) &&
+            ends_with(filename, suffix)) {
+            if (++count == 1) snprintf(name, cap, "%s", filename);
+        }
+    } while (FindNextFileW(find, &data));
+    FindClose(find);
+    return count == 1 ? 1 : count ? -1 : 0;
+#else
+    DIR *handle = opendir(dir);
+    if (!handle) return 0;
+    int count = 0; struct dirent *entry;
+    while ((entry = readdir(handle))) if (ends_with(entry->d_name, suffix)) {
+        char path[BONGO_CAT_NEO_PATH_CAP];
+        if (!bongo_cat_neo_path_join(path, sizeof(path), dir, entry->d_name) ||
+            !bongo_cat_neo_path_is_file(path)) continue;
+        if (++count == 1) snprintf(name, cap, "%s", entry->d_name);
+    }
+    closedir(handle);
+    return count == 1 ? 1 : count ? -1 : 0;
+#endif
+}

@@ -3,6 +3,7 @@
 #include "bongo_cat_neo/image.h"
 #include "bongo_cat_neo/path.h"
 
+#include <SDL3/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,14 +24,15 @@ static bool compose(const char *base_path, const char *hand_path,
     if (bongo_cat_neo_image_load(hand_path, &hand, error) != BONGO_CAT_NEO_OK) {
         bongo_cat_neo_image_free(&base); return false;
     }
-    int width = SDL_min(base.width, hand.width), height = SDL_min(base.height, hand.height);
+    int width = SDL_max(base.width, hand.width), height = SDL_max(base.height, hand.height);
     size_t bytes = (size_t)width * (size_t)height * 4;
     unsigned char *pixels = width > 0 && height > 0 ? malloc(bytes) : NULL;
     bool allocated = pixels != NULL;
-    if (pixels) for (int y = 0; y < height; ++y)
+    if (pixels) memset(pixels, 0, bytes);
+    if (pixels) for (int y = 0; y < base.height; ++y)
         memcpy(pixels + (size_t)y * width * 4,
-            base.pixels + (size_t)y * base.width * 4, (size_t)width * 4);
-    if (pixels) for (int y = 0; y < height; ++y) for (int x = 0; x < width; ++x) {
+            base.pixels + (size_t)y * base.width * 4, (size_t)base.width * 4);
+    if (pixels) for (int y = 0; y < hand.height; ++y) for (int x = 0; x < hand.width; ++x) {
         unsigned char *dst = pixels + ((size_t)y * width + x) * 4;
         const unsigned char *src = hand.pixels + ((size_t)y * hand.width + x) * 4;
         unsigned alpha = src[3], inverse = 255 - alpha, destination_alpha = dst[3];

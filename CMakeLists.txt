@@ -92,11 +92,15 @@ add_library(bongo_cat_neo_runtime STATIC
   src/runtime/live2d_audit.c
   src/runtime/mouse.c
   src/runtime/model_files.c
+  src/runtime/model_storage.c
   src/runtime/model_import.c
   src/runtime/model_import_discovery.c
   src/runtime/model_import_format.c
+  src/runtime/model_import_mver_patch.c
   src/runtime/model_import_mver.c src/runtime/model_import_mver_image.c
-  src/runtime/model_import_mver_metadata.c
+  src/runtime/model_import_mver_shortcut.c src/runtime/model_import_mver_effect.c
+  src/runtime/model_import_mver_motion.c src/runtime/model_import_report.c
+  src/runtime/model_import_mver_metadata.c src/runtime/model_import_metadata.c
   src/runtime/runtime_flow.c
   src/runtime/shortcuts.c
   src/runtime/tray.c
@@ -260,6 +264,10 @@ if(BUILD_TESTING)
   target_link_libraries(bongo_cat_neo_app_state_tests PRIVATE bongo_cat_neo_warnings)
   target_include_directories(bongo_cat_neo_app_state_tests PRIVATE include)
   add_test(NAME app-state COMMAND bongo_cat_neo_app_state_tests)
+  add_executable(bongo_cat_neo_mver_import_tests tests/test_mver_import.c)
+  target_include_directories(bongo_cat_neo_mver_import_tests PRIVATE src/runtime)
+  target_link_libraries(bongo_cat_neo_mver_import_tests PRIVATE bongo_cat_neo_runtime)
+  add_test(NAME model-import-unit COMMAND bongo_cat_neo_mver_import_tests)
   if(WIN32)
     add_test(NAME model-import-formats
       COMMAND powershell.exe -NoProfile -ExecutionPolicy Bypass
@@ -267,6 +275,12 @@ if(BUILD_TESTING)
         -Exe $<TARGET_FILE:bongo_cat_neo>
         -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/model-import-format-test)
     set_tests_properties(model-import-formats PROPERTIES TIMEOUT 180)
+    add_test(NAME model-import-real-samples
+      COMMAND powershell.exe -NoProfile -ExecutionPolicy Bypass
+        -File ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RealModelImportAudit.ps1
+        -Exe $<TARGET_FILE:bongo_cat_neo>
+        -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/real-model-import-test)
+    set_tests_properties(model-import-real-samples PROPERTIES TIMEOUT 300)
   endif()
   if(UNIX AND NOT APPLE)
     target_link_libraries(bongo_cat_neo_ui_tests PRIVATE m)

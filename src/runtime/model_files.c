@@ -1,5 +1,6 @@
 #include "runtime.h"
 #include "model_import.h"
+#include "model_storage.h"
 #include "bongo_cat_neo/file.h"
 #include "bongo_cat_neo/overlay.h"
 #include "bongo_cat_neo/path.h"
@@ -67,8 +68,6 @@ bool bongo_cat_neo_app_select_model(BongoCatNeoApp *app, const char *id) {
 }
 
 static bool copy_tree(const char *source, const char *target, BongoCatNeoError *error);
-static bool remove_tree(const char *path, BongoCatNeoError *error);
-
 static SDL_EnumerationResult SDLCALL copy_item(void *userdata,
     const char *dirname, const char *name) {
     (void)dirname;
@@ -108,27 +107,6 @@ BongoCatNeoResult bongo_cat_neo_copy_directory(const char *source, const char *t
     return copy_tree(source, target, error) ? BONGO_CAT_NEO_OK : BONGO_CAT_NEO_ERROR_IO;
 }
 
-static SDL_EnumerationResult SDLCALL remove_item(void *userdata,
-    const char *dirname, const char *name) {
-    BongoCatNeoError *error = userdata;
-    char path[BONGO_CAT_NEO_PATH_CAP];
-    if (!bongo_cat_neo_path_join(path, sizeof(path), dirname, name) || !remove_tree(path, error))
-        return SDL_ENUM_FAILURE;
-    return SDL_ENUM_CONTINUE;
-}
-
-static bool remove_tree(const char *path, BongoCatNeoError *error) {
-    SDL_PathInfo info;
-    if (!SDL_GetPathInfo(path, &info)) return true;
-    if (info.type == SDL_PATHTYPE_DIRECTORY &&
-        !SDL_EnumerateDirectory(path, remove_item, error)) return false;
-    if (!SDL_RemovePath(path)) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO, "Cannot remove %s: %s", path, SDL_GetError());
-        return false;
-    }
-    return true;
-}
-
 static bool custom_root(BongoCatNeoApp *app, char *path, size_t capacity) {
     return app->data_root[0] &&
         bongo_cat_neo_path_join(path, capacity, app->data_root, "custom-models") &&
@@ -165,8 +143,10 @@ void bongo_cat_neo_app_rescan_models(BongoCatNeoApp *app) {
     bongo_cat_neo_models_init(&app->models);
     bongo_cat_neo_path_join(root, sizeof(root), app->asset_root, "models");
     bongo_cat_neo_models_scan(&app->models, root, true, &error);
-    if (custom_root(app, root, sizeof(root)))
+    if (custom_root(app, root, sizeof(root))) {
+        bongo_cat_neo_model_cleanup_imports(root, &error);
         bongo_cat_neo_models_scan(&app->models, root, false, &error);
+    }
     prune_behavior_shortcuts(app);
     for (size_t i = 0; i < app->models.count; ++i)
         if (!app->models.entries[i].preset)
@@ -192,7 +172,7 @@ BongoCatNeoResult bongo_cat_neo_app_remove_model(BongoCatNeoApp *app, const char
     bool selected = strcmp(id, app->config.current_model) == 0;
     char directory[BONGO_CAT_NEO_PATH_CAP];
     snprintf(directory, sizeof(directory), "%s", entry->directory);
-    if (!remove_tree(directory, error)) return BONGO_CAT_NEO_ERROR_IO;
+    if (!bongo_cat_neo_model_remove_tree(directory, error)) return BONGO_CAT_NEO_ERROR_IO;
     bongo_cat_neo_app_rescan_models(app);
     if (selected && app->models.count) bongo_cat_neo_app_select_model(app, app->models.entries[0].id);
     return BONGO_CAT_NEO_OK;

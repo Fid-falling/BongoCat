@@ -228,6 +228,7 @@ static void render(BongoCatNeoApp *app) {
     bongo_cat_neo_live2d_set_mirror(app->live2d, app->config.model.mirror);
     bongo_cat_neo_live2d_draw(app->live2d);
     bongo_cat_neo_overlay_draw_keys(app->overlay, app->config.model.mirror);
+    bongo_cat_neo_overlay_draw_effect(app->overlay, app->config.model.mirror);
     bongo_cat_neo_frame_audit(app, width, height);
     SDL_GL_SwapWindow(app->window);
     app->dirty = false;
