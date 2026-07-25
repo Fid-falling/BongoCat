@@ -1,6 +1,7 @@
 #include "runtime.h"
 
 #include <SDL3/SDL_opengl.h>
+#include <stdlib.h>
 
 bool bongo_cat_neo_window_visible_at_pointer(BongoCatNeoApp *app, float x, float y) {
     int width, height, pixel_width, pixel_height;
@@ -70,34 +71,39 @@ int bongo_cat_neo_window_wait_timeout(const BongoCatNeoApp *app, uint64_t now) {
 
 bool bongo_cat_neo_window_wait_timeout_self_test(void) {
     const uint64_t now = 1000000000ull;
-    BongoCatNeoApp app = {0};
-    app.config.window.visible = true;
-    app.config.model.max_fps = 60;
-    app.pointer_hit_dirty = true;
-    app.pointer_hit_deadline_ns = now + 8000000ull;
-    if (bongo_cat_neo_window_wait_timeout(&app, now) != 8) return false;
-    app.config.model.max_fps = 30;
-    if (bongo_cat_neo_window_wait_timeout(&app, now) != 8) return false;
-    app.pointer_hit_deadline_ns = now + 8500000ull;
-    if (bongo_cat_neo_window_wait_timeout(&app, now) != 9) return false;
-    app.pointer_hit_deadline_ns = now;
-    if (bongo_cat_neo_window_wait_timeout(&app, now) != 0) return false;
-    app.pointer_hit_dirty = false;
-    if (bongo_cat_neo_window_wait_timeout(&app, now) != BONGO_CAT_NEO_FRAME_WAIT(&app)) return false;
-    app.pointer_hit_dirty = true;
-    app.pointer_hit_deadline_ns = now + 8000000ull;
-    app.config.window.pass_through = true;
-    if (bongo_cat_neo_window_wait_timeout(&app, now) != BONGO_CAT_NEO_FRAME_WAIT(&app)) return false;
-    app.config.window.pass_through = false;
-    app.left_mouse_down = true;
-    if (bongo_cat_neo_window_wait_timeout(&app, now) != BONGO_CAT_NEO_FRAME_WAIT(&app)) return false;
-    app.left_mouse_down = false;
-    app.config.window.visible = false;
-    if (bongo_cat_neo_window_wait_timeout(&app, now) != 250) return false;
-    app.pointer_hit_dirty = false;
-    if (bongo_cat_neo_window_wait_timeout(&app, now) != 250) return false;
-    app.wheel_animation_active = true;
-    return bongo_cat_neo_window_wait_timeout(&app, now) == 8;
+    BongoCatNeoApp *app = calloc(1, sizeof(*app));
+    if (!app) return false;
+    bool passed = false;
+    app->config.window.visible = true;
+    app->config.model.max_fps = 60;
+    app->pointer_hit_dirty = true;
+    app->pointer_hit_deadline_ns = now + 8000000ull;
+    if (bongo_cat_neo_window_wait_timeout(app, now) != 8) goto done;
+    app->config.model.max_fps = 30;
+    if (bongo_cat_neo_window_wait_timeout(app, now) != 8) goto done;
+    app->pointer_hit_deadline_ns = now + 8500000ull;
+    if (bongo_cat_neo_window_wait_timeout(app, now) != 9) goto done;
+    app->pointer_hit_deadline_ns = now;
+    if (bongo_cat_neo_window_wait_timeout(app, now) != 0) goto done;
+    app->pointer_hit_dirty = false;
+    if (bongo_cat_neo_window_wait_timeout(app, now) != BONGO_CAT_NEO_FRAME_WAIT(app)) goto done;
+    app->pointer_hit_dirty = true;
+    app->pointer_hit_deadline_ns = now + 8000000ull;
+    app->config.window.pass_through = true;
+    if (bongo_cat_neo_window_wait_timeout(app, now) != BONGO_CAT_NEO_FRAME_WAIT(app)) goto done;
+    app->config.window.pass_through = false;
+    app->left_mouse_down = true;
+    if (bongo_cat_neo_window_wait_timeout(app, now) != BONGO_CAT_NEO_FRAME_WAIT(app)) goto done;
+    app->left_mouse_down = false;
+    app->config.window.visible = false;
+    if (bongo_cat_neo_window_wait_timeout(app, now) != 250) goto done;
+    app->pointer_hit_dirty = false;
+    if (bongo_cat_neo_window_wait_timeout(app, now) != 250) goto done;
+    app->wheel_animation_active = true;
+    passed = bongo_cat_neo_window_wait_timeout(app, now) == 8;
+done:
+    free(app);
+    return passed;
 }
 
 void bongo_cat_neo_window_sync_click_through(BongoCatNeoApp *app) {

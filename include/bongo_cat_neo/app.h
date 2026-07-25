@@ -101,6 +101,8 @@ void bongo_cat_neo_app_reset_gamepad(BongoCatNeoApp *app);
 void bongo_cat_neo_gamepad_event(BongoCatNeoApp *app, const void *sdl_event);
 void bongo_cat_neo_app_shortcuts(BongoCatNeoApp *app, const BongoCatNeoInputEvent *event);
 bool bongo_cat_neo_app_select_model(BongoCatNeoApp *app, const char *id);
+bool bongo_cat_neo_app_run_behavior(BongoCatNeoApp *app,
+    const BongoCatNeoBehaviorEntry *behavior);
 BongoCatNeoResult bongo_cat_neo_app_import_model(BongoCatNeoApp *app, const char *source, BongoCatNeoError *error);
 BongoCatNeoResult bongo_cat_neo_app_remove_model(BongoCatNeoApp *app, const char *id, BongoCatNeoError *error);
 void bongo_cat_neo_app_rescan_models(BongoCatNeoApp *app);

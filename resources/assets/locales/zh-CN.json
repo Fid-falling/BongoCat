@@ -157,6 +157,8 @@
         "alwaysOnTop": "置顶",
         "windowSize": "大小",
         "opacity": "透明度",
+        "motion": "动作",
+        "expression": "表情",
         "wheelSizeHint": "滚轮调整大小",
         "wheelOpacityHint": "Ctrl+滚轮调整透明度",
         "quitApp": "退出",

@@ -59,6 +59,19 @@ static void add_scale_menu(NSMenu *menu, BongoCatNeoMenuTarget *target,
     [submenu release]; [root release];
 }
 
+static void add_named_menu(NSMenu *menu, BongoCatNeoMenuTarget *target,
+    const char *label, const char *const *names, size_t count, NSInteger first) {
+    if (!count) return;
+    NSMenuItem *root = [[NSMenuItem alloc] initWithTitle:text(label)
+        action:nil keyEquivalent:@""];
+    NSMenu *submenu = [[NSMenu alloc] initWithTitle:text(label)];
+    [submenu setDelegate:target];
+    for (size_t i = 0; i < count; ++i)
+        add_item(submenu, target, names[i], first + (NSInteger)i, false);
+    [root setSubmenu:submenu]; [menu addItem:root];
+    [submenu release]; [root release];
+}
+
 BongoCatNeoMenuAction bongo_cat_neo_macos_context_menu(BongoCatNeoPlatform *platform,
     const BongoCatNeoMenuLabels *labels) {
     (void)platform;
@@ -75,6 +88,10 @@ BongoCatNeoMenuAction bongo_cat_neo_macos_context_menu(BongoCatNeoPlatform *plat
         labels->always_on_top_checked);
     add_scale_menu(menu, target, labels->window_size, labels->wheel_size_hint, false);
     add_scale_menu(menu, target, labels->opacity, labels->wheel_opacity_hint, true);
+    add_named_menu(menu, target, labels->motion, labels->motion_names,
+        labels->motion_count, BONGO_CAT_NEO_MENU_MOTION_FIRST);
+    add_named_menu(menu, target, labels->expression, labels->expression_names,
+        labels->expression_count, BONGO_CAT_NEO_MENU_EXPRESSION_FIRST);
     NSMenuItem *modelRoot = [[NSMenuItem alloc] initWithTitle:text(labels->model)
         action:nil keyEquivalent:@""];
     NSMenu *models = [[NSMenu alloc] initWithTitle:text(labels->model)];

@@ -1,7 +1,8 @@
 param(
     [string]$Exe = "",
     [string]$OutputDir = "",
-    [string]$Language = "zh-CN"
+    [string]$Language = "zh-CN",
+    [switch]$BehaviorDisabled
 )
 
 $ErrorActionPreference = "Stop"
@@ -114,6 +115,10 @@ $expected = @(
     if ($menuLabels.alwaysOnTop) { $menuLabels.alwaysOnTop } else { "Always on Top" }
     if ($menuLabels.windowSize) { $menuLabels.windowSize } else { "Window Size" }
     if ($menuLabels.opacity) { $menuLabels.opacity } else { "Opacity" }
+    if (-not $BehaviorDisabled) {
+        if ($menuLabels.motion) { $menuLabels.motion } else { "Motions" }
+        if ($menuLabels.expression) { $menuLabels.expression } else { "Expressions" }
+    }
     if ($menuLabels.model) { $menuLabels.model } else { "Model" }
     if ($menuLabels.quitApp) { $menuLabels.quitApp } else { "Quit App" }
 )
@@ -125,7 +130,27 @@ $expectedSize.Add($wheelSizeHint)
 $expectedOpacity = [Collections.Generic.List[string]]::new()
 for ($index = 0; $index -lt 10; $index++) { $expectedOpacity.Add("$((10 + $index * 10))%") }
 $expectedOpacity.Add($wheelOpacityHint)
+$expectedMotions = [Collections.Generic.List[string]]::new()
+$expectedExpressions = [Collections.Generic.List[string]]::new()
+if (-not $BehaviorDisabled) {
+    $manifestPath = Join-Path $root "resources\assets\models\gamepad\cat.model3.json"
+    $manifest = Get-Content -Raw -Encoding utf8 $manifestPath | ConvertFrom-Json
+    foreach ($group in $manifest.FileReferences.Motions.PSObject.Properties) {
+        for ($index = 0; $index -lt @($group.Value).Count; $index++) {
+            $expectedMotions.Add("$($group.Name) $($index + 1)")
+        }
+    }
+    foreach ($expression in $manifest.FileReferences.Expressions) {
+        $expectedExpressions.Add($(if ($expression.Name) { $expression.Name } else { "Expression" }))
+    }
+}
 $data = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
+New-Item -ItemType Directory -Force -Path $data | Out-Null
+if ($BehaviorDisabled) {
+    $settings = @{schemaVersion=2; model=@{behavior=$false}} | ConvertTo-Json -Depth 4
+    [IO.File]::WriteAllText((Join-Path $data "settings.json"), $settings,
+        [Text.UTF8Encoding]::new($false))
+}
 $process = Start-Process -FilePath $Exe -ArgumentList @("--ci-smoke", "--ci-context-menu",
     "--ci-language=$Language", "--ci-exit-ms=15000", "--data-root=$data") -WorkingDirectory (Split-Path $Exe) `
     -WindowStyle Normal -PassThru
@@ -150,6 +175,10 @@ if ($menuHandle -ne [IntPtr]::Zero) {
     $opacityMenu = [BongoCatNeoMenuNative]::GetSubMenu($nativeMenu, 6)
     $sizeLabels = Get-MenuLabels $sizeMenu
     $opacityLabels = Get-MenuLabels $opacityMenu
+    if (-not $BehaviorDisabled) {
+        $motionLabels = Get-MenuLabels ([BongoCatNeoMenuNative]::GetSubMenu($nativeMenu, 7))
+        $expressionLabels = Get-MenuLabels ([BongoCatNeoMenuNative]::GetSubMenu($nativeMenu, 8))
+    }
     $owner = [BongoCatNeoMenuNative]::GetWindow($menuHandle, 4)
     $itemRect = [BongoCatNeoMenuNative+Rect]::new()
     $itemKnown = [BongoCatNeoMenuNative]::GetMenuItemRect(
@@ -179,11 +208,19 @@ $exitCode = if ($exited) { $process.ExitCode } else { -1 }
 $labelsMatch = ($labels -join "|") -eq ($expected -join "|")
 $sizeLabelsMatch = ($sizeLabels -join "|") -eq ($expectedSize -join "|")
 $opacityLabelsMatch = ($opacityLabels -join "|") -eq ($expectedOpacity -join "|")
+$motionLabelsMatch = $BehaviorDisabled -or
+    ($motionLabels -join "|") -eq ($expectedMotions -join "|")
+$expressionLabelsMatch = $BehaviorDisabled -or
+    ($expressionLabels -join "|") -eq ($expectedExpressions -join "|")
 $passed = $menuHandle -ne [IntPtr]::Zero -and $preferencesOpened -and $exitCode -eq 0 -and
-    $labelsMatch -and $sizeLabelsMatch -and $opacityLabelsMatch
+    $labelsMatch -and $sizeLabelsMatch -and $opacityLabelsMatch -and
+    $motionLabelsMatch -and $expressionLabelsMatch
 $result = [pscustomobject]@{MenuFound=($menuHandle-ne[IntPtr]::Zero); Labels=$labels
     LabelsMatch=$labelsMatch; SizeLabels=$sizeLabels; SizeLabelsMatch=$sizeLabelsMatch
     OpacityLabels=$opacityLabels; OpacityLabelsMatch=$opacityLabelsMatch
+    MotionLabels=$motionLabels; MotionLabelsMatch=$motionLabelsMatch
+    ExpressionLabels=$expressionLabels; ExpressionLabelsMatch=$expressionLabelsMatch
+    BehaviorDisabled=[bool]$BehaviorDisabled
     PreferencesOpened=$preferencesOpened; VisibleWindows=$visible.Count
     ExitCode=$exitCode; Passed=$passed}
 $result | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $OutputDir "result.json")

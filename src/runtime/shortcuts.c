@@ -13,7 +13,9 @@ static void visible(BongoCatNeoApp *app) {
     if (app->config.window.visible) app->dirty = true;
 }
 
-static bool run_behavior(BongoCatNeoApp *app, BongoCatNeoBehaviorEntry *behavior) {
+bool bongo_cat_neo_app_run_behavior(BongoCatNeoApp *app,
+    const BongoCatNeoBehaviorEntry *behavior) {
+    if (!app || !behavior || !app->config.model.behavior) return false;
     if (behavior->kind == BONGO_CAT_NEO_BEHAVIOR_EFFECT) {
         if (!bongo_cat_neo_overlay_effect(app->overlay, behavior->effect)) return false;
     } else if (behavior->kind == BONGO_CAT_NEO_BEHAVIOR_SOUND) {
@@ -52,7 +54,8 @@ static bool behavior_shortcut(BongoCatNeoApp *app, const BongoCatNeoInputEvent *
                     handled = true;
                 }
             } else if (bongo_cat_neo_shortcut_matches(&app->shortcut_state,
-                event, shortcut->shortcut)) handled = run_behavior(app, behavior) || handled;
+                event, shortcut->shortcut)) handled =
+                    bongo_cat_neo_app_run_behavior(app, behavior) || handled;
         }
     }
     if (handled) return true;
@@ -61,7 +64,7 @@ static bool behavior_shortcut(BongoCatNeoApp *app, const BongoCatNeoInputEvent *
         char alias[8];
         snprintf(alias, sizeof(alias), "Alt+%c", i == 9 ? '0' : (char)('1' + i));
         if (bongo_cat_neo_shortcut_matches(&app->shortcut_state, event, alias))
-            return run_behavior(app, &app->behaviors.entries[i]);
+            return bongo_cat_neo_app_run_behavior(app, &app->behaviors.entries[i]);
     }
     return false;
 }

@@ -85,12 +85,14 @@ typedef struct MenuPreview { BongoCatNeoApp *app; char model[BONGO_CAT_NEO_ID_CA
 static void menu_restore(void *userdata, BongoCatNeoMenuAction selected);
 static bool previewable(BongoCatNeoMenuAction action) {
     return (action >= BONGO_CAT_NEO_MENU_SCALE_50 && action <= BONGO_CAT_NEO_MENU_OPACITY_100) ||
-        action >= BONGO_CAT_NEO_MENU_MODEL_FIRST;
+        (action >= BONGO_CAT_NEO_MENU_MODEL_FIRST &&
+            action < BONGO_CAT_NEO_MENU_MOTION_FIRST);
 }
 static int preview_group(BongoCatNeoMenuAction action) {
     if (action >= BONGO_CAT_NEO_MENU_SCALE_50 && action <= BONGO_CAT_NEO_MENU_SCALE_200) return 1;
     if (action >= BONGO_CAT_NEO_MENU_OPACITY_10 && action <= BONGO_CAT_NEO_MENU_OPACITY_100) return 2;
-    if (action >= BONGO_CAT_NEO_MENU_MODEL_FIRST) return 3;
+    if (action >= BONGO_CAT_NEO_MENU_MODEL_FIRST &&
+        action < BONGO_CAT_NEO_MENU_MOTION_FIRST) return 3;
     return 0;
 }
 static void menu_preview(void *userdata, BongoCatNeoMenuAction action) {
@@ -106,6 +108,7 @@ static void menu_preview(void *userdata, BongoCatNeoMenuAction action) {
     }
     state->last = action;
     if (action >= BONGO_CAT_NEO_MENU_MODEL_FIRST &&
+        action < BONGO_CAT_NEO_MENU_MOTION_FIRST &&
         (size_t)(action - BONGO_CAT_NEO_MENU_MODEL_FIRST) < app->models.count)
         bongo_cat_neo_app_select_model(app, app->models.entries[action - BONGO_CAT_NEO_MENU_MODEL_FIRST].id);
     else if (action >= BONGO_CAT_NEO_MENU_SCALE_50 && action <= BONGO_CAT_NEO_MENU_SCALE_200)
@@ -119,7 +122,8 @@ static void menu_preview(void *userdata, BongoCatNeoMenuAction action) {
 static void menu_restore(void *userdata, BongoCatNeoMenuAction selected) {
     MenuPreview *state = userdata; BongoCatNeoApp *app = state->app;
     bool changed = false;
-    bool keep_model = selected >= BONGO_CAT_NEO_MENU_MODEL_FIRST;
+    bool keep_model = selected >= BONGO_CAT_NEO_MENU_MODEL_FIRST &&
+        selected < BONGO_CAT_NEO_MENU_MOTION_FIRST;
     bool keep_scale = selected >= BONGO_CAT_NEO_MENU_SCALE_50 && selected <= BONGO_CAT_NEO_MENU_SCALE_200;
     bool keep_opacity = selected >= BONGO_CAT_NEO_MENU_OPACITY_10 && selected <= BONGO_CAT_NEO_MENU_OPACITY_100;
     if (!keep_model && strcmp(app->config.current_model, state->model) != 0) {
@@ -147,6 +151,11 @@ static void context_menu(BongoCatNeoApp *app) {
         if (strcmp(app->models.entries[i].id, app->config.current_model) == 0)
             current_model = i;
     }
+    const char *motion_names[BONGO_CAT_NEO_BEHAVIOR_CAP];
+    const char *expression_names[BONGO_CAT_NEO_BEHAVIOR_CAP];
+    size_t motion_count, expression_count;
+    bongo_cat_neo_window_behavior_labels(app, motion_names, &motion_count,
+        expression_names, &expression_count);
     bool dark_theme = app->config.app.theme == BONGO_CAT_NEO_THEME_DARK ||
         (app->config.app.theme == BONGO_CAT_NEO_THEME_AUTO &&
             SDL_GetSystemTheme() == SDL_SYSTEM_THEME_DARK);
@@ -161,7 +170,10 @@ static void context_menu(BongoCatNeoApp *app) {
         tr(app, "composables.useAppMenu.labels.quitApp", "Exit"),
         tr(app, "composables.useAppMenu.labels.wheelSizeHint", "Wheel: resize"),
         tr(app, "composables.useAppMenu.labels.wheelOpacityHint", "Ctrl+Wheel: opacity"),
-        model_names, app->models.count, current_model,
+        tr(app, "composables.useAppMenu.labels.motion", "Motions"),
+        tr(app, "composables.useAppMenu.labels.expression", "Expressions"),
+        model_names, motion_names, expression_names,
+        app->models.count, current_model, motion_count, expression_count,
         app->config.window.scale_percent, app->config.window.opacity_percent,
         app->config.window.pass_through, app->config.window.always_on_top,
         dark_theme,
@@ -191,7 +203,10 @@ void bongo_cat_neo_window_menu_action(BongoCatNeoApp *app, BongoCatNeoMenuAction
         bongo_cat_neo_window_cancel_wheel_animation(app);
         app->config.window.opacity_percent = (float)(10 * (action-BONGO_CAT_NEO_MENU_OPACITY_10+1));
         SDL_SetWindowOpacity(app->window, app->config.window.opacity_percent / 100.0f);
+    } else if (bongo_cat_neo_window_behavior_action(app, action)) {
+        bongo_cat_neo_app_render_now(app);
     } else if (action >= BONGO_CAT_NEO_MENU_MODEL_FIRST &&
+        action < BONGO_CAT_NEO_MENU_MOTION_FIRST &&
         (size_t)(action - BONGO_CAT_NEO_MENU_MODEL_FIRST) < app->models.count) {
         bongo_cat_neo_app_select_model(app,
             app->models.entries[action - BONGO_CAT_NEO_MENU_MODEL_FIRST].id);
@@ -210,10 +225,11 @@ bool bongo_cat_neo_window_menu_self_test(BongoCatNeoApp *app) {
     bongo_cat_neo_window_menu_action(app, BONGO_CAT_NEO_MENU_SCALE_120);
     bongo_cat_neo_window_menu_action(app, BONGO_CAT_NEO_MENU_OPACITY_50);
     bongo_cat_neo_window_menu_action(app, BONGO_CAT_NEO_MENU_PREFERENCES);
+    bool behavior = bongo_cat_neo_window_behavior_self_test(app);
     bool result = app->config.window.pass_through && app->config.window.always_on_top &&
         app->config.window.scale_percent == 120.0f &&
         app->config.window.opacity_percent == 50.0f &&
-        bongo_cat_neo_preferences_visible(app->preferences);
+        bongo_cat_neo_preferences_visible(app->preferences) && behavior;
     bongo_cat_neo_preferences_close(app->preferences);
     return result;
 }

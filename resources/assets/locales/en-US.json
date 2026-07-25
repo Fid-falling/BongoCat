@@ -157,6 +157,8 @@
         "alwaysOnTop": "Always on Top",
         "windowSize": "Window Size",
         "opacity": "Opacity",
+        "motion": "Motions",
+        "expression": "Expressions",
         "wheelSizeHint": "Wheel: resize",
         "wheelOpacityHint": "Ctrl+Wheel: opacity",
         "quitApp": "Quit App"

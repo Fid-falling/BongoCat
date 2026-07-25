@@ -14,6 +14,8 @@ typedef struct LinuxMenuRow {
 } LinuxMenuRow;
 
 #define LINUX_MENU_HINT ((BongoCatNeoMenuAction)-4)
+#define LINUX_MENU_MOTIONS ((BongoCatNeoMenuAction)-5)
+#define LINUX_MENU_EXPRESSIONS ((BongoCatNeoMenuAction)-6)
 
 typedef struct LinuxMenuPalette {
     unsigned long surface, field, border, text, muted, accent;
@@ -134,13 +136,21 @@ BongoCatNeoMenuAction bongo_cat_neo_linux_context_menu(BongoCatNeoPlatform *plat
         labels->pass_through);
     snprintf(top, sizeof(top), "%s%s", labels->always_on_top_checked ? "[x] " : "",
         labels->always_on_top);
-    LinuxMenuRow main_rows[] = {
-        {labels->preferences, BONGO_CAT_NEO_MENU_PREFERENCES}, {labels->hide, BONGO_CAT_NEO_MENU_HIDE},
-        {pass, BONGO_CAT_NEO_MENU_PASS_THROUGH}, {top, BONGO_CAT_NEO_MENU_ALWAYS_ON_TOP},
-        {labels->window_size, -1}, {labels->opacity, -2}, {labels->model, -3},
-        {labels->exit, BONGO_CAT_NEO_MENU_EXIT}};
+    LinuxMenuRow main_rows[10]; int main_count = 0;
+    main_rows[main_count++] = (LinuxMenuRow){labels->preferences, BONGO_CAT_NEO_MENU_PREFERENCES};
+    main_rows[main_count++] = (LinuxMenuRow){labels->hide, BONGO_CAT_NEO_MENU_HIDE};
+    main_rows[main_count++] = (LinuxMenuRow){pass, BONGO_CAT_NEO_MENU_PASS_THROUGH};
+    main_rows[main_count++] = (LinuxMenuRow){top, BONGO_CAT_NEO_MENU_ALWAYS_ON_TOP};
+    main_rows[main_count++] = (LinuxMenuRow){labels->window_size, -1};
+    main_rows[main_count++] = (LinuxMenuRow){labels->opacity, -2};
+    if (labels->motion_count) main_rows[main_count++] =
+        (LinuxMenuRow){labels->motion, LINUX_MENU_MOTIONS};
+    if (labels->expression_count) main_rows[main_count++] =
+        (LinuxMenuRow){labels->expression, LINUX_MENU_EXPRESSIONS};
+    main_rows[main_count++] = (LinuxMenuRow){labels->model, -3};
+    main_rows[main_count++] = (LinuxMenuRow){labels->exit, BONGO_CAT_NEO_MENU_EXIT};
     BongoCatNeoMenuAction action = popup_rows(display, owner, main_rows,
-        (int)(sizeof(main_rows) / sizeof(main_rows[0])), labels->dark_theme);
+        main_count, labels->dark_theme);
     if (action == (BongoCatNeoMenuAction)-1) {
         const int values[] = {50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200};
         LinuxMenuRow rows[17]; char text[16][16];
@@ -161,6 +171,20 @@ BongoCatNeoMenuAction bongo_cat_neo_linux_context_menu(BongoCatNeoPlatform *plat
             rows[i] = (LinuxMenuRow){labels->model_names[i],
                 BONGO_CAT_NEO_MENU_MODEL_FIRST + (int)i};
         action = popup_rows(display, owner, rows, (int)labels->model_count,
+            labels->dark_theme);
+    } else if (action == LINUX_MENU_MOTIONS) {
+        LinuxMenuRow rows[BONGO_CAT_NEO_BEHAVIOR_CAP];
+        for (size_t i = 0; i < labels->motion_count; ++i)
+            rows[i] = (LinuxMenuRow){labels->motion_names[i],
+                BONGO_CAT_NEO_MENU_MOTION_FIRST + (int)i};
+        action = popup_rows(display, owner, rows, (int)labels->motion_count,
+            labels->dark_theme);
+    } else if (action == LINUX_MENU_EXPRESSIONS) {
+        LinuxMenuRow rows[BONGO_CAT_NEO_BEHAVIOR_CAP];
+        for (size_t i = 0; i < labels->expression_count; ++i)
+            rows[i] = (LinuxMenuRow){labels->expression_names[i],
+                BONGO_CAT_NEO_MENU_EXPRESSION_FIRST + (int)i};
+        action = popup_rows(display, owner, rows, (int)labels->expression_count,
             labels->dark_theme);
     }
     return finish(labels, action);

@@ -107,6 +107,7 @@ add_library(bongo_cat_neo_runtime STATIC
   src/runtime/shortcuts.c
   src/runtime/tray.c
   src/runtime/window.c src/runtime/window_geometry.c
+  src/runtime/window_menu_behavior.c
   src/runtime/window_hit.c src/runtime/window_wheel.c
   src/ui/nuklear_impl.c
   src/ui/ui_backend.c src/ui/ui_cursor.c

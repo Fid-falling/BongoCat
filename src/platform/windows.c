@@ -229,7 +229,11 @@ BongoCatNeoMenuAction bongo_cat_neo_platform_context_menu(BongoCatNeoPlatform *p
     if (!platform || !labels) return BONGO_CAT_NEO_MENU_NONE;
     HMENU menu = CreatePopupMenu(), sizes = CreatePopupMenu(), opacity = CreatePopupMenu();
     HMENU models = CreatePopupMenu();
-    if (!menu || !sizes || !opacity || !models) return BONGO_CAT_NEO_MENU_NONE;
+    HMENU motions = labels->motion_count ? CreatePopupMenu() : NULL;
+    HMENU expressions = labels->expression_count ? CreatePopupMenu() : NULL;
+    if (!menu || !sizes || !opacity || !models ||
+        (labels->motion_count && !motions) || (labels->expression_count && !expressions))
+        return BONGO_CAT_NEO_MENU_NONE;
     menu_text(menu, MF_STRING, BONGO_CAT_NEO_MENU_PREFERENCES, labels->preferences);
     menu_text(menu, MF_STRING, BONGO_CAT_NEO_MENU_HIDE, labels->hide);
     AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
@@ -253,16 +257,28 @@ BongoCatNeoMenuAction bongo_cat_neo_platform_context_menu(BongoCatNeoPlatform *p
     }
     menu_text(opacity, MF_STRING | MF_DISABLED | MF_GRAYED, 0,
         labels->wheel_opacity_hint);
+    for (size_t i = 0; i < labels->motion_count; ++i)
+        menu_text(motions, MF_STRING, BONGO_CAT_NEO_MENU_MOTION_FIRST + i,
+            labels->motion_names[i]);
+    for (size_t i = 0; i < labels->expression_count; ++i)
+        menu_text(expressions, MF_STRING, BONGO_CAT_NEO_MENU_EXPRESSION_FIRST + i,
+            labels->expression_names[i]);
     for (size_t i = 0; i < labels->model_count; ++i)
         menu_text(models, MF_STRING | (i == labels->current_model ? MF_CHECKED : 0),
             BONGO_CAT_NEO_MENU_MODEL_FIRST + i, labels->model_names[i]);
     wchar_t *size_label = wide(labels->window_size), *opacity_label = wide(labels->opacity);
-    wchar_t *model_label = wide(labels->model);
+    wchar_t *model_label = wide(labels->model), *motion_label = wide(labels->motion);
+    wchar_t *expression_label = wide(labels->expression);
     AppendMenuW(menu, MF_POPUP, (UINT_PTR)sizes, size_label ? size_label : L"");
     AppendMenuW(menu, MF_POPUP, (UINT_PTR)opacity, opacity_label ? opacity_label : L"");
+    if (labels->motion_count) AppendMenuW(menu, MF_POPUP, (UINT_PTR)motions,
+        motion_label ? motion_label : L"");
+    if (labels->expression_count) AppendMenuW(menu, MF_POPUP, (UINT_PTR)expressions,
+        expression_label ? expression_label : L"");
     AppendMenuW(menu, MF_POPUP | (labels->model_count ? 0 : MF_GRAYED),
         (UINT_PTR)models, model_label ? model_label : L"");
-    free(size_label); free(opacity_label); free(model_label);
+    free(size_label); free(opacity_label); free(model_label); free(motion_label);
+    free(expression_label);
     AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
     menu_text(menu, MF_STRING, BONGO_CAT_NEO_MENU_EXIT, labels->exit);
     POINT point; GetCursorPos(&point);
