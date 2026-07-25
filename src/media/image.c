@@ -16,6 +16,15 @@
 #define BONGO_CAT_NEO_LIVE2D_TEXTURE_LIMIT 2048
 
 #ifdef _WIN32
+static bool needs_wic_scaling(const char *path) {
+    FILE *file = bongo_cat_neo_file_open(path, "rb");
+    int width = 0, height = 0, channels = 0;
+    bool known = file && stbi_info_from_file(file, &width, &height, &channels);
+    if (file) fclose(file);
+    return !known || width > BONGO_CAT_NEO_LIVE2D_TEXTURE_LIMIT ||
+        height > BONGO_CAT_NEO_LIVE2D_TEXTURE_LIMIT;
+}
+
 static wchar_t *wide_path(const char *path) {
     int count = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
         path, -1, NULL, 0);
@@ -211,14 +220,19 @@ unsigned int bongo_cat_neo_image_texture_thumbnail(const char *path, int max_wid
     return texture;
 }
 
-unsigned int bongo_cat_neo_image_texture_mipmapped(const char *path, int *width, int *height,
-    BongoCatNeoError *error) {
+unsigned int bongo_cat_neo_image_texture_mipmapped(const char *path, bool direct_decode,
+    int *width, int *height, BongoCatNeoError *error) {
     BongoCatNeoImage image;
 #ifdef _WIN32
-    if (!wic_scaled_image(path, &image, BONGO_CAT_NEO_LIVE2D_TEXTURE_LIMIT,
-        BONGO_CAT_NEO_LIVE2D_TEXTURE_LIMIT) &&
-        bongo_cat_neo_image_load(path, &image, error) != BONGO_CAT_NEO_OK) return 0;
+    /* Preset atlases are verified byte-identical in WIC and stb. Keep WIC for
+       custom PNG color metadata and for memory-bounded oversized decoding. */
+    if (!direct_decode || needs_wic_scaling(path)) {
+        if (!wic_scaled_image(path, &image, BONGO_CAT_NEO_LIVE2D_TEXTURE_LIMIT,
+            BONGO_CAT_NEO_LIVE2D_TEXTURE_LIMIT) &&
+            bongo_cat_neo_image_load(path, &image, error) != BONGO_CAT_NEO_OK) return 0;
+    } else if (bongo_cat_neo_image_load(path, &image, error) != BONGO_CAT_NEO_OK) return 0;
 #else
+    (void)direct_decode;
     if (bongo_cat_neo_image_load(path, &image, error) != BONGO_CAT_NEO_OK) return 0;
 #endif
     while (glGetError() != GL_NO_ERROR) {}

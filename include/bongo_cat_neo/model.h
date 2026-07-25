@@ -59,7 +59,7 @@ typedef struct BongoCatNeoParameterRange { float minimum, maximum, value; } Bong
 BongoCatNeoLive2D *bongo_cat_neo_live2d_create(const char *asset_root, BongoCatNeoError *error);
 void bongo_cat_neo_live2d_destroy(BongoCatNeoLive2D *live2d);
 BongoCatNeoResult bongo_cat_neo_live2d_load(BongoCatNeoLive2D *live2d, const char *model_dir,
-    const char *setting_file, BongoCatNeoError *error);
+    const char *setting_file, bool preset, BongoCatNeoError *error);
 void bongo_cat_neo_live2d_resize(BongoCatNeoLive2D *live2d, int width, int height);
 void bongo_cat_neo_live2d_reshape(BongoCatNeoLive2D *live2d, int width, int height);
 bool bongo_cat_neo_live2d_update(BongoCatNeoLive2D *live2d, float delta_seconds);

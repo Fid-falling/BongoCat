@@ -55,8 +55,10 @@ std::string NativeModel::path(const char *relative) const {
     return directory_ + (relative ? relative : "");
 }
 
-bool NativeModel::load(const char *directory, const char *setting_file, BongoCatNeoError *error) {
+bool NativeModel::load(const char *directory, const char *setting_file,
+    bool direct_textures, BongoCatNeoError *error) {
     if (!directory || !setting_file) return false;
+    direct_textures_ = direct_textures;
     directory_ = directory;
     if (!directory_.empty() && directory_.back() != '/' && directory_.back() != '\\')
         directory_ += '/';
@@ -208,7 +210,8 @@ bool NativeModel::load_textures(BongoCatNeoError *error) {
     textures_.assign((size_t)setting_->GetTextureCount(), 0);
     for (int i = 0; i < setting_->GetTextureCount(); ++i) {
         textures_[(size_t)i] = bongo_cat_neo_image_texture_mipmapped(
-            path(setting_->GetTextureFileName(i)).c_str(), nullptr, nullptr, error);
+            path(setting_->GetTextureFileName(i)).c_str(), direct_textures_,
+            nullptr, nullptr, error);
         if (!textures_[(size_t)i]) {
             release_textures();
             return false;

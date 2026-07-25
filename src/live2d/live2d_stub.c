@@ -14,8 +14,9 @@ BongoCatNeoLive2D *bongo_cat_neo_live2d_create(const char *asset_root, BongoCatN
 void bongo_cat_neo_live2d_destroy(BongoCatNeoLive2D *live2d) { free(live2d); }
 
 BongoCatNeoResult bongo_cat_neo_live2d_load(BongoCatNeoLive2D *live2d, const char *model_dir,
-    const char *setting_file, BongoCatNeoError *error) {
+    const char *setting_file, bool preset, BongoCatNeoError *error) {
     (void)error;
+    (void)preset;
     if (!live2d || !model_dir || !setting_file) return BONGO_CAT_NEO_ERROR_ARGUMENT;
     return BONGO_CAT_NEO_OK;
 }

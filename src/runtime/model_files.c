@@ -36,6 +36,8 @@ bool bongo_cat_neo_app_select_model(BongoCatNeoApp *app, const char *id) {
     if (!behaviors) return false;
     if (bongo_cat_neo_behaviors_load(behaviors, entry, &error) != BONGO_CAT_NEO_OK)
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
+    int pixel_width = app->config.window.width, pixel_height = app->config.window.height;
+    if (app->window) SDL_GetWindowSizeInPixels(app->window, &pixel_width, &pixel_height);
     SDL_Window *previous_window = SDL_GL_GetCurrentWindow();
     SDL_GLContext previous_context = SDL_GL_GetCurrentContext();
     bool restore_context = previous_window != app->window ||
@@ -46,8 +48,9 @@ bool bongo_cat_neo_app_select_model(BongoCatNeoApp *app, const char *id) {
         free(behaviors);
         return false;
     }
+    bongo_cat_neo_live2d_reshape(app->live2d, pixel_width, pixel_height);
     if (bongo_cat_neo_live2d_load(app->live2d, entry->directory,
-        entry->setting_file, &error) != BONGO_CAT_NEO_OK) {
+        entry->setting_file, entry->preset, &error) != BONGO_CAT_NEO_OK) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
         if (restore_context) SDL_GL_MakeCurrent(previous_window, previous_context);
         free(behaviors);
@@ -58,8 +61,6 @@ bool bongo_cat_neo_app_select_model(BongoCatNeoApp *app, const char *id) {
     bongo_cat_neo_overlay_load(app->overlay, entry->adapter_directory, &error);
     snprintf(app->loaded_model, sizeof(app->loaded_model), "%s", entry->id);
     select_model_state(app, entry);
-    int pixel_width = app->config.window.width, pixel_height = app->config.window.height;
-    if (app->window) SDL_GetWindowSizeInPixels(app->window, &pixel_width, &pixel_height);
     bongo_cat_neo_live2d_resize(app->live2d, pixel_width, pixel_height);
     if (restore_context) SDL_GL_MakeCurrent(previous_window, previous_context);
     bongo_cat_neo_window_mark_hit_dirty(app);

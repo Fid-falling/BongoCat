@@ -18,7 +18,8 @@ class NativeModel final : public Csm::CubismUserModel {
 public:
     NativeModel();
     ~NativeModel() override;
-    bool load(const char *directory, const char *setting_file, BongoCatNeoError *error);
+    bool load(const char *directory, const char *setting_file, bool direct_textures,
+        BongoCatNeoError *error);
     bool load_textures(BongoCatNeoError *error);
     void release_render_resources();
     void resize(int width, int height);
@@ -70,6 +71,7 @@ private:
     int renderer_height_ = 0;
     bool motion_updated_ = false;
     bool mirror_ = false;
+    bool direct_textures_ = false;
     bool external_parameters_dirty_ = false;
     float accumulated_seconds_ = 0.0f;
     float opacity_snapshot_ = -1.0f;

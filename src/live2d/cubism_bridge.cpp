@@ -174,8 +174,8 @@ extern "C" void bongo_cat_neo_live2d_destroy(BongoCatNeoLive2D *runtime) {
     stop_framework();
 }
 
-extern "C" BongoCatNeoResult bongo_cat_neo_live2d_load(BongoCatNeoLive2D *runtime, const char *directory,
-    const char *setting, BongoCatNeoError *error) {
+extern "C" BongoCatNeoResult bongo_cat_neo_live2d_load(BongoCatNeoLive2D *runtime,
+    const char *directory, const char *setting, bool preset, BongoCatNeoError *error) {
     if (!runtime) return BONGO_CAT_NEO_ERROR_ARGUMENT;
     bongo_cat_neo::NativeModel *previous = runtime->model;
     bongo_cat_neo::NativeModel *model = nullptr;
@@ -187,7 +187,7 @@ extern "C" BongoCatNeoResult bongo_cat_neo_live2d_load(BongoCatNeoLive2D *runtim
                 "Cannot allocate Live2D model");
             return BONGO_CAT_NEO_ERROR_MEMORY;
         }
-        if (!model->load(directory, setting, error)) {
+        if (!model->load(directory, setting, preset, error)) {
             delete model;
             return error ? error->code : BONGO_CAT_NEO_ERROR_CUBISM;
         }
