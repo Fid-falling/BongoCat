@@ -101,6 +101,7 @@ static bool add_model(BongoCatNeoModelCatalog *catalog, const char *directory, b
     bool package_ok = add_package(catalog, directory, preset, &handled);
     if (handled) return package_ok;
     if (!package_ok) return false;
+    if (!preset) return true;
     if (catalog->count >= BONGO_CAT_NEO_MODEL_CAP) return false;
     char setting[BONGO_CAT_NEO_PATH_CAP];
     if (!bongo_cat_neo_path_find_suffix(directory, ".model3.json", setting, sizeof(setting))) return true;

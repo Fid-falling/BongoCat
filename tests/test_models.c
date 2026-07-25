@@ -124,6 +124,11 @@ void test_models(void) {
     BongoCatNeoModelCatalog catalog;
     BongoCatNeoError error = {0};
     bongo_cat_neo_models_init(&catalog);
+    CHECK(bongo_cat_neo_models_scan(&catalog,
+        BONGO_CAT_NEO_NATIVE_SOURCE_DIR "/resources/assets/models",
+        false, &error) == BONGO_CAT_NEO_OK);
+    CHECK(catalog.count == 0);
+    bongo_cat_neo_models_init(&catalog);
     CHECK(bongo_cat_neo_models_scan(&catalog, BONGO_CAT_NEO_NATIVE_SOURCE_DIR "/resources/assets/models",
         true, &error) == BONGO_CAT_NEO_OK);
     CHECK(catalog.count == 3);
