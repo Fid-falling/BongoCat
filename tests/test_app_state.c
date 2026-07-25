@@ -61,7 +61,9 @@ static BongoCatNeoInputEvent input(BongoCatNeoInputKind kind, const char *name, 
 }
 
 int main(void) {
-    BongoCatNeoApp app = {0};
+    /* BongoCatNeoApp contains the input queue and model catalogs and is too
+       large for the default 1 MiB Windows test-thread stack. */
+    static BongoCatNeoApp app = {0};
     app.live2d = (BongoCatNeoLive2D *)(uintptr_t)1;
     app.overlay = (BongoCatNeoOverlay *)(uintptr_t)1;
 

@@ -1,3 +1,50 @@
+if (-not (Get-Command Get-FileHash -ErrorAction SilentlyContinue)) {
+    function Get-FileHash {
+        [CmdletBinding(DefaultParameterSetName = "Path")]
+        param(
+            [Parameter(Mandatory = $true, Position = 0, ParameterSetName = "Path")]
+            [string[]]$Path,
+            [Parameter(Mandatory = $true, ParameterSetName = "LiteralPath")]
+            [string[]]$LiteralPath,
+            [string]$Algorithm = "SHA256"
+        )
+
+        $paths = if ($PSCmdlet.ParameterSetName -eq "LiteralPath") {
+            $LiteralPath
+        } else {
+            $Path | ForEach-Object {
+                (Resolve-Path -Path $_ -ErrorAction Stop).Path
+            }
+        }
+        foreach ($filePath in $paths) {
+            $resolved = if ($PSCmdlet.ParameterSetName -eq "LiteralPath") {
+                (Resolve-Path -LiteralPath $filePath -ErrorAction Stop).Path
+            } else {
+                $filePath
+            }
+            $hasher = [Security.Cryptography.HashAlgorithm]::Create($Algorithm)
+            if ($null -eq $hasher) {
+                throw "Unsupported hash algorithm: $Algorithm"
+            }
+            try {
+                $stream = [IO.File]::OpenRead($resolved)
+                try {
+                    $bytes = $hasher.ComputeHash($stream)
+                } finally {
+                    $stream.Dispose()
+                }
+            } finally {
+                $hasher.Dispose()
+            }
+            [pscustomobject]@{
+                Algorithm = $Algorithm.ToUpperInvariant()
+                Hash = ([BitConverter]::ToString($bytes) -replace "-", "")
+                Path = $resolved
+            }
+        }
+    }
+}
+
 function Get-InstalledModelLayout([IO.DirectoryInfo]$Model) {
     $descriptorPath = Join-Path $Model.FullName ".bongo-cat-neo-package.json"
     if (-not (Test-Path -LiteralPath $descriptorPath)) {
