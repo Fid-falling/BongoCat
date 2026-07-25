@@ -11,6 +11,7 @@ Bongo Cat Neo 现在以同一条事务式导入流水线支持三类输入：
 - Tauri/普通 Live2D v3 模型目录。
 - 带 `config.json` 与 `img/<mode>` 的完整 Bongo-Cat-Mver 模型包。
 - 只有图片差异的 Mver patch 包，例如“Z-无按键显示”和“Z-有按键显示”。
+- 放在可执行文件同目录（或其一级子目录）的完整 Mver 原生目录。
 
 真实 Tauri、完整 Mver 和两个 Z patch 均会安装 `standard`、`keyboard`、
 `gamepad` 三个模型，并逐个通过 Cubism 原生运行时加载。导入后的 `payload` 是用户模型目录的
@@ -19,8 +20,10 @@ Bongo Cat Neo 现在以同一条事务式导入流水线支持三类输入：
 工作区坐标和设备精灵几何会写入
 `.bongo-cat-neo-import-report.json`，不再被静默忽略。
 
-项目尚未发布，因此自定义模型不提供旧统一目录布局兼容或自动迁移。没有当前版本旁路描述文件的
-自定义目录会被扫描器忽略；内置模型仍由只读的预设扫描路径直接加载。
+项目尚未发布，因此用户数据目录中的自定义模型不提供旧统一目录布局兼容或自动迁移；没有当前
+版本旁路描述文件的目录仍会被扫描器忽略。作为明确的生态兼容入口，可执行文件旁的完整 Mver
+目录会直接作为只读源加载，Neo 只在用户数据的 `portable-mver` 中缓存合成图片、行为元数据和
+兼容报告，不复制、重命名或修改原目录。内置模型仍由只读的预设扫描路径直接加载。
 
 ## 格式契约
 
@@ -29,6 +32,7 @@ Bongo Cat Neo 现在以同一条事务式导入流水线支持三类输入：
 | Tauri / Live2D | 唯一合法 `.model3.json` 及其必需引用 | 导入一个或多个模型 |
 | 完整 Mver | `config.json`、`img`、合法 mode 配置、编号资源和 Live2D manifest | 每个合法 mode 导入一个模型 |
 | Mver patch | 唯一 patch `img` 根及唯一同名完整基础包 | 分别原样保存 base/patch，由 adapter 按文件覆盖语义解析 |
+| 运行目录 Mver | 可执行文件旁的完整 Mver 根，或包含完整包/图片补丁的模型容器 | 直接引用 Live2D 源文件，只缓存 Neo adapter |
 
 同目录多 manifest、多个 patch 根、无基础包或多个基础包都被拒绝。图片 patch 不会被伪装成
 可独立运行的模型。
@@ -96,10 +100,13 @@ Neo 对应功能继续由用户的窗口、鼠标镜像、模型缩放和手柄�
 - [x] M23 清理历史命名噪声；旧 schema 测试变量不再使用 `legacy_path`。
 - [x] M24 将原模型与 Neo 适配产物分离为 `payload` / `adapter`，并验证源目录未变化。
 - [x] M25 移除未发布旧自定义目录布局的兼容扫描，只接受当前旁路描述文件。
+- [x] M26 按 Mver 原版相对路径习惯自动发现运行目录模型（包括嵌套的完整包与图片补丁），并保持源目录只读。
+- [x] M27 对原版常见的“配置绑定多于 manifest 入口”仅截取可用入口；手动导入仍保留严格校验。
 
 ## 自动化证据
 
-- `model-import-unit`：VK、组合键、`input_mode` 和手柄映射的纯 C 测试。
+- `model-import-unit`：VK、组合键、`input_mode`、手柄映射，以及运行目录 Mver
+  直接/嵌套容器、图片补丁发现和 adapter 缓存测试。
 - `model-import-formats`：32 个合成端到端场景，包括歧义、回滚、patch、稀疏资源、
   momentary、清除、缺失可选音频、非法 chord 和不同尺寸合成。
 - `model-import-real-samples`：由 `BONGO_CAT_NEO_TAURI_SOURCE`、

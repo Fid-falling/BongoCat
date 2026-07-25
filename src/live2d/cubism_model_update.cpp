@@ -6,7 +6,10 @@
 #include <Motion/CubismExpressionMotionManager.hpp>
 #include <Motion/CubismMotionManager.hpp>
 #include <Rendering/OpenGL/CubismOffscreenManager_OpenGLES2.hpp>
+#include <algorithm>
 #include <cmath>
+#include <cstdlib>
+#include <cstring>
 
 namespace bongo_cat_neo {
 
@@ -39,13 +42,11 @@ static bool changed(std::vector<float> &snapshot, int count, Getter value) {
 }
 
 bool NativeModel::update(float delta_seconds) {
-    if (!_model) return false;
-    accumulated_seconds_ += delta_seconds;
-    bool active = external_parameters_dirty_ || !_motionManager->IsFinished() ||
-        !_expressionManager->IsFinished();
-    if (!active && accumulated_seconds_ < 0.03f) return false;
-    delta_seconds = accumulated_seconds_;
-    accumulated_seconds_ = 0.0f;
+    if (!_model || delta_seconds <= 0.0f) return false;
+    if (delta_seconds > 0.25f) delta_seconds = 0.25f;
+    // Cubism's target point supplies the same acceleration/deceleration curve
+    // used by Bongo Cat Mver. It must advance before the late drag updater.
+    if (_dragManager) _dragManager->Update(delta_seconds);
     external_parameters_dirty_ = false;
     motion_updated_ = false;
     _model->LoadParameters();
@@ -54,7 +55,9 @@ bool NativeModel::update(float delta_seconds) {
         _model->SetParameterValue(i, pending_parameter_values_[(size_t)i]);
         pending_parameters_[(size_t)i] = 0;
     }
-    if (!_motionManager->IsFinished())
+    if (_motionManager->IsFinished())
+        start_idle_motion();
+    else
         motion_updated_ = _motionManager->UpdateMotion(_model, delta_seconds);
     _model->SaveParameters();
     _updateScheduler.OnLateUpdate(_model, delta_seconds);
@@ -89,8 +92,23 @@ void NativeModel::draw() {
 
 void NativeModel::set_mirror(bool mirror) { mirror_ = mirror; }
 
+void NativeModel::set_dragging(float x, float y) {
+    if (!_dragManager) return;
+    x = std::max(-1.0f, std::min(1.0f, x));
+    y = std::max(-1.0f, std::min(1.0f, y));
+    _dragManager->Set(x, y);
+    external_parameters_dirty_ = true;
+}
+
+void NativeModel::set_mver_compatibility(bool enabled) {
+    mver_compatibility_ = enabled;
+}
+
 bool NativeModel::set_parameter(const char *id, float value) {
     if (!_model || !id) return false;
+    if (mver_compatibility_ &&
+        (std::strcmp(id, "ParamMouseX") == 0 ||
+         std::strcmp(id, "ParamMouseY") == 0)) return true;
     Csm::CubismIdHandle handle = Csm::CubismFramework::GetIdManager()->GetId(id);
     int index = _model->GetParameterIndex(handle);
     if (index < 0 || index >= _model->GetParameterCount()) return false;
@@ -123,6 +141,17 @@ bool NativeModel::start_motion(const char *group, int index) {
     if (!_motionManager->ReserveMotion(priority)) return false;
     _motionManager->StartMotionPriority(found->second, false, priority);
     return true;
+}
+
+void NativeModel::start_idle_motion() {
+    if (idle_motion_keys_.empty()) return;
+    constexpr int priority = 1;
+    if (!_motionManager->ReserveMotion(priority)) return;
+    const std::string &key = idle_motion_keys_[
+        (size_t)(std::rand() % (int)idle_motion_keys_.size())];
+    auto found = motions_.find(key);
+    if (found != motions_.end())
+        _motionManager->StartMotionPriority(found->second, false, priority);
 }
 
 bool NativeModel::toggle_lock_motion(const std::string &key,

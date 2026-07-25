@@ -11,15 +11,59 @@
 #include <Motion/CubismMotion.hpp>
 #include <Motion/CubismPhysicsUpdater.hpp>
 #include <Motion/CubismPoseUpdater.hpp>
+#include <Motion/ICubismUpdater.hpp>
 #include <Physics/CubismPhysics.hpp>
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <cstdlib>
 #include <new>
 #include <utility>
 #include <yyjson.h>
 
 namespace bongo_cat_neo {
+
+namespace {
+
+// This is the same late-update stage used by Bongo Cat Mver's myUserModel.
+// Keeping it between expressions and breath is important: dragging is an
+// additive contribution and must not overwrite motion/expression values.
+class DragUpdater final : public Csm::ICubismUpdater {
+public:
+    explicit DragUpdater(const Csm::CubismTargetPoint &target)
+        : Csm::ICubismUpdater(Csm::CubismUpdateOrder_Look), target_(target) {
+        auto *ids = Csm::CubismFramework::GetIdManager();
+        angle_x_ = ids->GetId("ParamAngleX");
+        angle_y_ = ids->GetId("ParamAngleY");
+        angle_z_ = ids->GetId("ParamAngleZ");
+        body_angle_x_ = ids->GetId("ParamBodyAngleX");
+        eye_ball_x_ = ids->GetId("ParamEyeBallX");
+        eye_ball_y_ = ids->GetId("ParamEyeBallY");
+    }
+
+    void OnLateUpdate(Csm::CubismModel *model, Csm::csmFloat32) override {
+        if (!model) return;
+        const Csm::csmFloat32 x = target_.GetX();
+        const Csm::csmFloat32 y = target_.GetY();
+        model->AddParameterValue(angle_x_, x * 30.0f);
+        model->AddParameterValue(angle_y_, y * 30.0f);
+        model->AddParameterValue(angle_z_, x * y * -30.0f);
+        model->AddParameterValue(body_angle_x_, x * 10.0f);
+        model->AddParameterValue(eye_ball_x_, x);
+        model->AddParameterValue(eye_ball_y_, y);
+    }
+
+private:
+    const Csm::CubismTargetPoint &target_;
+    Csm::CubismIdHandle angle_x_ = nullptr;
+    Csm::CubismIdHandle angle_y_ = nullptr;
+    Csm::CubismIdHandle angle_z_ = nullptr;
+    Csm::CubismIdHandle body_angle_x_ = nullptr;
+    Csm::CubismIdHandle eye_ball_x_ = nullptr;
+    Csm::CubismIdHandle eye_ball_y_ = nullptr;
+};
+
+} // namespace
 
 NativeModel::NativeModel() {
     _mocConsistency = true;
@@ -149,6 +193,7 @@ void NativeModel::load_effects() {
     _breath = Csm::CubismBreath::Create();
     _breath->SetParameters(breath);
     _updateScheduler.AddUpdatableList(CSM_NEW Csm::CubismBreathUpdater(*_breath));
+    _updateScheduler.AddUpdatableList(CSM_NEW DragUpdater(*_dragManager));
     for (int i = 0; i < setting_->GetEyeBlinkParameterCount(); ++i)
         eye_blink_ids_.PushBack(setting_->GetEyeBlinkParameterId(i));
     for (int i = 0; i < setting_->GetLipSyncParameterCount(); ++i)
@@ -162,6 +207,7 @@ void NativeModel::load_effects() {
 }
 
 void NativeModel::load_motions() {
+    idle_motion_keys_.clear();
     for (int group_index = 0; group_index < setting_->GetMotionGroupCount(); ++group_index) {
         const char *group = setting_->GetMotionGroupName(group_index);
         for (int i = 0; i < setting_->GetMotionCount(group); ++i) {
@@ -174,6 +220,7 @@ void NativeModel::load_motions() {
             if (!motion) continue;
             motion->SetEffectIds(eye_blink_ids_, lip_sync_ids_);
             motions_[key] = motion;
+            if (std::strcmp(group, "Idle") == 0) idle_motion_keys_.push_back(key);
             size_t suffix = std::strlen(group);
             if (suffix >= 5 && std::strcmp(group + suffix - 5, "_lock") == 0)
                 load_lock_motion(key, bytes);

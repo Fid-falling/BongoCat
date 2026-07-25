@@ -32,6 +32,11 @@ instead of a diagnostic build.
 - Import and removal of custom model packages. A package is checked for a valid
   manifest and safe file references before it is installed under the user data
   directory.
+- Automatic discovery of Bongo-Cat-Mver packages placed beside the executable,
+  either as `config.json` + `img/` directly or as an intact child directory.
+  Model containers with nested full packages and image-only variants (for
+  example `A-*` plus `Z-*` directories) are also discovered. The source stays
+  read-only and Neo caches only generated adapter files.
 - Keyboard and mouse input, pointer tracking, gamepad buttons and axes,
   mirroring, automatic key release, and configurable shortcuts.
 - Transparent borderless window, click-through, always-on-top, hover hiding,
@@ -160,8 +165,12 @@ imported models are kept in the per-user data directory.
 ## Runtime Data and Test Switches
 
 The default data directory comes from SDL's preference path and contains
-`settings.json` and `custom-models/`. Tests and portable launches may override
-both paths:
+`settings.json`, `custom-models/`, and the generated `portable-mver/` adapter
+cache. A Bongo-Cat-Mver package can be used without importing by placing its
+`config.json` and `img/` beside `BongoCatNeo`, or by placing the intact package
+directory there. A collection such as `露西亚-誓焰版` may be placed as one
+folder; its full package and nested image patches are discovered together.
+Tests and portable launches may override both paths:
 
 ```text
 BongoCatNeo --data-root=C:\path\to\data --config=C:\path\to\settings.json

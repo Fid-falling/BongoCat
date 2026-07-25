@@ -41,15 +41,19 @@ static bool parent_path(const char *path, char *parent, size_t capacity) {
     return true;
 }
 
+static bool package_at(const char *source, char *config, char *image_root) {
+    return bongo_cat_neo_path_join(config, BONGO_CAT_NEO_PATH_CAP, source,
+            "config.json") &&
+        bongo_cat_neo_path_join(image_root, BONGO_CAT_NEO_PATH_CAP, source, "img") &&
+        bongo_cat_neo_path_is_file(config) && bongo_cat_neo_path_is_dir(image_root) &&
+        mver_shape(image_root);
+}
+
 static bool find_package(const char *source, char *package, size_t capacity,
     char *config, char *image_root) {
     snprintf(package, capacity, "%s", source);
     for (int depth = 0; depth < 4; ++depth) {
-        if (bongo_cat_neo_path_join(config, BONGO_CAT_NEO_PATH_CAP, package,
-                "config.json") &&
-            bongo_cat_neo_path_join(image_root, BONGO_CAT_NEO_PATH_CAP, package, "img") &&
-            bongo_cat_neo_path_is_file(config) && bongo_cat_neo_path_is_dir(image_root) &&
-            mver_shape(image_root)) return true;
+        if (package_at(package, config, image_root)) return true;
         char parent[BONGO_CAT_NEO_PATH_CAP];
         if (!parent_path(package, parent, sizeof(parent))) break;
         snprintf(package, capacity, "%s", parent);
@@ -121,11 +125,9 @@ static bool add_mode(BongoCatNeoImportDiscovery *discovery, const char *source,
     return true;
 }
 
-int bongo_cat_neo_import_mver_discover(const char *source,
-    BongoCatNeoImportDiscovery *discovery, BongoCatNeoError *error) {
-    char package[BONGO_CAT_NEO_PATH_CAP], config[BONGO_CAT_NEO_PATH_CAP];
-    char image_root[BONGO_CAT_NEO_PATH_CAP];
-    if (!find_package(source, package, sizeof(package), config, image_root)) return 0;
+static int discover_package(const char *package, const char *config,
+    const char *image_root, BongoCatNeoImportDiscovery *discovery,
+    BongoCatNeoError *error) {
     FILE *file = bongo_cat_neo_file_open(config, "rb");
     yyjson_doc *document = file ? yyjson_read_fp(file,
         YYJSON_READ_JSON5 | YYJSON_READ_ALLOW_INVALID_UNICODE, NULL, NULL) : NULL;
@@ -151,4 +153,19 @@ int bongo_cat_neo_import_mver_discover(const char *source,
         return -1;
     }
     return 1;
+}
+
+int bongo_cat_neo_import_mver_discover_exact(const char *source,
+    BongoCatNeoImportDiscovery *discovery, BongoCatNeoError *error) {
+    char config[BONGO_CAT_NEO_PATH_CAP], image_root[BONGO_CAT_NEO_PATH_CAP];
+    if (!package_at(source, config, image_root)) return 0;
+    return discover_package(source, config, image_root, discovery, error);
+}
+
+int bongo_cat_neo_import_mver_discover(const char *source,
+    BongoCatNeoImportDiscovery *discovery, BongoCatNeoError *error) {
+    char package[BONGO_CAT_NEO_PATH_CAP], config[BONGO_CAT_NEO_PATH_CAP];
+    char image_root[BONGO_CAT_NEO_PATH_CAP];
+    if (!find_package(source, package, sizeof(package), config, image_root)) return 0;
+    return discover_package(package, config, image_root, discovery, error);
 }

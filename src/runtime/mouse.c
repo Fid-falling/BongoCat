@@ -65,27 +65,34 @@ static void reconcile_button(BongoCatNeoApp *app, bool *current, bool pressed,
     app->dirty = true;
 }
 
-static void apply_mouse_tracking(BongoCatNeoApp *app, float elapsed) {
-    double x, y;
-    if (!bongo_cat_neo_mouse_step(&app->mouse_tracking, elapsed, &x, &y)) return;
+static void apply_mouse_coordinates(BongoCatNeoApp *app, double x, double y) {
     SDL_Point point = {(int)x, (int)y}; SDL_Rect bounds;
     SDL_DisplayID display = SDL_GetDisplayForPoint(&point);
     if (!display || !SDL_GetDisplayBounds(display, &bounds) ||
         bounds.w <= 0 || bounds.h <= 0) return;
     float x_ratio = (float)((x - bounds.x) / bounds.w);
     float y_ratio = (float)((y - bounds.y) / bounds.h);
-    const char *parameters[] = {"ParamMouseX", "ParamMouseY", "ParamAngleX",
-        "ParamAngleY", "ParamAngleZ", "ParamEyeBallX", "ParamEyeBallY"};
-    for (size_t i = 0; i < sizeof(parameters) / sizeof(parameters[0]); ++i)
-        set_parameter(app, parameters[i], x_ratio, y_ratio);
+    if (x_ratio < 0.0f) x_ratio = 0.0f;
+    if (x_ratio > 1.0f) x_ratio = 1.0f;
+    if (y_ratio < 0.0f) y_ratio = 0.0f;
+    if (y_ratio > 1.0f) y_ratio = 1.0f;
+    float drag_x = 1.0f - 2.0f * x_ratio;
+    float drag_y = 1.0f - 2.0f * y_ratio;
+    if (app->config.model.mouse_mirror) drag_x = -drag_x;
+    // ParamMouseX/Y are retained for models that explicitly expose the
+    // compatibility parameters. Head/body/eye parameters are driven by the
+    // Cubism TargetPoint in NativeModel, just like Bongo Cat Mver.
+    set_parameter(app, "ParamMouseX", x_ratio, y_ratio);
+    set_parameter(app, "ParamMouseY", x_ratio, y_ratio);
+    bongo_cat_neo_live2d_set_dragging(app->live2d, drag_x, drag_y);
     app->dirty = true;
 }
 
 void bongo_cat_neo_app_apply_mouse_position(BongoCatNeoApp *app, double x, double y,
     float elapsed_seconds) {
     if (!app || app->config.model.ignore_mouse) return;
-    bongo_cat_neo_mouse_target(&app->mouse_tracking, x, y);
-    apply_mouse_tracking(app, elapsed_seconds);
+    (void)elapsed_seconds;
+    apply_mouse_coordinates(app, x, y);
 }
 
 void bongo_cat_neo_app_apply_mouse(BongoCatNeoApp *app) {
@@ -107,13 +114,10 @@ void bongo_cat_neo_app_apply_mouse(BongoCatNeoApp *app) {
     if (moved) {
         audit_mouse(app, target_x, target_y);
         bongo_cat_neo_app_track_hover(app, target_x, target_y);
-        bongo_cat_neo_mouse_target(&app->mouse_tracking, target_x, target_y);
     }
     bongo_cat_neo_window_sync_click_through(app);
     uint64_t now = SDL_GetTicksNS();
-    float elapsed = app->mouse_last_ns
-        ? (float)((now - app->mouse_last_ns) / 1000000000.0) : 1.0f / 60.0f;
     app->mouse_last_ns = now;
     if (app->config.model.ignore_mouse) return;
-    apply_mouse_tracking(app, elapsed);
+    apply_mouse_coordinates(app, target_x, target_y);
 }

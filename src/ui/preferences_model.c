@@ -211,9 +211,9 @@ static bool model_card(BongoCatNeoApp *app, struct nk_context *context,
             palette.accent);
     }
     struct nk_rect remove = nk_rect(bounds.x + bounds.w - 38, bounds.y + 8, 30, 30);
-    bool remove_hover = interactive && !entry->preset &&
+    bool remove_hover = interactive && !entry->preset && !entry->managed &&
         nk_input_is_mouse_hovering_rect(&context->input, remove);
-    if (!entry->preset) {
+    if (!entry->preset && !entry->managed) {
         if (remove_hover) nk_fill_rect(canvas, remove, 6,
             palette.danger_background);
         nk_stroke_line(canvas, remove.x + 9, remove.y + 9,

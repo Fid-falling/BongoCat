@@ -39,7 +39,7 @@ static NSMenuItem *add_item(NSMenu *menu, BongoCatNeoMenuTarget *target,
 }
 
 static void add_scale_menu(NSMenu *menu, BongoCatNeoMenuTarget *target,
-    const char *label, bool opacity) {
+    const char *label, const char *hint_label, bool opacity) {
     NSMenuItem *root = [[NSMenuItem alloc] initWithTitle:text(label)
         action:nil keyEquivalent:@""];
     NSMenu *submenu = [[NSMenu alloc] initWithTitle:text(label)];
@@ -52,6 +52,9 @@ static void add_scale_menu(NSMenu *menu, BongoCatNeoMenuTarget *target,
         NSInteger tag = opacity ? BONGO_CAT_NEO_MENU_OPACITY_10 + i : BONGO_CAT_NEO_MENU_SCALE_50 + i;
         add_item(submenu, target, title, tag, false);
     }
+    NSMenuItem *hint = [[NSMenuItem alloc] initWithTitle:text(hint_label)
+        action:nil keyEquivalent:@""];
+    [hint setEnabled:NO]; [submenu addItem:hint]; [hint release];
     [root setSubmenu:submenu]; [menu addItem:root];
     [submenu release]; [root release];
 }
@@ -70,8 +73,8 @@ BongoCatNeoMenuAction bongo_cat_neo_macos_context_menu(BongoCatNeoPlatform *plat
         labels->pass_through_checked);
     add_item(menu, target, labels->always_on_top, BONGO_CAT_NEO_MENU_ALWAYS_ON_TOP,
         labels->always_on_top_checked);
-    add_scale_menu(menu, target, labels->window_size, false);
-    add_scale_menu(menu, target, labels->opacity, true);
+    add_scale_menu(menu, target, labels->window_size, labels->wheel_size_hint, false);
+    add_scale_menu(menu, target, labels->opacity, labels->wheel_opacity_hint, true);
     NSMenuItem *modelRoot = [[NSMenuItem alloc] initWithTitle:text(labels->model)
         action:nil keyEquivalent:@""];
     NSMenu *models = [[NSMenu alloc] initWithTitle:text(labels->model)];

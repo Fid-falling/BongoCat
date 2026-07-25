@@ -159,6 +159,8 @@ static void context_menu(BongoCatNeoApp *app) {
         tr(app, "composables.useAppMenu.labels.opacity", "Opacity"),
         tr(app, "composables.useAppMenu.labels.model", "Model"),
         tr(app, "composables.useAppMenu.labels.quitApp", "Exit"),
+        tr(app, "composables.useAppMenu.labels.wheelSizeHint", "Wheel: resize"),
+        tr(app, "composables.useAppMenu.labels.wheelOpacityHint", "Ctrl+Wheel: opacity"),
         model_names, app->models.count, current_model,
         app->config.window.scale_percent, app->config.window.opacity_percent,
         app->config.window.pass_through, app->config.window.always_on_top,

@@ -165,6 +165,7 @@ void bongo_cat_neo_platform_begin_drag(BongoCatNeoPlatform *platform) {
 bool bongo_cat_neo_platform_dynamic_hit_supported(void) { return true; }
 
 bool bongo_cat_neo_platform_single_instance_begin(void) {
+    if (SDL_getenv("BONGO_CAT_NEO_ALLOW_TEST_INSTANCES")) return true;
     instance_mutex = CreateMutexW(NULL, FALSE, L"Local\\BongoCatNeo.SingleInstance");
     if (!instance_mutex) return true;
     if (GetLastError() != ERROR_ALREADY_EXISTS) return true;
@@ -242,12 +243,16 @@ BongoCatNeoMenuAction bongo_cat_neo_platform_context_menu(BongoCatNeoPlatform *p
         UINT flags = MF_STRING | (SDL_fabsf(labels->scale_percent - scale) < .5f ? MF_CHECKED : 0);
         AppendMenuW(sizes, flags, BONGO_CAT_NEO_MENU_SCALE_50 + i, label);
     }
+    menu_text(sizes, MF_STRING | MF_DISABLED | MF_GRAYED, 0,
+        labels->wheel_size_hint);
     const int opacities[] = {10,20,30,40,50,60,70,80,90,100};
     for (int i = 0; i < 10; ++i) {
         wchar_t label[16]; swprintf(label, 16, L"%d%%", opacities[i]);
         UINT flags = MF_STRING | (SDL_fabsf(labels->opacity_percent - opacities[i]) < .5f ? MF_CHECKED : 0);
         AppendMenuW(opacity, flags, BONGO_CAT_NEO_MENU_OPACITY_10 + i, label);
     }
+    menu_text(opacity, MF_STRING | MF_DISABLED | MF_GRAYED, 0,
+        labels->wheel_opacity_hint);
     for (size_t i = 0; i < labels->model_count; ++i)
         menu_text(models, MF_STRING | (i == labels->current_model ? MF_CHECKED : 0),
             BONGO_CAT_NEO_MENU_MODEL_FIRST + i, labels->model_names[i]);

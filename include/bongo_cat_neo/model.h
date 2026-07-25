@@ -11,6 +11,7 @@ typedef struct BongoCatNeoModelEntry {
     char setting_file[BONGO_CAT_NEO_PATH_CAP];
     BongoCatNeoModelMode mode;
     bool preset;
+    bool managed;
 } BongoCatNeoModelEntry;
 
 typedef struct BongoCatNeoModelCatalog {
@@ -65,6 +66,8 @@ void bongo_cat_neo_live2d_reshape(BongoCatNeoLive2D *live2d, int width, int heig
 bool bongo_cat_neo_live2d_update(BongoCatNeoLive2D *live2d, float delta_seconds);
 void bongo_cat_neo_live2d_draw(BongoCatNeoLive2D *live2d);
 void bongo_cat_neo_live2d_set_mirror(BongoCatNeoLive2D *live2d, bool mirror);
+void bongo_cat_neo_live2d_set_dragging(BongoCatNeoLive2D *live2d, float x, float y);
+void bongo_cat_neo_live2d_set_mver_compatibility(BongoCatNeoLive2D *live2d, bool enabled);
 bool bongo_cat_neo_live2d_set_parameter(BongoCatNeoLive2D *live2d, const char *id, float value);
 bool bongo_cat_neo_live2d_parameter(BongoCatNeoLive2D *live2d, const char *id,
     BongoCatNeoParameterRange *range);

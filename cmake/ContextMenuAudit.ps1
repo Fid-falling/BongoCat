@@ -5,6 +5,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
 $root = Split-Path $PSScriptRoot -Parent
 if (-not $Exe) { $Exe = Join-Path $root "build\BongoCatNeo.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build\context-menu-audit" }
@@ -26,6 +27,7 @@ public static class BongoCatNeoMenuNative {
     [DllImport("user32.dll")] public static extern IntPtr GetWindow(IntPtr handle, uint command);
     [DllImport("user32.dll")] public static extern IntPtr SendMessageW(IntPtr handle, uint message, IntPtr wparam, IntPtr lparam);
     [DllImport("user32.dll")] public static extern int GetMenuItemCount(IntPtr menu);
+    [DllImport("user32.dll")] public static extern IntPtr GetSubMenu(IntPtr menu, int position);
     [DllImport("user32.dll")] public static extern bool GetMenuItemRect(
         IntPtr window, IntPtr menu, uint item, out Rect rect);
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetMenuStringW(
@@ -64,7 +66,7 @@ function Get-Windows([int]$ProcessId) {
     return $rows
 }
 
-function Get-MenuWindow([string]$ExpectedFirstLabel) {
+function Get-MenuWindow([string]$ExpectedFirstLabel, [int]$ProcessId) {
     $after = [IntPtr]::Zero
     while ($true) {
         $handle = [BongoCatNeoMenuNative]::FindWindowExW(
@@ -72,6 +74,10 @@ function Get-MenuWindow([string]$ExpectedFirstLabel) {
         if ($handle -eq [IntPtr]::Zero) { break }
         $after = $handle
         if (-not [BongoCatNeoMenuNative]::IsWindowVisible($handle)) { continue }
+        [uint32]$ownerProcess = 0
+        [void][BongoCatNeoMenuNative]::GetWindowThreadProcessId(
+            $handle, [ref]$ownerProcess)
+        if ($ownerProcess -ne $ProcessId) { continue }
         $menu = [BongoCatNeoMenuNative]::SendMessageW($handle, 0x01E1,
             [IntPtr]::Zero, [IntPtr]::Zero)
         if ($menu -eq [IntPtr]::Zero -or
@@ -85,8 +91,18 @@ function Get-MenuWindow([string]$ExpectedFirstLabel) {
     return [IntPtr]::Zero
 }
 
-Get-Process BongoCatNeo -ErrorAction SilentlyContinue | Stop-Process -Force
-Start-Sleep -Milliseconds 350
+function Get-MenuLabels([IntPtr]$Menu) {
+    $labels = [Collections.Generic.List[string]]::new()
+    if ($Menu -eq [IntPtr]::Zero) { return $labels }
+    $count = [BongoCatNeoMenuNative]::GetMenuItemCount($Menu)
+    for ($index = 0; $index -lt $count; $index++) {
+        $text = [Text.StringBuilder]::new(128)
+        [void][BongoCatNeoMenuNative]::GetMenuStringW($Menu, $index, $text, 128, 0x400)
+        if ($text.Length) { $labels.Add($text.ToString()) }
+    }
+    return $labels
+}
+
 $localePath = Join-Path $root "resources\assets\locales\$Language.json"
 if (-not (Test-Path $localePath)) { $localePath = Join-Path $root "resources\assets\locales\en-US.json" }
 $locale = Get-Content -Raw -Encoding utf8 $localePath | ConvertFrom-Json
@@ -101,6 +117,14 @@ $expected = @(
     if ($menuLabels.model) { $menuLabels.model } else { "Model" }
     if ($menuLabels.quitApp) { $menuLabels.quitApp } else { "Quit App" }
 )
+$wheelSizeHint = if ($menuLabels.wheelSizeHint) { $menuLabels.wheelSizeHint } else { "Wheel: resize" }
+$wheelOpacityHint = if ($menuLabels.wheelOpacityHint) { $menuLabels.wheelOpacityHint } else { "Ctrl+Wheel: opacity" }
+$expectedSize = [Collections.Generic.List[string]]::new()
+for ($index = 0; $index -lt 16; $index++) { $expectedSize.Add("$((50 + $index * 10))%") }
+$expectedSize.Add($wheelSizeHint)
+$expectedOpacity = [Collections.Generic.List[string]]::new()
+for ($index = 0; $index -lt 10; $index++) { $expectedOpacity.Add("$((10 + $index * 10))%") }
+$expectedOpacity.Add($wheelOpacityHint)
 $data = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
 $process = Start-Process -FilePath $Exe -ArgumentList @("--ci-smoke", "--ci-context-menu",
     "--ci-language=$Language", "--ci-exit-ms=15000", "--data-root=$data") -WorkingDirectory (Split-Path $Exe) `
@@ -108,7 +132,7 @@ $process = Start-Process -FilePath $Exe -ArgumentList @("--ci-smoke", "--ci-cont
 $deadline = [DateTime]::UtcNow.AddSeconds(2)
 do {
     Start-Sleep -Milliseconds 50
-    $menuHandle = Get-MenuWindow $expected[0]
+    $menuHandle = Get-MenuWindow $expected[0] $process.Id
 } while ($menuHandle -eq [IntPtr]::Zero -and [DateTime]::UtcNow -lt $deadline)
 if ($menuHandle -ne [IntPtr]::Zero) {
     $menuRect = [BongoCatNeoMenuNative+Rect]::new()
@@ -120,13 +144,12 @@ if ($menuHandle -ne [IntPtr]::Zero) {
     $graphics.Dispose(); $bitmap.Dispose()
     $nativeMenu = [BongoCatNeoMenuNative]::SendMessageW($menuHandle, 0x01E1,
         [IntPtr]::Zero, [IntPtr]::Zero)
-    $labels = [Collections.Generic.List[string]]::new()
-    $count = [BongoCatNeoMenuNative]::GetMenuItemCount($nativeMenu)
-    for ($index = 0; $index -lt $count; $index++) {
-        $text = [Text.StringBuilder]::new(128)
-        [void][BongoCatNeoMenuNative]::GetMenuStringW($nativeMenu, $index, $text, 128, 0x400)
-        if ($text.Length) { $labels.Add($text.ToString()) }
-    }
+    $labels = Get-MenuLabels $nativeMenu
+    # Top-level positions include separators: size=5 and opacity=6.
+    $sizeMenu = [BongoCatNeoMenuNative]::GetSubMenu($nativeMenu, 5)
+    $opacityMenu = [BongoCatNeoMenuNative]::GetSubMenu($nativeMenu, 6)
+    $sizeLabels = Get-MenuLabels $sizeMenu
+    $opacityLabels = Get-MenuLabels $opacityMenu
     $owner = [BongoCatNeoMenuNative]::GetWindow($menuHandle, 4)
     $itemRect = [BongoCatNeoMenuNative+Rect]::new()
     $itemKnown = [BongoCatNeoMenuNative]::GetMenuItemRect(
@@ -154,9 +177,14 @@ $exited = $process.WaitForExit(20000)
 if (-not $exited) { Stop-Process -Id $process.Id -Force }
 $exitCode = if ($exited) { $process.ExitCode } else { -1 }
 $labelsMatch = ($labels -join "|") -eq ($expected -join "|")
-$passed = $menuHandle -ne [IntPtr]::Zero -and $preferencesOpened -and $exitCode -eq 0 -and $labelsMatch
+$sizeLabelsMatch = ($sizeLabels -join "|") -eq ($expectedSize -join "|")
+$opacityLabelsMatch = ($opacityLabels -join "|") -eq ($expectedOpacity -join "|")
+$passed = $menuHandle -ne [IntPtr]::Zero -and $preferencesOpened -and $exitCode -eq 0 -and
+    $labelsMatch -and $sizeLabelsMatch -and $opacityLabelsMatch
 $result = [pscustomobject]@{MenuFound=($menuHandle-ne[IntPtr]::Zero); Labels=$labels
-    LabelsMatch=$labelsMatch; PreferencesOpened=$preferencesOpened; VisibleWindows=$visible.Count
+    LabelsMatch=$labelsMatch; SizeLabels=$sizeLabels; SizeLabelsMatch=$sizeLabelsMatch
+    OpacityLabels=$opacityLabels; OpacityLabelsMatch=$opacityLabelsMatch
+    PreferencesOpened=$preferencesOpened; VisibleWindows=$visible.Count
     ExitCode=$exitCode; Passed=$passed}
 $result | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $OutputDir "result.json")
 $result | Format-List

@@ -157,6 +157,8 @@
         "alwaysOnTop": "Sempre no Topo",
         "windowSize": "Tamanho da Janela",
         "opacity": "Opacidade",
+        "wheelSizeHint": "Roda: tamanho",
+        "wheelOpacityHint": "Ctrl+roda: opacidade",
         "quitApp": "Sair"
       }
     }

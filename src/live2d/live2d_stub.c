@@ -37,6 +37,12 @@ void bongo_cat_neo_live2d_draw(BongoCatNeoLive2D *live2d) { (void)live2d; }
 void bongo_cat_neo_live2d_set_mirror(BongoCatNeoLive2D *live2d, bool mirror) {
     (void)live2d; (void)mirror;
 }
+void bongo_cat_neo_live2d_set_dragging(BongoCatNeoLive2D *live2d, float x, float y) {
+    (void)live2d; (void)x; (void)y;
+}
+void bongo_cat_neo_live2d_set_mver_compatibility(BongoCatNeoLive2D *live2d, bool enabled) {
+    (void)live2d; (void)enabled;
+}
 bool bongo_cat_neo_live2d_set_parameter(BongoCatNeoLive2D *live2d, const char *id, float value) {
     (void)live2d; (void)id; (void)value; return false;
 }

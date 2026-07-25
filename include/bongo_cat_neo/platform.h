@@ -52,6 +52,7 @@ typedef void (*BongoCatNeoMenuPreview)(void *userdata, BongoCatNeoMenuAction act
 typedef struct BongoCatNeoMenuLabels {
     const char *preferences, *hide, *pass_through, *always_on_top;
     const char *window_size, *opacity, *model, *exit;
+    const char *wheel_size_hint, *wheel_opacity_hint;
     const char *const *model_names;
     size_t model_count, current_model;
     float scale_percent, opacity_percent;

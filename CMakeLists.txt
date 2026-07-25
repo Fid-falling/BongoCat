@@ -97,6 +97,7 @@ add_library(bongo_cat_neo_runtime STATIC
   src/runtime/model_import_package.c
   src/runtime/model_import_discovery.c
   src/runtime/model_import_format.c
+  src/runtime/model_import_portable.c
   src/runtime/model_import_mver_patch.c
   src/runtime/model_import_mver.c src/runtime/model_import_mver_image.c
   src/runtime/model_import_mver_shortcut.c src/runtime/model_import_mver_effect.c
@@ -268,6 +269,10 @@ if(BUILD_TESTING)
   add_executable(bongo_cat_neo_mver_import_tests tests/test_mver_import.c)
   target_include_directories(bongo_cat_neo_mver_import_tests PRIVATE src/runtime)
   target_link_libraries(bongo_cat_neo_mver_import_tests PRIVATE bongo_cat_neo_runtime)
+  target_compile_definitions(bongo_cat_neo_mver_import_tests PRIVATE BONGO_CAT_NEO_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+  if(MSVC)
+    set_property(SOURCE tests/test_mver_import.c APPEND PROPERTY COMPILE_OPTIONS "/experimental:c11atomics")
+  endif()
   add_test(NAME model-import-unit COMMAND bongo_cat_neo_mver_import_tests)
   if(WIN32)
     add_test(NAME model-import-formats

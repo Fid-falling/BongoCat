@@ -27,6 +27,8 @@ public:
     bool update(float delta_seconds);
     void draw();
     void set_mirror(bool mirror);
+    void set_dragging(float x, float y);
+    void set_mver_compatibility(bool enabled);
     bool set_parameter(const char *id, float value);
     bool parameter(const char *id, float *minimum, float *maximum, float *value);
     bool start_motion(const char *group, int index);
@@ -43,6 +45,7 @@ private:
     void load_expressions();
     void load_effects();
     void load_motions();
+    void start_idle_motion();
     void load_lock_motion(const std::string &key,
         const std::vector<unsigned char> &bytes);
     bool toggle_lock_motion(const std::string &key, Csm::ACubismMotion *motion);
@@ -73,7 +76,8 @@ private:
     bool mirror_ = false;
     bool direct_textures_ = false;
     bool external_parameters_dirty_ = false;
-    float accumulated_seconds_ = 0.0f;
+    bool mver_compatibility_ = false;
+    std::vector<std::string> idle_motion_keys_;
     float opacity_snapshot_ = -1.0f;
 };
 

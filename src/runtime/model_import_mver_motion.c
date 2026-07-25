@@ -10,13 +10,23 @@ static bool add_rows(yyjson_mut_doc *output, yyjson_mut_val *items,
     const char *kind, const char *group, size_t available,
     BongoCatNeoError *error) {
     if (!rows) return true;
-    if (!yyjson_is_arr(rows) || yyjson_arr_size(rows) > available) {
+    if (!yyjson_is_arr(rows)) {
         bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
             "Mver %s bindings exceed the matching Live2D manifest entries", kind);
         return false;
     }
+    size_t limit = yyjson_arr_size(rows);
+    if (limit > available) {
+        if (!candidate->portable_compat) {
+            bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
+                "Mver %s bindings exceed the matching Live2D manifest entries", kind);
+            return false;
+        }
+        limit = available;
+    }
     size_t index, count; yyjson_val *row;
     yyjson_arr_foreach(rows, index, count, row) {
+        if (index >= limit) break;
         char shortcut[BONGO_CAT_NEO_SHORTCUT_CAP];
         if (!bongo_cat_neo_mver_chord(candidate, row, shortcut, sizeof(shortcut))) {
             bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,

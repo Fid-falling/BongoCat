@@ -23,6 +23,7 @@ typedef struct BongoCatNeoImportCandidate {
     BongoCatNeoModelMode mode;
     BongoCatNeoImportFormat format;
     bool gamepad_buttons;
+    bool portable_compat;
 } BongoCatNeoImportCandidate;
 
 typedef struct BongoCatNeoImportDiscovery {
@@ -38,6 +39,8 @@ bool bongo_cat_neo_import_discover(const char *source, BongoCatNeoImportDiscover
     BongoCatNeoError *error);
 int bongo_cat_neo_import_mver_discover(const char *source,
     BongoCatNeoImportDiscovery *discovery, BongoCatNeoError *error);
+int bongo_cat_neo_import_mver_discover_exact(const char *source,
+    BongoCatNeoImportDiscovery *discovery, BongoCatNeoError *error);
 int bongo_cat_neo_import_mver_patch_discover(const char *source,
     BongoCatNeoImportDiscovery *discovery, BongoCatNeoError *error);
 bool bongo_cat_neo_import_manifest_valid(const char *root, const char *setting,
@@ -48,11 +51,15 @@ bool bongo_cat_neo_import_mver_metadata(const BongoCatNeoImportCandidate *candid
     const char *target, BongoCatNeoError *error);
 bool bongo_cat_neo_import_write_report(const BongoCatNeoImportCandidate *candidate,
     const char *target, BongoCatNeoError *error);
+bool bongo_cat_neo_import_prepare_adapter(const BongoCatNeoImportCandidate *candidate,
+    const char *target, BongoCatNeoError *error);
 bool bongo_cat_neo_import_prepare_package(const BongoCatNeoImportCandidate *candidate,
     const char *target, BongoCatNeoImportCandidate *installed, BongoCatNeoError *error);
 bool bongo_cat_neo_import_write_package(const BongoCatNeoImportCandidate *candidate,
     const char *target, BongoCatNeoError *error);
 void bongo_cat_neo_import_apply_metadata(BongoCatNeoApp *app, const char *model_id,
     const char *directory);
+BongoCatNeoResult bongo_cat_neo_import_portable_mver(BongoCatNeoApp *app,
+    const char *root, BongoCatNeoError *error);
 
 #endif

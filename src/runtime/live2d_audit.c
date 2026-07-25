@@ -30,6 +30,11 @@ static bool pointer(BongoCatNeoApp *app, bool mirror) {
     app->config.model.mouse_mirror = mirror;
     bongo_cat_neo_app_apply_mouse_position(app, bounds.x + bounds.w * 0.9,
         bounds.y + bounds.h * 0.1, 1.0f / 60.0f);
+    // Dragging is intentionally smoothed by Cubism's TargetPoint. Advance
+    // enough frames to observe the settled direction, as a real render loop
+    // does, rather than asserting on its first acceleration step.
+    for (int frame = 0; frame < 90; ++frame)
+        bongo_cat_neo_live2d_update(app->live2d, 1.0f / 60.0f);
     return true;
 }
 
@@ -172,7 +177,8 @@ void bongo_cat_neo_live2d_audit_run(BongoCatNeoApp *app) {
         "CatParamStickLeftDown", "CatParamStickRightDown",
         "CatParamStickShowLeftHand", "CatParamStickShowRightHand",
         "ParamMouseLeftDown", "ParamMouseRightDown", "ParamMouseX", "ParamMouseY",
-        "ParamAngleX", "ParamAngleY", "ParamAngleZ", "ParamEyeBallX", "ParamEyeBallY"};
+        "ParamAngleX", "ParamAngleY", "ParamAngleZ", "ParamBodyAngleX",
+        "ParamEyeBallX", "ParamEyeBallY"};
     for (size_t i = 0; i < sizeof(parameters) / sizeof(parameters[0]); ++i)
         parameter(file, app, parameters[i]);
     fclose(file);

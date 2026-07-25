@@ -6,6 +6,7 @@ param(
     [string[]]$PatchSources = @()
 )
 $ErrorActionPreference = "Stop"
+$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
 $scriptRoot = Split-Path $MyInvocation.MyCommand.Path -Parent
 . (Join-Path $scriptRoot "ThemeImportLayout.ps1")
 $Exe = [IO.Path]::GetFullPath($Exe)

@@ -256,6 +256,14 @@ extern "C" void bongo_cat_neo_live2d_draw(BongoCatNeoLive2D *runtime) {
 extern "C" void bongo_cat_neo_live2d_set_mirror(BongoCatNeoLive2D *runtime, bool mirror) {
     if (runtime && runtime->model) runtime->model->set_mirror(mirror);
 }
+extern "C" void bongo_cat_neo_live2d_set_dragging(BongoCatNeoLive2D *runtime,
+    float x, float y) {
+    if (runtime && runtime->model) runtime->model->set_dragging(x, y);
+}
+extern "C" void bongo_cat_neo_live2d_set_mver_compatibility(
+    BongoCatNeoLive2D *runtime, bool enabled) {
+    if (runtime && runtime->model) runtime->model->set_mver_compatibility(enabled);
+}
 extern "C" bool bongo_cat_neo_live2d_set_parameter(BongoCatNeoLive2D *runtime, const char *id, float value) {
     return runtime && runtime->model && runtime->model->set_parameter(id, value);
 }

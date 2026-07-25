@@ -157,6 +157,8 @@
         "alwaysOnTop": "置顶",
         "windowSize": "大小",
         "opacity": "透明度",
+        "wheelSizeHint": "滚轮调整大小",
+        "wheelOpacityHint": "Ctrl+滚轮调整透明度",
         "quitApp": "退出",
         "model": "模型"
       }

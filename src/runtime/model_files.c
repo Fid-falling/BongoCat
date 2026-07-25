@@ -23,6 +23,14 @@ static void select_model_state(BongoCatNeoApp *app, const BongoCatNeoModelEntry 
     bongo_cat_neo_gamepads_set_enabled(app, entry->mode == BONGO_CAT_NEO_MODE_GAMEPAD);
 }
 
+static bool mver_entry(const BongoCatNeoModelEntry *entry) {
+    if (!entry) return false;
+    if (entry->managed) return true;
+    char marker[BONGO_CAT_NEO_PATH_CAP];
+    return bongo_cat_neo_path_join(marker, sizeof(marker), entry->adapter_directory,
+        ".bongo-cat-neo-mver.json") && bongo_cat_neo_path_is_file(marker);
+}
+
 bool bongo_cat_neo_app_select_model(BongoCatNeoApp *app, const char *id) {
     if (!app || !app->live2d || !id) return false;
     const BongoCatNeoModelEntry *entry = bongo_cat_neo_models_find(&app->models, id);
@@ -56,6 +64,7 @@ bool bongo_cat_neo_app_select_model(BongoCatNeoApp *app, const char *id) {
         free(behaviors);
         return false;
     }
+    bongo_cat_neo_live2d_set_mver_compatibility(app->live2d, mver_entry(entry));
     app->behaviors = *behaviors;
     free(behaviors);
     bongo_cat_neo_overlay_load(app->overlay, entry->adapter_directory, &error);
@@ -148,6 +157,13 @@ void bongo_cat_neo_app_rescan_models(BongoCatNeoApp *app) {
         bongo_cat_neo_model_cleanup_imports(root, &error);
         bongo_cat_neo_models_scan(&app->models, root, false, &error);
     }
+    const char *base = SDL_GetBasePath();
+    if (base && base[0]) {
+        BongoCatNeoError portable_error = {0};
+        if (bongo_cat_neo_import_portable_mver(app, base, &portable_error) !=
+            BONGO_CAT_NEO_OK && portable_error.message[0])
+            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", portable_error.message);
+    }
     prune_behavior_shortcuts(app);
     for (size_t i = 0; i < app->models.count; ++i)
         if (!app->models.entries[i].preset)
@@ -166,8 +182,10 @@ BongoCatNeoResult bongo_cat_neo_app_remove_model(BongoCatNeoApp *app, const char
         bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_ARGUMENT, "Model is not installed: %s", id);
         return BONGO_CAT_NEO_ERROR_ARGUMENT;
     }
-    if (entry->preset) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_ARGUMENT, "Built-in models cannot be removed: %s", id);
+    if (entry->preset || entry->managed) {
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_ARGUMENT,
+            entry->managed ? "Portable Mver models are managed by their source directory: %s" :
+            "Built-in models cannot be removed: %s", id);
         return BONGO_CAT_NEO_ERROR_ARGUMENT;
     }
     bool selected = strcmp(id, app->config.current_model) == 0;

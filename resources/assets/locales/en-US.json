@@ -157,6 +157,8 @@
         "alwaysOnTop": "Always on Top",
         "windowSize": "Window Size",
         "opacity": "Opacity",
+        "wheelSizeHint": "Wheel: resize",
+        "wheelOpacityHint": "Ctrl+Wheel: opacity",
         "quitApp": "Quit App"
       }
     }

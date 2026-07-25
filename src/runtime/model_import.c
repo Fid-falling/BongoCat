@@ -100,6 +100,17 @@ static bool write_mode(const char *target, BongoCatNeoModelMode mode, BongoCatNe
     return ok;
 }
 
+bool bongo_cat_neo_import_prepare_adapter(const BongoCatNeoImportCandidate *candidate,
+    const char *target, BongoCatNeoError *error) {
+    if (!candidate || !target ||
+        (!bongo_cat_neo_path_is_dir(target) && !SDL_CreateDirectory(target))) return false;
+    return copy_preview(candidate, target, error) &&
+        bongo_cat_neo_import_mver_assets(candidate, target, error) &&
+        bongo_cat_neo_import_mver_metadata(candidate, target, error) &&
+        bongo_cat_neo_import_write_report(candidate, target, error) &&
+        write_mode(target, candidate->mode, error);
+}
+
 static void cleanup(ImportInstall *installs, size_t count, bool committed) {
     for (size_t i = 0; i < count; ++i)
         bongo_cat_neo_model_remove_tree(committed && installs[i].committed ? installs[i].target :
@@ -118,18 +129,14 @@ static bool prepare_install(const BongoCatNeoImportCandidate *candidate,
     snprintf(temporary_name, sizeof(temporary_name), ".import-%llx-%zu.tmp",
         stamp, index + 1);
     BongoCatNeoImportCandidate installed;
-    char adapter[BONGO_CAT_NEO_PATH_CAP];
     if (!bongo_cat_neo_path_join(install->temporary, sizeof(install->temporary),
         root, temporary_name) ||
         !bongo_cat_neo_path_join(install->target, sizeof(install->target), root, install->id) ||
         !bongo_cat_neo_import_prepare_package(candidate, install->temporary,
-            &installed, error) ||
-        !bongo_cat_neo_path_join(adapter, sizeof(adapter), install->temporary, "adapter") ||
-        !copy_preview(&installed, adapter, error) ||
-        !bongo_cat_neo_import_mver_assets(&installed, adapter, error) ||
-        !bongo_cat_neo_import_mver_metadata(&installed, adapter, error) ||
-        !bongo_cat_neo_import_write_report(&installed, adapter, error) ||
-        !write_mode(adapter, installed.mode, error) ||
+            &installed, error)) return false;
+    char adapter[BONGO_CAT_NEO_PATH_CAP];
+    if (!bongo_cat_neo_path_join(adapter, sizeof(adapter), install->temporary, "adapter") ||
+        !bongo_cat_neo_import_prepare_adapter(&installed, adapter, error) ||
         !bongo_cat_neo_import_write_package(&installed, install->temporary, error)) return false;
     return bongo_cat_neo_import_manifest_valid(installed.directory,
         installed.setting, error);

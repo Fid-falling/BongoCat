@@ -157,6 +157,8 @@
         "alwaysOnTop": "Luôn trên cùng",
         "windowSize": "Kích thước",
         "opacity": "Độ mờ",
+        "wheelSizeHint": "Cuộn: kích thước",
+        "wheelOpacityHint": "Ctrl+cuộn: độ mờ",
         "quitApp": "Thoát"
       }
     }
