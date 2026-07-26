@@ -25,7 +25,7 @@ void bongo_cat_neo_config_defaults(BongoCatNeoConfig *config) {
     config->app.theme = BONGO_CAT_NEO_THEME_AUTO;
     config->app.language = BONGO_CAT_NEO_LANG_EN_US;
     config->current_mode = BONGO_CAT_NEO_MODE_GAMEPAD;
-    memcpy(config->current_model, "gamepad", sizeof("gamepad"));
+    memcpy(config->current_model, "standard", sizeof("standard"));
 }
 
 void bongo_cat_neo_config_validate(BongoCatNeoConfig *config) {

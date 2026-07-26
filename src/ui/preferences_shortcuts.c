@@ -151,10 +151,10 @@ bool bongo_cat_neo_preferences_shortcuts_blocked(
 
 static void shortcut_row(BongoCatNeoPreferences *value, struct nk_context *context,
     const char *id, const char *label_key, const char *label_fallback,
-    const char *hint_key, const char *hint_fallback, char *target, int capacity) {
+    char *target, int capacity) {
     bool active = bongo_cat_neo_preferences_shortcut_active(value, id);
     bool clicked = bongo_cat_neo_pref_edit(context, id,
-        tr(value, label_key, label_fallback), tr(value, hint_key, hint_fallback),
+        tr(value, label_key, label_fallback), "",
         target, active, tr(value, "components.shortcut.hints.clickRecordShortcut",
         "Click to record shortcut"), tr(value,
         "components.shortcut.hints.pressRecordShortcut", "Press shortcut"));
@@ -166,19 +166,20 @@ void bongo_cat_neo_preferences_page_shortcuts(BongoCatNeoPreferences *value,
     BongoCatNeoShortcutOptions *keys = &value->app->config.shortcuts;
     bongo_cat_neo_pref_section(context, tr(value,
         "pages.preference.shortcut.title", "Shortcuts"));
-    shortcut_row(value, context, "shortcut-cat", "pages.preference.shortcut.labels.toggleCat",
-        "Toggle Cat", "pages.preference.shortcut.hints.toggleCat", "Toggle the cat window.",
+    bool zh = value->app->config.app.language == BONGO_CAT_NEO_LANG_ZH_CN;
+    shortcut_row(value, context, "shortcut-cat", zh ? "native.shortcut.toggleCat" :
+        "pages.preference.shortcut.labels.toggleCat", "Toggle Cat",
         keys->visible_cat, sizeof(keys->visible_cat));
-    shortcut_row(value, context, "shortcut-pref", "pages.preference.shortcut.labels.togglePreferences",
-        "Toggle Preferences", "pages.preference.shortcut.hints.togglePreferences", "Toggle this window.",
+    shortcut_row(value, context, "shortcut-pref", zh ? "native.shortcut.preferences" :
+        "pages.preference.shortcut.labels.togglePreferences", "Toggle Preferences",
         keys->visible_preferences, sizeof(keys->visible_preferences));
-    shortcut_row(value, context, "shortcut-mirror", "pages.preference.shortcut.labels.mirrorMode",
-        "Mirror Mode", "pages.preference.shortcut.hints.mirrorMode", "Toggle horizontal mirroring.",
+    shortcut_row(value, context, "shortcut-mirror", zh ? "native.shortcut.mirror" :
+        "pages.preference.shortcut.labels.mirrorMode", "Mirror Mode",
         keys->mirror, sizeof(keys->mirror));
-    shortcut_row(value, context, "shortcut-pass", "pages.preference.shortcut.labels.passThrough",
-        "Pass Through", "pages.preference.shortcut.hints.passThrough", "Toggle mouse pass-through.",
+    shortcut_row(value, context, "shortcut-pass", zh ? "native.shortcut.passThrough" :
+        "pages.preference.shortcut.labels.passThrough", "Pass Through",
         keys->pass_through, sizeof(keys->pass_through));
-    shortcut_row(value, context, "shortcut-top", "pages.preference.shortcut.labels.alwaysOnTop",
-        "Always on Top", "pages.preference.shortcut.hints.alwaysOnTop", "Toggle always-on-top.",
+    shortcut_row(value, context, "shortcut-top", zh ? "native.shortcut.alwaysOnTop" :
+        "pages.preference.shortcut.labels.alwaysOnTop", "Always on Top",
         keys->always_on_top, sizeof(keys->always_on_top));
 }

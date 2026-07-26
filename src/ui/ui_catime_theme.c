@@ -21,7 +21,9 @@ static bool high_contrast(BongoCatNeoUIPalette *value) {
     value->background = value->surface = value->field = NK_SYS(window);
     value->border = value->text = value->muted = NK_SYS(text);
     value->accent = value->accent_hover = value->accent_pressed = NK_SYS(accent);
+    value->pink = value->pink_hover = NK_SYS(accent);
     value->hover = value->selection = NK_SYS(accent);
+    value->hover_pink = NK_SYS(accent);
     value->danger = NK_SYS(GetSysColor(COLOR_HIGHLIGHTTEXT));
     value->danger_background = NK_SYS(accent);
     #undef NK_SYS
@@ -34,7 +36,7 @@ BongoCatNeoUIPalette bongo_cat_neo_ui_palette(bool dark) {
 #ifdef _WIN32
     if (high_contrast(&value)) return value;
 #endif
-    value.background = rgb(dark ? 0x16181D : 0xF3F5F9);
+    value.background = rgb(dark ? 0x16181D : 0xF0F4F9);
     value.surface = rgb(dark ? 0x21242B : 0xFFFFFF);
     value.field = rgb(dark ? 0x2A2E37 : 0xF3F5F8);
     value.border = rgb(dark ? 0x3B424F : 0xD8DEE8);
@@ -43,7 +45,10 @@ BongoCatNeoUIPalette bongo_cat_neo_ui_palette(bool dark) {
     value.accent = rgb(0x54AEFF);
     value.accent_hover = rgb(0x3C9AE8);
     value.accent_pressed = rgb(0x2587CF);
+    value.pink = rgb(0xF77DAA);
+    value.pink_hover = rgb(0xED6F9D);
     value.hover = rgb(dark ? 0x292E37 : 0xF7FAFD);
+    value.hover_pink = rgb(dark ? 0x3B2933 : 0xFFF1F6);
     value.selection = rgb(dark ? 0x27384B : 0xEAF5FF);
     value.danger = rgb(dark ? 0xFFA4A4 : 0xC93D4D);
     value.danger_background = rgb(dark ? 0x4B2B31 : 0xFFECF0);

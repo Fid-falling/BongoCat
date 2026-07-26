@@ -111,13 +111,16 @@ add_library(bongo_cat_neo_runtime STATIC
   src/runtime/window_hit.c src/runtime/window_wheel.c
   src/ui/nuklear_impl.c
   src/ui/ui_backend.c src/ui/ui_cursor.c
+  src/ui/ui_animation.c
   src/ui/ui_font.c src/ui/ui_font_atlas.c
   src/ui/ui_input.c
   src/ui/ui_catime.c src/ui/ui_catime_theme.c
   src/ui/ui_native_theme.c
   src/ui/preferences.c src/ui/preferences_render.c
+  src/ui/preferences_assets.c src/ui/preferences_about.c
   src/ui/preferences_live_resize.c
   src/ui/preferences_dialog.c src/ui/preferences_import.c
+  src/ui/preferences_behavior_dialog.c
   src/ui/preferences_notice.c
   src/ui/preferences_model.c
   src/ui/preferences_pages.c

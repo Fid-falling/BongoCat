@@ -1,12 +1,11 @@
 #include "bongo_cat_neo/preferences.h"
 #include "bongo_cat_neo/app.h"
 #include "bongo_cat_neo/i18n.h"
-#include "bongo_cat_neo/image.h"
 #include "bongo_cat_neo/memory.h"
-#include "bongo_cat_neo/path.h"
 #include "bongo_cat_neo/platform.h"
 #include "preferences_state.h"
 #include "ui_catime.h"
+#include "ui_animation.h"
 #include "ui_font.h"
 #include "ui_native_theme.h"
 #include <SDL3/SDL.h>
@@ -115,15 +114,7 @@ static bool open_window(BongoCatNeoPreferences *value) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
         return false;
     }
-    char logo_path[BONGO_CAT_NEO_PATH_CAP];
-    if (bongo_cat_neo_path_join(logo_path, sizeof(logo_path),
-        value->app->asset_root, "logo.png")) {
-        BongoCatNeoError logo_error = {0};
-        value->logo_texture = bongo_cat_neo_image_texture_thumbnail(logo_path, 64, 64,
-            &value->logo_width, &value->logo_height, &logo_error);
-        if (!value->logo_texture && logo_error.message[0])
-            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", logo_error.message);
-    }
+    bongo_cat_neo_preferences_assets_load(value);
     value->style_theme = -1;
     value->font_language = value->app->config.app.language;
     SDL_GL_SetSwapInterval(1);
@@ -162,8 +153,8 @@ void bongo_cat_neo_preferences_close(BongoCatNeoPreferences *value) {
     if (value->input_active) bongo_cat_neo_preferences_input_end(value);
     SDL_StopTextInput(value->window);
     bongo_cat_neo_preferences_model_cache_clear(value->app);
-    if (value->logo_texture) glDeleteTextures(1, &value->logo_texture);
-    value->logo_texture = 0;
+    bongo_cat_neo_ui_animations_reset(&value->ui.context);
+    bongo_cat_neo_preferences_assets_clear(value);
     bongo_cat_neo_ui_cursor_destroy(&value->ui); bongo_cat_neo_ui_destroy(&value->ui);
     if (value->owns_gl_context && value->gl_context)
         SDL_GL_DestroyContext(value->gl_context);
@@ -216,6 +207,11 @@ static Uint32 event_window(const SDL_Event *event) {
 
 static bool chrome_event(BongoCatNeoPreferences *value, const SDL_Event *event) {
     if (event->type == SDL_EVENT_KEY_DOWN && event->key.key == SDLK_ESCAPE) {
+        if (bongo_cat_neo_preferences_behavior_dialog_active(value)) {
+            bongo_cat_neo_preferences_behavior_dialog_close(value);
+            value->render_dirty = true;
+            return true;
+        }
         if (bongo_cat_neo_preferences_remove_dialog_active(value->app)) {
             bongo_cat_neo_preferences_remove_dialog_clear(value->app);
             value->render_dirty = true;

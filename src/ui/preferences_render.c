@@ -2,6 +2,7 @@
 #include "preferences_controls.h"
 #include "preferences_notice.h"
 #include "ui_catime.h"
+#include "ui_animation.h"
 #include "bongo_cat_neo/file.h"
 #include "bongo_cat_neo/path.h"
 #include "bongo_cat_neo/tray.h"
@@ -30,7 +31,7 @@ static void draw_page(BongoCatNeoPreferences *value, struct nk_context *context)
     case 1: bongo_cat_neo_preferences_page_general(value->app, context); break;
     case 2: bongo_cat_neo_preferences_page_model(value, context); break;
     case 3: bongo_cat_neo_preferences_page_shortcuts(value, context); break;
-    default: bongo_cat_neo_preferences_page_about(value->app, context); break;
+    default: bongo_cat_neo_preferences_page_about(value, context); break;
     }
 }
 
@@ -49,7 +50,7 @@ static void root_style_apply(struct nk_context *context,
     BongoCatNeoUIPalette palette) {
     context->style.window.padding = nk_vec2(BONGO_CAT_NEO_UI_MARGIN,
         BONGO_CAT_NEO_UI_MARGIN);
-    context->style.window.group_padding = nk_vec2(24, 8);
+    context->style.window.group_padding = nk_vec2(0, 0);
     context->style.window.spacing = nk_vec2(0, 0);
     context->style.window.fixed_background = nk_style_item_color(
         palette.background);
@@ -76,27 +77,43 @@ static bool draw_shell(BongoCatNeoPreferences *value, struct nk_context *context
         tr(value, "pages.preference.general.title", "General"),
         tr(value, "pages.preference.model.title", "Model"),
         tr(value, "pages.preference.shortcut.title", "Shortcuts"),
-        tr(value, "pages.preference.about.title", "About")};
-    bool modal = bongo_cat_neo_preferences_remove_dialog_active(value->app);
-    bongo_cat_neo_ui_shell_draw(context, (float)width, (float)height, dark);
-    bool title_clicked = false;
-    bool close_requested = bongo_cat_neo_ui_header(context, "Bongo Cat Neo",
-        value->ui.heading_font, value->logo_texture, &title_clicked, !modal, dark);
-    if (title_clicked && !SDL_OpenURL("https://bongocatneo.com"))
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Cannot open website: %s", SDL_GetError());
-    bongo_cat_neo_ui_tabs(context, menus, 5, &value->page, !modal, dark);
-    float body_height = (float)height - BONGO_CAT_NEO_UI_MARGIN * 2.0f -
-        BONGO_CAT_NEO_UI_HEADER_HEIGHT - BONGO_CAT_NEO_UI_TABS_HEIGHT;
-    nk_layout_row_dynamic(context, NK_MAX(120.0f, body_height), 1);
+        tr(value, "native.support.title", "Support Developer")};
+    bool modal = bongo_cat_neo_preferences_remove_dialog_active(value->app) ||
+        bongo_cat_neo_preferences_behavior_dialog_active(value);
     BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(dark);
-    struct nk_rect body = nk_widget_bounds(context);
-    struct nk_command_buffer *canvas = nk_window_get_canvas(context);
-    nk_fill_rect(canvas, body, 16, p.background);
-    nk_stroke_rect(canvas, body, 16, 1, p.border);
+    bongo_cat_neo_ui_shell_draw(context, (float)width, (float)height, dark);
+    float sidebar = bongo_cat_neo_ui_sidebar_width((float)width);
+    float interior_height = (float)height - BONGO_CAT_NEO_UI_MARGIN * 2.0f;
+    nk_layout_row_begin(context, NK_STATIC, interior_height, 2);
+    nk_layout_row_push(context, sidebar);
     struct nk_color clear = nk_rgba(0, 0, 0, 0);
     context->style.window.fixed_background = nk_style_item_color(clear);
     context->style.window.background = clear;
-    context->style.window.group_padding = nk_vec2(22, 12);
+    context->style.window.group_padding = nk_vec2(0, 0);
+    bool title_clicked = false;
+    if (nk_group_begin(context, "preferences-sidebar", NK_WINDOW_NO_SCROLLBAR)) {
+    bongo_cat_neo_ui_header(context, "Bongo Cat Neo",
+        value->ui.caption_font, value->logo_texture, &title_clicked, !modal, dark);
+    if (title_clicked && !SDL_OpenURL("https://bongocatneo.com"))
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Cannot open website: %s", SDL_GetError());
+    bongo_cat_neo_ui_tabs(context, menus, 5, &value->page, !modal, dark);
+    if (!value->page_seen) {
+        value->page_seen = true; value->last_page = value->page;
+    } else if (value->last_page != value->page) {
+        value->last_page = value->page;
+        value->page_transition_ns = SDL_GetTicksNS();
+    }
+    nk_group_end(context);
+    }
+    nk_layout_row_push(context, (float)width - BONGO_CAT_NEO_UI_MARGIN * 2.0f - sidebar);
+    bool close_requested = false;
+    if (nk_group_begin(context, "preferences-content", NK_WINDOW_NO_SCROLLBAR)) {
+    close_requested = bongo_cat_neo_ui_content_header(context,
+        menus[value->page], value->page, !modal, dark);
+    float body_height = interior_height - BONGO_CAT_NEO_UI_HEADER_HEIGHT;
+    nk_layout_row_dynamic(context, NK_MAX(120.0f, body_height), 1);
+    struct nk_rect body_bounds = nk_widget_bounds(context);
+    context->style.window.group_padding = nk_vec2(24, 16);
     context->style.window.spacing = nk_vec2(10, 10);
     int scroll_page = NK_CLAMP(0, value->page, 4);
     if (value->scroll_ready[scroll_page])
@@ -127,10 +144,24 @@ static bool draw_shell(BongoCatNeoPreferences *value, struct nk_context *context
         if (wheel != 0.0f || fabsf(next - value->scroll_target[scroll_page]) > .5f)
             value->render_dirty = true;
     }
+    if (value->page_transition_ns) {
+        uint64_t elapsed = SDL_GetTicksNS() - value->page_transition_ns;
+        float progress = NK_MIN(1.0f, elapsed / 220000000.0f);
+        if (progress < 1.0f) {
+            struct nk_command_buffer *canvas = nk_window_get_canvas(context);
+            nk_fill_rect(canvas, body_bounds, 0, nk_rgba(p.surface.r,
+                p.surface.g, p.surface.b, (nk_byte)(220 * (1.0f - progress))));
+            value->render_dirty = true;
+        } else value->page_transition_ns = 0;
+    }
+    nk_group_end(context);
+    }
+    nk_layout_row_end(context);
     context->style.window.fixed_background = nk_style_item_color(p.surface);
     context->style.window.background = p.surface;
     bongo_cat_neo_preferences_notice_draw(value, context, (float)width, (float)height);
     bongo_cat_neo_preferences_remove_dialog_draw(value->app, context);
+    bongo_cat_neo_preferences_behavior_dialog_draw(value, context);
     return close_requested;
 }
 
@@ -220,6 +251,8 @@ void bongo_cat_neo_preferences_render(BongoCatNeoPreferences *value) {
             value->render_dirty = true;
     }
     reload_language(value);
-    if (bongo_cat_neo_pref_controls_animating(&value->ui.context))
+    if (value->shortcut_recording ||
+        bongo_cat_neo_pref_controls_animating(&value->ui.context) ||
+        bongo_cat_neo_ui_animations_active(&value->ui.context))
         value->render_dirty = true;
 }

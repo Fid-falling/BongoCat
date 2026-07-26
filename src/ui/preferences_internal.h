@@ -9,9 +9,16 @@ void bongo_cat_neo_preferences_page_cat(BongoCatNeoApp *app, struct nk_context *
 void bongo_cat_neo_preferences_page_general(BongoCatNeoApp *app, struct nk_context *context);
 void bongo_cat_neo_preferences_page_model(BongoCatNeoPreferences *value,
     struct nk_context *context);
+bool bongo_cat_neo_preferences_behavior_dialog_active(
+    const BongoCatNeoPreferences *value);
+void bongo_cat_neo_preferences_behavior_dialog_draw(
+    BongoCatNeoPreferences *value, struct nk_context *context);
+void bongo_cat_neo_preferences_behavior_dialog_close(
+    BongoCatNeoPreferences *value);
 void bongo_cat_neo_preferences_page_shortcuts(BongoCatNeoPreferences *value,
     struct nk_context *context);
-void bongo_cat_neo_preferences_page_about(BongoCatNeoApp *app, struct nk_context *context);
+void bongo_cat_neo_preferences_page_about(BongoCatNeoPreferences *value,
+    struct nk_context *context);
 bool bongo_cat_neo_preferences_shortcut_active(const BongoCatNeoPreferences *value,
     const char *id);
 void bongo_cat_neo_preferences_shortcut_begin(BongoCatNeoPreferences *value,

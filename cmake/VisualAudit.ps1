@@ -7,6 +7,8 @@ param(
     [string[]]$Live2DScenarios = @(),
     [string[]]$ExternalKeys = @(),
     [string]$PreferenceDataRoot = "",
+    [int]$PreferenceWidth = 0,
+    [int]$PreferenceHeight = 0,
     [switch]$SkipPreferences,
     [switch]$SkipMain
 )
@@ -139,6 +141,11 @@ if (-not $SkipPreferences) {
             $process = Start-Process -FilePath $Exe -ArgumentList $arguments -WorkingDirectory (Split-Path $Exe) -PassThru
             try {
                 $window = Wait-AppWindow $process.Id $true
+                if ($PreferenceWidth -gt 0 -and $PreferenceHeight -gt 0) {
+                    [void][BongoCatNeoVisualNative]::SetWindowPos($window.Handle,
+                        [IntPtr](-1), 40, 40, $PreferenceWidth,
+                        $PreferenceHeight, 0x0040)
+                }
                 Wait-Frame $uiFrame
                 $path = Join-Path $OutputDir "preferences-$theme-$language-page$page.png"
                 $audit = Save-Window $window $path

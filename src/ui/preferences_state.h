@@ -15,6 +15,11 @@ struct BongoCatNeoPreferences {
     unsigned int logo_texture;
     int logo_width;
     int logo_height;
+    unsigned int catime_texture;
+    unsigned int vlaina_texture;
+    int catime_width, catime_height;
+    int vlaina_width, vlaina_height;
+    bool support_assets_loaded;
     int page;
     int style_theme;
     BongoCatNeoLanguage font_language;
@@ -28,9 +33,15 @@ struct BongoCatNeoPreferences {
     float scroll_current[5];
     float scroll_target[5];
     bool scroll_ready[5];
+    bool page_seen;
+    int last_page;
+    uint64_t page_transition_ns;
     char notice[384];
+    uint64_t notice_started_ns;
     uint64_t notice_until_ns;
     bool notice_error;
+    bool behavior_dialog;
+    int behavior_tab;
     bool native_drag;
     bool chrome_dragging;
     bool live_resize_active;
@@ -52,5 +63,8 @@ int bongo_cat_neo_preferences_resolved_theme(const BongoCatNeoPreferences *value
 void bongo_cat_neo_preferences_apply_theme(BongoCatNeoPreferences *value);
 void bongo_cat_neo_preferences_live_resize_install(BongoCatNeoPreferences *value);
 void bongo_cat_neo_preferences_live_resize_uninstall(BongoCatNeoPreferences *value);
+void bongo_cat_neo_preferences_assets_load(BongoCatNeoPreferences *value);
+void bongo_cat_neo_preferences_support_assets_load(BongoCatNeoPreferences *value);
+void bongo_cat_neo_preferences_assets_clear(BongoCatNeoPreferences *value);
 
 #endif

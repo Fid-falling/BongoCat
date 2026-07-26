@@ -173,6 +173,17 @@
     }
   },
   "native": {
+    "support": {
+      "title": "Apoiar o desenvolvedor",
+      "heroText": "Obrigado pelo apoio. Cada uso e compartilhamento ajuda o Bongo Cat Neo a continuar crescendo.",
+      "version": "Versão do aplicativo",
+      "checkUpdate": "Verificar atualizações",
+      "feedback": "Feedback",
+      "latest": "Já está atualizado",
+      "works": "Mais aplicativos",
+      "worksText": "Outros softwares de vladelaina",
+      "community": "Comunidade"
+    },
     "hoverDelay": "Atraso ao ocultar ao passar o mouse (segundos)",
     "modeStandard": "Padrão",
     "modeKeyboard": "Teclado",
