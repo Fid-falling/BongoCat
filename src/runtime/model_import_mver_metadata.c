@@ -2,6 +2,7 @@
 #include "model_import_mver_internal.h"
 #include "runtime.h"
 #include "bongo_cat_neo/file.h"
+#include "bongo_cat_neo/json.h"
 #include "bongo_cat_neo/path.h"
 
 #include <stdio.h>
@@ -45,7 +46,7 @@ static bool add_sounds(yyjson_mut_doc *output, yyjson_mut_val *items,
     char target_resources[BONGO_CAT_NEO_PATH_CAP], target_sounds[BONGO_CAT_NEO_PATH_CAP];
     if (!bongo_cat_neo_path_join(target_resources, sizeof(target_resources), target, "resources") ||
         !bongo_cat_neo_path_join(target_sounds, sizeof(target_sounds), target_resources, "sounds") ||
-        !SDL_CreateDirectory(target_sounds)) return false;
+        !bongo_cat_neo_path_create_directory(target_sounds)) return false;
     yyjson_val *decoration = yyjson_obj_get(config, "decoration");
     yyjson_val *keep_value = yyjson_obj_get(decoration, "soundKeep");
     bool keep = !keep_value || yyjson_get_bool(keep_value);
@@ -58,7 +59,7 @@ static bool add_sounds(yyjson_mut_doc *output, yyjson_mut_val *items,
             sizeof(relative))) continue;
         const char *name = bongo_cat_neo_path_name(source);
         if (!bongo_cat_neo_path_join(destination, sizeof(destination), target_sounds, name) ||
-            !SDL_CopyFile(source, destination)) return false;
+            !bongo_cat_neo_path_copy_file(source, destination)) return false;
         yyjson_mut_val *item = yyjson_mut_arr_add_obj(output, items);
         if (!item || !yyjson_mut_obj_add_str(output, item, "kind", "sound") ||
             !yyjson_mut_obj_add_strcpy(output, item, "shortcut", shortcut) ||
@@ -73,8 +74,8 @@ bool bongo_cat_neo_import_mver_metadata(const BongoCatNeoImportCandidate *candid
     const char *target, BongoCatNeoError *error) {
     if (candidate->format != BONGO_CAT_NEO_IMPORT_MVER &&
         candidate->format != BONGO_CAT_NEO_IMPORT_MVER_PATCH) return true;
-    yyjson_doc *source = yyjson_read_file(candidate->config,
-        YYJSON_READ_JSON5 | YYJSON_READ_ALLOW_INVALID_UNICODE, NULL, NULL);
+    yyjson_doc *source = bongo_cat_neo_json_read_file(candidate->config,
+        YYJSON_READ_JSON5 | YYJSON_READ_ALLOW_INVALID_UNICODE, NULL);
     yyjson_val *config = source ? yyjson_doc_get_root(source) : NULL;
     yyjson_val *mode = yyjson_obj_get(config, bongo_cat_neo_mode_name(candidate->mode));
     yyjson_mut_doc *output = yyjson_mut_doc_new(NULL);
@@ -88,7 +89,7 @@ bool bongo_cat_neo_import_mver_metadata(const BongoCatNeoImportCandidate *candid
         bongo_cat_neo_mver_effects(output, items, config, mode, candidate, target);
     char path[BONGO_CAT_NEO_PATH_CAP];
     if (ok) ok = bongo_cat_neo_path_join(path, sizeof(path), target, MVER_METADATA) &&
-        yyjson_mut_write_file(path, output, YYJSON_WRITE_PRETTY, NULL, NULL);
+        bongo_cat_neo_json_write_file(path, output, YYJSON_WRITE_PRETTY, NULL);
     yyjson_mut_doc_free(output);
     yyjson_doc_free(source);
     if (!ok && error && !error->message[0])

@@ -96,27 +96,37 @@ static bool open_window(BongoCatNeoPreferences *value) {
             !SDL_GL_MakeCurrent(value->window, value->gl_context)) return false;
     }
     BongoCatNeoError error = {0};
-    char body_path[BONGO_CAT_NEO_PATH_CAP], heading_path[BONGO_CAT_NEO_PATH_CAP];
-    const char *body_font, *heading_font;
+    char body_path[BONGO_CAT_NEO_PATH_CAP], body_fallback_path[BONGO_CAT_NEO_PATH_CAP];
+    char heading_path[BONGO_CAT_NEO_PATH_CAP], heading_fallback_path[BONGO_CAT_NEO_PATH_CAP];
+    const char *body_font, *body_fallback, *heading_font, *heading_fallback;
     const nk_rune *ranges = NULL;
-    bool multilingual = true;
-    body_font = bongo_cat_neo_ui_system_font(body_path, sizeof(body_path), multilingual);
+    body_font = bongo_cat_neo_ui_system_font(body_path, sizeof(body_path), false);
+    body_fallback = bongo_cat_neo_ui_system_font(body_fallback_path,
+        sizeof(body_fallback_path), true);
     heading_font = bongo_cat_neo_ui_system_heading_font(heading_path,
-        sizeof(heading_path), multilingual);
+        sizeof(heading_path), false);
+    heading_fallback = bongo_cat_neo_ui_system_heading_font(heading_fallback_path,
+        sizeof(heading_fallback_path), true);
     if (!heading_font) heading_font = body_font;
+    if (!heading_fallback) heading_fallback = body_fallback;
     if (value->app->i18n) {
         bongo_cat_neo_i18n_all_glyph_ranges(value->app->i18n, value->glyph_ranges,
             sizeof(value->glyph_ranges) / sizeof(value->glyph_ranges[0]));
         ranges = value->glyph_ranges;
     }
     if (!bongo_cat_neo_ui_init(&value->ui, value->window, body_font,
-        heading_font, ranges, &error)) {
+        body_fallback, heading_font, heading_fallback, ranges, &error)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
         return false;
     }
     bongo_cat_neo_preferences_assets_load(value);
+    bongo_cat_neo_platform_trim_memory();
     value->style_theme = -1;
     value->font_language = value->app->config.app.language;
+    int pixel_width = 0, pixel_height = 0;
+    SDL_GetWindowSizeInPixels(value->window, &pixel_width, &pixel_height);
+    SDL_Log("Preferences GL ready: dedicated=%d pixels=%dx%d",
+        value->owns_gl_context, pixel_width, pixel_height);
     SDL_GL_SetSwapInterval(1);
     SDL_StartTextInput(value->window);
     value->render_dirty = true;

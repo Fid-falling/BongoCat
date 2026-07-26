@@ -40,6 +40,8 @@ void test_config(void) {
     const char *path = "bongo-cat-neo-\xE8\xAE\xBE\xE7\xBD\xAE.json";
     CHECK(bongo_cat_neo_config_save(path, &value, &error) == BONGO_CAT_NEO_OK);
     CHECK(bongo_cat_neo_path_is_file(path));
+    uint64_t file_size = 0;
+    CHECK(bongo_cat_neo_path_file_size(path, &file_size) && file_size > 0);
     char found[BONGO_CAT_NEO_PATH_CAP];
     CHECK(bongo_cat_neo_path_find_suffix(".", "\xE8\xAE\xBE\xE7\xBD\xAE.json",
         found, sizeof(found)));

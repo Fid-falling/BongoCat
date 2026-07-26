@@ -155,14 +155,14 @@ BongoCatNeoResult bongo_cat_neo_platform_set_autostart(bool enabled, BongoCatNeo
     }
     char executable[BONGO_CAT_NEO_PATH_CAP];
     if (!executable_path(executable) || strchr(executable, '"') ||
-        !SDL_CreateDirectory(directory)) {
+        !bongo_cat_neo_path_create_directory(directory)) {
         bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO, "Cannot prepare Linux autostart entry");
         return BONGO_CAT_NEO_ERROR_IO;
     }
     FILE *file = fopen(path, "wb");
     if (!file) return BONGO_CAT_NEO_ERROR_IO;
     bool written = fprintf(file, "[Desktop Entry]\nType=Application\nName=Bongo Cat Neo\n"
-        "Exec=\"%s\"\nTerminal=false\nX-GNOME-Autostart-enabled=true\n", executable) > 0;
+        "Exec=\"%s\" --autostart\nTerminal=false\nX-GNOME-Autostart-enabled=true\n", executable) > 0;
     if (fclose(file) != 0) written = false;
     if (written) return BONGO_CAT_NEO_OK;
     remove(path); bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO, "Cannot write Linux autostart entry");

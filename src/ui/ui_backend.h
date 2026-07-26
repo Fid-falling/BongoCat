@@ -29,6 +29,8 @@ typedef struct BongoCatNeoUIBackend {
     const struct nk_user_font *body_font;
     const struct nk_user_font *label_font;
     const struct nk_user_font *heading_font;
+    nk_rune *latin_glyph_ranges;
+    nk_rune *cjk_glyph_ranges;
     void *vertices;
     void *elements;
     size_t vertex_capacity;
@@ -53,7 +55,8 @@ typedef struct BongoCatNeoUIBackend {
 } BongoCatNeoUIBackend;
 
 bool bongo_cat_neo_ui_init(BongoCatNeoUIBackend *ui, SDL_Window *window,
-    const char *body_font_path, const char *heading_font_path,
+    const char *body_font_path, const char *body_fallback_path,
+    const char *heading_font_path, const char *heading_fallback_path,
     const nk_rune *glyph_ranges, BongoCatNeoError *error);
 void bongo_cat_neo_ui_destroy(BongoCatNeoUIBackend *ui);
 void bongo_cat_neo_ui_input_begin(BongoCatNeoUIBackend *ui);

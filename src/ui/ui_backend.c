@@ -68,7 +68,8 @@ static bool create_device(BongoCatNeoUIBackend *ui, BongoCatNeoError *error) {
 }
 
 bool bongo_cat_neo_ui_init(BongoCatNeoUIBackend *ui, SDL_Window *window,
-    const char *body_font_path, const char *heading_font_path,
+    const char *body_font_path, const char *body_fallback_path,
+    const char *heading_font_path, const char *heading_fallback_path,
     const nk_rune *glyph_ranges, BongoCatNeoError *error) {
     memset(ui, 0, sizeof(*ui));
     ui->window = window;
@@ -78,7 +79,8 @@ bool bongo_cat_neo_ui_init(BongoCatNeoUIBackend *ui, SDL_Window *window,
     ui->elements = malloc(ui->element_capacity);
     if (!ui->vertices || !ui->elements || !nk_init_default(&ui->context, NULL) ||
         !create_device(ui, error) || !bongo_cat_neo_ui_font_atlas_create(ui,
-            body_font_path, heading_font_path, glyph_ranges)) return false;
+            body_font_path, body_fallback_path, heading_font_path,
+            heading_fallback_path, glyph_ranges)) return false;
     nk_buffer_init_default(&ui->commands);
     context_backend = ui;
     ui->context.clip.copy = clipboard_copy;

@@ -11,10 +11,8 @@ if (-not $OutputDir) { $OutputDir = Join-Path $root "build\preference-interactio
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
-Get-Process BongoCatNeo -ErrorAction SilentlyContinue | Stop-Process -Force
-Get-Process BongoCatNeo -ErrorAction SilentlyContinue |
-    Wait-Process -Timeout 3 -ErrorAction SilentlyContinue
-Start-Sleep -Milliseconds 600
+$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "preference-interaction-audit-$PID"
 Add-Type -AssemblyName System.Drawing
 Add-Type @'
 using System;

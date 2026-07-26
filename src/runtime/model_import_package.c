@@ -1,5 +1,6 @@
 #include "model_import.h"
 #include "runtime.h"
+#include "bongo_cat_neo/json.h"
 #include "bongo_cat_neo/path.h"
 
 #include <SDL3/SDL.h>
@@ -56,7 +57,7 @@ static bool copy_payload(const BongoCatNeoImportCandidate *candidate,
     bool patch = candidate->format == BONGO_CAT_NEO_IMPORT_MVER_PATCH;
     if (patch) {
         char patch_path[BONGO_CAT_NEO_PATH_CAP];
-        if (!SDL_CreateDirectory(payload) ||
+        if (!bongo_cat_neo_path_create_directory(payload) ||
             !bongo_cat_neo_path_join(base, sizeof(base), payload, "base") ||
             !bongo_cat_neo_path_join(patch_path, sizeof(patch_path), payload, "patch") ||
             bongo_cat_neo_copy_directory(candidate->package_root, base, error) !=
@@ -83,7 +84,7 @@ static bool copy_payload(const BongoCatNeoImportCandidate *candidate,
 
 bool bongo_cat_neo_import_prepare_package(const BongoCatNeoImportCandidate *candidate,
     const char *target, BongoCatNeoImportCandidate *installed, BongoCatNeoError *error) {
-    if (!candidate || !target || !installed || !SDL_CreateDirectory(target)) return false;
+    if (!candidate || !target || !installed || !bongo_cat_neo_path_create_directory(target)) return false;
     *installed = *candidate;
     if (!copy_payload(candidate, target, installed, error)) {
         if (error && !error->message[0]) bongo_cat_neo_error_set(error,
@@ -92,7 +93,7 @@ bool bongo_cat_neo_import_prepare_package(const BongoCatNeoImportCandidate *cand
     }
     char adapter[BONGO_CAT_NEO_PATH_CAP];
     return bongo_cat_neo_path_join(adapter, sizeof(adapter), target, "adapter") &&
-        SDL_CreateDirectory(adapter);
+        bongo_cat_neo_path_create_directory(adapter);
 }
 
 static const char *format_name(BongoCatNeoImportFormat format) {
@@ -120,7 +121,7 @@ bool bongo_cat_neo_import_write_package(const BongoCatNeoImportCandidate *candid
         yyjson_mut_obj_add_str(document, root, "adapter", "adapter") &&
         yyjson_mut_obj_add_strcpy(document, root, "setting", candidate->setting) &&
         bongo_cat_neo_path_join(path, sizeof(path), target, PACKAGE_FILE) &&
-        yyjson_mut_write_file(path, document, YYJSON_WRITE_PRETTY, NULL, NULL);
+        bongo_cat_neo_json_write_file(path, document, YYJSON_WRITE_PRETTY, NULL);
     yyjson_mut_doc_free(document);
     if (!ok) bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO,
         "Cannot write model package adapter description");

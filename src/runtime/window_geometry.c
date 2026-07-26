@@ -70,6 +70,7 @@ bool bongo_cat_neo_window_set_scale(BongoCatNeoApp *app, float scale) {
 void bongo_cat_neo_window_clamp_to_display(BongoCatNeoApp *app) {
     if (!app || !app->config.window.keep_in_screen) return;
     SDL_DisplayID display = SDL_GetDisplayForWindow(app->window);
+    if (!display) display = SDL_GetPrimaryDisplay();
     SDL_Rect bounds;
     if (!display || !SDL_GetDisplayUsableBounds(display, &bounds)) return;
     int x, y, width, height;

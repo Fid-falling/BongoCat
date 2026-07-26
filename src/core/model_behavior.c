@@ -1,4 +1,5 @@
 #include "bongo_cat_neo/file.h"
+#include "bongo_cat_neo/json.h"
 #include "bongo_cat_neo/model.h"
 #include "bongo_cat_neo/path.h"
 
@@ -74,7 +75,7 @@ static bool read_mver_assets(BongoCatNeoBehaviorCatalog *catalog,
     char path[BONGO_CAT_NEO_PATH_CAP];
     if (!bongo_cat_neo_path_join(path, sizeof(path), model->adapter_directory,
         ".bongo-cat-neo-mver.json")) return false;
-    yyjson_doc *document = yyjson_read_file(path, 0, NULL, NULL);
+    yyjson_doc *document = bongo_cat_neo_json_read_file(path, 0, NULL);
     if (!document) return true;
     yyjson_val *items = yyjson_obj_get(yyjson_doc_get_root(document), "bindings");
     size_t index, count; yyjson_val *item;

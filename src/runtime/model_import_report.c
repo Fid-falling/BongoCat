@@ -1,5 +1,6 @@
 #include "model_import.h"
 #include "bongo_cat_neo/file.h"
+#include "bongo_cat_neo/json.h"
 #include "bongo_cat_neo/path.h"
 
 #include <stdio.h>
@@ -101,7 +102,7 @@ static size_t missing_motion_sounds(const BongoCatNeoImportCandidate *candidate)
     char manifest_path[BONGO_CAT_NEO_PATH_CAP];
     if (!bongo_cat_neo_path_join(manifest_path, sizeof(manifest_path),
         candidate->directory, candidate->setting)) return 0;
-    yyjson_doc *document = yyjson_read_file(manifest_path, 0, NULL, NULL);
+    yyjson_doc *document = bongo_cat_neo_json_read_file(manifest_path, 0, NULL);
     yyjson_val *refs = document ? yyjson_obj_get(yyjson_doc_get_root(document),
         "FileReferences") : NULL;
     yyjson_val *motions = yyjson_obj_get(refs, "Motions");
@@ -127,8 +128,8 @@ static const char *format_name(BongoCatNeoImportFormat format) {
 
 bool bongo_cat_neo_import_write_report(const BongoCatNeoImportCandidate *candidate,
     const char *target, BongoCatNeoError *error) {
-    yyjson_doc *source = candidate->config[0] ? yyjson_read_file(candidate->config,
-        YYJSON_READ_JSON5 | YYJSON_READ_ALLOW_INVALID_UNICODE, NULL, NULL) : NULL;
+    yyjson_doc *source = candidate->config[0] ? bongo_cat_neo_json_read_file(
+        candidate->config, YYJSON_READ_JSON5 | YYJSON_READ_ALLOW_INVALID_UNICODE, NULL) : NULL;
     yyjson_val *config = source ? yyjson_doc_get_root(source) : NULL;
     yyjson_val *mode = yyjson_obj_get(config, bongo_cat_neo_mode_name(candidate->mode));
     yyjson_mut_doc *output = yyjson_mut_doc_new(NULL);
@@ -176,7 +177,7 @@ bool bongo_cat_neo_import_write_report(const BongoCatNeoImportCandidate *candida
         yyjson_mut_arr_size(degraded) ? "imported-with-documented-degradations" : "imported");
     char path[BONGO_CAT_NEO_PATH_CAP];
     if (ok) ok = bongo_cat_neo_path_join(path, sizeof(path), target, IMPORT_REPORT) &&
-        yyjson_mut_write_file(path, output, YYJSON_WRITE_PRETTY, NULL, NULL);
+        bongo_cat_neo_json_write_file(path, output, YYJSON_WRITE_PRETTY, NULL);
     yyjson_mut_doc_free(output);
     yyjson_doc_free(source);
     if (!ok) bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO,

@@ -125,7 +125,7 @@ static bool process_matrix(const BongoCatNeoImportCandidate *candidate, yyjson_v
     char resources[BONGO_CAT_NEO_PATH_CAP], output_dir[BONGO_CAT_NEO_PATH_CAP];
     if (!bongo_cat_neo_path_join(resources, sizeof(resources), target, "resources") ||
         !bongo_cat_neo_path_join(output_dir, sizeof(output_dir), resources, key_group) ||
-        !SDL_CreateDirectory(output_dir)) return false;
+        !bongo_cat_neo_path_create_directory(output_dir)) return false;
     size_t modifier_total[3] = {0}, modifier_seen[3] = {0};
     count_modifiers(before, modifier_seen);
     memcpy(modifier_total, modifier_seen, sizeof(modifier_total));

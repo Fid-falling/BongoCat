@@ -60,12 +60,77 @@ static struct nk_font_config font_config(float size, const nk_rune *ranges) {
 }
 
 static struct nk_font *add_font(struct nk_font_atlas *atlas,
-    const UIFontSource *source, float size, const nk_rune *ranges) {
+    const UIFontSource *source, float size, const nk_rune *ranges, bool merge) {
     struct nk_font_config config = font_config(size, ranges);
-    return source && source->data
-        ? nk_font_atlas_add_from_memory(atlas, source->data,
-            source->size, size, &config)
-        : nk_font_atlas_add_default(atlas, size, &config);
+    config.merge_mode = merge;
+    int before = atlas->font_num;
+    struct nk_font *font;
+    if (source && source->data) {
+        config.ttf_blob = source->data;
+        config.ttf_size = source->size;
+        config.ttf_data_owned_by_atlas = 1;
+        font = nk_font_atlas_add(atlas, &config);
+    } else font = nk_font_atlas_add_default(atlas, size, &config);
+    return merge && atlas->font_num > before ? atlas->fonts : font;
+}
+
+static void detach_source(struct nk_font_atlas *atlas,
+    const UIFontSource *source) {
+    if (!source || !source->data) return;
+    for (struct nk_font_config *base = atlas->config; base; base = base->next) {
+        struct nk_font_config *config = base;
+        do {
+            if (config->ttf_blob == source->data) config->ttf_blob = NULL;
+            config = config->n;
+        } while (config != base);
+    }
+}
+
+static void font_to_front(struct nk_font_atlas *atlas, struct nk_font *font) {
+    if (!atlas || !font || atlas->fonts == font) return;
+    struct nk_font *previous = atlas->fonts;
+    while (previous && previous->next != font) previous = previous->next;
+    if (!previous) return;
+    previous->next = font->next;
+    font->next = atlas->fonts;
+    atlas->fonts = font;
+}
+
+static bool split_ranges(const nk_rune *ranges, nk_rune **latin,
+    nk_rune **cjk) {
+    *latin = NULL; *cjk = NULL;
+    if (!ranges) return true;
+    size_t entries = 0;
+    while (ranges[entries]) entries++;
+    *latin = calloc(entries + 3, sizeof(**latin));
+    *cjk = calloc(entries + 3, sizeof(**cjk));
+    if (!*latin || !*cjk) { free(*latin); free(*cjk); return false; }
+    size_t low = 0, high = 0;
+    for (size_t pair = 0; ranges[pair] && ranges[pair + 1]; pair += 2) {
+        nk_rune first = ranges[pair], last = ranges[pair + 1];
+        if (first < 0x2e80) {
+            (*latin)[low++] = first;
+            (*latin)[low++] = NK_MIN(last, 0x2e7f);
+        }
+        if (last >= 0x2e80) {
+            (*cjk)[high++] = NK_MAX(first, 0x2e80);
+            (*cjk)[high++] = last;
+        }
+    }
+    return true;
+}
+
+static struct nk_font *add_family_font(struct nk_font_atlas *atlas,
+    const UIFontSource *primary, const UIFontSource *fallback, float size,
+    const nk_rune *all, const nk_rune *latin, const nk_rune *cjk) {
+    bool merge = primary && primary->data && fallback && fallback->data &&
+        cjk && cjk[0];
+    const UIFontSource *base = primary && primary->data ? primary : fallback;
+    struct nk_font *font = add_font(atlas, base, size,
+        merge ? latin : all, false);
+    if (!font || !merge) return font;
+    font_to_front(atlas, font);
+    return add_font(atlas, fallback, size, cjk, true) ? font : NULL;
 }
 
 static bool font_has_ranges(const struct nk_font *font, const nk_rune *ranges) {
@@ -87,6 +152,7 @@ static bool upload_atlas(BongoCatNeoUIBackend *ui) {
     const void *pixels = nk_font_atlas_bake(&ui->atlas, &width, &height,
         NK_FONT_ATLAS_ALPHA8);
     if (!pixels || width < 1 || height < 1) return false;
+    SDL_Log("Preferences font atlas ready: %dx%d", width, height);
     glGenTextures(1, &ui->font_texture);
     glBindTexture(GL_TEXTURE_2D, ui->font_texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -105,26 +171,41 @@ static bool upload_atlas(BongoCatNeoUIBackend *ui) {
 }
 
 bool bongo_cat_neo_ui_font_atlas_create(BongoCatNeoUIBackend *ui,
-    const char *body_path, const char *heading_path,
+    const char *body_path, const char *body_fallback_path,
+    const char *heading_path, const char *heading_fallback_path,
     const nk_rune *glyph_ranges) {
-    UIFontSource body = {0}, heading = {0};
+    UIFontSource body = {0}, body_fallback = {0};
+    UIFontSource heading = {0}, heading_fallback = {0};
     bool body_loaded = body_path && source_load(&body, body_path);
-    bool same_path = body_path && heading_path &&
-        strcmp(body_path, heading_path) == 0;
-    bool heading_loaded = same_path ? body_loaded :
-        (heading_path && source_load(&heading, heading_path));
-    const UIFontSource *heading_source = same_path ? &body :
-        (heading_loaded ? &heading : (body_loaded ? &body : NULL));
+    bool body_fallback_loaded = body_fallback_path &&
+        (!body_path || strcmp(body_path, body_fallback_path) != 0) &&
+        source_load(&body_fallback, body_fallback_path);
+    bool heading_loaded = heading_path && source_load(&heading, heading_path);
+    bool heading_fallback_loaded = heading_fallback_path &&
+        (!heading_path || strcmp(heading_path, heading_fallback_path) != 0) &&
+        source_load(&heading_fallback, heading_fallback_path);
+    const UIFontSource *heading_source = heading_loaded ? &heading :
+        (body_loaded ? &body : NULL);
+    const UIFontSource *heading_fallback_source = heading_fallback_loaded ?
+        &heading_fallback : (body_fallback_loaded ? &body_fallback : NULL);
+    nk_rune *latin_ranges = NULL, *cjk_ranges = NULL;
+    if (!split_ranges(glyph_ranges, &latin_ranges, &cjk_ranges)) {
+        source_release(&heading_fallback); source_release(&heading);
+        source_release(&body_fallback); source_release(&body);
+        return false;
+    }
     nk_font_atlas_init_default(&ui->atlas);
     nk_font_atlas_begin(&ui->atlas);
-    struct nk_font *caption_font = add_font(&ui->atlas,
-        body_loaded ? &body : NULL, 18.0f, glyph_ranges);
-    struct nk_font *body_font = add_font(&ui->atlas,
-        body_loaded ? &body : NULL, 20.0f, glyph_ranges);
-    struct nk_font *label_font = add_font(&ui->atlas,
-        heading_source, 20.0f, glyph_ranges);
-    struct nk_font *heading_font = add_font(&ui->atlas,
-        heading_source, 28.0f, glyph_ranges);
+    const UIFontSource *body_source = body_loaded ? &body : NULL;
+    const UIFontSource *fallback_source = body_fallback_loaded ? &body_fallback : NULL;
+    struct nk_font *caption_font = add_family_font(&ui->atlas, body_source,
+        fallback_source, 18.0f, glyph_ranges, latin_ranges, cjk_ranges);
+    struct nk_font *body_font = add_family_font(&ui->atlas, body_source,
+        fallback_source, 20.0f, glyph_ranges, latin_ranges, cjk_ranges);
+    struct nk_font *label_font = add_family_font(&ui->atlas, heading_source,
+        heading_fallback_source, 20.0f, glyph_ranges, latin_ranges, cjk_ranges);
+    struct nk_font *heading_font = add_family_font(&ui->atlas, heading_source,
+        heading_fallback_source, 28.0f, glyph_ranges, latin_ranges, cjk_ranges);
     bool uploaded = caption_font && body_font && label_font && heading_font &&
         upload_atlas(ui);
     if (uploaded) {
@@ -132,14 +213,22 @@ bool bongo_cat_neo_ui_font_atlas_create(BongoCatNeoUIBackend *ui,
         ui->body_font = &body_font->handle;
         ui->label_font = &label_font->handle;
         ui->heading_font = &heading_font->handle;
+        ui->latin_glyph_ranges = latin_ranges;
+        ui->cjk_glyph_ranges = cjk_ranges;
         ui->font_probe_loaded = font_has_ranges(body_font, glyph_ranges);
         nk_style_set_font(&ui->context, ui->body_font);
-    }
-    ui->font_path_found = body_path != NULL;
-    ui->font_file_loaded = body_loaded;
-    ui->custom_font_loaded = body_loaded && body_font != NULL;
+    } else { free(cjk_ranges); free(latin_ranges); }
+    ui->font_path_found = body_path != NULL || body_fallback_path != NULL;
+    ui->font_file_loaded = body_loaded || body_fallback_loaded;
+    ui->custom_font_loaded = ui->font_file_loaded && body_font != NULL;
+    detach_source(&ui->atlas, &heading_fallback);
+    detach_source(&ui->atlas, &heading);
+    detach_source(&ui->atlas, &body_fallback);
+    detach_source(&ui->atlas, &body);
     nk_font_atlas_cleanup(&ui->atlas);
+    source_release(&heading_fallback);
     source_release(&heading);
+    source_release(&body_fallback);
     source_release(&body);
     return uploaded;
 }
@@ -147,6 +236,8 @@ bool bongo_cat_neo_ui_font_atlas_create(BongoCatNeoUIBackend *ui,
 void bongo_cat_neo_ui_font_atlas_destroy(BongoCatNeoUIBackend *ui) {
     if (!ui) return;
     nk_font_atlas_clear(&ui->atlas);
+    free(ui->cjk_glyph_ranges); free(ui->latin_glyph_ranges);
+    ui->cjk_glyph_ranges = NULL; ui->latin_glyph_ranges = NULL;
     ui->caption_font = NULL;
     ui->body_font = NULL;
     ui->label_font = NULL;

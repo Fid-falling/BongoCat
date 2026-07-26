@@ -14,6 +14,9 @@
 
 namespace bongo_cat_neo {
 
+bool validate_model_setting_json(const std::vector<unsigned char> &json,
+    const char *setting_file, BongoCatNeoError *error);
+
 class NativeModel final : public Csm::CubismUserModel {
 public:
     NativeModel();
@@ -52,7 +55,8 @@ private:
     void release_textures();
     void release_renderer();
     void bind_textures();
-    std::vector<unsigned char> read(const std::string &path) const;
+    std::vector<unsigned char> read(const std::string &path,
+        size_t maximum = (size_t)-1) const;
     std::string path(const char *relative) const;
 
     Csm::CubismModelSettingJson *setting_ = nullptr;

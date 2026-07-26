@@ -24,7 +24,8 @@ if (-not [IO.Path]::IsPathRooted($OutputDir)) {
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
-Get-Process BongoCatNeo -ErrorAction SilentlyContinue | Stop-Process -Force
+$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "visual-audit-$PID"
 Add-Type -AssemblyName System.Drawing
 Add-Type @'
 using System;
@@ -147,12 +148,13 @@ if (-not $SkipPreferences) {
                         $PreferenceHeight, 0x0040)
                 }
                 Wait-Frame $uiFrame
+                $fontReady = (Get-Content -Raw -LiteralPath $uiFrame) -match "font_probe=1"
                 $path = Join-Path $OutputDir "preferences-$theme-$language-page$page.png"
                 $audit = Save-Window $window $path
                 $results.Add([pscustomobject]@{ View="preferences"; Theme=$theme; Language=$language;
                     Page=$page; Model=""; Scenario=""; Width=$audit.Width; Height=$audit.Height;
-                    SampleColors=$audit.SampleColors; Difference=0.0;
-                    Passed=($audit.SampleColors -ge 16); Path=$path })
+                    SampleColors=$audit.SampleColors; Difference=0.0; FontReady=$fontReady;
+                    Passed=($audit.SampleColors -ge 16 -and $fontReady); Path=$path })
             } finally { Stop-AuditProcess $process }
             }
         }

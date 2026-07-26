@@ -5,6 +5,7 @@
 #include "bongo_cat_neo/path.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 typedef struct ImportInstall {
@@ -17,7 +18,7 @@ typedef struct ImportInstall {
 static bool custom_root(BongoCatNeoApp *app, char *path, size_t capacity) {
     return app->data_root[0] &&
         bongo_cat_neo_path_join(path, capacity, app->data_root, "custom-models") &&
-        SDL_CreateDirectory(path);
+        bongo_cat_neo_path_create_directory(path);
 }
 
 static bool copy_optional(const char *source_dir, const char *source_name,
@@ -25,7 +26,7 @@ static bool copy_optional(const char *source_dir, const char *source_name,
     char source[BONGO_CAT_NEO_PATH_CAP], target[BONGO_CAT_NEO_PATH_CAP];
     return bongo_cat_neo_path_join(source, sizeof(source), source_dir, source_name) &&
         bongo_cat_neo_path_join(target, sizeof(target), target_dir, target_name) &&
-        SDL_CopyFile(source, target);
+        bongo_cat_neo_path_copy_file(source, target);
 }
 
 static bool copy_first(const char *source_dir, const char *const *names, size_t count,
@@ -70,7 +71,7 @@ static bool copy_preview(const BongoCatNeoImportCandidate *candidate, const char
             return false;
         target_exists = true;
     }
-    if (!target_exists && !SDL_CreateDirectory(target_resources)) return false;
+    if (!target_exists && !bongo_cat_neo_path_create_directory(target_resources)) return false;
     const char *covers[] = {"cover.png", "cat.png", "bg.png", "mousebg.png",
         "tabletbg.png"};
     const char *backgrounds[] = {"background.png", "bg.png", "mousebg.png",
@@ -103,7 +104,7 @@ static bool write_mode(const char *target, BongoCatNeoModelMode mode, BongoCatNe
 bool bongo_cat_neo_import_prepare_adapter(const BongoCatNeoImportCandidate *candidate,
     const char *target, BongoCatNeoError *error) {
     if (!candidate || !target ||
-        (!bongo_cat_neo_path_is_dir(target) && !SDL_CreateDirectory(target))) return false;
+        (!bongo_cat_neo_path_is_dir(target) && !bongo_cat_neo_path_create_directory(target))) return false;
     return copy_preview(candidate, target, error) &&
         bongo_cat_neo_import_mver_assets(candidate, target, error) &&
         bongo_cat_neo_import_mver_metadata(candidate, target, error) &&
@@ -145,25 +146,37 @@ static bool prepare_install(const BongoCatNeoImportCandidate *candidate,
 BongoCatNeoResult bongo_cat_neo_app_import_model(BongoCatNeoApp *app, const char *source,
     BongoCatNeoError *error) {
     if (!app || !source || !bongo_cat_neo_path_is_dir(source)) return BONGO_CAT_NEO_ERROR_ARGUMENT;
-    BongoCatNeoImportDiscovery discovery;
-    if (!bongo_cat_neo_import_discover(source, &discovery, error)) return BONGO_CAT_NEO_ERROR_FORMAT;
-    char root[BONGO_CAT_NEO_PATH_CAP];
-    if (!custom_root(app, root, sizeof(root))) return BONGO_CAT_NEO_ERROR_IO;
-    if (!bongo_cat_neo_model_cleanup_imports(root, error)) return BONGO_CAT_NEO_ERROR_IO;
-    ImportInstall installs[BONGO_CAT_NEO_IMPORT_CANDIDATE_CAP] = {0};
-    unsigned long long stamp = (unsigned long long)SDL_GetTicksNS();
-    for (size_t i = 0; i < discovery.count; ++i) {
-        if (prepare_install(&discovery.candidates[i], &installs[i], root,
-            stamp, i, discovery.count, error)) continue;
-        cleanup(installs, i + 1, false);
-        return error && error->code == BONGO_CAT_NEO_ERROR_FORMAT
-            ? BONGO_CAT_NEO_ERROR_FORMAT : BONGO_CAT_NEO_ERROR_IO;
+    BongoCatNeoImportDiscovery *discovery = calloc(1, sizeof(*discovery));
+    ImportInstall *installs = calloc(BONGO_CAT_NEO_IMPORT_CANDIDATE_CAP, sizeof(*installs));
+    if (!discovery || !installs) {
+        free(discovery); free(installs);
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_MEMORY,
+            "Cannot allocate model import workspace");
+        return BONGO_CAT_NEO_ERROR_MEMORY;
     }
-    for (size_t i = 0; i < discovery.count; ++i) {
-        if (!SDL_RenamePath(installs[i].temporary, installs[i].target)) {
+    if (!bongo_cat_neo_import_discover(source, discovery, error)) {
+        free(discovery); free(installs); return BONGO_CAT_NEO_ERROR_FORMAT;
+    }
+    char root[BONGO_CAT_NEO_PATH_CAP];
+    if (!custom_root(app, root, sizeof(root)) ||
+        !bongo_cat_neo_model_cleanup_imports(root, error)) {
+        free(discovery); free(installs); return BONGO_CAT_NEO_ERROR_IO;
+    }
+    unsigned long long stamp = (unsigned long long)SDL_GetTicksNS();
+    for (size_t i = 0; i < discovery->count; ++i) {
+        if (prepare_install(&discovery->candidates[i], &installs[i], root,
+            stamp, i, discovery->count, error)) continue;
+        cleanup(installs, i + 1, false);
+        BongoCatNeoResult result = error && error->code == BONGO_CAT_NEO_ERROR_FORMAT
+            ? BONGO_CAT_NEO_ERROR_FORMAT : BONGO_CAT_NEO_ERROR_IO;
+        free(discovery); free(installs); return result;
+    }
+    for (size_t i = 0; i < discovery->count; ++i) {
+        if (!bongo_cat_neo_path_rename(installs[i].temporary, installs[i].target)) {
             bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO,
                 "Cannot finish model import: %s", SDL_GetError());
-            cleanup(installs, discovery.count, true);
+            cleanup(installs, discovery->count, true);
+            free(discovery); free(installs);
             return BONGO_CAT_NEO_ERROR_IO;
         }
         installs[i].committed = true;
@@ -171,7 +184,9 @@ BongoCatNeoResult bongo_cat_neo_app_import_model(BongoCatNeoApp *app, const char
     char previous[BONGO_CAT_NEO_PATH_CAP];
     snprintf(previous, sizeof(previous), "%s", app->config.current_model);
     bongo_cat_neo_app_rescan_models(app);
-    if (bongo_cat_neo_app_select_model(app, installs[0].id)) return BONGO_CAT_NEO_OK;
+    if (bongo_cat_neo_app_select_model(app, installs[0].id)) {
+        free(discovery); free(installs); return BONGO_CAT_NEO_OK;
+    }
 #ifndef BONGO_CAT_NEO_HAS_CUBISM
     const BongoCatNeoModelEntry *entry = bongo_cat_neo_models_find(&app->models, installs[0].id);
     if (entry) {
@@ -179,13 +194,15 @@ BongoCatNeoResult bongo_cat_neo_app_import_model(BongoCatNeoApp *app, const char
             "%s", installs[0].id);
         app->config.current_mode = entry->mode;
     }
+    free(discovery); free(installs);
     return BONGO_CAT_NEO_OK;
 #else
-    cleanup(installs, discovery.count, true);
+    cleanup(installs, discovery->count, true);
     bongo_cat_neo_app_rescan_models(app);
     if (previous[0]) bongo_cat_neo_app_select_model(app, previous);
     bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_CUBISM,
         "Model import was rolled back because the Live2D model could not be loaded");
+    free(discovery); free(installs);
     return BONGO_CAT_NEO_ERROR_CUBISM;
 #endif
 }

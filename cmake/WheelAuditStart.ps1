@@ -1,4 +1,5 @@
-Get-Process BongoCatNeo -ErrorAction SilentlyContinue | Stop-Process -Force
+$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "wheel-audit-$PID"
 $data = if ($DataRoot) { [IO.Path]::GetFullPath($DataRoot) } else {
     Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
 }

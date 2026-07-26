@@ -13,13 +13,50 @@ static float text_width(const struct nk_user_font *font, const char *text) {
         text, nk_strlen(text)) : 0.0f;
 }
 
+static void centered_span(struct nk_command_buffer *canvas,
+    struct nk_rect bounds, const char *text, int length,
+    const struct nk_user_font *font, struct nk_color color) {
+    float width = font->width(font->userdata, font->height, text, length);
+    float target_width = NK_MIN(bounds.w, width + 1.0f);
+    struct nk_rect target = nk_rect(bounds.x + (bounds.w - target_width) * .5f,
+        bounds.y + (bounds.h - font->height) * .5f,
+        target_width, font->height);
+    nk_draw_text(canvas, target, text, length, font,
+        nk_rgba(0, 0, 0, 0), color);
+}
+
 static void centered(struct nk_command_buffer *canvas, struct nk_rect bounds,
     const char *text, const struct nk_user_font *font, struct nk_color color) {
-    float width = text_width(font, text);
-    struct nk_rect target = nk_rect(bounds.x + (bounds.w - width) * .5f,
-        bounds.y + (bounds.h - font->height) * .5f, width + 1, font->height);
-    nk_draw_text(canvas, target, text, nk_strlen(text), font,
-        nk_rgba(0, 0, 0, 0), color);
+    centered_span(canvas, bounds, text, nk_strlen(text), font, color);
+}
+
+static void nav_label(struct nk_command_buffer *canvas, struct nk_rect bounds,
+    const char *text, const struct nk_user_font *font, struct nk_color color) {
+    int length = nk_strlen(text);
+    if (text_width(font, text) <= bounds.w) {
+        centered_span(canvas, bounds, text, length, font, color);
+        return;
+    }
+    int split = -1;
+    float best = 1.0e30f;
+    for (int i = 1; i + 1 < length; ++i) {
+        if (text[i] != ' ') continue;
+        float left = font->width(font->userdata, font->height, text, i);
+        float right = font->width(font->userdata, font->height,
+            text + i + 1, length - i - 1);
+        float widest = NK_MAX(left, right);
+        if (widest < best) { best = widest; split = i; }
+    }
+    if (split < 0) {
+        centered_span(canvas, bounds, text, length, font, color);
+        return;
+    }
+    struct nk_rect line = nk_rect(bounds.x, bounds.y,
+        bounds.w, font->height);
+    centered_span(canvas, line, text, split, font, color);
+    line.y += font->height;
+    centered_span(canvas, line, text + split + 1,
+        length - split - 1, font, color);
 }
 
 float bongo_cat_neo_ui_sidebar_width(float window_width) {
@@ -145,9 +182,13 @@ void bongo_cat_neo_ui_tabs(struct nk_context *context, const char *const *labels
             nk_rgba(p.pink.r, p.pink.g, p.pink.b, (nk_byte)(255 * weight)));
         struct nk_color color = selected ? nk_rgb(255, 255, 255) :
             (hover ? p.accent : p.muted);
-        nav_icon(canvas, i, tile, color);
-        centered(canvas, nk_rect(tile.x, tile.y + 35, tile.w, 28), labels[i],
-            font, color);
+        struct nk_rect icon_tile = tile;
+        if (tile.w < 80.0f) icon_tile.y += 17.0f;
+        nav_icon(canvas, i, icon_tile, color);
+        if (tile.w >= 80.0f)
+            nav_label(canvas, nk_rect(tile.x, tile.y + 31, tile.w, 36),
+                labels[i], font, color);
+        else if (hover) nk_tooltip(context, labels[i]);
         if (hover) bongo_cat_neo_ui_cursor_hover_rect(context, tile,
             BONGO_CAT_NEO_UI_CURSOR_POINTER);
         if (hover && nk_input_is_mouse_click_in_rect(&context->input,

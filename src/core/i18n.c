@@ -143,7 +143,10 @@ static size_t build_ranges(uint32_t *points, size_t count,
     uint32_t *ranges, size_t capacity) {
     size_t written = 2;
     const unsigned char *builtins =
-        (const unsigned char *)"English简体中文繁體中文PortuguêsTiếng Việt";
+        (const unsigned char *)"English"
+        "\xE7\xAE\x80\xE4\xBD\x93\xE4\xB8\xAD\xE6\x96\x87"
+        "\xE7\xB9\x81\xE9\xAB\x94\xE4\xB8\xAD\xE6\x96\x87"
+        "Portugu\xC3\xAAsTi\xE1\xBA\xBFng Vi\xE1\xBB\x87t";
     while (*builtins) add_point(points, &count, decode_utf8(&builtins));
     qsort(points, count, sizeof(points[0]), compare_point);
     ranges[0] = 0x20; ranges[1] = 0x7e;

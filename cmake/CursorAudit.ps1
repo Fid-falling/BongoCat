@@ -168,9 +168,7 @@ function Start-AuditPage([int]$Page, [bool]$Import) {
     $arguments = @("--ci-preferences", "--ci-preference-page=$Page",
         "--ci-language=$Language", "--ci-theme=$Theme", "--data-root=$dataRoot")
     if ($Import) {
-        $target = Join-Path $dataRoot "custom-models\cursor-fixture"
-        New-Item -ItemType Directory -Force -Path $target | Out-Null
-        Copy-Item -Path (Join-Path $ImportPath "*") -Destination $target -Recurse -Force
+        $arguments += "`"--ci-import=$ImportPath`""
     }
     $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
         -WorkingDirectory (Split-Path $Exe) -PassThru
@@ -180,37 +178,38 @@ function Start-AuditPage([int]$Page, [bool]$Import) {
     return [pscustomobject]@{ Process=$process; Window=$window }
 }
 
-Get-Process BongoCatNeo -ErrorAction SilentlyContinue | Stop-Process -Force
+$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "cursor-audit-$PID"
 $results = [Collections.Generic.List[object]]::new()
 $hand = 32649; $text = 32513; $arrow = 32512
 
 $page = Start-AuditPage 0 $false
 try {
     Save-Window $page.Window "display-page.png"
-    $results.Add((Test-Cursor $page.Window "tab" 276 114 $hand))
-    $results.Add((Test-Cursor $page.Window "close" 851 44 $hand))
-    $results.Add((Test-Cursor $page.Window "toggle" 818 256 $hand))
-    $results.Add((Test-Cursor $page.Window "toggle-secondary" 818 577 $hand))
+    $results.Add((Test-Cursor $page.Window "tab" 82 190 $hand))
+    $results.Add((Test-Cursor $page.Window "close" 861 36 $hand))
+    $results.Add((Test-Cursor $page.Window "toggle" 820 141 $hand))
+    $results.Add((Test-Cursor $page.Window "toggle-secondary" 820 596 $hand))
     $results.Add((Test-Cursor $page.Window "empty-space" 500 640 $arrow))
 } finally { $page.Process.Kill(); $page.Process.WaitForExit() }
 
 $page = Start-AuditPage 1 $false
 try {
-    $results.Add((Test-Cursor $page.Window "combo" 710 256 $hand))
+    $results.Add((Test-Cursor $page.Window "combo" 765 353 $hand))
 } finally { $page.Process.Kill(); $page.Process.WaitForExit() }
 
 $page = Start-AuditPage 3 $false
 try {
-    $results.Add((Test-Cursor $page.Window "shortcut-field" 700 256 $hand))
+    $results.Add((Test-Cursor $page.Window "shortcut-field" 756 141 $hand))
 } finally { $page.Process.Kill(); $page.Process.WaitForExit() }
 
 $page = Start-AuditPage 2 $true
 try {
-    $results.Add((Test-Cursor $page.Window "import-card" 180 270 $hand))
-    $results.Add((Test-Cursor $page.Window "model-card" 450 270 $hand))
-    $results.Add((Test-Cursor $page.Window "model-close" 560 417 $hand))
+    $results.Add((Test-Cursor $page.Window "import-card" 291 230 $hand))
+    $results.Add((Test-Cursor $page.Window "model-card" 523 230 $hand))
+    $results.Add((Test-Cursor $page.Window "model-close" 578 559 $hand))
     Save-Window $page.Window "model-page.png"
-    Invoke-Click $page.Window 560 417
+    Invoke-Click $page.Window 578 559
     Save-Window $page.Window "remove-dialog.png"
     $results.Add((Test-Cursor $page.Window "cancel-button" 523 376 $hand))
     Invoke-Click $page.Window 523 376

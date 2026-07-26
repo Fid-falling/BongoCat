@@ -47,7 +47,7 @@ if(EXISTS "${CUBISM_CORE_HEADER}")
     set(BONGO_CAT_NEO_LIVE2D_SOURCES
       src/live2d/cubism_bridge.cpp
       src/live2d/cubism_model_load.cpp
-      src/live2d/cubism_model_update.cpp)
+      src/live2d/cubism_model_update.cpp src/live2d/cubism_model_validate.cpp)
     set(BONGO_CAT_NEO_CUBISM_ENABLED ON)
   endif()
 elseif(BONGO_CAT_NEO_REQUIRE_CUBISM)
@@ -67,7 +67,7 @@ add_library(bongo_cat_neo_core STATIC
   src/core/sha256.c
   src/core/model_catalog.c
   src/core/model_behavior.c
-  src/core/path.c)
+  src/core/path.c src/core/path_io.c src/core/json.c)
 target_sources(bongo_cat_neo_core PRIVATE src/core/shortcut.c)
 target_include_directories(bongo_cat_neo_core PUBLIC include)
 target_link_libraries(bongo_cat_neo_core PUBLIC yyjson PRIVATE bongo_cat_neo_warnings)
@@ -84,7 +84,7 @@ add_library(bongo_cat_neo_runtime STATIC
   src/platform/memory.c src/render/gl_api.c
   src/render/overlay.c
   src/runtime/app.c
-  src/runtime/assets.c
+  src/runtime/assets.c src/runtime/startup.c
   src/runtime/frame_audit.c
   src/runtime/gamepad.c
   src/runtime/live2d_audit.c
@@ -95,7 +95,7 @@ add_library(bongo_cat_neo_runtime STATIC
   src/runtime/model_import_package.c
   src/runtime/model_import_discovery.c
   src/runtime/model_import_format.c
-  src/runtime/model_import_portable.c
+  src/runtime/model_import_portable.c src/runtime/model_import_portable_scan.c
   src/runtime/model_import_mver_patch.c
   src/runtime/model_import_mver.c src/runtime/model_import_mver_image.c
   src/runtime/model_import_mver_shortcut.c src/runtime/model_import_mver_effect.c
@@ -147,7 +147,7 @@ target_compile_definitions(bongo_cat_neo_runtime PRIVATE
 
 if(WIN32)
   enable_language(RC)
-  target_sources(bongo_cat_neo_runtime PRIVATE src/platform/windows.c src/platform/windows_borderless.c src/platform/windows_pointer.c)
+  target_sources(bongo_cat_neo_runtime PRIVATE src/platform/windows.c src/platform/windows_startup.c src/platform/windows_borderless.c src/platform/windows_pointer.c)
   target_sources(bongo_cat_neo_runtime PRIVATE src/platform/windows_assets.c)
   target_link_libraries(bongo_cat_neo_runtime PRIVATE dwmapi ole32 shell32 user32 windowscodecs)
 elseif(APPLE)
@@ -282,15 +282,14 @@ if(BUILD_TESTING)
         -File ${CMAKE_CURRENT_SOURCE_DIR}/cmake/ThemeImportAudit.ps1
         -Exe $<TARGET_FILE:bongo_cat_neo>
         -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/model-import-format-test)
-    set_tests_properties(model-import-formats PROPERTIES TIMEOUT 180)
+    set_tests_properties(model-import-formats PROPERTIES TIMEOUT 300 RUN_SERIAL TRUE)
     add_test(NAME model-import-real-samples
       COMMAND powershell.exe -NoProfile -ExecutionPolicy Bypass
         -File ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RealModelImportAudit.ps1
         -Exe $<TARGET_FILE:bongo_cat_neo>
         -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/real-model-import-test)
-    set_tests_properties(model-import-real-samples PROPERTIES TIMEOUT 300)
-    add_test(NAME startup-soak COMMAND powershell.exe -NoProfile -ExecutionPolicy Bypass -File ${CMAKE_CURRENT_SOURCE_DIR}/cmake/StartupSoak.ps1 -Exe $<TARGET_FILE:bongo_cat_neo> -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/startup-soak-test)
-    set_tests_properties(startup-soak PROPERTIES TIMEOUT 30)
+    set_tests_properties(model-import-real-samples PROPERTIES TIMEOUT 300 RUN_SERIAL TRUE)
+    include(cmake/StartupReliability.cmake)
   endif()
   if(UNIX AND NOT APPLE)
     target_link_libraries(bongo_cat_neo_ui_tests PRIVATE m)

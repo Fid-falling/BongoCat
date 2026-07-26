@@ -5,24 +5,40 @@
 #include <ctype.h>
 #include <string.h>
 
-static SDL_EnumerationResult SDLCALL remove_item(void *userdata,
+#define MODEL_REMOVE_DEPTH_CAP 32
+
+typedef struct RemoveContext { BongoCatNeoError *error; unsigned depth; } RemoveContext;
+static bool remove_tree(const char *path, unsigned depth, BongoCatNeoError *error);
+
+static BongoCatNeoPathVisit remove_item(void *userdata,
     const char *dirname, const char *name) {
-    BongoCatNeoError *error = userdata;
+    RemoveContext *context = userdata;
     char path[BONGO_CAT_NEO_PATH_CAP];
     return bongo_cat_neo_path_join(path, sizeof(path), dirname, name) &&
-        bongo_cat_neo_model_remove_tree(path, error)
-        ? SDL_ENUM_CONTINUE : SDL_ENUM_FAILURE;
+        remove_tree(path, context->depth + 1, context->error)
+        ? BONGO_CAT_NEO_PATH_CONTINUE : BONGO_CAT_NEO_PATH_FAILURE;
 }
 
-bool bongo_cat_neo_model_remove_tree(const char *path, BongoCatNeoError *error) {
-    SDL_PathInfo info;
-    if (!path || !path[0] || !SDL_GetPathInfo(path, &info)) return true;
-    if (info.type == SDL_PATHTYPE_DIRECTORY &&
-        !SDL_EnumerateDirectory(path, remove_item, error)) return false;
-    if (SDL_RemovePath(path)) return true;
+static bool remove_tree(const char *path, unsigned depth, BongoCatNeoError *error) {
+    if (!path || !path[0]) return true;
+    bool directory = bongo_cat_neo_path_is_dir(path);
+    if (!directory && !bongo_cat_neo_path_is_file(path)) return true;
+    if (depth > MODEL_REMOVE_DEPTH_CAP) {
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
+            "Model directory nesting exceeds %u levels", MODEL_REMOVE_DEPTH_CAP);
+        return false;
+    }
+    RemoveContext context = {error, depth};
+    if (directory &&
+        !bongo_cat_neo_path_enumerate(path, remove_item, &context)) return false;
+    if (bongo_cat_neo_path_remove(path)) return true;
     if (error) bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO,
         "Cannot remove %s: %s", path, SDL_GetError());
     return false;
+}
+
+bool bongo_cat_neo_model_remove_tree(const char *path, BongoCatNeoError *error) {
+    return remove_tree(path, 0, error);
 }
 
 static bool temporary_name(const char *name) {
@@ -41,20 +57,18 @@ static bool temporary_name(const char *name) {
     return true;
 }
 
-static SDL_EnumerationResult SDLCALL cleanup_item(void *userdata,
+static BongoCatNeoPathVisit cleanup_item(void *userdata,
     const char *dirname, const char *name) {
     BongoCatNeoError *error = userdata;
-    if (!temporary_name(name)) return SDL_ENUM_CONTINUE;
+    if (!temporary_name(name)) return BONGO_CAT_NEO_PATH_CONTINUE;
     char path[BONGO_CAT_NEO_PATH_CAP];
-    SDL_PathInfo info;
     if (!bongo_cat_neo_path_join(path, sizeof(path), dirname, name) ||
-        !SDL_GetPathInfo(path, &info)) return SDL_ENUM_CONTINUE;
-    if (info.type != SDL_PATHTYPE_DIRECTORY) return SDL_ENUM_CONTINUE;
+        !bongo_cat_neo_path_is_dir(path)) return BONGO_CAT_NEO_PATH_CONTINUE;
     return bongo_cat_neo_model_remove_tree(path, error)
-        ? SDL_ENUM_CONTINUE : SDL_ENUM_FAILURE;
+        ? BONGO_CAT_NEO_PATH_CONTINUE : BONGO_CAT_NEO_PATH_FAILURE;
 }
 
 bool bongo_cat_neo_model_cleanup_imports(const char *root, BongoCatNeoError *error) {
     return root && bongo_cat_neo_path_is_dir(root) &&
-        SDL_EnumerateDirectory(root, cleanup_item, error);
+        bongo_cat_neo_path_enumerate(root, cleanup_item, error);
 }

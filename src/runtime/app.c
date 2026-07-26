@@ -10,87 +10,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-static void parse_arguments(BongoCatNeoApp *app, int argc, char **argv) {
-    for (int i = 1; i < argc; ++i) {
-        if (strcmp(argv[i], "--ci-smoke") == 0) app->smoke = true;
-        else if (strcmp(argv[i], "--ci-preferences") == 0) app->smoke_preferences = true;
-        else if (strcmp(argv[i], "--ci-remove-imported") == 0) app->smoke_remove_imported = true;
-        else if (strcmp(argv[i], "--ci-shortcuts") == 0) app->smoke_shortcuts = true;
-        else if (strcmp(argv[i], "--ci-menu") == 0) app->smoke_menu = true;
-        else if (strcmp(argv[i], "--ci-input-audit") == 0) app->smoke_input_audit = true;
-        else if (strcmp(argv[i], "--ci-ignore-global-input") == 0)
-            app->smoke_ignore_global_input = true;
-        else if (strcmp(argv[i], "--ci-taskbar-visible") == 0)
-            app->smoke_taskbar_visible = true;
-        else if (strcmp(argv[i], "--ci-context-menu") == 0) app->smoke_context_menu = true;
-        else if (strcmp(argv[i], "--ci-frame-series") == 0) app->smoke_frame_series = true;
-        else if (strcmp(argv[i], "--ci-runtime-flow") == 0) app->smoke_runtime_flow = true;
-        else if (strncmp(argv[i], "--ci-preference-page=", 21) == 0) {
-            int page = atoi(argv[i] + 21);
-            if (page >= 0 && page < 5) app->smoke_preference_page = page;
-        }
-        else if (strncmp(argv[i], "--ci-language=", 14) == 0) {
-            const char *name = argv[i] + 14;
-            for (int language = 0; language <= BONGO_CAT_NEO_LANG_VI_VN; ++language)
-                if (strcmp(name, bongo_cat_neo_language_name((BongoCatNeoLanguage)language)) == 0)
-                    app->smoke_language = language;
-        }
-        else if (strncmp(argv[i], "--ci-theme=", 11) == 0) {
-            const char *name = argv[i] + 11;
-            for (int theme = 0; theme <= BONGO_CAT_NEO_THEME_DARK; ++theme)
-                if (strcmp(name, bongo_cat_neo_theme_name((BongoCatNeoTheme)theme)) == 0)
-                    app->smoke_theme = theme;
-        }
-        else if (strncmp(argv[i], "--ci-model=", 11) == 0)
-            snprintf(app->smoke_model, sizeof(app->smoke_model), "%s", argv[i] + 11);
-        else if (strncmp(argv[i], "--ci-live2d-scenario=", 21) == 0)
-            snprintf(app->smoke_live2d_scenario, sizeof(app->smoke_live2d_scenario),
-                "%s", argv[i] + 21);
-        else if (strncmp(argv[i], "--ci-exit-ms=", 13) == 0) {
-            uint64_t delay = strtoull(argv[i] + 13, NULL, 10);
-            app->smoke_deadline_ns = delay * 1000000ull;
-        } else if (strncmp(argv[i], "--config=", 9) == 0) {
-            snprintf(app->config_path, sizeof(app->config_path), "%s", argv[i] + 9);
-        } else if (strncmp(argv[i], "--data-root=", 12) == 0) {
-            snprintf(app->data_root, sizeof(app->data_root), "%s", argv[i] + 12);
-        } else if (strncmp(argv[i], "--ci-import=", 12) == 0) {
-            snprintf(app->smoke_import_path, sizeof(app->smoke_import_path), "%s", argv[i] + 12);
-        }
-    }
-    if (app->smoke && !app->smoke_deadline_ns) app->smoke_deadline_ns = 1500000000ull;
-}
-static void locate_config(BongoCatNeoApp *app) {
-    if (!app->data_root[0]) {
-        char *pref = SDL_GetPrefPath("BongoCatNeo", BONGO_CAT_NEO_NAME);
-        if (!pref) return;
-        snprintf(app->data_root, sizeof(app->data_root), "%s", pref);
-        SDL_free(pref);
-    }
-    SDL_CreateDirectory(app->data_root);
-    if (!app->config_path[0]) bongo_cat_neo_path_join(app->config_path,
-        sizeof(app->config_path), app->data_root, "settings.json");
-}
-static void ci_failure(BongoCatNeoApp *app, const BongoCatNeoError *error) {
-    app->exit_code = 1;
-    if (!app->data_root[0]) return;
-    char path[BONGO_CAT_NEO_PATH_CAP];
-    bongo_cat_neo_path_join(path, sizeof(path), app->data_root, "ci-error.log");
-    FILE *file = bongo_cat_neo_file_open(path, "wb");
-    if (!file) return;
-    fputs(error && error->message[0] ? error->message : "CI operation failed", file);
-    fclose(file);
-}
 static void scan_models(BongoCatNeoApp *app) {
     bongo_cat_neo_app_rescan_models(app);
 }
-static void load_selected_model(BongoCatNeoApp *app) {
-    const BongoCatNeoModelEntry *entry = bongo_cat_neo_models_find(&app->models, app->config.current_model);
-    if (!entry && app->models.count) entry = &app->models.entries[0];
-    if (!entry) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "No model3 directory found");
-        return;
+static bool load_selected_model(BongoCatNeoApp *app, BongoCatNeoError *error) {
+    const char *candidates[] = {app->config.current_model, "standard", "keyboard", "gamepad"};
+    for (size_t i = 0; i < 4; ++i) {
+        bool duplicate = false;
+        for (size_t j = 0; j < i; ++j)
+            if (strcmp(candidates[i], candidates[j]) == 0) duplicate = true;
+        if (!duplicate && bongo_cat_neo_models_find(&app->models, candidates[i]) &&
+            bongo_cat_neo_app_select_model(app, candidates[i])) {
+            if (i) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                "Selected model was unavailable; loaded fallback model %s", candidates[i]);
+            return true;
+        }
     }
-    bongo_cat_neo_app_select_model(app, entry->id);
+    for (size_t i = 0; i < app->models.count; ++i)
+        if (bongo_cat_neo_app_select_model(app, app->models.entries[i].id)) return true;
+    bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_CUBISM,
+        "No usable Live2D model could be loaded");
+    return false;
 }
 static bool initialize(BongoCatNeoApp *app, int argc, char **argv, BongoCatNeoError *error) {
     memset(app, 0, sizeof(*app));
@@ -101,11 +41,11 @@ static bool initialize(BongoCatNeoApp *app, int argc, char **argv, BongoCatNeoEr
     bongo_cat_neo_input_init(&app->input);
     bongo_cat_neo_shortcut_init(&app->shortcut_state);
     bongo_cat_neo_models_init(&app->models);
-    parse_arguments(app, argc, argv);
-    locate_config(app);
+    if (!bongo_cat_neo_startup_prepare(app, argc, argv, error)) return false;
     if (app->config_path[0]) {
         BongoCatNeoResult loaded = bongo_cat_neo_config_load(app->config_path, &app->config, error);
         if (loaded != BONGO_CAT_NEO_OK) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error->message);
+        *error = (BongoCatNeoError){0};
     }
     if (app->smoke_language >= 0)
         app->config.app.language = (BongoCatNeoLanguage)app->smoke_language;
@@ -115,44 +55,57 @@ static bool initialize(BongoCatNeoApp *app, int argc, char **argv, BongoCatNeoEr
     if (app->smoke_model[0])
         snprintf(app->config.current_model, sizeof(app->config.current_model),
             "%s", app->smoke_model);
+    if (!app->autostart_launch) app->config.window.visible = true;
+    bongo_cat_neo_startup_stage(app, "configuration-ready");
     if (bongo_cat_neo_window_create(app, error) != BONGO_CAT_NEO_OK) return false;
-    bongo_cat_neo_app_locate_assets(app);
-    app->i18n = bongo_cat_neo_i18n_create(app->locale_root, app->config.app.language, error);
-    if (!app->i18n) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error->message);
+    bongo_cat_neo_startup_stage(app, "window-ready");
+    if (bongo_cat_neo_app_locate_assets(app, error) != BONGO_CAT_NEO_OK) return false;
+    bongo_cat_neo_startup_stage(app, "assets-ready");
+    BongoCatNeoError optional = {0};
+    app->i18n = bongo_cat_neo_i18n_create(app->locale_root, app->config.app.language, &optional);
+    if (!app->i18n) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", optional.message);
     if (bongo_cat_neo_platform_init(&app->platform, app->window, &app->input, error) != BONGO_CAT_NEO_OK) return false;
     bongo_cat_neo_window_apply(app);
+    bongo_cat_neo_startup_stage(app, "platform-ready");
     app->live2d = bongo_cat_neo_live2d_create(app->asset_root, error);
     if (!app->live2d) return false;
-    app->overlay = bongo_cat_neo_overlay_create(error);
-    if (!app->overlay) return false;
-    app->audio = bongo_cat_neo_audio_create(error);
-    if (!app->audio) SDL_LogWarn(SDL_LOG_CATEGORY_AUDIO, "%s", error->message);
+    optional = (BongoCatNeoError){0}; app->overlay = bongo_cat_neo_overlay_create(&optional);
+    if (!app->overlay) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+        "Overlay disabled: %s", optional.message);
+    optional = (BongoCatNeoError){0}; app->audio = bongo_cat_neo_audio_create(&optional);
+    if (!app->audio) SDL_LogWarn(SDL_LOG_CATEGORY_AUDIO, "%s", optional.message);
     else bongo_cat_neo_audio_set_enabled(app->audio, app->config.model.motion_sound);
     scan_models(app);
-    load_selected_model(app);
+    if (!load_selected_model(app, error)) return false;
+    bongo_cat_neo_startup_stage(app, "model-ready");
     if (app->smoke_import_path[0]) {
         BongoCatNeoError import_error = {0};
         if (bongo_cat_neo_app_import_model(app, app->smoke_import_path, &import_error) != BONGO_CAT_NEO_OK) {
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", import_error.message);
-            ci_failure(app, &import_error);
+            bongo_cat_neo_startup_ci_failure(app, &import_error);
         } else if (app->smoke_remove_imported) {
             char imported[BONGO_CAT_NEO_PATH_CAP];
             snprintf(imported, sizeof(imported), "%s", app->config.current_model);
             if (bongo_cat_neo_app_remove_model(app, imported, &import_error) != BONGO_CAT_NEO_OK)
-                ci_failure(app, &import_error);
+                bongo_cat_neo_startup_ci_failure(app, &import_error);
         }
     }
     app->running = true;
-    app->tray = bongo_cat_neo_tray_create(app, error);
+    optional = (BongoCatNeoError){0}; app->tray = bongo_cat_neo_tray_create(app, &optional);
     if (!app->tray && app->config.app.tray_visible)
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error->message);
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", optional.message);
     app->preferences = bongo_cat_neo_preferences_create(app);
+    if (!app->preferences) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+        "Preferences are unavailable because their state could not be allocated");
+    if (!app->tray && !app->config.window.visible) {
+        app->config.window.visible = true; SDL_ShowWindow(app->window);
+    }
     if (app->smoke_context_menu) bongo_cat_neo_window_show_context_menu(app);
     bongo_cat_neo_live2d_audit_run(app);
     if (app->smoke_shortcuts && !bongo_cat_neo_app_shortcuts_self_test(app)) {
         BongoCatNeoError shortcut_error = {0};
         bongo_cat_neo_error_set(&shortcut_error, BONGO_CAT_NEO_ERROR_PLATFORM, "Shortcut action self-test failed");
-        ci_failure(app, &shortcut_error);
+        bongo_cat_neo_startup_ci_failure(app, &shortcut_error);
     }
     if (app->smoke_menu) {
         bool menu = bongo_cat_neo_window_menu_self_test(app);
@@ -165,13 +118,14 @@ static bool initialize(BongoCatNeoApp *app, int argc, char **argv, BongoCatNeoEr
             bongo_cat_neo_error_set(&menu_error, BONGO_CAT_NEO_ERROR_PLATFORM,
                 "Context menu action self-test failed (menu=%d geometry=%d wheel=%d tray=%d wait=%d)",
                 menu, geometry, wheel, tray, wait);
-            ci_failure(app, &menu_error);
+            bongo_cat_neo_startup_ci_failure(app, &menu_error);
         }
     }
     if (app->smoke_preferences) bongo_cat_neo_preferences_show(app->preferences);
     app->last_frame_ns = SDL_GetTicksNS();
     app->dirty = true;
     if (app->smoke_deadline_ns) app->smoke_deadline_ns += app->last_frame_ns;
+    if (!app->config.window.visible) bongo_cat_neo_startup_ready(app);
     return true;
 }
 static void handle_event(BongoCatNeoApp *app, const SDL_Event *event) {
@@ -231,6 +185,7 @@ static void render(BongoCatNeoApp *app) {
     bongo_cat_neo_overlay_draw_effect(app->overlay, app->config.model.mirror);
     bongo_cat_neo_frame_audit(app, width, height);
     SDL_GL_SwapWindow(app->window);
+    bongo_cat_neo_startup_ready(app);
     app->dirty = false;
     bongo_cat_neo_window_sync_click_through(app); bongo_cat_neo_window_schedule_hit_check(app);
 }
@@ -276,11 +231,16 @@ static void shutdown(BongoCatNeoApp *app) {
 int bongo_cat_neo_app_run(int argc, char **argv) {
     if (!bongo_cat_neo_platform_single_instance_begin()) return 0;
     BongoCatNeoApp *app = calloc(1, sizeof(*app));
-    if (!app) { bongo_cat_neo_platform_single_instance_end(); return 1; }
+    if (!app) {
+        BongoCatNeoError memory = {0}; bongo_cat_neo_error_set(&memory,
+            BONGO_CAT_NEO_ERROR_MEMORY, "Cannot allocate application state");
+        bongo_cat_neo_startup_failure(NULL, &memory);
+        bongo_cat_neo_platform_single_instance_end(); return 1;
+    }
     BongoCatNeoError error = {0};
     if (!initialize(app, argc, argv, &error)) {
-        fprintf(stderr, "%s\n", error.message[0] ? error.message : "Initialization failed");
-        if (app->smoke) ci_failure(app, &error);
+        bongo_cat_neo_startup_failure(app, &error);
+        if (app->smoke) bongo_cat_neo_startup_ci_failure(app, &error);
         shutdown(app); free(app);
         bongo_cat_neo_platform_single_instance_end();
         return 1;

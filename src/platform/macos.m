@@ -209,7 +209,7 @@ BongoCatNeoResult bongo_cat_neo_platform_set_autostart(bool enabled, BongoCatNeo
             return BONGO_CAT_NEO_ERROR_IO;
         }
         NSDictionary *plist = @{ @"Label": @"com.bongocatneo.desktop",
-            @"ProgramArguments": @[executable], @"RunAtLoad": @YES };
+            @"ProgramArguments": @[executable, @"--autostart"], @"RunAtLoad": @YES };
         if ([plist writeToFile:path atomically:YES]) return BONGO_CAT_NEO_OK;
         bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO, "Cannot write macOS launch agent");
         return BONGO_CAT_NEO_ERROR_IO;

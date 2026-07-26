@@ -77,14 +77,14 @@ NativeModel::~NativeModel() {
     delete setting_;
 }
 
-std::vector<unsigned char> NativeModel::read(const std::string &file) const {
+std::vector<unsigned char> NativeModel::read(const std::string &file, size_t maximum) const {
     FILE *stream = bongo_cat_neo_file_open(file.c_str(), "rb");
     if (!stream || std::fseek(stream, 0, SEEK_END) != 0) {
         if (stream) std::fclose(stream);
         return {};
     }
     long size = std::ftell(stream);
-    if (size <= 0 || std::fseek(stream, 0, SEEK_SET) != 0) {
+    if (size <= 0 || (size_t)size > maximum || std::fseek(stream, 0, SEEK_SET) != 0) {
         std::fclose(stream);
         return {};
     }
@@ -106,11 +106,12 @@ bool NativeModel::load(const char *directory, const char *setting_file,
     directory_ = directory;
     if (!directory_.empty() && directory_.back() != '/' && directory_.back() != '\\')
         directory_ += '/';
-    std::vector<unsigned char> json = read(path(setting_file));
+    std::vector<unsigned char> json = read(path(setting_file), 4 * 1024 * 1024);
     if (json.empty()) {
         bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO, "Cannot read model setting: %s", setting_file);
         return false;
     }
+    if (!validate_model_setting_json(json, setting_file, error)) return false;
     setting_ = new(std::nothrow)
         Csm::CubismModelSettingJson(json.data(), (Csm::csmSizeInt)json.size());
     if (!setting_) {
@@ -144,7 +145,6 @@ bool NativeModel::load_model(BongoCatNeoError *error) {
     pending_parameters_.resize((size_t)_model->GetParameterCount());
     return true;
 }
-
 void NativeModel::load_expressions() {
     for (int i = 0; i < setting_->GetExpressionCount(); ++i) {
         const char *name = setting_->GetExpressionName(i);

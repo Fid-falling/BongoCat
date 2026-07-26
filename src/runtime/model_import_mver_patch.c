@@ -27,25 +27,25 @@ static bool patch_shape(const char *root) {
         child_file(mode, "righthand", "0.png");
 }
 
-static SDL_EnumerationResult SDLCALL find_image_root(void *userdata,
+static BongoCatNeoPathVisit find_image_root(void *userdata,
     const char *dirname, const char *name) {
     PatchSearch *search = userdata;
     char path[BONGO_CAT_NEO_PATH_CAP];
-    if (!bongo_cat_neo_path_join(path, sizeof(path), dirname, name)) return SDL_ENUM_FAILURE;
-    SDL_PathInfo info;
-    if (!SDL_GetPathInfo(path, &info) || info.type != SDL_PATHTYPE_DIRECTORY ||
-        name[0] == '.') return SDL_ENUM_CONTINUE;
+    if (!bongo_cat_neo_path_join(path, sizeof(path), dirname, name))
+        return BONGO_CAT_NEO_PATH_FAILURE;
+    if (!bongo_cat_neo_path_is_dir(path) || name[0] == '.')
+        return BONGO_CAT_NEO_PATH_CONTINUE;
     if (strcmp(name, "img") == 0 && patch_shape(path)) {
         search->matches++;
         if (search->matches == 1)
             snprintf(search->image_root, sizeof(search->image_root), "%s", path);
-        return SDL_ENUM_CONTINUE;
+        return BONGO_CAT_NEO_PATH_CONTINUE;
     }
-    if (search->depth >= 3) return SDL_ENUM_CONTINUE;
+    if (search->depth >= 3) return BONGO_CAT_NEO_PATH_CONTINUE;
     search->depth++;
-    bool ok = SDL_EnumerateDirectory(path, find_image_root, search);
+    bool ok = bongo_cat_neo_path_enumerate(path, find_image_root, search);
     search->depth--;
-    return ok ? SDL_ENUM_CONTINUE : SDL_ENUM_FAILURE;
+    return ok ? BONGO_CAT_NEO_PATH_CONTINUE : BONGO_CAT_NEO_PATH_FAILURE;
 }
 
 static bool parent_path(const char *path, char *parent, size_t capacity) {
@@ -91,7 +91,7 @@ int bongo_cat_neo_import_mver_patch_discover(const char *source,
         strcmp(bongo_cat_neo_path_name(source), "img") == 0 && patch_shape(source)) {
         snprintf(search.image_root, sizeof(search.image_root), "%s", source);
         search.matches = 1;
-    } else if (!SDL_EnumerateDirectory(source, find_image_root, &search)) return 0;
+    } else if (!bongo_cat_neo_path_enumerate(source, find_image_root, &search)) return 0;
     if (!search.matches) return 0;
     if (search.matches != 1) {
         bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,

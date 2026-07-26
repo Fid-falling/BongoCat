@@ -210,7 +210,8 @@ function Measure-Difference([string]$First, [string]$Second) {
     } finally { $a.Dispose(); $b.Dispose() }
 }
 
-Get-Process BongoCatNeo -ErrorAction SilentlyContinue | Stop-Process -Force
+$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "preferences-interaction-audit-$PID"
 $arguments = @("--ci-preferences", "--ci-preference-page=0", "--ci-language=zh-CN",
     "--ci-theme=light", "--config=$configPath", "--data-root=$dataRoot")
 $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
@@ -219,7 +220,7 @@ try {
     $window = Wait-Preferences $process.Id
     Focus-Window $window 450 620
     $baseline = Save-Window $window "01-baseline.png"
-    Invoke-Click $window 818 248
+    Invoke-Click $window 820 141
     $toggled = Save-Window $window "02-toggle-card.png"
     Invoke-Wheel $window 450 540
     Focus-Window $window 450 520
@@ -231,23 +232,20 @@ try {
     Invoke-Wheel $window 450 540
     [void](Save-Window $window "03b-controls.png")
 
-    Invoke-PhysicalClick $window 362 114
+    Invoke-PhysicalClick $window 82 266
     $general = Save-Window $window "04-general.png"
-    Invoke-PhysicalClick $window 710 248
+    Invoke-PhysicalClick $window 765 353
     $combo = Save-Window $window "05-combo-open.png"
-    Invoke-PhysicalClick $window 710 248
-    Invoke-PhysicalClick $window 710 328
-    [void](Save-Window $window "05b-language-open.png")
-    Invoke-PhysicalClick $window 710 375
+    Invoke-PhysicalClick $window 765 435
     Start-Sleep -Milliseconds 500
     $language = Save-Window $window "05c-language-live.png"
-    Invoke-PhysicalClick $window 550 114
+    Invoke-PhysicalClick $window 82 418
     $shortcuts = Save-Window $window "06-shortcuts.png"
-    Invoke-PhysicalClick $window 700 248
+    Invoke-PhysicalClick $window 756 141
     Invoke-Hotkey $window
     $edited = Save-Window $window "07-shortcut-edited.png"
 
-    Invoke-PhysicalClick $window 642 114
+    Invoke-PhysicalClick $window 82 495
     $about = Save-Window $window "08-about.png"
     [void][BongoCatNeoPreferencesNative]::PostMessageW($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
     for ($i = 0; $i -lt 50 -and -not (Test-Path $configPath); $i++) {

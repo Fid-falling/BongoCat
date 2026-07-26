@@ -6,7 +6,8 @@
 #include <SDL3/SDL_opengl.h>
 #include <stdio.h>
 
-static bool set_gl_attributes(void) {
+static bool set_gl_attributes(bool multisampling) {
+    SDL_GL_ResetAttributes();
 #ifdef __APPLE__
     const int major = 4, minor = 1, profile = SDL_GL_CONTEXT_PROFILE_CORE;
 #elif defined(BONGO_CAT_NEO_HAS_CUBISM)
@@ -20,34 +21,59 @@ static bool set_gl_attributes(void) {
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1) &&
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0) &&
         SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8) &&
-        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1) &&
-        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
+        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, multisampling ? 1 : 0) &&
+        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, multisampling ? 4 : 0);
+}
+
+static bool try_window(BongoCatNeoApp *app, bool transparent, bool multisampling,
+    char *failure, size_t capacity) {
+    if (!set_gl_attributes(multisampling)) {
+        snprintf(failure, capacity, "OpenGL attributes: %s", SDL_GetError()); return false;
+    }
+    SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS |
+        SDL_WINDOW_HIGH_PIXEL_DENSITY;
+    if (transparent) flags |= SDL_WINDOW_TRANSPARENT;
+    app->window = SDL_CreateWindow(BONGO_CAT_NEO_NAME, app->config.window.width,
+        app->config.window.height, flags);
+    if (!app->window) {
+        snprintf(failure, capacity, "Window creation: %s", SDL_GetError()); return false;
+    }
+    app->gl_context = SDL_GL_CreateContext(app->window);
+    if (!app->gl_context || !SDL_GL_MakeCurrent(app->window, app->gl_context)) {
+        snprintf(failure, capacity, "OpenGL context: %s", SDL_GetError());
+        if (app->gl_context) SDL_GL_DestroyContext(app->gl_context);
+        SDL_DestroyWindow(app->window); app->gl_context = NULL; app->window = NULL;
+        return false;
+    }
+    return true;
 }
 
 BongoCatNeoResult bongo_cat_neo_window_create(BongoCatNeoApp *app, BongoCatNeoError *error) {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM, "SDL initialization failed: %s", SDL_GetError());
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM,
+            "SDL initialization failed: %s", SDL_GetError());
         return BONGO_CAT_NEO_ERROR_PLATFORM;
     }
-    if (!set_gl_attributes()) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM, "OpenGL attributes failed: %s", SDL_GetError());
-        return BONGO_CAT_NEO_ERROR_PLATFORM;
+    const bool options[][2] = {{true, true}, {true, false}, {false, false}};
+    char failure[256] = {0};
+    bool force_fallback = SDL_getenv("BONGO_CAT_NEO_TEST_GL_FALLBACK") != NULL;
+    for (size_t i = 0; i < sizeof(options) / sizeof(options[0]); ++i) {
+        if (force_fallback && i == 0) {
+            SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO, "Test requested OpenGL fallback"); continue;
+        }
+        if (try_window(app, options[i][0], options[i][1], failure, sizeof(failure))) {
+            SDL_Log("OpenGL window ready (transparent=%d, MSAA=%d)",
+                options[i][0], options[i][1]);
+            if (!SDL_GL_SetSwapInterval(1)) SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
+                "Vertical sync unavailable: %s", SDL_GetError());
+            return BONGO_CAT_NEO_OK;
+        }
+        SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO, "OpenGL attempt %llu failed: %s",
+            (unsigned long long)(i + 1), failure);
     }
-    SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_TRANSPARENT |
-        SDL_WINDOW_BORDERLESS | SDL_WINDOW_HIGH_PIXEL_DENSITY;
-    app->window = SDL_CreateWindow(BONGO_CAT_NEO_NAME, app->config.window.width,
-        app->config.window.height, flags);
-    if (!app->window) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM, "Window creation failed: %s", SDL_GetError());
-        return BONGO_CAT_NEO_ERROR_PLATFORM;
-    }
-    app->gl_context = SDL_GL_CreateContext(app->window);
-    if (!app->gl_context || !SDL_GL_MakeCurrent(app->window, app->gl_context)) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM, "OpenGL context failed: %s", SDL_GetError());
-        return BONGO_CAT_NEO_ERROR_PLATFORM;
-    }
-    SDL_GL_SetSwapInterval(1);
-    return BONGO_CAT_NEO_OK;
+    bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM,
+        "Window and OpenGL initialization failed after compatibility retries: %s", failure);
+    return BONGO_CAT_NEO_ERROR_PLATFORM;
 }
 
 void bongo_cat_neo_window_apply(BongoCatNeoApp *app) {
@@ -55,6 +81,11 @@ void bongo_cat_neo_window_apply(BongoCatNeoApp *app) {
     SDL_SetWindowOpacity(app->window, value->opacity_percent / 100.0f);
     SDL_SetWindowSize(app->window, value->width, value->height);
     if (value->x || value->y) SDL_SetWindowPosition(app->window, value->x, value->y);
+    SDL_SyncWindow(app->window);
+    bool keep_in_screen = value->keep_in_screen;
+    value->keep_in_screen = true; bongo_cat_neo_window_clamp_to_display(app);
+    value->keep_in_screen = keep_in_screen;
+    SDL_SyncWindow(app->window);
     value->visible ? SDL_ShowWindow(app->window) : SDL_HideWindow(app->window);
     bongo_cat_neo_window_sync_click_through(app);
     bongo_cat_neo_platform_set_always_on_top(&app->platform, value->always_on_top);
@@ -192,7 +223,10 @@ bool bongo_cat_neo_window_event(BongoCatNeoApp *app, const SDL_Event *event) {
     }
     if (event->type == SDL_EVENT_WINDOW_EXPOSED ||
         event->type == SDL_EVENT_WINDOW_SHOWN ||
-        event->type == SDL_EVENT_WINDOW_RESTORED) app->dirty = true;
+        event->type == SDL_EVENT_WINDOW_RESTORED) {
+        if (event->type != SDL_EVENT_WINDOW_EXPOSED) app->config.window.visible = true;
+        app->dirty = true;
+    }
     if (event->type == SDL_EVENT_WINDOW_RESIZED ||
         event->type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
         SDL_GetWindowSizeInPixels(app->window,

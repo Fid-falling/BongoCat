@@ -23,12 +23,8 @@ $OutputDir = [IO.Path]::GetFullPath($OutputDir)
 if ($DurationSeconds -lt 5 -or $IntervalSeconds -lt 1 -or $WarmupSeconds -lt 1 -or
     $IntervalSeconds -ge $DurationSeconds) { throw "Invalid soak duration or interval" }
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
-$existing = @(Get-Process BongoCatNeo -ErrorAction SilentlyContinue)
-if ($existing.Count) {
-    $existing | Stop-Process -Force
-    $existing | Wait-Process -Timeout 5 -ErrorAction SilentlyContinue
-    Start-Sleep -Milliseconds 350
-}
+$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "soak-audit-$PID"
 
 $data = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
 $exitMilliseconds = ($WarmupSeconds + $DurationSeconds + 3) * 1000

@@ -28,7 +28,8 @@ public static class BongoCatNeoStyleNative {
 }
 '@
 
-Get-Process BongoCatNeo -ErrorAction SilentlyContinue | Stop-Process -Force
+$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "window-style-audit-$PID"
 Start-Sleep -Milliseconds 350
 $data = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
 $arguments = @("--ci-smoke", "--ci-exit-ms=5000", "--data-root=$data")

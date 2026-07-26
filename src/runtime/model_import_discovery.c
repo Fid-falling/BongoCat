@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stb_image.h>
 #include <yyjson.h>
 
 static bool safe_reference(const char *value) {
@@ -26,6 +27,18 @@ static bool referenced_file(const char *root, const char *relative) {
     char path[BONGO_CAT_NEO_PATH_CAP];
     return safe_reference(relative) &&
         bongo_cat_neo_path_join(path, sizeof(path), root, relative) && bongo_cat_neo_path_is_file(path);
+}
+
+static bool referenced_texture(const char *root, const char *relative) {
+    char path[BONGO_CAT_NEO_PATH_CAP];
+    if (!safe_reference(relative) ||
+        !bongo_cat_neo_path_join(path, sizeof(path), root, relative)) return false;
+    FILE *file = bongo_cat_neo_file_open(path, "rb");
+    int width = 0, height = 0, channels = 0;
+    bool valid = file && stbi_info_from_file(file, &width, &height, &channels) &&
+        width > 0 && height > 0 && channels > 0;
+    if (file) fclose(file);
+    return valid;
 }
 
 static bool optional_reference(const char *root, yyjson_val *refs,
@@ -75,7 +88,7 @@ bool bongo_cat_neo_import_manifest_valid(const char *root, const char *setting,
         yyjson_arr_size(textures) > 0;
     size_t index, maximum; yyjson_val *texture;
     yyjson_arr_foreach(textures, index, maximum, texture)
-        valid = valid && referenced_file(root, yyjson_get_str(texture));
+        valid = valid && referenced_texture(root, yyjson_get_str(texture));
     valid = valid && optional_reference(root, refs, "Physics") &&
         optional_reference(root, refs, "Pose") &&
         optional_reference(root, refs, "DisplayInfo") && behavior_references(root, refs);
@@ -175,24 +188,23 @@ static bool suffix(const char *name, const char *ending) {
     return a >= b && strcmp(name + a - b, ending) == 0;
 }
 
-static SDL_EnumerationResult SDLCALL discover_item(void *userdata,
+static BongoCatNeoPathVisit discover_item(void *userdata,
     const char *dirname, const char *name) {
     BongoCatNeoImportDiscovery *discovery = userdata;
     char path[BONGO_CAT_NEO_PATH_CAP];
-    if (!bongo_cat_neo_path_join(path, sizeof(path), dirname, name)) return SDL_ENUM_FAILURE;
-    SDL_PathInfo info;
-    if (!SDL_GetPathInfo(path, &info)) return SDL_ENUM_CONTINUE;
-    if (info.type == SDL_PATHTYPE_FILE && suffix(name, ".model3.json")) {
+    if (!bongo_cat_neo_path_join(path, sizeof(path), dirname, name))
+        return BONGO_CAT_NEO_PATH_FAILURE;
+    if (bongo_cat_neo_path_is_file(path) && suffix(name, ".model3.json")) {
         if (bongo_cat_neo_import_manifest_valid(dirname, name, NULL) &&
-            !add_candidate(discovery, dirname, name)) return SDL_ENUM_FAILURE;
-        return SDL_ENUM_CONTINUE;
+            !add_candidate(discovery, dirname, name)) return BONGO_CAT_NEO_PATH_FAILURE;
+        return BONGO_CAT_NEO_PATH_CONTINUE;
     }
-    if (info.type != SDL_PATHTYPE_DIRECTORY || discovery->depth >= 8 || name[0] == '.')
-        return SDL_ENUM_CONTINUE;
+    if (!bongo_cat_neo_path_is_dir(path) || discovery->depth >= 8 || name[0] == '.')
+        return BONGO_CAT_NEO_PATH_CONTINUE;
     discovery->depth++;
-    bool ok = SDL_EnumerateDirectory(path, discover_item, discovery);
+    bool ok = bongo_cat_neo_path_enumerate(path, discover_item, discovery);
     discovery->depth--;
-    return ok ? SDL_ENUM_CONTINUE : SDL_ENUM_FAILURE;
+    return ok ? BONGO_CAT_NEO_PATH_CONTINUE : BONGO_CAT_NEO_PATH_FAILURE;
 }
 
 static int rank(const BongoCatNeoImportCandidate *candidate) {
@@ -213,7 +225,7 @@ bool bongo_cat_neo_import_discover(const char *source, BongoCatNeoImportDiscover
     if (mver != 0) return mver > 0;
     int patch = bongo_cat_neo_import_mver_patch_discover(source, discovery, error);
     if (patch != 0) return patch > 0;
-    if (!SDL_EnumerateDirectory(source, discover_item, discovery)) {
+    if (!bongo_cat_neo_path_enumerate(source, discover_item, discovery)) {
         bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
             discovery->ambiguous ? "A model directory contains multiple model3 manifests" :
             "Cannot scan model directory or it contains too many models");

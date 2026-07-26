@@ -137,10 +137,14 @@ $results = foreach ($fixture in $fixtures) {
         New-Item -ItemType Directory -Force -Path `
             (Join-Path $custom ".import-not-owned.tmp") | Out-Null
     }
+    Write-Host "CASE $($fixture.Name)"
     $process = Start-Process -FilePath $Exe -WorkingDirectory (Split-Path $Exe) -PassThru `
         -WindowStyle Hidden -ArgumentList @("--ci-smoke", "--ci-exit-ms=1200",
             "--data-root=$data", "--ci-import=$($fixture.Path)")
-    $process.WaitForExit()
+    if (-not $process.WaitForExit(30000)) {
+        Stop-Process -Id $process.Id -Force
+        throw "Import case timed out: $($fixture.Name)"
+    }
     $models = @(Get-ChildItem (Join-Path $data "custom-models") -Directory `
         -ErrorAction SilentlyContinue | Where-Object Name -NotLike ".*")
     $layouts = @($models | ForEach-Object { Get-InstalledModelLayout $_ })

@@ -2,6 +2,7 @@
 
 #ifdef _WIN32
 #include <stdlib.h>
+#include <string.h>
 #include <windows.h>
 
 wchar_t *bongo_cat_neo_windows_wide(const char *text) {
@@ -12,7 +13,19 @@ wchar_t *bongo_cat_neo_windows_wide(const char *text) {
         text, -1, wide, length)) {
         free(wide); return NULL;
     }
-    return wide;
+    if (!wide) return NULL;
+    for (wchar_t *value = wide; *value; ++value)
+        if (*value == L'/') *value = L'\\';
+    bool drive = length > 3 && wide[1] == L':' && wide[2] == L'\\';
+    bool unc = length > 3 && wide[0] == L'\\' && wide[1] == L'\\' &&
+        wide[2] != L'?';
+    if (length <= 240 || (!drive && !unc)) return wide;
+    size_t prefix = unc ? 8 : 4, skip = unc ? 2 : 0;
+    wchar_t *extended = malloc(((size_t)length + prefix - skip) * sizeof(*extended));
+    if (!extended) { free(wide); return NULL; }
+    memcpy(extended, unc ? L"\\\\?\\UNC\\" : L"\\\\?\\", prefix * sizeof(*extended));
+    memcpy(extended + prefix, wide + skip, ((size_t)length - skip) * sizeof(*extended));
+    free(wide); return extended;
 }
 
 bool bongo_cat_neo_windows_utf8(const wchar_t *text, char *output, size_t capacity) {

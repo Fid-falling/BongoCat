@@ -184,7 +184,8 @@ function Test-ClickThrough([IntPtr]$Window, [int]$X, [int]$Y) {
     return ($style -band 0x20) -ne 0
 }
 
-Get-Process BongoCatNeo -ErrorAction SilentlyContinue | Stop-Process -Force
+$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "interaction-audit-$PID"
 Remove-Item $frame -Force -ErrorAction SilentlyContinue
 Remove-Item $inputAudit -Force -ErrorAction SilentlyContinue
 $settings = Join-Path $DataRoot "settings.json"

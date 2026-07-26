@@ -22,12 +22,41 @@ static void text(struct nk_command_buffer *canvas, struct nk_rect bounds,
         nk_rgba(0, 0, 0, 0), color);
 }
 
+static void centered_span(struct nk_command_buffer *canvas,
+    struct nk_rect bounds, const char *value, int length,
+    const struct nk_user_font *font, struct nk_color color) {
+    float value_width = font->width(font->userdata, font->height, value, length);
+    float target_width = NK_MIN(bounds.w, value_width + 1.0f);
+    nk_draw_text(canvas, nk_rect(bounds.x + (bounds.w - target_width) * .5f,
+        bounds.y + (bounds.h - font->height) * .5f, target_width,
+        font->height), value, length, font, nk_rgba(0, 0, 0, 0), color);
+}
+
 static void centered(struct nk_command_buffer *canvas, struct nk_rect bounds,
     const char *value, const struct nk_user_font *font, struct nk_color color) {
-    float value_width = width(font, value);
-    text(canvas, nk_rect(bounds.x + (bounds.w - value_width) * .5f,
-        bounds.y + (bounds.h - font->height) * .5f, value_width + 1,
-        font->height), value, font, color);
+    centered_span(canvas, bounds, value, nk_strlen(value), font, color);
+}
+
+static void centered_wrapped(struct nk_command_buffer *canvas,
+    struct nk_rect bounds, const char *value,
+    const struct nk_user_font *font, struct nk_color color) {
+    int length = nk_strlen(value), split = -1; float best = 1.0e30f;
+    if (width(font, value) <= bounds.w) {
+        centered_span(canvas, bounds, value, length, font, color); return;
+    }
+    for (int i = 1; i + 1 < length; ++i) {
+        if (value[i] != ' ') continue;
+        float left = font->width(font->userdata, font->height, value, i);
+        float right = font->width(font->userdata, font->height,
+            value + i + 1, length - i - 1);
+        float widest = NK_MAX(left, right);
+        if (widest < best) { best = widest; split = i; }
+    }
+    if (split < 0) { centered(canvas, bounds, value, font, color); return; }
+    struct nk_rect line = nk_rect(bounds.x,
+        bounds.y + (bounds.h - font->height * 2) * .5f, bounds.w, font->height);
+    centered_span(canvas, line, value, split, font, color); line.y += font->height;
+    centered_span(canvas, line, value + split + 1, length - split - 1, font, color);
 }
 
 static bool hit(struct nk_context *context, struct nk_rect bounds) {
@@ -112,13 +141,27 @@ static void footer(BongoCatNeoPreferences *value, struct nk_context *context,
     const char *update = tr(value, "native.support.checkUpdate", "Check for updates");
     const char *feedback = tr(value, "native.support.feedback", "Feedback");
     char version[32]; snprintf(version, sizeof(version), "v%s", BONGO_CAT_NEO_VERSION);
-    float total = 92 + 46 + 14 + 110 + 14 + 62;
-    float x = bounds.x + (bounds.w - total) * .5f;
-    text(canvas, nk_rect(x, bounds.y + 10, 92, 22), version_label,
+    float label_width = width(value->ui.caption_font, version_label) + 2;
+    float version_width = width(value->ui.label_font, version) + 2;
+    float update_width = NK_MAX(110.0f,
+        width(value->ui.caption_font, update) + 28.0f);
+    float feedback_width = NK_MAX(70.0f,
+        width(value->ui.caption_font, feedback) + 12.0f);
+    float total = label_width + version_width + update_width +
+        feedback_width + 36.0f;
+    bool stacked = total > bounds.w;
+    float info_width = label_width + version_width + 8.0f;
+    float x = bounds.x + (bounds.w - (stacked ? info_width : total)) * .5f;
+    float info_y = bounds.y + (stacked ? -8.0f : 0.0f);
+    centered(canvas, nk_rect(x, info_y, label_width, 36), version_label,
         value->ui.caption_font, p.muted);
-    text(canvas, nk_rect(x + 92, bounds.y + 10, 46, 22), version,
-        value->ui.label_font, p.text);
-    struct nk_rect update_button = nk_rect(x + 152, bounds.y, 110, 36);
+    centered(canvas, nk_rect(x + label_width + 8, info_y,
+        version_width, 36), version, value->ui.label_font, p.text);
+    float actions_width = update_width + feedback_width + 14.0f;
+    float actions_x = stacked ? bounds.x + (bounds.w - actions_width) * .5f :
+        x + info_width + 14.0f;
+    float actions_y = bounds.y + (stacked ? 22.0f : 0.0f);
+    struct nk_rect update_button = nk_rect(actions_x, actions_y, update_width, 36);
     nk_fill_rect(canvas, update_button, 10, p.accent);
     centered(canvas, update_button, update, value->ui.caption_font,
         nk_rgb(255, 255, 255));
@@ -126,7 +169,8 @@ static void footer(BongoCatNeoPreferences *value, struct nk_context *context,
     if (hit(context, update_button))
         bongo_cat_neo_preferences_notice_show(value->app, tr(value,
             "native.support.latest", "Already up to date"), false);
-    struct nk_rect feedback_link = nk_rect(x + 276, bounds.y, 70, 36);
+    struct nk_rect feedback_link = nk_rect(actions_x + update_width + 14,
+        actions_y, feedback_width, 36);
     centered(canvas, feedback_link, feedback, value->ui.caption_font, p.accent);
     link_cursor(context, feedback_link);
     if (hit(context, feedback_link))
@@ -156,7 +200,8 @@ static void hero(BongoCatNeoPreferences *value, struct nk_context *context) {
     logo(value, context, canvas, nk_rect(bounds.x + (bounds.w - 144) * .5f,
         bounds.y + 19, 144, 144), p);
     hero_title(value, canvas, nk_rect(bounds.x, bounds.y + 181, bounds.w, 36), p);
-    centered(canvas, nk_rect(bounds.x + 50, bounds.y + 217, bounds.w - 100, 30),
+    centered_wrapped(canvas, nk_rect(bounds.x + 36, bounds.y + 215,
+        bounds.w - 72, 40),
         tr(value, "native.support.heroText",
         "Thank you for your support. Every use and share helps Bongo Cat Neo grow."),
         value->ui.caption_font, p.muted);

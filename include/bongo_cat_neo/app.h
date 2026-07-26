@@ -39,6 +39,7 @@ typedef struct BongoCatNeoApp {
     char smoke_live2d_scenario[BONGO_CAT_NEO_ID_CAP];
     char loaded_model[BONGO_CAT_NEO_ID_CAP];
     bool running;
+    bool autostart_launch;
     bool smoke;
     bool smoke_preferences;
     bool smoke_remove_imported;

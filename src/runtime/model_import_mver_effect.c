@@ -45,7 +45,7 @@ bool bongo_cat_neo_mver_effects(void *raw_output, void *raw_items, void *raw_roo
     char resources[BONGO_CAT_NEO_PATH_CAP], target_effects[BONGO_CAT_NEO_PATH_CAP];
     if (!bongo_cat_neo_path_join(resources, sizeof(resources), target, "resources") ||
         !bongo_cat_neo_path_join(target_effects, sizeof(target_effects), resources, "effects") ||
-        !SDL_CreateDirectory(target_effects)) return false;
+        !bongo_cat_neo_path_create_directory(target_effects)) return false;
     size_t index, count; yyjson_val *row;
     yyjson_arr_foreach(rows, index, count, row) {
         char shortcut[BONGO_CAT_NEO_SHORTCUT_CAP], name[32];
@@ -57,7 +57,7 @@ bool bongo_cat_neo_mver_effects(void *raw_output, void *raw_items, void *raw_roo
         if (bongo_cat_neo_image_load(source, &image, NULL) != BONGO_CAT_NEO_OK) return false;
         bongo_cat_neo_image_free(&image);
         if (!bongo_cat_neo_path_join(destination, sizeof(destination), target_effects, name) ||
-            !SDL_CopyFile(source, destination)) return false;
+            !bongo_cat_neo_path_copy_file(source, destination)) return false;
         yyjson_mut_val *item = yyjson_mut_arr_add_obj(output, items);
         char relative[BONGO_CAT_NEO_PATH_CAP];
         snprintf(relative, sizeof(relative), "resources/effects/%s", name);

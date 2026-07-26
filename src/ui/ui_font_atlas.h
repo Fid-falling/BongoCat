@@ -4,7 +4,8 @@
 #include "ui_backend.h"
 
 bool bongo_cat_neo_ui_font_atlas_create(BongoCatNeoUIBackend *ui,
-    const char *body_path, const char *heading_path,
+    const char *body_path, const char *body_fallback_path,
+    const char *heading_path, const char *heading_fallback_path,
     const nk_rune *glyph_ranges);
 void bongo_cat_neo_ui_font_atlas_destroy(BongoCatNeoUIBackend *ui);
 

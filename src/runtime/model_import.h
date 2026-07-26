@@ -33,6 +33,9 @@ typedef struct BongoCatNeoImportDiscovery {
     bool ambiguous;
 } BongoCatNeoImportDiscovery;
 
+typedef BongoCatNeoResult (*BongoCatNeoPortableVisitor)(void *userdata,
+    const char *source, BongoCatNeoImportDiscovery *discovery, BongoCatNeoError *error);
+
 typedef struct BongoCatNeoApp BongoCatNeoApp;
 
 bool bongo_cat_neo_import_discover(const char *source, BongoCatNeoImportDiscovery *discovery,
@@ -61,5 +64,7 @@ void bongo_cat_neo_import_apply_metadata(BongoCatNeoApp *app, const char *model_
     const char *directory);
 BongoCatNeoResult bongo_cat_neo_import_portable_mver(BongoCatNeoApp *app,
     const char *root, BongoCatNeoError *error);
+BongoCatNeoResult bongo_cat_neo_import_portable_scan(const char *root,
+    BongoCatNeoPortableVisitor visitor, void *userdata, BongoCatNeoError *error);
 
 #endif

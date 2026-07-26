@@ -103,7 +103,8 @@ function Get-AppWindows([int]$Id) {
     return $items
 }
 
-Get-Process BongoCatNeo -ErrorAction SilentlyContinue | Stop-Process -Force
+$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "drop-import-audit-$PID"
 Start-Sleep -Milliseconds $(if ($NativePrompt) { 1500 } else { 350 })
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 $dataRoot = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)

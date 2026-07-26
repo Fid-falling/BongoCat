@@ -68,7 +68,8 @@ bool bongo_cat_neo_mver_emit_pair(const char *hand, const char *keyboard,
     else {
         BongoCatNeoImage image;
         ok = bongo_cat_neo_image_load(hand, &image, error) == BONGO_CAT_NEO_OK;
-        if (ok) { bongo_cat_neo_image_free(&image); ok = SDL_CopyFile(hand, first); }
+        if (ok) { bongo_cat_neo_image_free(&image);
+            ok = bongo_cat_neo_path_copy_file(hand, first); }
     }
     if (!ok && error && !error->message[0])
         bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO,
@@ -78,7 +79,7 @@ bool bongo_cat_neo_mver_emit_pair(const char *hand, const char *keyboard,
         const char *item = names.items[i] ? names.items[i] : names.generated;
         snprintf(filename, sizeof(filename), "%s.png", item);
         ok = bongo_cat_neo_path_join(target, sizeof(target), directory, filename) &&
-            SDL_CopyFile(first, target);
+            bongo_cat_neo_path_copy_file(first, target);
     }
     return ok;
 }

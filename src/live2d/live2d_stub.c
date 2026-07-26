@@ -1,4 +1,5 @@
 #include "bongo_cat_neo/model.h"
+#include "../runtime/model_import.h"
 
 #include <stdlib.h>
 
@@ -15,9 +16,10 @@ void bongo_cat_neo_live2d_destroy(BongoCatNeoLive2D *live2d) { free(live2d); }
 
 BongoCatNeoResult bongo_cat_neo_live2d_load(BongoCatNeoLive2D *live2d, const char *model_dir,
     const char *setting_file, bool preset, BongoCatNeoError *error) {
-    (void)error;
     (void)preset;
     if (!live2d || !model_dir || !setting_file) return BONGO_CAT_NEO_ERROR_ARGUMENT;
+    if (!bongo_cat_neo_import_manifest_valid(model_dir, setting_file, error))
+        return BONGO_CAT_NEO_ERROR_FORMAT;
     return BONGO_CAT_NEO_OK;
 }
 

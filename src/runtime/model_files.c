@@ -14,7 +14,10 @@ typedef struct TreeContext {
     const char *source;
     const char *target;
     BongoCatNeoError *error;
+    unsigned depth;
 } TreeContext;
+
+#define MODEL_TREE_DEPTH_CAP 32
 
 static void select_model_state(BongoCatNeoApp *app, const BongoCatNeoModelEntry *entry) {
     snprintf(app->config.current_model, sizeof(app->config.current_model), "%s",
@@ -77,8 +80,9 @@ bool bongo_cat_neo_app_select_model(BongoCatNeoApp *app, const char *id) {
     return true;
 }
 
-static bool copy_tree(const char *source, const char *target, BongoCatNeoError *error);
-static SDL_EnumerationResult SDLCALL copy_item(void *userdata,
+static bool copy_tree(const char *source, const char *target, unsigned depth,
+    BongoCatNeoError *error);
+static BongoCatNeoPathVisit copy_item(void *userdata,
     const char *dirname, const char *name) {
     (void)dirname;
     TreeContext *context = userdata;
@@ -86,41 +90,46 @@ static SDL_EnumerationResult SDLCALL copy_item(void *userdata,
     if (!bongo_cat_neo_path_join(source, sizeof(source), context->source, name) ||
         !bongo_cat_neo_path_join(target, sizeof(target), context->target, name)) {
         bongo_cat_neo_error_set(context->error, BONGO_CAT_NEO_ERROR_IO, "Model path is too long");
-        return SDL_ENUM_FAILURE;
+        return BONGO_CAT_NEO_PATH_FAILURE;
     }
-    SDL_PathInfo info;
-    if (!SDL_GetPathInfo(source, &info)) {
-        bongo_cat_neo_error_set(context->error, BONGO_CAT_NEO_ERROR_IO, "%s", SDL_GetError());
-        return SDL_ENUM_FAILURE;
-    }
-    bool ok = info.type == SDL_PATHTYPE_DIRECTORY
-        ? copy_tree(source, target, context->error)
-        : info.type == SDL_PATHTYPE_FILE && SDL_CopyFile(source, target);
+    bool directory = bongo_cat_neo_path_is_dir(source);
+    bool file = !directory && bongo_cat_neo_path_is_file(source);
+    bool ok = directory
+        ? copy_tree(source, target, context->depth + 1, context->error)
+        : file && bongo_cat_neo_path_copy_file(source, target);
     if (!ok && context->error && !context->error->message[0])
         bongo_cat_neo_error_set(context->error, BONGO_CAT_NEO_ERROR_IO, "Cannot copy %s: %s",
             source, SDL_GetError());
-    return ok ? SDL_ENUM_CONTINUE : SDL_ENUM_FAILURE;
+    return ok ? BONGO_CAT_NEO_PATH_CONTINUE : BONGO_CAT_NEO_PATH_FAILURE;
 }
 
-static bool copy_tree(const char *source, const char *target, BongoCatNeoError *error) {
-    if (!SDL_CreateDirectory(target)) {
+static bool copy_tree(const char *source, const char *target, unsigned depth,
+    BongoCatNeoError *error) {
+    if (depth > MODEL_TREE_DEPTH_CAP) {
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
+            "Model directory nesting exceeds %u levels", MODEL_TREE_DEPTH_CAP);
+        return false;
+    }
+    if (!bongo_cat_neo_path_create_directory(target)) {
         bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO, "Cannot create %s: %s", target, SDL_GetError());
         return false;
     }
-    TreeContext context = {source, target, error};
-    return SDL_EnumerateDirectory(source, copy_item, &context);
+    TreeContext context = {source, target, error, depth};
+    return bongo_cat_neo_path_enumerate(source, copy_item, &context);
 }
 
 BongoCatNeoResult bongo_cat_neo_copy_directory(const char *source, const char *target,
     BongoCatNeoError *error) {
     if (!source || !target || !bongo_cat_neo_path_is_dir(source)) return BONGO_CAT_NEO_ERROR_ARGUMENT;
-    return copy_tree(source, target, error) ? BONGO_CAT_NEO_OK : BONGO_CAT_NEO_ERROR_IO;
+    return copy_tree(source, target, 0, error) ? BONGO_CAT_NEO_OK :
+        error && error->code == BONGO_CAT_NEO_ERROR_FORMAT ?
+        BONGO_CAT_NEO_ERROR_FORMAT : BONGO_CAT_NEO_ERROR_IO;
 }
 
 static bool custom_root(BongoCatNeoApp *app, char *path, size_t capacity) {
     return app->data_root[0] &&
         bongo_cat_neo_path_join(path, capacity, app->data_root, "custom-models") &&
-        SDL_CreateDirectory(path);
+        bongo_cat_neo_path_create_directory(path);
 }
 
 static bool shortcut_model_exists(const BongoCatNeoModelCatalog *models,

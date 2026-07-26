@@ -1,6 +1,7 @@
 #include "model_import.h"
 #include "model_storage.h"
 #include "runtime.h"
+#include "bongo_cat_neo/json.h"
 #include "bongo_cat_neo/path.h"
 #include "bongo_cat_neo/sha256.h"
 
@@ -13,21 +14,15 @@
 
 #define PORTABLE_DIRECTORY "portable-mver"
 #define PORTABLE_MARKER ".bongo-cat-neo-portable.json"
-#define PORTABLE_CHILD_CAP 32
 
 typedef struct PortableStamp {
-    uint64_t sum, exclusive, bytes, latest, files;
+    uint64_t sum, exclusive, bytes, latest, files, entries;
 } PortableStamp;
 
 typedef struct StampWalk {
     PortableStamp *stamp;
     int depth;
 } StampWalk;
-
-typedef struct ChildList {
-    char paths[PORTABLE_CHILD_CAP][BONGO_CAT_NEO_PATH_CAP];
-    size_t count;
-} ChildList;
 
 static uint64_t text_hash(const char *value) {
     uint64_t hash = 1469598103934665603ull;
@@ -46,32 +41,32 @@ static uint64_t mix(uint64_t value) {
 
 static bool stamp_path(const char *path, PortableStamp *stamp, int depth);
 
-static SDL_EnumerationResult SDLCALL stamp_item(void *userdata,
+static BongoCatNeoPathVisit stamp_item(void *userdata,
     const char *dirname, const char *name) {
     StampWalk *walk = userdata;
     char path[BONGO_CAT_NEO_PATH_CAP];
-    return bongo_cat_neo_path_join(path, sizeof(path), dirname, name) &&
+    return ++walk->stamp->entries <= 16384 &&
+        bongo_cat_neo_path_join(path, sizeof(path), dirname, name) &&
         stamp_path(path, walk->stamp, walk->depth)
-        ? SDL_ENUM_CONTINUE : SDL_ENUM_FAILURE;
+        ? BONGO_CAT_NEO_PATH_CONTINUE : BONGO_CAT_NEO_PATH_FAILURE;
 }
 
 static bool stamp_path(const char *path, PortableStamp *stamp, int depth) {
-    SDL_PathInfo info;
-    if (!SDL_GetPathInfo(path, &info)) return false;
-    if (info.type == SDL_PATHTYPE_DIRECTORY) {
+    if (bongo_cat_neo_path_is_dir(path)) {
         if (depth >= 24) return false;
         StampWalk walk = {stamp, depth + 1};
-        return SDL_EnumerateDirectory(path, stamp_item, &walk);
+        return bongo_cat_neo_path_enumerate(path, stamp_item, &walk);
     }
-    if (info.type != SDL_PATHTYPE_FILE) return true;
-    uint64_t value = text_hash(path) ^ mix((uint64_t)info.size) ^
-        mix((uint64_t)info.modify_time);
+    uint64_t size, modified;
+    if (!bongo_cat_neo_path_file_info(path, &size, &modified)) return false;
+    if (stamp->files >= 8192 || size > 1073741824ull - stamp->bytes)
+        return false;
+    uint64_t value = text_hash(path) ^ mix(size) ^ mix(modified);
     value = mix(value);
     stamp->sum += value;
     stamp->exclusive ^= value;
-    stamp->bytes += (uint64_t)info.size;
-    if ((uint64_t)info.modify_time > stamp->latest)
-        stamp->latest = (uint64_t)info.modify_time;
+    stamp->bytes += size;
+    if (modified > stamp->latest) stamp->latest = modified;
     stamp->files++;
     return true;
 }
@@ -102,7 +97,7 @@ static bool marker_matches(const char *target, const char *source,
     const char *signature) {
     char path[BONGO_CAT_NEO_PATH_CAP];
     if (!bongo_cat_neo_path_join(path, sizeof(path), target, PORTABLE_MARKER)) return false;
-    yyjson_doc *document = yyjson_read_file(path, 0, NULL, NULL);
+    yyjson_doc *document = bongo_cat_neo_json_read_file(path, 0, NULL);
     yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
     const char *stored_source = yyjson_get_str(yyjson_obj_get(root, "source"));
     const char *stored_signature = yyjson_get_str(yyjson_obj_get(root, "signature"));
@@ -126,7 +121,7 @@ static bool write_marker(const char *target, const char *source,
         yyjson_mut_obj_add_strcpy(document, root, "signature", signature) &&
         yyjson_mut_obj_add_strcpy(document, root, "mode", bongo_cat_neo_mode_name(mode)) &&
         bongo_cat_neo_path_join(path, sizeof(path), target, PORTABLE_MARKER) &&
-        yyjson_mut_write_file(path, document, YYJSON_WRITE_PRETTY, NULL, NULL);
+        bongo_cat_neo_json_write_file(path, document, YYJSON_WRITE_PRETTY, NULL);
     yyjson_mut_doc_free(document);
     return ok;
 }
@@ -143,11 +138,11 @@ static bool refresh_cache(const BongoCatNeoImportCandidate *candidate,
     if (!bongo_cat_neo_path_join(backup, sizeof(backup), cache_root, name)) return false;
     bongo_cat_neo_model_remove_tree(temporary, NULL);
     if (!bongo_cat_neo_path_is_dir(target) && bongo_cat_neo_path_is_dir(backup))
-        SDL_RenamePath(backup, target);
+        bongo_cat_neo_path_rename(backup, target);
     if (bongo_cat_neo_path_is_dir(target)) bongo_cat_neo_model_remove_tree(backup, NULL);
     *created = !bongo_cat_neo_path_is_dir(target);
     if (!*created && marker_matches(target, source, signature)) return true;
-    if (!SDL_CreateDirectory(temporary) ||
+    if (!bongo_cat_neo_path_create_directory(temporary) ||
         !bongo_cat_neo_import_prepare_adapter(candidate, temporary, error) ||
         !write_marker(temporary, source, signature, candidate->mode)) {
         bongo_cat_neo_model_remove_tree(temporary, NULL);
@@ -156,14 +151,14 @@ static bool refresh_cache(const BongoCatNeoImportCandidate *candidate,
         return false;
     }
     bool had_target = bongo_cat_neo_path_is_dir(target);
-    if (had_target && !SDL_RenamePath(target, backup)) {
+    if (had_target && !bongo_cat_neo_path_rename(target, backup)) {
         bongo_cat_neo_model_remove_tree(temporary, NULL);
         bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO,
             "Cannot update portable Mver adapter: %s", SDL_GetError());
         return false;
     }
-    if (!SDL_RenamePath(temporary, target)) {
-        if (had_target) SDL_RenamePath(backup, target);
+    if (!bongo_cat_neo_path_rename(temporary, target)) {
+        if (had_target) bongo_cat_neo_path_rename(backup, target);
         bongo_cat_neo_model_remove_tree(temporary, NULL);
         bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO,
             "Cannot activate portable Mver adapter: %s", SDL_GetError());
@@ -218,54 +213,15 @@ static BongoCatNeoResult add_discovery(BongoCatNeoApp *app, const char *cache_ro
     return BONGO_CAT_NEO_OK;
 }
 
-static SDL_EnumerationResult SDLCALL collect_child(void *userdata,
-    const char *dirname, const char *name) {
-    ChildList *list = userdata;
-    if (name[0] == '.' || list->count >= PORTABLE_CHILD_CAP) return SDL_ENUM_CONTINUE;
-    char path[BONGO_CAT_NEO_PATH_CAP];
-    SDL_PathInfo info;
-    if (bongo_cat_neo_path_join(path, sizeof(path), dirname, name) &&
-        SDL_GetPathInfo(path, &info) && info.type == SDL_PATHTYPE_DIRECTORY)
-        snprintf(list->paths[list->count++], BONGO_CAT_NEO_PATH_CAP, "%s", path);
-    return SDL_ENUM_CONTINUE;
-}
+typedef struct PortableAdd {
+    BongoCatNeoApp *app; const char *cache_root; char *first_created;
+} PortableAdd;
 
-static int compare_path(const void *left, const void *right) {
-#ifdef _WIN32
-    return SDL_strcasecmp(left, right);
-#else
-    return strcmp(left, right);
-#endif
-}
-#define PORTABLE_SCAN_DEPTH 4
-typedef struct PortableScan {
-    BongoCatNeoApp *app; const char *cache_root;
-    char *first_created; BongoCatNeoError *error;
-} PortableScan;
-typedef struct PortableWorkspace { BongoCatNeoImportDiscovery discovery; ChildList children; } PortableWorkspace;
-static BongoCatNeoResult scan_node(PortableScan *scan, const char *source, int depth) {
-    PortableWorkspace *work = calloc(1, sizeof(*work));
-    if (!work) { bongo_cat_neo_error_set(scan->error, BONGO_CAT_NEO_ERROR_MEMORY,
-        "Cannot allocate portable model scan workspace"); return BONGO_CAT_NEO_ERROR_MEMORY; }
-    BongoCatNeoError local = {0}; int found = bongo_cat_neo_import_mver_discover_exact(source, &work->discovery, &local);
-    if (found <= 0) {
-        memset(&work->discovery, 0, sizeof(work->discovery));
-        local = (BongoCatNeoError){0}; found = bongo_cat_neo_import_mver_patch_discover(
-            source, &work->discovery, &local);
-    }
-    if (found > 0) { BongoCatNeoResult result = add_discovery(scan->app, scan->cache_root,
-            source, &work->discovery, scan->first_created, scan->error);
-        free(work); return result;
-    }
-    BongoCatNeoResult result = BONGO_CAT_NEO_OK; if (depth < PORTABLE_SCAN_DEPTH &&
-        SDL_EnumerateDirectory(source, collect_child, &work->children)) {
-        qsort(work->children.paths, work->children.count, sizeof(work->children.paths[0]), compare_path);
-        for (size_t i = 0; i < work->children.count; ++i) {
-            BongoCatNeoResult item = scan_node(scan, work->children.paths[i], depth + 1);
-            if (item != BONGO_CAT_NEO_OK && result == BONGO_CAT_NEO_OK) result = item;
-        }
-    }
-    free(work); return result;
+static BongoCatNeoResult add_scanned(void *userdata, const char *source,
+    BongoCatNeoImportDiscovery *discovery, BongoCatNeoError *error) {
+    PortableAdd *add = userdata;
+    return add_discovery(add->app, add->cache_root, source, discovery,
+        add->first_created, error);
 }
 
 BongoCatNeoResult bongo_cat_neo_import_portable_mver(BongoCatNeoApp *app,
@@ -274,27 +230,22 @@ BongoCatNeoResult bongo_cat_neo_import_portable_mver(BongoCatNeoApp *app,
     if (!bongo_cat_neo_path_is_dir(root)) return BONGO_CAT_NEO_OK;
     char cache_root[BONGO_CAT_NEO_PATH_CAP], first_created[BONGO_CAT_NEO_ID_CAP] = {0};
     if (!bongo_cat_neo_path_join(cache_root, sizeof(cache_root), app->data_root,
-        PORTABLE_DIRECTORY) || !SDL_CreateDirectory(cache_root)) return BONGO_CAT_NEO_ERROR_IO;
-    BongoCatNeoImportDiscovery exact = {0};
-    int direct = bongo_cat_neo_import_mver_discover_exact(root, &exact, error);
+        PORTABLE_DIRECTORY) || !bongo_cat_neo_path_create_directory(cache_root)) return BONGO_CAT_NEO_ERROR_IO;
+    BongoCatNeoImportDiscovery *discovery = calloc(1, sizeof(*discovery));
+    if (!discovery) return BONGO_CAT_NEO_ERROR_MEMORY;
+    int direct = bongo_cat_neo_import_mver_discover_exact(root, discovery, error);
     BongoCatNeoResult result = direct > 0
-        ? add_discovery(app, cache_root, root, &exact, first_created, error) :
+        ? add_discovery(app, cache_root, root, discovery, first_created, error) :
         BONGO_CAT_NEO_OK;
     if (direct <= 0) {
         if (error) *error = (BongoCatNeoError){0};
-        PortableScan scan = {app, cache_root, first_created, error};
-        ChildList children = {0};
-        if (SDL_EnumerateDirectory(root, collect_child, &children)) {
-            qsort(children.paths, children.count, sizeof(children.paths[0]), compare_path);
-            for (size_t i = 0; i < children.count; ++i) {
-                BongoCatNeoResult item = scan_node(&scan, children.paths[i], 1);
-                if (item != BONGO_CAT_NEO_OK) result = item;
-            }
-        }
+        PortableAdd add = {app, cache_root, first_created};
+        result = bongo_cat_neo_import_portable_scan(root, add_scanned, &add, error);
     }
     const char *selected = app->config.current_model;
     if (first_created[0] && (!selected[0] || strcmp(selected, "standard") == 0 ||
         strcmp(selected, "keyboard") == 0 || strcmp(selected, "gamepad") == 0))
         snprintf(app->config.current_model, sizeof(app->config.current_model), "%s", first_created);
+    free(discovery);
     return result;
 }

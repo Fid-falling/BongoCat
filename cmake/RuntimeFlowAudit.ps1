@@ -7,7 +7,8 @@ if(-not $Exe){$Exe=Join-Path $root "build-cubism\Release\BongoCatNeo.exe"}
 if(-not $OutputDir){$OutputDir=Join-Path $root "build-cubism\runtime-flow-audit"}
 $Exe=[IO.Path]::GetFullPath($Exe); $OutputDir=[IO.Path]::GetFullPath($OutputDir)
 New-Item -ItemType Directory -Force $OutputDir|Out-Null
-Get-Process BongoCatNeo -ErrorAction SilentlyContinue|Stop-Process -Force
+$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES="1"
+$env:BONGO_CAT_NEO_TEST_INSTANCE_ID="runtime-flow-audit-$PID"
 $data=Join-Path $OutputDir ("data-"+[DateTime]::UtcNow.Ticks)
 $stageFile=Join-Path $data "runtime-flow-stage.txt"
 $process=Start-Process $Exe -ArgumentList @("--ci-smoke","--ci-runtime-flow",

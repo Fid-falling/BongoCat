@@ -10,6 +10,7 @@
 #include <windows.h>
 #else
 #include <dirent.h>
+#include <errno.h>
 #endif
 
 bool bongo_cat_neo_path_join(char *out, size_t cap, const char *left, const char *right) {
@@ -32,11 +33,11 @@ const char *bongo_cat_neo_path_name(const char *path) {
 static bool path_type(const char *path, bool directory) {
 #ifdef _WIN32
     wchar_t *wide = bongo_cat_neo_windows_wide(path);
-    struct _stat64 value = {0};
-    bool found = wide && _wstat64(wide, &value) == 0;
+    DWORD attributes = wide ? GetFileAttributesW(wide) : INVALID_FILE_ATTRIBUTES;
     free(wide);
-    return found && (directory ? (value.st_mode & _S_IFDIR) != 0
-        : (value.st_mode & _S_IFREG) != 0);
+    return attributes != INVALID_FILE_ATTRIBUTES &&
+        (directory ? (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0
+            : (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0);
 #else
     struct stat value;
     if (!path || stat(path, &value) != 0) return false;
@@ -46,6 +47,79 @@ static bool path_type(const char *path, bool directory) {
 
 bool bongo_cat_neo_path_is_file(const char *path) { return path_type(path, false); }
 bool bongo_cat_neo_path_is_dir(const char *path) { return path_type(path, true); }
+
+bool bongo_cat_neo_path_file_info(const char *path, uint64_t *size,
+    uint64_t *modified) {
+    if (!path || (!size && !modified)) return false;
+#ifdef _WIN32
+    wchar_t *wide = bongo_cat_neo_windows_wide(path);
+    WIN32_FILE_ATTRIBUTE_DATA info = {0};
+    bool found = wide && GetFileAttributesExW(wide, GetFileExInfoStandard, &info) &&
+        (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
+    free(wide);
+    if (!found) return false;
+    if (size) *size = ((uint64_t)info.nFileSizeHigh << 32) | info.nFileSizeLow;
+    if (modified) *modified = ((uint64_t)info.ftLastWriteTime.dwHighDateTime << 32) |
+        info.ftLastWriteTime.dwLowDateTime;
+#else
+    struct stat info;
+    if (stat(path, &info) != 0 || !S_ISREG(info.st_mode) || info.st_size < 0) return false;
+    if (size) *size = (uint64_t)info.st_size;
+    if (modified) *modified = info.st_mtime < 0 ? 0 : (uint64_t)info.st_mtime;
+#endif
+    return true;
+}
+
+bool bongo_cat_neo_path_file_size(const char *path, uint64_t *size) {
+    return bongo_cat_neo_path_file_info(path, size, NULL);
+}
+
+#ifdef _WIN32
+static bool create_one(const wchar_t *path) {
+    if (CreateDirectoryW(path, NULL)) return true;
+    if (GetLastError() != ERROR_ALREADY_EXISTS) return false;
+    DWORD attributes = GetFileAttributesW(path);
+    return attributes != INVALID_FILE_ATTRIBUTES &&
+        (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+}
+
+bool bongo_cat_neo_path_create_directory(const char *path) {
+    wchar_t *wide = bongo_cat_neo_windows_wide(path);
+    if (!wide || !wide[0]) { free(wide); return false; }
+    bool extended_unc = wcsncmp(wide, L"\\\\?\\UNC\\", 8) == 0;
+    bool normal_unc = wide[0] == L'\\' && wide[1] == L'\\' && wide[2] != L'?';
+    size_t start = extended_unc ? 8 : normal_unc ? 2 :
+        wcsncmp(wide, L"\\\\?\\", 4) == 0 ? 7 : wide[1] == L':' ? 3 : 0;
+    if (extended_unc || normal_unc) {
+        wchar_t *server = wcschr(wide + start, L'\\');
+        wchar_t *share = server ? wcschr(server + 1, L'\\') : NULL;
+        start = share ? (size_t)(share - wide + 1) : wcslen(wide);
+    }
+    bool ok = true;
+    for (wchar_t *cursor = wide + start; ok && *cursor; ++cursor) {
+        if (*cursor != L'\\') continue;
+        *cursor = L'\0'; ok = create_one(wide); *cursor = L'\\';
+    }
+    if (ok) ok = create_one(wide);
+    free(wide); return ok;
+}
+#else
+bool bongo_cat_neo_path_create_directory(const char *path) {
+    if (!path || !path[0]) return false;
+    char copy[BONGO_CAT_NEO_PATH_CAP];
+    int length = snprintf(copy, sizeof(copy), "%s", path);
+    if (length < 0 || (size_t)length >= sizeof(copy)) return false;
+    for (char *cursor = copy + 1; *cursor; ++cursor) {
+        if (*cursor != '/') continue;
+        *cursor = '\0';
+        if (mkdir(copy, 0700) != 0 &&
+            (errno != EEXIST || !bongo_cat_neo_path_is_dir(copy))) return false;
+        *cursor = '/';
+    }
+    return mkdir(copy, 0700) == 0 ||
+        (errno == EEXIST && bongo_cat_neo_path_is_dir(copy));
+}
+#endif
 
 static bool ends_with(const char *text, const char *suffix) {
     size_t a = strlen(text), b = strlen(suffix);

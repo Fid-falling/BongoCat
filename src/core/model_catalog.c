@@ -1,4 +1,5 @@
 #include "bongo_cat_neo/file.h"
+#include "bongo_cat_neo/json.h"
 #include "bongo_cat_neo/model.h"
 #include "bongo_cat_neo/path.h"
 
@@ -66,7 +67,7 @@ static bool add_package(BongoCatNeoModelCatalog *catalog, const char *directory,
     *handled = bongo_cat_neo_path_join(descriptor, sizeof(descriptor), directory,
         ".bongo-cat-neo-package.json") && bongo_cat_neo_path_is_file(descriptor);
     if (!*handled) return true;
-    yyjson_doc *document = yyjson_read_file(descriptor, 0, NULL, NULL);
+    yyjson_doc *document = bongo_cat_neo_json_read_file(descriptor, 0, NULL);
     yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
     const char *model = yyjson_get_str(yyjson_obj_get(root, "directory"));
     const char *adapter = yyjson_get_str(yyjson_obj_get(root, "adapter"));

@@ -11,7 +11,13 @@
 #endif
 
 BongoCatNeoResult bongo_cat_neo_window_create(BongoCatNeoApp *app, BongoCatNeoError *error);
-void bongo_cat_neo_app_locate_assets(BongoCatNeoApp *app);
+BongoCatNeoResult bongo_cat_neo_app_locate_assets(BongoCatNeoApp *app, BongoCatNeoError *error);
+bool bongo_cat_neo_startup_prepare(BongoCatNeoApp *app, int argc, char **argv,
+    BongoCatNeoError *error);
+void bongo_cat_neo_startup_stage(BongoCatNeoApp *app, const char *stage);
+void bongo_cat_neo_startup_ready(BongoCatNeoApp *app);
+void bongo_cat_neo_startup_failure(BongoCatNeoApp *app, const BongoCatNeoError *error);
+void bongo_cat_neo_startup_ci_failure(BongoCatNeoApp *app, const BongoCatNeoError *error);
 void bongo_cat_neo_window_destroy(BongoCatNeoApp *app);
 void bongo_cat_neo_window_apply(BongoCatNeoApp *app);
 bool bongo_cat_neo_window_event(BongoCatNeoApp *app, const SDL_Event *event);

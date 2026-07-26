@@ -29,7 +29,8 @@ public static class BongoCatNeoFocusNative {
 }
 '@
 
-Get-Process BongoCatNeo -ErrorAction SilentlyContinue | Stop-Process -Force
+$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "focus-audit-$PID"
 $arguments = @("--ci-smoke", "--ci-input-audit", "--ci-exit-ms=$DurationMilliseconds",
     "--ci-model=$Model", "--data-root=$data")
 $process = Start-Process -FilePath $Exe -ArgumentList $arguments -WorkingDirectory `

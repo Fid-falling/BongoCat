@@ -1,6 +1,7 @@
 #include "bongo_cat_neo/platform.h"
 #include "windows_borderless.h"
 #include "windows_keys.h"
+#include "windows_startup.h"
 #include "../ui/ui_native_theme.h"
 #ifdef _WIN32
 #include <SDL3/SDL.h>
@@ -13,6 +14,7 @@
 #include <windows.h>
 typedef struct WindowsState {
     BongoCatNeoPlatform *platform;
+    SRWLOCK platform_lock;
     HANDLE thread;
     HANDLE ready;
     DWORD thread_id;
@@ -22,7 +24,6 @@ typedef struct WindowsState {
 } WindowsState;
 
 static WindowsState *global_state;
-static HANDLE instance_mutex;
 static void wake_main_thread(void) {
     SDL_Event wake = {.type = SDL_EVENT_USER};
     SDL_PushEvent(&wake);
@@ -32,14 +33,19 @@ static HWND native_window(BongoCatNeoPlatform *platform) {
         SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
 }
 static void push_event(BongoCatNeoInputKind kind, const char *name, float value) {
-    if (!global_state || !global_state->platform || !name) return;
+    WindowsState *state = global_state;
+    if (!state || !name) return;
+    AcquireSRWLockShared(&state->platform_lock);
+    BongoCatNeoPlatform *platform = state->platform;
+    if (!platform) { ReleaseSRWLockShared(&state->platform_lock); return; }
     BongoCatNeoInputEvent event = {0};
     event.kind = kind;
     event.timestamp_ms = GetTickCount64();
     event.value = value;
     snprintf(event.name, sizeof(event.name), "%s", name);
-    if (bongo_cat_neo_input_push(global_state->platform->input, &event))
+    if (bongo_cat_neo_input_push(platform->input, &event))
         wake_main_thread();
+    ReleaseSRWLockShared(&state->platform_lock);
 }
 static LRESULT CALLBACK keyboard_hook(int code, WPARAM message, LPARAM data) {
     if (code == HC_ACTION) {
@@ -69,8 +75,12 @@ static LRESULT CALLBACK mouse_hook(int code, WPARAM message, LPARAM data) {
     if (code == HC_ACTION && global_state) {
         const MSLLHOOKSTRUCT *mouse = (const MSLLHOOKSTRUCT *)data;
         if (message == WM_MOUSEMOVE) {
-            if (bongo_cat_neo_input_mouse(global_state->platform->input,
+            WindowsState *state = global_state;
+            AcquireSRWLockShared(&state->platform_lock);
+            BongoCatNeoPlatform *platform = state->platform;
+            if (platform && bongo_cat_neo_input_mouse(platform->input,
                 mouse->pt.x, mouse->pt.y)) wake_main_thread();
+            ReleaseSRWLockShared(&state->platform_lock);
         } else {
             const char *name = mouse_button(message, mouse->mouseData);
             bool down = message == WM_LBUTTONDOWN || message == WM_RBUTTONDOWN ||
@@ -108,46 +118,56 @@ BongoCatNeoResult bongo_cat_neo_platform_init(BongoCatNeoPlatform *platform, SDL
     platform->window = window;
     platform->input = input;
     WindowsState *state = calloc(1, sizeof(*state));
-    if (!state) return BONGO_CAT_NEO_ERROR_MEMORY;
+    if (!state) {
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_MEMORY,
+            "Cannot allocate Windows input state"); return BONGO_CAT_NEO_ERROR_MEMORY;
+    }
+    InitializeSRWLock(&state->platform_lock);
     state->platform = platform;
-    state->ready = CreateEventW(NULL, TRUE, FALSE, NULL);
+    bool test_failure = SDL_getenv("BONGO_CAT_NEO_TEST_HOOK_FAILURE") != NULL;
+    state->ready = test_failure ? NULL : CreateEventW(NULL, TRUE, FALSE, NULL);
     state->thread = state->ready
         ? CreateThread(NULL, 0, hook_thread, state, 0, &state->thread_id) : NULL;
     platform->native = state;
     if (!state->ready || !state->thread || WaitForSingleObject(state->ready, 3000) != WAIT_OBJECT_0 ||
         !state->hooks_ready) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM, "Global input hooks failed");
-        bongo_cat_neo_platform_shutdown(platform);
-        return BONGO_CAT_NEO_ERROR_PLATFORM;
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+            "Global input hooks are unavailable; the window will continue without global input");
     }
     HWND hwnd = native_window(platform);
+    SetWindowTextW(hwnd, bongo_cat_neo_windows_instance_title());
     bongo_cat_neo_windows_borderless_install(hwnd);
     if (!SDL_SetWindowResizable(window, true)) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM,
-            "Cannot initialize borderless resize state: %s", SDL_GetError());
-        bongo_cat_neo_platform_shutdown(platform);
-        return BONGO_CAT_NEO_ERROR_PLATFORM;
+        SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
+            "Borderless resize is unavailable: %s", SDL_GetError());
     }
-    MARGINS margins = {-1, -1, -1, -1};
-    DwmExtendFrameIntoClientArea(hwnd, &margins);
+    if (SDL_GetWindowFlags(window) & SDL_WINDOW_TRANSPARENT) {
+        MARGINS margins = {-1, -1, -1, -1};
+        DwmExtendFrameIntoClientArea(hwnd, &margins);
+    }
     SetWindowPos(hwnd, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE |
         SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
     return BONGO_CAT_NEO_OK;
 }
-
 void bongo_cat_neo_platform_shutdown(BongoCatNeoPlatform *platform) {
     WindowsState *state = platform ? platform->native : NULL;
     if (!state) return;
     HWND window = native_window(platform);
     if (window) bongo_cat_neo_windows_borderless_uninstall(window);
+    AcquireSRWLockExclusive(&state->platform_lock);
+    state->platform = NULL;
+    ReleaseSRWLockExclusive(&state->platform_lock);
     if (state->thread_id) PostThreadMessageW(state->thread_id, WM_QUIT, 0, 0);
-    if (state->thread) WaitForSingleObject(state->thread, 3000);
+    if (state->thread && WaitForSingleObject(state->thread, 3000) != WAIT_OBJECT_0) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+            "Windows input hook thread did not stop; its state will remain isolated until exit");
+        platform->native = NULL; return;
+    }
     if (state->thread) CloseHandle(state->thread);
     if (state->ready) CloseHandle(state->ready);
     free(state);
     platform->native = NULL;
 }
-
 void bongo_cat_neo_platform_set_always_on_top(BongoCatNeoPlatform *platform, bool enabled) {
     if (!platform || !platform->window) return;
     if (SDL_SetWindowAlwaysOnTop(platform->window, enabled)) return;
@@ -155,7 +175,6 @@ void bongo_cat_neo_platform_set_always_on_top(BongoCatNeoPlatform *platform, boo
     if (window) SetWindowPos(window, enabled ? HWND_TOPMOST : HWND_NOTOPMOST,
         0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 }
-
 void bongo_cat_neo_platform_begin_drag(BongoCatNeoPlatform *platform) {
     HWND hwnd = native_window(platform);
     ReleaseCapture();
@@ -163,52 +182,6 @@ void bongo_cat_neo_platform_begin_drag(BongoCatNeoPlatform *platform) {
 }
 
 bool bongo_cat_neo_platform_dynamic_hit_supported(void) { return true; }
-
-bool bongo_cat_neo_platform_single_instance_begin(void) {
-    if (SDL_getenv("BONGO_CAT_NEO_ALLOW_TEST_INSTANCES")) return true;
-    instance_mutex = CreateMutexW(NULL, FALSE, L"Local\\BongoCatNeo.SingleInstance");
-    if (!instance_mutex) return true;
-    if (GetLastError() != ERROR_ALREADY_EXISTS) return true;
-    HWND existing = FindWindowW(NULL, BONGO_CAT_NEO_NAME_W);
-    if (existing) {
-        ShowWindowAsync(existing, IsIconic(existing) ? SW_RESTORE : SW_SHOW);
-        SetForegroundWindow(existing);
-    }
-    CloseHandle(instance_mutex);
-    instance_mutex = NULL;
-    return false;
-}
-
-void bongo_cat_neo_platform_single_instance_end(void) {
-    if (instance_mutex) CloseHandle(instance_mutex);
-    instance_mutex = NULL;
-}
-
-BongoCatNeoResult bongo_cat_neo_platform_set_autostart(bool enabled, BongoCatNeoError *error) {
-    HKEY key;
-    LONG result = RegCreateKeyExW(HKEY_CURRENT_USER,
-        L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, NULL, 0,
-        KEY_SET_VALUE, NULL, &key, NULL);
-    if (result != ERROR_SUCCESS) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM, "Cannot open autostart registry key");
-        return BONGO_CAT_NEO_ERROR_PLATFORM;
-    }
-    if (enabled) {
-        wchar_t executable[BONGO_CAT_NEO_PATH_CAP];
-        DWORD length = GetModuleFileNameW(NULL, executable, BONGO_CAT_NEO_PATH_CAP);
-        wchar_t command[BONGO_CAT_NEO_PATH_CAP + 4];
-        swprintf(command, BONGO_CAT_NEO_PATH_CAP + 4, L"\"%ls\"", executable);
-        result = RegSetValueExW(key, BONGO_CAT_NEO_NAME_W, 0, REG_SZ,
-            (const BYTE *)command, (DWORD)((wcslen(command) + 1) * sizeof(wchar_t)));
-        (void)length;
-    } else result = RegDeleteValueW(key, BONGO_CAT_NEO_NAME_W);
-    RegCloseKey(key);
-    if (result != ERROR_SUCCESS && result != ERROR_FILE_NOT_FOUND) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM, "Cannot update autostart setting");
-        return BONGO_CAT_NEO_ERROR_PLATFORM;
-    }
-    return BONGO_CAT_NEO_OK;
-}
 
 static wchar_t *wide(const char *text) {
     if (!text) return NULL;

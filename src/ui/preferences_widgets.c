@@ -6,7 +6,6 @@
 
 #include <SDL3/SDL.h>
 #include <math.h>
-
 typedef struct FormStyle {
     struct nk_style_item background;
     struct nk_color window_color;
@@ -167,7 +166,7 @@ bool bongo_cat_neo_pref_toggle(struct nk_context *context, const char *id,
     const char *title, const char *detail, bool *value) {
     int lines = detail_lines(context, detail); FormStyle saved;
     if (!form_begin(context, id, lines, &saved)) return false;
-    form_title(context, title); bool changed = toggle(context, id, value);
+    form_title_sized(context, title, 80.0f); bool changed = toggle(context, id, value);
     nk_layout_row_end(context); description(context, detail, lines);
     form_end(context, &saved); return changed;
 }
@@ -224,13 +223,17 @@ bool bongo_cat_neo_pref_edit(struct nk_context *context, const char *id,
     bool recording, const char *idle_hint, const char *record_hint) {
     int lines = detail_lines(context, detail); FormStyle saved;
     if (!form_begin(context, id, lines, &saved)) return false;
-    form_title(context, title);
+    const char *shown = recording ? record_hint : (value && value[0] ? value : idle_hint);
+    const struct nk_user_font *font = bongo_cat_neo_ui_body_font(context);
+    float width = font->width(font->userdata, font->height, shown, nk_strlen(shown));
+    float control_width = NK_CLAMP(180.0f, width + 64.0f, 260.0f);
+    form_title_sized(context, title, control_width);
     struct nk_rect bounds;
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) {
         nk_layout_row_end(context); form_end(context, &saved); return false;
     }
-    bounds = nk_rect(bounds.x + bounds.w - 175.0f, bounds.y,
-        180.0f, bounds.h);
+    bounds = nk_rect(bounds.x + bounds.w - control_width, bounds.y,
+        control_width, bounds.h);
     BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
     bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
@@ -248,9 +251,6 @@ bool bongo_cat_neo_pref_edit(struct nk_context *context, const char *id,
             nk_rgba(p.pink.r, p.pink.g, p.pink.b,
             (nk_byte)(150 * (1.0f - pulse))));
     }
-    const char *shown = recording ? record_hint : (value && value[0] ? value : idle_hint);
-    const struct nk_user_font *font = bongo_cat_neo_ui_body_font(context);
-    float width = font->width(font->userdata, font->height, shown, nk_strlen(shown));
     float text_x = bounds.x + 46 + NK_MAX(0.0f,
         (bounds.w - 52 - width) * .5f);
     struct nk_rect keyboard = nk_rect(text_x - 24, bounds.y + 13, 13, 11);
