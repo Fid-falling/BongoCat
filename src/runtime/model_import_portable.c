@@ -239,32 +239,33 @@ static int compare_path(const void *left, const void *right) {
 }
 #define PORTABLE_SCAN_DEPTH 4
 typedef struct PortableScan {
-    BongoCatNeoApp *app;
-    const char *cache_root;
-    char *first_created;
-    BongoCatNeoError *error;
+    BongoCatNeoApp *app; const char *cache_root;
+    char *first_created; BongoCatNeoError *error;
 } PortableScan;
-static BongoCatNeoResult scan_node(PortableScan *scan, const char *source, int depth);
+typedef struct PortableWorkspace { BongoCatNeoImportDiscovery discovery; ChildList children; } PortableWorkspace;
 static BongoCatNeoResult scan_node(PortableScan *scan, const char *source, int depth) {
-    BongoCatNeoImportDiscovery discovery = {0};
-    BongoCatNeoError local = {0};
-    int exact = bongo_cat_neo_import_mver_discover_exact(source, &discovery, &local);
-    if (exact > 0) return add_discovery(scan->app, scan->cache_root, source,
-        &discovery, scan->first_created, scan->error);
-    discovery = (BongoCatNeoImportDiscovery){0}; local = (BongoCatNeoError){0};
-    int patch = bongo_cat_neo_import_mver_patch_discover(source, &discovery, &local);
-    if (patch > 0) return add_discovery(scan->app, scan->cache_root, source,
-        &discovery, scan->first_created, scan->error);
-    if (depth >= PORTABLE_SCAN_DEPTH) return BONGO_CAT_NEO_OK;
-    ChildList children = {0};
-    if (!SDL_EnumerateDirectory(source, collect_child, &children)) return BONGO_CAT_NEO_OK;
-    qsort(children.paths, children.count, sizeof(children.paths[0]), compare_path);
-    BongoCatNeoResult result = BONGO_CAT_NEO_OK;
-    for (size_t i = 0; i < children.count; ++i) {
-        BongoCatNeoResult item = scan_node(scan, children.paths[i], depth + 1);
-        if (item != BONGO_CAT_NEO_OK && result == BONGO_CAT_NEO_OK) result = item;
+    PortableWorkspace *work = calloc(1, sizeof(*work));
+    if (!work) { bongo_cat_neo_error_set(scan->error, BONGO_CAT_NEO_ERROR_MEMORY,
+        "Cannot allocate portable model scan workspace"); return BONGO_CAT_NEO_ERROR_MEMORY; }
+    BongoCatNeoError local = {0}; int found = bongo_cat_neo_import_mver_discover_exact(source, &work->discovery, &local);
+    if (found <= 0) {
+        memset(&work->discovery, 0, sizeof(work->discovery));
+        local = (BongoCatNeoError){0}; found = bongo_cat_neo_import_mver_patch_discover(
+            source, &work->discovery, &local);
     }
-    return result;
+    if (found > 0) { BongoCatNeoResult result = add_discovery(scan->app, scan->cache_root,
+            source, &work->discovery, scan->first_created, scan->error);
+        free(work); return result;
+    }
+    BongoCatNeoResult result = BONGO_CAT_NEO_OK; if (depth < PORTABLE_SCAN_DEPTH &&
+        SDL_EnumerateDirectory(source, collect_child, &work->children)) {
+        qsort(work->children.paths, work->children.count, sizeof(work->children.paths[0]), compare_path);
+        for (size_t i = 0; i < work->children.count; ++i) {
+            BongoCatNeoResult item = scan_node(scan, work->children.paths[i], depth + 1);
+            if (item != BONGO_CAT_NEO_OK && result == BONGO_CAT_NEO_OK) result = item;
+        }
+    }
+    free(work); return result;
 }
 
 BongoCatNeoResult bongo_cat_neo_import_portable_mver(BongoCatNeoApp *app,
@@ -294,7 +295,6 @@ BongoCatNeoResult bongo_cat_neo_import_portable_mver(BongoCatNeoApp *app,
     const char *selected = app->config.current_model;
     if (first_created[0] && (!selected[0] || strcmp(selected, "standard") == 0 ||
         strcmp(selected, "keyboard") == 0 || strcmp(selected, "gamepad") == 0))
-        snprintf(app->config.current_model, sizeof(app->config.current_model), "%s",
-            first_created);
+        snprintf(app->config.current_model, sizeof(app->config.current_model), "%s", first_created);
     return result;
 }

@@ -13,7 +13,6 @@ set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-
 include(cmake/ReleaseOptimize.cmake)
 
 add_library(bongo_cat_neo_warnings INTERFACE)
@@ -30,7 +29,6 @@ else()
     target_compile_options(bongo_cat_neo_warnings INTERFACE -Werror)
   endif()
 endif()
-
 include(cmake/Dependencies.cmake)
 
 find_package(OpenGL REQUIRED)
@@ -291,6 +289,8 @@ if(BUILD_TESTING)
         -Exe $<TARGET_FILE:bongo_cat_neo>
         -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/real-model-import-test)
     set_tests_properties(model-import-real-samples PROPERTIES TIMEOUT 300)
+    add_test(NAME startup-soak COMMAND powershell.exe -NoProfile -ExecutionPolicy Bypass -File ${CMAKE_CURRENT_SOURCE_DIR}/cmake/StartupSoak.ps1 -Exe $<TARGET_FILE:bongo_cat_neo> -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/startup-soak-test)
+    set_tests_properties(startup-soak PROPERTIES TIMEOUT 30)
   endif()
   if(UNIX AND NOT APPLE)
     target_link_libraries(bongo_cat_neo_ui_tests PRIVATE m)
