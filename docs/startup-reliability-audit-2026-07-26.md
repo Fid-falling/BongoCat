@@ -8,8 +8,9 @@ preferences behavior, visual parity, resource stability and portable paths.
 The audited binary is:
 
 - `build-final/Release/BongoCatNeo.exe`
-- SHA-256: `A5F38BCB56D76A53863D347688824AEAE6646E8A5D720A123EE208BB2F58CBAD`
-- Size: 5,279,232 bytes
+- Code commit: `a774faf`
+- SHA-256: `F81B66008086CF0EFEAFFB2BDAD420F75966FBB4098C0B54513750E82EC9F487`
+- Size: 5,280,768 bytes
 
 The Windows release passed every automated test and UI audit listed below.
 No finite test suite can prove that startup will succeed on every possible
