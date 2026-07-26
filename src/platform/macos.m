@@ -181,6 +181,7 @@ bool bongo_cat_neo_platform_single_instance_begin(void) {
         userInfo:nil deliverImmediately:YES];
     close(instance_lock); instance_lock = -1; return false;
 }
+bool bongo_cat_neo_platform_single_instance_take_wake(void) { return false; }
 void bongo_cat_neo_platform_single_instance_end(void) {
     if (instance_lock >= 0) close(instance_lock);
     instance_lock = -1;

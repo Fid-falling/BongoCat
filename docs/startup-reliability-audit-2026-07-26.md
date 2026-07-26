@@ -20,7 +20,7 @@ explicit release gates rather than being represented as completed work.
 
 | Failure class | Implemented protection |
 |---|---|
-| A second launch appeared to do nothing | The existing instance is detected, restored, moved on-screen and raised. |
+| A second launch appeared to do nothing | A named wake event notifies the primary process, which restores, moves on-screen and raises its window. |
 | Hidden or off-screen saved state | Startup recovers a visible on-screen main window when launched interactively. |
 | Invalid or partially written settings | Strict JSON parsing rejects corruption and falls back to defaults; writes remain atomic. |
 | Damaged extracted assets | Every embedded asset is checked by size and SHA-256 and the cache is repaired. |
@@ -50,7 +50,8 @@ The startup matrix independently exercises:
 - Unicode, spaces and paths longer than the legacy Windows `MAX_PATH` limit;
 - long-path cache reuse, cleanup and model import;
 - fatal OpenGL diagnostics; and
-- second-instance wake-up without hanging either process.
+- second-instance wake-up both from initial hidden state and after closing a
+  running window to the tray, without hanging either process.
 
 The same source also completed a MinGW GCC 16.1 build with warnings treated as
 errors and passed 9/9 tests. All 27 PowerShell audit scripts parse successfully,

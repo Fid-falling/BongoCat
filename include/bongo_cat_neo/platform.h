@@ -83,6 +83,7 @@ bool bongo_cat_neo_platform_dynamic_hit_supported(void);
 void bongo_cat_neo_platform_set_tray_left_click(void *tray, BongoCatNeoTrayClick callback,
     void *userdata);
 bool bongo_cat_neo_platform_single_instance_begin(void);
+bool bongo_cat_neo_platform_single_instance_take_wake(void);
 void bongo_cat_neo_platform_single_instance_end(void);
 BongoCatNeoResult bongo_cat_neo_platform_set_autostart(bool enabled, BongoCatNeoError *error);
 BongoCatNeoMenuAction bongo_cat_neo_platform_context_menu(BongoCatNeoPlatform *platform,

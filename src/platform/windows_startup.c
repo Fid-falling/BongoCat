@@ -8,8 +8,10 @@
 #include <windows.h>
 
 static HANDLE instance_mutex;
+static HANDLE instance_wake_event;
 static wchar_t instance_title[96] = BONGO_CAT_NEO_NAME_W;
 static wchar_t instance_mutex_name[128] = L"Local\\BongoCatNeo.SingleInstance";
+static wchar_t instance_wake_name[128] = L"Local\\BongoCatNeo.WakeInstance";
 static bool identity_ready;
 
 static bool safe_identity(const char *value) {
@@ -29,10 +31,36 @@ static void initialize_identity(void) {
     swprintf(instance_mutex_name,
         sizeof(instance_mutex_name) / sizeof(instance_mutex_name[0]),
         L"Local\\BongoCatNeo.SingleInstance.%hs", value);
+    swprintf(instance_wake_name,
+        sizeof(instance_wake_name) / sizeof(instance_wake_name[0]),
+        L"Local\\BongoCatNeo.WakeInstance.%hs", value);
 }
 
 const wchar_t *bongo_cat_neo_windows_instance_title(void) {
     initialize_identity(); return instance_title;
+}
+
+static void create_wake_event(void) {
+    if (!instance_wake_event)
+        instance_wake_event = CreateEventW(NULL, FALSE, FALSE, instance_wake_name);
+}
+
+static void wake_existing_instance(void) {
+    for (int attempt = 0; attempt < 30; ++attempt) {
+        HANDLE wake = OpenEventW(EVENT_MODIFY_STATE, FALSE, instance_wake_name);
+        if (wake) {
+            bool signaled = SetEvent(wake) != FALSE;
+            CloseHandle(wake);
+            if (signaled) return;
+        }
+        HWND existing = FindWindowW(NULL, instance_title);
+        if (existing) {
+            ShowWindowAsync(existing, IsIconic(existing) ? SW_RESTORE : SW_SHOW);
+            SetForegroundWindow(existing);
+            return;
+        }
+        Sleep(100);
+    }
 }
 
 bool bongo_cat_neo_platform_single_instance_begin(void) {
@@ -40,26 +68,28 @@ bool bongo_cat_neo_platform_single_instance_begin(void) {
     if (SDL_getenv_unsafe("BONGO_CAT_NEO_ALLOW_TEST_INSTANCES")) return true;
     instance_mutex = CreateMutexW(NULL, FALSE, instance_mutex_name);
     if (!instance_mutex) return true;
-    if (GetLastError() != ERROR_ALREADY_EXISTS) return true;
-    HWND existing = FindWindowW(NULL, instance_title);
-    for (int attempt = 0; !existing && attempt < 30; ++attempt) {
-        Sleep(100); existing = FindWindowW(NULL, instance_title);
+    if (GetLastError() != ERROR_ALREADY_EXISTS) {
+        create_wake_event(); return true;
     }
-    if (existing) {
-        ShowWindowAsync(existing, IsIconic(existing) ? SW_RESTORE : SW_SHOW);
-        SetForegroundWindow(existing);
-        CloseHandle(instance_mutex); instance_mutex = NULL;
-        return false;
-    }
+    wake_existing_instance();
     CloseHandle(instance_mutex); instance_mutex = NULL;
     instance_mutex = CreateMutexW(NULL, FALSE, instance_mutex_name);
-    if (instance_mutex && GetLastError() != ERROR_ALREADY_EXISTS) return true;
+    if (instance_mutex && GetLastError() != ERROR_ALREADY_EXISTS) {
+        create_wake_event(); return true;
+    }
     if (instance_mutex) CloseHandle(instance_mutex);
     instance_mutex = NULL;
     return false;
 }
 
+bool bongo_cat_neo_platform_single_instance_take_wake(void) {
+    return instance_wake_event &&
+        WaitForSingleObject(instance_wake_event, 0) == WAIT_OBJECT_0;
+}
+
 void bongo_cat_neo_platform_single_instance_end(void) {
+    if (instance_wake_event) CloseHandle(instance_wake_event);
+    instance_wake_event = NULL;
     if (instance_mutex) CloseHandle(instance_mutex);
     instance_mutex = NULL;
 }

@@ -190,6 +190,16 @@ static void render(BongoCatNeoApp *app) {
     bongo_cat_neo_window_sync_click_through(app); bongo_cat_neo_window_schedule_hit_check(app);
 }
 void bongo_cat_neo_app_render_now(BongoCatNeoApp *app) { if (app && app->window && app->config.window.visible) render(app); }
+static void take_instance_wake(BongoCatNeoApp *app) {
+    if (!bongo_cat_neo_platform_single_instance_take_wake()) return;
+    app->config.window.visible = true;
+    bongo_cat_neo_window_clamp_to_display(app);
+    SDL_ShowWindow(app->window);
+    bongo_cat_neo_platform_raise_window(app->window);
+    bongo_cat_neo_window_mark_hit_dirty(app);
+    app->dirty = true;
+    SDL_Log("Existing instance requested window reveal");
+}
 static void loop(BongoCatNeoApp *app) {
     while (app->running) {
         int wait_ms = bongo_cat_neo_window_wait_timeout(app, SDL_GetTicksNS());
@@ -200,6 +210,7 @@ static void loop(BongoCatNeoApp *app) {
             while (SDL_PollEvent(&event)) handle_event(app, &event);
         }
         bongo_cat_neo_preferences_input_end(app->preferences);
+        take_instance_wake(app);
         drain_input(app);
         uint64_t now = SDL_GetTicksNS(); bongo_cat_neo_window_update_wheel_animation(app, now);
         bongo_cat_neo_runtime_flow_update(app, now);

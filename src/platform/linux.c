@@ -135,6 +135,7 @@ bool bongo_cat_neo_platform_single_instance_begin(void) {
     if (instance_lock < 0 || flock(instance_lock, LOCK_EX | LOCK_NB) == 0) return true;
     restore_instance_window(); close(instance_lock); instance_lock = -1; return false;
 }
+bool bongo_cat_neo_platform_single_instance_take_wake(void) { return false; }
 void bongo_cat_neo_platform_single_instance_end(void) {
     if (instance_lock >= 0) close(instance_lock);
     instance_lock = -1;

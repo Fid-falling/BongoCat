@@ -25,8 +25,9 @@ public static class WindowProbe {
     public struct Rect { public int Left, Top, Right, Bottom; }
     private delegate bool EnumProc(IntPtr window, IntPtr parameter);
     [DllImport("user32.dll")] private static extern bool EnumWindows(EnumProc callback, IntPtr value);
-    [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr window);
+    [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr window);
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
+    [DllImport("user32.dll")] public static extern bool PostMessageW(IntPtr window, uint message, UIntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr window, out Rect rect);
     [DllImport("user32.dll")] public static extern int GetSystemMetrics(int index);
     private static uint wanted;
@@ -225,7 +226,7 @@ $env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "startup-matrix"
 $instanceData = Join-Path $OutputDir "single-instance"
 New-Item -ItemType Directory -Force -Path $instanceData | Out-Null
 Write-Settings $instanceData $false $true
-$firstArgs = @("--autostart", "--ci-smoke", "--ci-exit-ms=7000",
+$firstArgs = @("--autostart", "--ci-smoke", "--ci-exit-ms=12000",
     "`"--data-root=$instanceData`"")
 $first = Start-Process -FilePath $testExe -WorkingDirectory $portableRoot `
     -ArgumentList $firstArgs -PassThru
@@ -236,9 +237,24 @@ if (-not $second.WaitForExit(6000)) { Stop-Process $second -Force; throw "Second
 $window = Find-VisibleWindow $first
 if ($window -eq [IntPtr]::Zero) { Stop-Process $first -Force; throw "Second instance did not reveal the first" }
 Assert-OnScreen $window
-if (-not $first.WaitForExit(10000) -or $first.ExitCode -ne 0) { throw "Primary instance failed" }
+if (-not [WindowProbe]::PostMessageW($window, 0x0010, [UIntPtr]::Zero, [IntPtr]::Zero)) {
+    throw "Primary instance did not accept a close request"
+}
+$hiddenDeadline = [DateTime]::UtcNow.AddSeconds(3)
+do { Start-Sleep -Milliseconds 100 } while ([WindowProbe]::IsWindowVisible($window) -and
+    [DateTime]::UtcNow -lt $hiddenDeadline)
+if ([WindowProbe]::IsWindowVisible($window)) { throw "Primary instance did not hide" }
+$third = Start-Process -FilePath $testExe -WorkingDirectory $portableRoot `
+    -ArgumentList @("--ci-smoke", "`"--data-root=$instanceData`"") -PassThru
+if (-not $third.WaitForExit(6000)) { throw "Third instance hung" }
+if ($third.ExitCode -ne 0) { throw "Third instance failed with exit code $($third.ExitCode)" }
+$window = Find-VisibleWindow $first
+if ($window -eq [IntPtr]::Zero) { throw "Runtime-hidden instance was not revealed" }
+Assert-OnScreen $window
+if (-not $first.WaitForExit(15000) -or $first.ExitCode -ne 0) { throw "Primary instance failed" }
 Assert-Frame $instanceData
 $env:BONGO_CAT_NEO_TEST_INSTANCE_ID = $null
 $env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
 Write-Host "PASS second-instance wake"
+Write-Host "PASS runtime-hidden second-instance wake"
 Write-Host "Startup reliability matrix passed"
