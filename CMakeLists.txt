@@ -107,7 +107,7 @@ add_library(bongo_cat_neo_runtime STATIC
   src/runtime/shortcuts.c
   src/runtime/tray.c
   src/runtime/window.c src/runtime/window_geometry.c
-  src/runtime/window_menu_behavior.c
+  src/runtime/window_menu_behavior.c src/runtime/window_menu_preview.c
   src/runtime/window_hit.c src/runtime/window_wheel.c
   src/ui/nuklear_impl.c
   src/ui/ui_backend.c src/ui/ui_cursor.c
@@ -294,7 +294,4 @@ if(BUILD_TESTING)
     target_link_libraries(bongo_cat_neo_app_state_tests PRIVATE m)
   endif()
 endif()
-install(TARGETS bongo_cat_neo RUNTIME DESTINATION . BUNDLE DESTINATION .)
-if(UNIX AND NOT APPLE)
-  install(DIRECTORY resources/assets DESTINATION .)
-endif()
+include(cmake/Packaging.cmake)

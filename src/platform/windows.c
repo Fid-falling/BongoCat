@@ -285,10 +285,11 @@ BongoCatNeoMenuAction bongo_cat_neo_platform_context_menu(BongoCatNeoPlatform *p
     HWND window = native_window(platform);
     SetForegroundWindow(window);
     bongo_cat_neo_ui_native_menu_prepare(platform->window, labels->dark_theme);
-    bongo_cat_neo_windows_menu_preview(labels->preview, labels->preview_userdata);
+    bongo_cat_neo_windows_menu_preview(window, labels->preview,
+        labels->preview_tick, labels->preview_userdata);
     UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON,
         point.x, point.y, 0, window, NULL);
-    bongo_cat_neo_windows_menu_preview(NULL, NULL);
+    bongo_cat_neo_windows_menu_preview(NULL, NULL, NULL, NULL);
     if (labels->restore) labels->restore(labels->preview_userdata, (BongoCatNeoMenuAction)command);
     DestroyMenu(menu);
     return (BongoCatNeoMenuAction)command;

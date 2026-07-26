@@ -129,6 +129,16 @@ ctest --test-dir build-cubism -C Release --output-on-failure
 
 The executable is `build-cubism/Release/BongoCatNeo.exe`.
 
+Build the versioned release archive and SHA-256 file with:
+
+```powershell
+cmake --build build-cubism --config Release --target package
+```
+
+Release archives use the conventional product-version-platform-architecture
+format, for example `BongoCatNeo-0.1.0-windows-x64.zip`. The executable inside
+keeps the stable `BongoCatNeo.exe` name so upgrades do not break shortcuts.
+
 ### Diagnostic or Unix build
 
 ```powershell
@@ -155,7 +165,7 @@ configurations plus `stb_image.h`, `stb_image_write.h`, `miniaudio.h`, and
 ### Install tree
 
 ```powershell
-cmake --install build --prefix out
+cmake --install build --config Release --component Runtime --prefix out
 ```
 
 The install tree is portable. Windows embeds the resource archive; Unix builds

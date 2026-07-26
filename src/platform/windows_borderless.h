@@ -7,7 +7,8 @@
 
 void bongo_cat_neo_windows_borderless_install(HWND window);
 void bongo_cat_neo_windows_borderless_uninstall(HWND window);
-void bongo_cat_neo_windows_menu_preview(BongoCatNeoMenuPreview preview, void *userdata);
+void bongo_cat_neo_windows_menu_preview(HWND window, BongoCatNeoMenuPreview preview,
+    void (*tick)(void *userdata), void *userdata);
 #endif
 
 #endif

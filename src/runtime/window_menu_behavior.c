@@ -1,4 +1,4 @@
-#include "runtime.h"
+#include "window_menu.h"
 
 #include <string.h>
 
@@ -66,6 +66,13 @@ bool bongo_cat_neo_window_behavior_action(BongoCatNeoApp *app,
     } else return false;
     const BongoCatNeoBehaviorEntry *entry = nth_behavior(app, kind, position);
     return entry && run_binding(app, entry);
+}
+
+bool bongo_cat_neo_window_behavior_menu_action(BongoCatNeoMenuAction action) {
+    return (action >= BONGO_CAT_NEO_MENU_MOTION_FIRST &&
+        action < BONGO_CAT_NEO_MENU_MOTION_FIRST + BONGO_CAT_NEO_BEHAVIOR_CAP) ||
+        (action >= BONGO_CAT_NEO_MENU_EXPRESSION_FIRST &&
+            action < BONGO_CAT_NEO_MENU_EXPRESSION_FIRST + BONGO_CAT_NEO_BEHAVIOR_CAP);
 }
 
 bool bongo_cat_neo_window_behavior_self_test(BongoCatNeoApp *app) {

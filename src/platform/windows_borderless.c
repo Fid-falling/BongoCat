@@ -3,7 +3,10 @@
 #ifdef _WIN32
 static const wchar_t original_proc_property[] = L"BongoCatNeo.BorderlessWindowProc";
 static BongoCatNeoMenuPreview menu_preview;
+static void (*menu_preview_tick)(void *userdata);
 static void *menu_preview_userdata;
+static HWND menu_preview_window;
+#define BONGO_CAT_NEO_MENU_PREVIEW_TIMER ((UINT_PTR)0xBC4E)
 
 static LONG_PTR borderless_style(LONG_PTR style) {
     return (style & ~(WS_CAPTION | WS_THICKFRAME | WS_SYSMENU |
@@ -34,13 +37,25 @@ static LRESULT CALLBACK borderless_window_proc(HWND window, UINT message,
             menu_preview(menu_preview_userdata, BONGO_CAT_NEO_MENU_NONE);
         else
             menu_preview(menu_preview_userdata, (BongoCatNeoMenuAction)id);
+    } else if (message == WM_TIMER &&
+        wparam == BONGO_CAT_NEO_MENU_PREVIEW_TIMER && menu_preview_tick) {
+        menu_preview_tick(menu_preview_userdata);
+        return 0;
     }
     return CallWindowProcW(original ? original : DefWindowProcW,
         window, message, wparam, lparam);
 }
 
-void bongo_cat_neo_windows_menu_preview(BongoCatNeoMenuPreview preview, void *userdata) {
-    menu_preview = preview; menu_preview_userdata = userdata;
+void bongo_cat_neo_windows_menu_preview(HWND window, BongoCatNeoMenuPreview preview,
+    void (*tick)(void *userdata), void *userdata) {
+    if (menu_preview_window)
+        KillTimer(menu_preview_window, BONGO_CAT_NEO_MENU_PREVIEW_TIMER);
+    menu_preview = preview;
+    menu_preview_tick = tick;
+    menu_preview_userdata = userdata;
+    menu_preview_window = window;
+    if (window && tick)
+        SetTimer(window, BONGO_CAT_NEO_MENU_PREVIEW_TIMER, 16, NULL);
 }
 
 void bongo_cat_neo_windows_borderless_install(HWND window) {

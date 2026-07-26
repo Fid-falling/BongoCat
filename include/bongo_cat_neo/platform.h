@@ -59,7 +59,9 @@ typedef struct BongoCatNeoMenuLabels {
     size_t model_count, current_model, motion_count, expression_count;
     float scale_percent, opacity_percent;
     bool pass_through_checked, always_on_top_checked, dark_theme;
-    BongoCatNeoMenuPreview preview, restore;
+    BongoCatNeoMenuPreview preview;
+    void (*preview_tick)(void *userdata);
+    BongoCatNeoMenuPreview restore;
     void *preview_userdata;
 } BongoCatNeoMenuLabels;
 

@@ -72,18 +72,18 @@ jobs:
         run: ctest --test-dir build-quality --output-on-failure
 
   build:
-    name: build / ${{ matrix.artifact }}
+    name: build / ${{ matrix.platform }}
     needs: quality
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: windows-latest
-            artifact: windows-x86_64
+            platform: windows-x64
           - os: ubuntu-latest
-            artifact: linux-x86_64
+            platform: linux-x64
           - os: macos-latest
-            artifact: macos
+            platform: macos
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout source
@@ -135,57 +135,39 @@ jobs:
         if: runner.os != 'Windows'
         run: ctest --test-dir build --output-on-failure
 
-      - name: Stage Windows install tree
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: cmake --install build --config Release --prefix package/BongoCatNeo
-
-      - name: Stage Linux install tree
-        if: runner.os == 'Linux'
-        run: cmake --install build --prefix "$PWD/package/BongoCatNeo"
-
-      - name: Stage macOS install tree
-        if: runner.os == 'macOS'
-        run: cmake --install build --prefix "$PWD/package"
-
-      - name: Package Windows executable
-        if: runner.os == 'Windows'
+      - name: Resolve release package name
+        id: package
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          $executable = 'package/BongoCatNeo/BongoCatNeo.exe'
-          if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
-            throw "The install staging tree did not contain BongoCatNeo.exe"
+          $name = (Get-Content build/bongo-cat-neo-package-name.txt -Raw).Trim()
+          if ($name -notmatch '^BongoCatNeo-\d+\.\d+\.\d+-(windows|linux|macos)-(x64|x86|arm64|universal)$') {
+            throw "Unexpected release package name: $name"
           }
-          Copy-Item -LiteralPath $executable -Destination dist/BongoCatNeo.exe
-          (Get-FileHash dist/BongoCatNeo.exe -Algorithm SHA256).Hash |
-            Set-Content -NoNewline dist/BongoCatNeo.exe.sha256
+          "name=$name" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
-      - name: Package Linux application
-        if: runner.os == 'Linux'
+      - name: Package release
+        shell: pwsh
         run: |
-          test -x package/BongoCatNeo/BongoCatNeo
-          test -d package/BongoCatNeo/assets
-          mkdir -p dist
-          tar -C package -czf dist/BongoCatNeo-linux-x86_64.tar.gz BongoCatNeo
-          sha256sum dist/BongoCatNeo-linux-x86_64.tar.gz > \
-            dist/BongoCatNeo-linux-x86_64.tar.gz.sha256
-
-      - name: Package macOS application
-        if: runner.os == 'macOS'
-        run: |
-          mkdir -p dist
-          test -d package/BongoCatNeo.app
-          ditto -c -k --sequesterRsrc --keepParent \
-            package/BongoCatNeo.app dist/BongoCatNeo-macos.zip
-          shasum -a 256 dist/BongoCatNeo-macos.zip > \
-            dist/BongoCatNeo-macos.zip.sha256
+          cmake --build build --config Release --target package
+          $archives = @(Get-ChildItem build/dist -File | Where-Object {
+            $_.Name -match '\.(zip|tar\.gz)$'
+          })
+          if ($archives.Count -ne 1) {
+            throw "Expected one release archive, found $($archives.Count)"
+          }
+          $expected = '${{ steps.package.outputs.name }}'
+          if (-not $archives[0].Name.StartsWith("$expected.")) {
+            throw "Unexpected release archive: $($archives[0].Name)"
+          }
+          if (-not (Test-Path -LiteralPath "$($archives[0].FullName).sha256")) {
+            throw "Release archive checksum is missing"
+          }
 
       - name: Upload downloadable build
         uses: actions/upload-artifact@v7
         with:
-          name: BongoCatNeo-${{ matrix.artifact }}-${{ github.run_number }}
-          path: dist/*
+          name: ${{ steps.package.outputs.name }}
+          path: build/dist/*
           if-no-files-found: error
           retention-days: 30
           compression-level: 0

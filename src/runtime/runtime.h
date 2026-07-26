@@ -48,12 +48,6 @@ BongoCatNeoResult bongo_cat_neo_copy_directory(const char *source, const char *t
 bool bongo_cat_neo_app_shortcuts_self_test(BongoCatNeoApp *app);
 void bongo_cat_neo_window_menu_action(BongoCatNeoApp *app, BongoCatNeoMenuAction action);
 bool bongo_cat_neo_window_menu_self_test(BongoCatNeoApp *app);
-void bongo_cat_neo_window_behavior_labels(BongoCatNeoApp *app,
-    const char **motions, size_t *motion_count,
-    const char **expressions, size_t *expression_count);
-bool bongo_cat_neo_window_behavior_action(BongoCatNeoApp *app,
-    BongoCatNeoMenuAction action);
-bool bongo_cat_neo_window_behavior_self_test(BongoCatNeoApp *app);
 bool bongo_cat_neo_window_geometry_self_test(BongoCatNeoApp *app);
 void bongo_cat_neo_window_show_context_menu(BongoCatNeoApp *app);
 void bongo_cat_neo_live2d_audit_run(BongoCatNeoApp *app);

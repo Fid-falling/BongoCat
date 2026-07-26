@@ -10,6 +10,7 @@
 - (id)initWithLabels:(const BongoCatNeoMenuLabels *)labels;
 - (void)choose:(id)sender;
 - (NSInteger)selected;
+- (void)tickPreview:(NSTimer *)timer;
 @end
 
 @implementation BongoCatNeoMenuTarget
@@ -18,6 +19,10 @@
 }
 - (void)choose:(id)sender { selected_ = [sender tag]; }
 - (NSInteger)selected { return selected_; }
+- (void)tickPreview:(NSTimer *)timer {
+    (void)timer;
+    if (labels_->preview_tick) labels_->preview_tick(labels_->preview_userdata);
+}
 - (void)menu:(NSMenu *)menu willHighlightItem:(NSMenuItem *)item {
     (void)menu;
     if (labels_->preview) labels_->preview(labels_->preview_userdata,
@@ -103,7 +108,14 @@ BongoCatNeoMenuAction bongo_cat_neo_macos_context_menu(BongoCatNeoPlatform *plat
     [models release]; [modelRoot release];
     [menu addItem:[NSMenuItem separatorItem]];
     add_item(menu, target, labels->exit, BONGO_CAT_NEO_MENU_EXIT, false);
+    NSTimer *previewTimer = nil;
+    if (labels->preview_tick) {
+        previewTimer = [NSTimer timerWithTimeInterval:1.0 / 60.0 target:target
+            selector:@selector(tickPreview:) userInfo:nil repeats:YES];
+        [[NSRunLoop currentRunLoop] addTimer:previewTimer forMode:NSRunLoopCommonModes];
+    }
     [menu popUpMenuPositioningItem:nil atLocation:[NSEvent mouseLocation] inView:nil];
+    [previewTimer invalidate];
     BongoCatNeoMenuAction result = (BongoCatNeoMenuAction)[target selected];
     if (labels->restore) labels->restore(labels->preview_userdata, result);
     [menu release]; [target release]; return result;
