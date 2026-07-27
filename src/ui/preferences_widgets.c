@@ -1,11 +1,16 @@
 #include "preferences_widgets.h"
 #include "preferences_controls.h"
+#include "preferences_shortcut_clear.h"
+#include "ui_animation.h"
 #include "ui_backend.h"
 #include "ui_catime.h"
-#include "ui_animation.h"
+#include "ui_icons.h"
+#include "ui_paint.h"
 
 #include <SDL3/SDL.h>
 #include <math.h>
+#include <stdio.h>
+
 typedef struct FormStyle {
     struct nk_style_item background;
     struct nk_color window_color;
@@ -14,10 +19,8 @@ typedef struct FormStyle {
     struct nk_vec2 spacing;
     float border;
 } FormStyle;
-
 static struct nk_context *section_context;
 static bool section_first;
-
 static int detail_lines(const struct nk_context *context, const char *text) {
     if (!text || !text[0]) return 0;
     const struct nk_user_font *font = bongo_cat_neo_ui_caption_font(context);
@@ -28,7 +31,6 @@ static int detail_lines(const struct nk_context *context, const char *text) {
     int lines = (int)(measured / width) + 1;
     return NK_CLAMP(1, lines, 3);
 }
-
 static void restore_style(struct nk_context *context, const FormStyle *saved) {
     context->style.window.fixed_background = saved->background;
     context->style.window.background = saved->window_color;
@@ -37,7 +39,6 @@ static void restore_style(struct nk_context *context, const FormStyle *saved) {
     context->style.window.spacing = saved->spacing;
     context->style.window.group_border = saved->border;
 }
-
 static bool form_begin(struct nk_context *context, const char *id,
     int lines, FormStyle *saved) {
     saved->background = context->style.window.fixed_background;
@@ -50,7 +51,7 @@ static bool form_begin(struct nk_context *context, const char *id,
     context->style.window.fixed_background = nk_style_item_color(clear);
     context->style.window.background = clear;
     context->style.window.group_border_color = clear;
-    context->style.window.group_padding = nk_vec2(18, 11);
+    context->style.window.group_padding = nk_vec2(13, 11);
     context->style.window.spacing = nk_vec2(8, 3);
     context->style.window.group_border = 0;
     float height = lines ? 92.0f : 76.0f;
@@ -63,16 +64,13 @@ static bool form_begin(struct nk_context *context, const char *id,
     }
     return true;
 }
-
 static void form_end(struct nk_context *context, const FormStyle *saved) {
     nk_group_end(context);
     restore_style(context, saved);
 }
-
 static float left_width(struct nk_context *context) {
     return NK_MAX(220.0f, nk_window_get_content_region(context).w - 228.0f);
 }
-
 static void form_title_sized(struct nk_context *context, const char *title,
     float control_width) {
     float available = nk_window_get_content_region(context).w;
@@ -80,7 +78,10 @@ static void form_title_sized(struct nk_context *context, const char *title,
     nk_layout_row_begin(context, NK_STATIC, 36, 2);
     nk_layout_row_push(context, left);
     nk_style_push_font(context, bongo_cat_neo_ui_label_font(context));
+    struct nk_vec2 text_padding = context->style.text.padding;
+    context->style.text.padding.x += 5.0f;
     nk_label(context, title, NK_TEXT_LEFT);
+    context->style.text.padding = text_padding;
     nk_style_pop_font(context);
     nk_layout_row_push(context, NK_MAX(control_width, available - left - 8.0f));
 }
@@ -97,36 +98,15 @@ static void description(struct nk_context *context, const char *text,
     nk_layout_row_begin(context, NK_STATIC, 22.0f * lines, 2);
     nk_layout_row_push(context, left);
     nk_style_push_font(context, bongo_cat_neo_ui_caption_font(context));
+    struct nk_vec2 text_padding = context->style.text.padding;
+    context->style.text.padding.x += 5.0f;
     nk_label_colored_wrap(context, text, p.muted);
+    context->style.text.padding = text_padding;
     nk_style_pop_font(context);
     nk_layout_row_push(context, NK_MAX(1.0f,
         nk_window_get_content_region(context).w - left - 8.0f));
     nk_spacing(context, 1);
     nk_layout_row_end(context);
-}
-
-static bool toggle(struct nk_context *context, const char *id, bool *value) {
-    struct nk_rect cell;
-    if (nk_widget(&cell, context) == NK_WIDGET_INVALID) return false;
-    struct nk_rect track = nk_rect(cell.x + cell.w - 46,
-        cell.y + (cell.h - 24) * .5f, 46, 24);
-    bool hover = nk_input_is_mouse_hovering_rect(&context->input, track);
-    bool changed = hover && nk_input_is_mouse_click_in_rect(&context->input,
-        NK_BUTTON_LEFT, track);
-    if (changed) *value = !*value;
-    float progress = bongo_cat_neo_ui_animate(context, id,
-        *value ? 1.0f : 0.0f, 250.0f);
-    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
-    struct nk_command_buffer *canvas = nk_window_get_canvas(context);
-    nk_fill_rect(canvas, track, 12, *value ? p.accent : p.field);
-    nk_stroke_rect(canvas, track, 12, hover ? 2.0f : 1.0f,
-        hover ? p.accent : (*value ? p.accent : p.border));
-    float knob_x = track.x + 3 + 21 * progress;
-    nk_fill_circle(canvas, nk_rect(knob_x, track.y + 3, 18, 18),
-        nk_rgb(255, 255, 255));
-    if (hover) bongo_cat_neo_ui_cursor_hover_rect(context, track,
-        BONGO_CAT_NEO_UI_CURSOR_POINTER);
-    return changed;
 }
 
 static bool secondary_button(struct nk_context *context, const char *label) {
@@ -135,7 +115,7 @@ static bool secondary_button(struct nk_context *context, const char *label) {
     style.normal = nk_style_item_color(p.field);
     style.hover = nk_style_item_color(p.selection);
     style.active = nk_style_item_color(p.selection);
-    style.border_color = p.border;
+    style.border_color = p.border_subtle;
     style.border = 1;
     style.rounding = 10;
     style.text_normal = p.text;
@@ -166,7 +146,8 @@ bool bongo_cat_neo_pref_toggle(struct nk_context *context, const char *id,
     const char *title, const char *detail, bool *value) {
     int lines = detail_lines(context, detail); FormStyle saved;
     if (!form_begin(context, id, lines, &saved)) return false;
-    form_title_sized(context, title, 80.0f); bool changed = toggle(context, id, value);
+    form_title_sized(context, title, 80.0f);
+    bool changed = bongo_cat_neo_pref_control_toggle(context, id, value);
     nk_layout_row_end(context); description(context, detail, lines);
     form_end(context, &saved); return changed;
 }
@@ -213,12 +194,13 @@ int bongo_cat_neo_pref_combo(struct nk_context *context, const char *id,
     int lines = detail_lines(context, detail); FormStyle saved;
     if (!form_begin(context, id, lines, &saved)) return selected;
     form_title_sized(context, title, 156.0f);
-    selected = bongo_cat_neo_pref_control_combo(context, items, count, selected);
+    selected = bongo_cat_neo_pref_control_combo(context, id,
+        items, count, selected);
     nk_layout_row_end(context); description(context, detail, lines);
     form_end(context, &saved); return selected;
 }
 
-bool bongo_cat_neo_pref_edit(struct nk_context *context, const char *id,
+int bongo_cat_neo_pref_edit(struct nk_context *context, const char *id,
     const char *title, const char *detail, const char *value,
     bool recording, const char *idle_hint, const char *record_hint) {
     int lines = detail_lines(context, detail); FormStyle saved;
@@ -236,10 +218,15 @@ bool bongo_cat_neo_pref_edit(struct nk_context *context, const char *id,
         control_width, bounds.h);
     BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
     bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
+    char hover_id[80]; snprintf(hover_id, sizeof(hover_id), "shortcut-hover-%s", id);
+    float hover_amount = bongo_cat_neo_ui_animate_eased(context, hover_id,
+        hover ? 1.0f : 0.0f, 200, BONGO_CAT_NEO_UI_EASE_STANDARD);
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
-    nk_fill_rect(canvas, bounds, 10, hover ? p.selection : p.field);
+    nk_fill_rect(canvas, bounds, 10, recording ? p.hover_pink :
+        bongo_cat_neo_ui_color_mix(p.field, p.hover, hover_amount));
     nk_stroke_rect(canvas, bounds, 10, recording ? 2.0f : 1.0f,
-        recording || hover ? p.accent : p.border);
+        recording ? p.pink : bongo_cat_neo_ui_color_mix(
+        p.border_subtle, p.accent, hover_amount));
     if (recording) {
         float phase = (float)(SDL_GetTicksNS() % 1500000000ULL) /
             1500000000.0f;
@@ -251,26 +238,39 @@ bool bongo_cat_neo_pref_edit(struct nk_context *context, const char *id,
             nk_rgba(p.pink.r, p.pink.g, p.pink.b,
             (nk_byte)(150 * (1.0f - pulse))));
     }
-    float text_x = bounds.x + 46 + NK_MAX(0.0f,
-        (bounds.w - 52 - width) * .5f);
-    struct nk_rect keyboard = nk_rect(text_x - 24, bounds.y + 13, 13, 11);
-    nk_stroke_rect(canvas, keyboard, 3, 1.5f, recording ? p.accent : p.muted);
-    for (int i = 0; i < 3; ++i)
-        nk_stroke_line(canvas, keyboard.x + 3 + i * 3, keyboard.y + 4,
-            keyboard.x + 4 + i * 3, keyboard.y + 4, 1, recording ? p.accent : p.muted);
-    nk_stroke_line(canvas, keyboard.x + 3, keyboard.y + 8,
-        keyboard.x + 10, keyboard.y + 8, 1, recording ? p.accent : p.muted);
+    bool can_clear = !recording && value && value[0];
+    float group_width = 26.0f + width + (can_clear ? 20.0f : 0.0f);
+    float group_x = bounds.x + NK_MAX(14.0f, (bounds.w - group_width) * .5f);
+    float text_x = group_x + 26.0f;
+    struct nk_rect keyboard = nk_rect(group_x, bounds.y + 10, 18, 18);
+    struct nk_color icon_color = recording ? p.pink :
+        bongo_cat_neo_ui_color_mix(p.muted, p.accent, hover_amount);
+    if (!bongo_cat_neo_ui_draw_icon(canvas, BONGO_CAT_NEO_UI_ICON_KEYBOARD,
+        keyboard, icon_color)) {
+        nk_stroke_rect(canvas, keyboard, 3, 1.5f, icon_color);
+        for (int i = 0; i < 3; ++i)
+            nk_stroke_line(canvas, keyboard.x + 3 + i * 3, keyboard.y + 4,
+                keyboard.x + 4 + i * 3, keyboard.y + 4, 1, icon_color);
+        nk_stroke_line(canvas, keyboard.x + 3, keyboard.y + 8,
+            keyboard.x + 10, keyboard.y + 8, 1, icon_color);
+    }
     struct nk_rect text = nk_rect(text_x, bounds.y + (bounds.h - font->height) * .5f,
-        NK_MIN(width + 1, bounds.w - 52), font->height);
+        NK_MIN(width + 1, bounds.x + bounds.w - text_x -
+        (can_clear ? 24.0f : 8.0f)), font->height);
     nk_draw_text(canvas, text, shown, nk_strlen(shown), font, nk_rgba(0, 0, 0, 0),
-        recording ? p.accent : (value && value[0] ? p.text : p.muted));
+        recording ? p.pink : (value && value[0] ? p.text :
+        bongo_cat_neo_ui_color_mix(p.muted, p.accent, hover_amount)));
+    struct nk_rect clear_bounds = nk_rect(bounds.x + bounds.w - 25,
+        bounds.y + 8, 17, 20);
+    bool clear = bongo_cat_neo_pref_shortcut_clear(context, canvas, id,
+        clear_bounds, p, 1.0f, can_clear);
     if (hover) bongo_cat_neo_ui_cursor_hover_rect(context, bounds,
         BONGO_CAT_NEO_UI_CURSOR_POINTER);
-    bool clicked = nk_input_is_mouse_click_in_rect(&context->input,
+    bool clicked = !clear && nk_input_is_mouse_click_in_rect(&context->input,
         NK_BUTTON_LEFT, bounds) != 0;
     nk_layout_row_end(context); description(context, detail, lines);
     form_end(context, &saved);
-    return clicked;
+    return clear ? -1 : clicked;
 }
 
 bool bongo_cat_neo_pref_button(struct nk_context *context, const char *id,

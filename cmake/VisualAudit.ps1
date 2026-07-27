@@ -100,24 +100,28 @@ function Save-Window([object]$Window, [string]$Path) {
     $height = $rect.Bottom - $rect.Top
     $bitmap = [Drawing.Bitmap]::new($width, $height)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
+    $capture = Measure-Capture $bitmap
     $printed = $false
-    if ($width -gt 700) {
+    for ($attempt = 0; $attempt -lt 3 -and $width -gt 700; $attempt++) {
         $dc = $graphics.GetHdc()
         try { $printed = [BongoCatNeoVisualNative]::PrintWindow($Window.Handle, $dc, 2) }
         finally { $graphics.ReleaseHdc($dc) }
+        $capture = Measure-Capture $bitmap
+        if ($printed -and $capture.Colors.Count -ge 16 -and
+            $capture.BlackRatio -lt 0.02) { break }
+        Start-Sleep -Milliseconds 200
     }
-    if (-not $printed) {
+    if (-not $printed -or $capture.Colors.Count -lt 16 -or
+        ($width -gt 700 -and $capture.BlackRatio -ge 0.02)) {
         $graphics.CopyFromScreen($rect.Left, $rect.Top, 0, 0, $bitmap.Size)
+        $capture = Measure-Capture $bitmap
     }
     $bitmap.Save($Path, [Drawing.Imaging.ImageFormat]::Png)
-    $colors = [Collections.Generic.HashSet[int]]::new()
-    for ($y = 0; $y -lt $height; $y += 12) {
-        for ($x = 0; $x -lt $width; $x += 12) { [void]$colors.Add($bitmap.GetPixel($x, $y).ToArgb()) }
-    }
     $graphics.Dispose()
     $bitmap.Dispose()
     [void][BongoCatNeoVisualNative]::SetWindowPos($Window.Handle, [IntPtr](-2), 0, 0, 0, 0, 0x0013)
-    return [pscustomobject]@{ Width=$width; Height=$height; SampleColors=$colors.Count }
+    return [pscustomobject]@{ Width=$width; Height=$height;
+        SampleColors=$capture.Colors.Count }
 }
 
 . (Join-Path $PSScriptRoot "VisualAuditHelpers.ps1")

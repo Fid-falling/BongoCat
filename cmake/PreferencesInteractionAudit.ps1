@@ -95,27 +95,6 @@ function Focus-Window([IntPtr]$Window, [double]$X, [double]$Y) {
     Start-Sleep -Milliseconds 300
 }
 
-function Invoke-Click([IntPtr]$Window, [double]$X, [double]$Y) {
-    $point = Get-ClientPoint $Window $X $Y
-    $client = [BongoCatNeoPreferencesNative+Rect]::new()
-    [void][BongoCatNeoPreferencesNative]::GetClientRect($Window, [ref]$client)
-    $clientX = [int][Math]::Round($X * ($client.R - $client.L) / 900.0)
-    $clientY = [int][Math]::Round($Y * ($client.B - $client.T) / 680.0)
-    $position = [IntPtr]([long](($clientY -band 0xFFFF) -shl 16) -bor
-        [long]($clientX -band 0xFFFF))
-    [void][BongoCatNeoPreferencesNative]::SetForegroundWindow($Window)
-    [void][BongoCatNeoPreferencesNative]::SetCursorPos($point.X, $point.Y)
-    Start-Sleep -Milliseconds 50
-    [void][BongoCatNeoPreferencesNative]::PostMessageW(
-        $Window, 0x0200, [IntPtr]::Zero, $position)
-    [void][BongoCatNeoPreferencesNative]::PostMessageW(
-        $Window, 0x0201, [IntPtr]1, $position)
-    Start-Sleep -Milliseconds 180
-    [void][BongoCatNeoPreferencesNative]::PostMessageW(
-        $Window, 0x0202, [IntPtr]::Zero, $position)
-    Start-Sleep -Milliseconds 250
-}
-
 function Invoke-PhysicalClick([IntPtr]$Window, [double]$X, [double]$Y) {
     $point = Get-ClientPoint $Window $X $Y
     [void][BongoCatNeoPreferencesNative]::SetForegroundWindow($Window)
@@ -222,8 +201,9 @@ try {
     $window = Wait-Preferences $process.Id
     Focus-Window $window 450 620
     $baseline = Save-Window $window "01-baseline.png"
-    Invoke-Click $window 820 141
+    Invoke-PhysicalClick $window 820 141
     $toggled = Save-Window $window "02-toggle-card.png"
+    Invoke-PhysicalClick $window 833 293
     $debouncePersisted = $false
     for ($i = 0; $i -lt 40 -and -not $debouncePersisted; $i++) {
         Start-Sleep -Milliseconds 50
@@ -278,6 +258,7 @@ try {
         SessionFormatValid = $session.format -eq "bongo-cat-neo/session" -and
             $session.version -eq 1
         TogglePersisted = $config.window.passThrough -eq $true
+        StepperPersisted = $session.window.scale -eq 101
         ShortcutPersisted = $config.shortcuts.visibleCat -eq "Control+Shift+B"
     }
     $result | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $OutputDir "result.json")
@@ -287,7 +268,7 @@ try {
         $result.LanguageDifference -gt 0.01 -and
         $result.EditDifference -gt 0.0001 -and $result.DebouncePersisted -and
         $result.PreferencesFormatValid -and $result.SessionFormatValid -and
-        $result.TogglePersisted -and
+        $result.TogglePersisted -and $result.StepperPersisted -and
         $result.ShortcutPersisted
     if (-not $passed) { exit 1 }
 } finally {

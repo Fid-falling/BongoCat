@@ -16,6 +16,7 @@ typedef struct MacInputState {
     CFMachPortRef tap;
     CFRunLoopSourceRef source;
     CFRunLoopRef loop;
+    bool key_down[BONGO_CAT_NEO_INPUT_KEY_STATE_CAP];
     atomic_bool supported;
 } MacInputState;
 
@@ -46,6 +47,7 @@ static CGEventRef event_tap(CGEventTapProxy proxy, CGEventType type,
     (void)proxy;
     MacInputState *state = userdata;
     if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
+        memset(state->key_down, 0, sizeof(state->key_down));
         if (state->tap) CGEventTapEnable(state->tap, true);
         return event;
     }
@@ -67,8 +69,9 @@ static CGEventRef event_tap(CGEventTapProxy proxy, CGEventType type,
             CGEventFlags flag = modifier_flag(code);
             down = flag && (CGEventGetFlags(event) & flag) != 0;
         }
-        if (name) push(state, down ? BONGO_CAT_NEO_INPUT_KEY_DOWN : BONGO_CAT_NEO_INPUT_KEY_UP,
-            name, down ? 1.0f : 0.0f);
+        if (name && bongo_cat_neo_input_edge(state->key_down, code, down))
+            push(state, down ? BONGO_CAT_NEO_INPUT_KEY_DOWN :
+                BONGO_CAT_NEO_INPUT_KEY_UP, name, down ? 1.0f : 0.0f);
         return event;
     }
     const char *name = type == kCGEventLeftMouseDown || type == kCGEventLeftMouseUp

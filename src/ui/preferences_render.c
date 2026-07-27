@@ -25,6 +25,11 @@ static const char *tr(const BongoCatNeoPreferences *value, const char *key,
     return bongo_cat_neo_i18n_get(value->app->i18n, key, fallback);
 }
 
+static void draw_icon(void *userdata, struct nk_command_buffer *canvas,
+    int icon, struct nk_rect bounds, struct nk_color color) {
+    bongo_cat_neo_preferences_icon_draw(userdata, canvas, icon, bounds, color);
+}
+
 static void draw_page(BongoCatNeoPreferences *value, struct nk_context *context) {
     switch (value->page) {
     case 0: bongo_cat_neo_preferences_page_cat(value->app, context); break;
@@ -96,7 +101,9 @@ static bool draw_shell(BongoCatNeoPreferences *value, struct nk_context *context
         value->ui.caption_font, value->logo_texture, &title_clicked, !modal, dark);
     if (title_clicked && !SDL_OpenURL("https://bongocatneo.com"))
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Cannot open website: %s", SDL_GetError());
-    bongo_cat_neo_ui_tabs(context, menus, 5, &value->page, !modal, dark);
+    bongo_cat_neo_ui_set_icons(draw_icon, value);
+    bongo_cat_neo_ui_tabs(context, menus, 5, &value->page, !modal, dark,
+        draw_icon, value);
     if (!value->page_seen) {
         value->page_seen = true; value->last_page = value->page;
     } else if (value->last_page != value->page) {
@@ -113,12 +120,31 @@ static bool draw_shell(BongoCatNeoPreferences *value, struct nk_context *context
     float body_height = interior_height - BONGO_CAT_NEO_UI_HEADER_HEIGHT;
     nk_layout_row_dynamic(context, NK_MAX(120.0f, body_height), 1);
     struct nk_rect body_bounds = nk_widget_bounds(context);
-    context->style.window.group_padding = nk_vec2(24, 16);
+    float page_progress = 1.0f;
+    if (value->page_transition_ns) {
+        float elapsed = (float)(SDL_GetTicksNS() - value->page_transition_ns) /
+            220000000.0f;
+        if (elapsed >= 1.0f) value->page_transition_ns = 0;
+        else {
+            page_progress = bongo_cat_neo_ui_ease(BONGO_CAT_NEO_UI_EASE_SWIFT,
+                NK_CLAMP(0.0f, elapsed, 1.0f));
+            value->render_dirty = true;
+        }
+    }
+    context->style.window.group_padding = nk_vec2(24,
+        16 + 6.0f * (1.0f - page_progress));
     context->style.window.spacing = nk_vec2(10, 10);
     int scroll_page = NK_CLAMP(0, value->page, 4);
     if (value->scroll_ready[scroll_page])
         nk_group_set_scroll(context, page_ids[scroll_page], 0,
             (nk_uint)NK_MAX(0.0f, value->scroll_current[scroll_page]));
+    struct nk_mouse_button saved_left = context->input.mouse.buttons[NK_BUTTON_LEFT];
+    struct nk_vec2 saved_wheel = context->input.mouse.scroll_delta;
+    if (modal) {
+        context->input.mouse.buttons[NK_BUTTON_LEFT].clicked = 0;
+        context->input.mouse.buttons[NK_BUTTON_LEFT].down = nk_false;
+        context->input.mouse.scroll_delta = nk_vec2(0, 0);
+    }
     if (nk_group_begin(context, page_ids[value->page], 0)) {
         draw_page(value, context);
         float wheel = context->input.mouse.scroll_delta.y;
@@ -144,15 +170,15 @@ static bool draw_shell(BongoCatNeoPreferences *value, struct nk_context *context
         if (wheel != 0.0f || fabsf(next - value->scroll_target[scroll_page]) > .5f)
             value->render_dirty = true;
     }
-    if (value->page_transition_ns) {
-        uint64_t elapsed = SDL_GetTicksNS() - value->page_transition_ns;
-        float progress = NK_MIN(1.0f, elapsed / 220000000.0f);
-        if (progress < 1.0f) {
-            struct nk_command_buffer *canvas = nk_window_get_canvas(context);
-            nk_fill_rect(canvas, body_bounds, 0, nk_rgba(p.surface.r,
-                p.surface.g, p.surface.b, (nk_byte)(220 * (1.0f - progress))));
-            value->render_dirty = true;
-        } else value->page_transition_ns = 0;
+    if (modal) {
+        context->input.mouse.buttons[NK_BUTTON_LEFT] = saved_left;
+        context->input.mouse.scroll_delta = saved_wheel;
+    }
+    if (page_progress < 1.0f) {
+        struct nk_command_buffer *canvas = nk_window_get_canvas(context);
+        nk_fill_rect(canvas, body_bounds, 0, nk_rgba(p.surface.r,
+            p.surface.g, p.surface.b,
+            (nk_byte)(255 * (1.0f - page_progress))));
     }
     nk_group_end(context);
     }

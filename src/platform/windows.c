@@ -20,6 +20,7 @@ typedef struct WindowsState {
     DWORD thread_id;
     HHOOK keyboard;
     HHOOK mouse;
+    bool key_down[BONGO_CAT_NEO_INPUT_KEY_STATE_CAP];
     bool hooks_ready;
 } WindowsState;
 
@@ -49,13 +50,16 @@ static void push_event(BongoCatNeoInputKind kind, const char *name, float value)
 }
 static LRESULT CALLBACK keyboard_hook(int code, WPARAM message, LPARAM data) {
     if (code == HC_ACTION) {
+        WindowsState *state = global_state;
         const KBDLLHOOKSTRUCT *key = (const KBDLLHOOKSTRUCT *)data;
         bool down = message == WM_KEYDOWN || message == WM_SYSKEYDOWN;
         bool up = message == WM_KEYUP || message == WM_SYSKEYUP;
         char buffer[16];
         const char *name = bongo_cat_neo_windows_key_name(key, buffer);
-        if (name && (down || up)) push_event(down ? BONGO_CAT_NEO_INPUT_KEY_DOWN : BONGO_CAT_NEO_INPUT_KEY_UP,
-            name, down ? 1.0f : 0.0f);
+        if (state && name && (down || up) && bongo_cat_neo_input_edge(
+            state->key_down, key->vkCode, down))
+            push_event(down ? BONGO_CAT_NEO_INPUT_KEY_DOWN :
+                BONGO_CAT_NEO_INPUT_KEY_UP, name, down ? 1.0f : 0.0f);
     }
     return CallNextHookEx(NULL, code, message, data);
 }

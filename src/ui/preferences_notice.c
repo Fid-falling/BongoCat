@@ -1,58 +1,95 @@
 #include "preferences_notice.h"
 #include "preferences_state.h"
+#include "ui_animation.h"
 #include "ui_backend.h"
 #include "ui_catime.h"
+#include "ui_paint.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
+#include <string.h>
+
+enum { NOTICE_DURATION_MS = 2600, NOTICE_ENTER_MS = 250 };
 
 void bongo_cat_neo_preferences_notice_show(BongoCatNeoApp *app,
     const char *message, bool error) {
     if (!app || !app->preferences || !message || !message[0]) return;
     BongoCatNeoPreferences *value = app->preferences;
-    snprintf(value->notice, sizeof(value->notice), "%s", message);
-    value->notice_error = error;
-    value->notice_started_ns = SDL_GetTicksNS();
-    value->notice_until_ns = value->notice_started_ns + 4000000000ULL;
-    bongo_cat_neo_preferences_invalidate(value);
+    uint64_t now = SDL_GetTicksNS();
+    BongoCatNeoPreferenceNotice *target = NULL;
+    for (size_t i = 0; i < sizeof(value->notices) / sizeof(value->notices[0]); ++i) {
+        BongoCatNeoPreferenceNotice *notice = &value->notices[i];
+        if (!notice->message[0] || notice->until_ns <= now) {
+            target = notice; break;
+        }
+        if (!target || notice->started_ns < target->started_ns) target = notice;
+    }
+    snprintf(target->message, sizeof(target->message), "%s", message);
+    target->error = error;
+    target->started_ns = now;
+    target->until_ns = now + NOTICE_DURATION_MS * 1000000ULL;
+    value->render_dirty = true;
+}
+
+static size_t active_notices(BongoCatNeoPreferences *value, uint64_t now,
+    BongoCatNeoPreferenceNotice **items) {
+    size_t count = 0;
+    for (size_t i = 0; i < sizeof(value->notices) / sizeof(value->notices[0]); ++i) {
+        BongoCatNeoPreferenceNotice *notice = &value->notices[i];
+        if (notice->message[0] && notice->until_ns <= now)
+            memset(notice, 0, sizeof(*notice));
+        if (notice->message[0]) items[count++] = notice;
+    }
+    for (size_t i = 1; i < count; ++i) {
+        BongoCatNeoPreferenceNotice *item = items[i];
+        size_t j = i;
+        while (j && items[j - 1]->started_ns > item->started_ns) {
+            items[j] = items[j - 1]; j--;
+        }
+        items[j] = item;
+    }
+    return count;
+}
+
+static void draw_notice(BongoCatNeoPreferences *value,
+    struct nk_context *context, BongoCatNeoPreferenceNotice *notice,
+    float width, float y, uint64_t now) {
+    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(
+        bongo_cat_neo_ui_dark(context));
+    const struct nk_user_font *font = bongo_cat_neo_ui_label_font(context);
+    float text_width = font->width(font->userdata, font->height,
+        notice->message, nk_strlen(notice->message));
+    float toast_width = NK_MIN(text_width + 36.0f, width - 64.0f);
+    float elapsed = (float)(now - notice->started_ns) /
+        (NOTICE_ENTER_MS * 1000000.0f);
+    float progress = bongo_cat_neo_ui_ease(BONGO_CAT_NEO_UI_EASE_SPRING,
+        NK_CLAMP(0.0f, elapsed, 1.0f));
+    float opacity = NK_CLAMP(0.0f, progress, 1.0f);
+    float shown_width = toast_width * (.9f + .1f * progress);
+    struct nk_rect bounds = nk_rect((width - shown_width) * .5f,
+        y - 12.0f * (1.0f - progress), shown_width, 41.0f);
+    struct nk_color tone = notice->error ? p.danger : p.pink;
+    if (p.effects) bongo_cat_neo_ui_paint_shadow(context, bounds, 20, 0, 8,
+        notice->error ? 25.0f : 22.0f, 0, nk_rgba(tone.r, tone.g, tone.b,
+        (nk_byte)((notice->error ? 102 : 89) * opacity)));
+    struct nk_command_buffer *canvas = nk_window_get_canvas(context);
+    nk_fill_rect(canvas, bounds, 20, nk_rgba(tone.r, tone.g, tone.b,
+        (nk_byte)(255 * opacity)));
+    struct nk_rect label = nk_rect(bounds.x + (bounds.w - text_width) * .5f,
+        bounds.y + (bounds.h - font->height) * .5f,
+        NK_MIN(text_width + 1, bounds.w - 20), font->height);
+    nk_draw_text(canvas, label, notice->message, nk_strlen(notice->message), font,
+        nk_rgba(0, 0, 0, 0), nk_rgba(255, 255, 255, (nk_byte)(255 * opacity)));
+    value->render_dirty = true;
 }
 
 void bongo_cat_neo_preferences_notice_draw(BongoCatNeoPreferences *value,
     struct nk_context *context, float width, float height) {
     (void)height;
-    if (!value || !value->notice[0]) return;
+    if (!value) return;
     uint64_t now = SDL_GetTicksNS();
-    if (now >= value->notice_until_ns) {
-        value->notice[0] = '\0';
-        value->notice_until_ns = 0;
-        return;
-    }
-    value->render_dirty = true;
-    bool dark = bongo_cat_neo_ui_dark(context);
-    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(dark);
-    const struct nk_user_font *font = bongo_cat_neo_ui_body_font(context);
-    float text_width = font->width(font->userdata, font->height,
-        value->notice, nk_strlen(value->notice));
-    float toast_width = NK_MIN(text_width + 36.0f, width - 64.0f);
-    float enter = NK_MIN(1.0f,
-        (now - value->notice_started_ns) / 250000000.0f);
-    float leave = NK_MIN(1.0f,
-        (value->notice_until_ns - now) / 250000000.0f);
-    float progress = NK_MIN(enter, leave);
-    float shown_width = toast_width * (.9f + .1f * progress);
-    struct nk_rect bounds = nk_rect((width - shown_width) * .5f,
-        20.0f - 12.0f * (1.0f - progress), shown_width, 40.0f);
-    struct nk_command_buffer *canvas = nk_window_get_canvas(context);
-    struct nk_color tone = value->notice_error ? p.danger : p.pink;
-    nk_fill_rect(canvas, nk_rect(bounds.x + 1, bounds.y + 4,
-        bounds.w, bounds.h), 20, nk_rgba(tone.r, tone.g, tone.b,
-        (nk_byte)(70 * progress)));
-    nk_fill_rect(canvas, bounds, 20, nk_rgba(tone.r, tone.g, tone.b,
-        (nk_byte)(255 * progress)));
-    struct nk_rect text = nk_rect(bounds.x + (bounds.w - text_width) * .5f,
-        bounds.y + (bounds.h - font->height) * .5f,
-        NK_MIN(text_width + 1, bounds.w - 20), font->height);
-    nk_draw_text(canvas, text, value->notice, nk_strlen(value->notice), font,
-        nk_rgba(0, 0, 0, 0), nk_rgba(255, 255, 255,
-        (nk_byte)(255 * progress)));
+    BongoCatNeoPreferenceNotice *items[4];
+    size_t count = active_notices(value, now, items);
+    for (size_t i = 0; i < count; ++i)
+        draw_notice(value, context, items[i], width, 20.0f + i * 51.0f, now);
 }

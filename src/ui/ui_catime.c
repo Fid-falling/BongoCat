@@ -1,11 +1,26 @@
 #include "ui_catime.h"
 #include "ui_backend.h"
 #include "ui_animation.h"
+#include "ui_icons.h"
+#include "ui_paint.h"
 
 #include <math.h>
+#include <stdio.h>
 
-static struct nk_color rgb(int value) {
-    return nk_rgba((value >> 16) & 255, (value >> 8) & 255, value & 255, 255);
+static BongoCatNeoUIIconDraw external_icon_draw;
+static void *external_icon_userdata;
+
+void bongo_cat_neo_ui_set_icons(BongoCatNeoUIIconDraw draw_icon,
+    void *icon_userdata) {
+    external_icon_draw = draw_icon;
+    external_icon_userdata = icon_userdata;
+}
+
+bool bongo_cat_neo_ui_draw_icon(struct nk_command_buffer *canvas, int icon,
+    struct nk_rect bounds, struct nk_color color) {
+    if (!external_icon_draw) return false;
+    external_icon_draw(external_icon_userdata, canvas, icon, bounds, color);
+    return true;
 }
 
 static float text_width(const struct nk_user_font *font, const char *text) {
@@ -70,25 +85,58 @@ void bongo_cat_neo_ui_shell_draw(struct nk_context *context, float width,
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     float side = bongo_cat_neo_ui_sidebar_width(width);
     struct nk_rect surface = nk_rect(8, 8, width - 16, height - 16);
-    nk_fill_rect(canvas, nk_rect(9, 12, width - 18, height - 17), 20,
-        dark ? rgb(0x0D0E11) : rgb(0xDDE8F2));
-    nk_fill_rect(canvas, surface, 20, p.surface);
+    if (p.effects) {
+        bongo_cat_neo_ui_paint_shadow(context, surface, 20, 0, 12, 36, 0,
+            nk_rgba(p.text.r, p.text.g, p.text.b, 20));
+        bongo_cat_neo_ui_paint_shadow(context, surface, 20, 0, 4, 12, 0,
+            nk_rgba(p.accent.r, p.accent.g, p.accent.b, 31));
+    }
+    nk_fill_rect(canvas, surface, 20, p.surface_glass);
     nk_stroke_rect(canvas, surface, 20, 1, p.border);
     nk_fill_rect(canvas, nk_rect(8, 8, side, height - 16), 20,
-        dark ? rgb(0x1C2027) : rgb(0xFFFFFF));
+        p.surface);
     nk_fill_rect(canvas, nk_rect(8 + side - 20, 8, 20, height - 16), 0,
-        dark ? rgb(0x1C2027) : rgb(0xFFFFFF));
+        p.surface);
+    if (p.effects) {
+        struct nk_rect glow = nk_rect(-190, -190, 420, 420);
+        for (int row = 0; row < 20; ++row) {
+            float y = 8.0f + row;
+            float dy = y + .5f - 28.0f;
+            float start = 28.0f - sqrtf(NK_MAX(0.0f, 400.0f - dy * dy));
+            nk_push_scissor(canvas, nk_rect(start, y, 8 + side - start, 1));
+            bongo_cat_neo_ui_paint_radial(context, glow,
+                nk_rgba(p.accent.r, p.accent.g, p.accent.b, 56),
+                nk_rgba(p.accent.r, p.accent.g, p.accent.b, 56), .35f, 1.1f);
+        }
+        nk_push_scissor(canvas, nk_rect(8, 28, side, 202));
+        bongo_cat_neo_ui_paint_radial(context, glow,
+            nk_rgba(p.accent.r, p.accent.g, p.accent.b, 56),
+            nk_rgba(p.accent.r, p.accent.g, p.accent.b, 56), .35f, 1.1f);
+        nk_push_scissor(canvas, nk_rect(0, 0, width, height));
+    }
+    nk_stroke_rect(canvas, surface, 20, 1, p.border);
     nk_stroke_line(canvas, 8 + side, 8, 8 + side, height - 8, 1,
-        dark ? rgb(0x343A45) : rgb(0xE3E8EF));
+        p.border_subtle);
 }
 
 static void signature(struct nk_command_buffer *canvas, struct nk_rect bounds,
     BongoCatNeoUIPalette p) {
-    float x = bounds.x + (bounds.w - 88) * .5f, y = bounds.y + 132;
-    nk_stroke_curve(canvas, x, y, x + 20, y + 4, x + 58, y + 4,
-        x + 88, y, 5, p.selection);
-    nk_stroke_curve(canvas, x, y - 1, x + 22, y + 2, x + 59, y + 3,
-        x + 88, y - 2, 3, p.pink);
+    float x = bounds.x + (bounds.w - 90) * .5f, y = bounds.y + 124;
+    struct nk_color glow = p.effects ?
+        nk_rgba(p.pink.r, p.pink.g, p.pink.b, 89) : p.pink;
+    nk_stroke_curve(canvas, x + 3, y + 8, x + 25, y + 12,
+        x + 55, y + 10, x + 87, y + 6, 6, glow);
+    float previous_x = x + 3, previous_y = y + 8;
+    for (int i = 1; i <= 24; ++i) {
+        float t = i / 24.0f, u = 1.0f - t;
+        float next_x = x + u * u * u * 3 + 3 * u * u * t * 25 +
+            3 * u * t * t * 55 + t * t * t * 87;
+        float next_y = y + u * u * u * 8 + 3 * u * u * t * 12 +
+            3 * u * t * t * 10 + t * t * t * 6;
+        nk_stroke_line(canvas, previous_x, previous_y, next_x, next_y, 3,
+            bongo_cat_neo_ui_color_mix(p.accent, p.pink, t));
+        previous_x = next_x; previous_y = next_y;
+    }
 }
 
 bool bongo_cat_neo_ui_header(struct nk_context *context, const char *title,
@@ -101,18 +149,28 @@ bool bongo_cat_neo_ui_header(struct nk_context *context, const char *title,
     BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(dark);
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     float size = bounds.w < 100 ? 54.0f : 72.0f;
-    struct nk_rect frame = nk_rect(bounds.x + (bounds.w - size) * .5f,
-        bounds.y + (bounds.w < 100 ? 10.0f : 13.0f), size, size);
     bool hover = interactive && nk_input_is_mouse_hovering_rect(&context->input,
         nk_rect(bounds.x, bounds.y, bounds.w, bounds.h));
-    nk_fill_rect(canvas, frame, bounds.w < 100 ? 14.0f : 18.0f,
-        hover ? p.pink_hover : p.accent);
+    float hover_amount = bongo_cat_neo_ui_animate_eased(context,
+        "brand-logo-hover", hover ? 1.0f : 0.0f, 250.0f,
+        BONGO_CAT_NEO_UI_EASE_SPRING);
+    size *= 1.0f + .08f * hover_amount;
+    struct nk_rect frame = nk_rect(bounds.x + (bounds.w - size) * .5f,
+        bounds.y + (bounds.w < 100 ? 10.0f : 13.0f) -
+        (size - (bounds.w < 100 ? 54.0f : 72.0f)) * .5f, size, size);
+    float rounding = bounds.w < 100 ? 14.0f : 18.0f;
+    if (p.effects) bongo_cat_neo_ui_paint_shadow(context, frame, rounding,
+        0, 5, 16, 0, nk_rgba(p.pink.r, p.pink.g, p.pink.b, 89));
+    if (p.effects) bongo_cat_neo_ui_paint_gradient(context, frame, rounding,
+        p.accent, hover ? p.pink_hover : p.pink);
+    else nk_fill_rect(canvas, frame, rounding, p.accent);
     struct nk_rect inner = nk_rect(frame.x + 3, frame.y + 3,
         frame.w - 6, frame.h - 6);
     nk_fill_rect(canvas, inner, bounds.w < 100 ? 11.0f : 15.0f, p.surface);
     if (logo_texture) {
         struct nk_image image = nk_image_id((int)logo_texture);
-        float image_size = bounds.w < 100 ? 42.0f : 56.0f;
+        float image_size = (bounds.w < 100 ? 42.0f : 56.0f) *
+            (1.0f + .08f * hover_amount);
         struct nk_rect image_bounds = nk_rect(frame.x + (size - image_size) * .5f,
             frame.y + (size - image_size) * .5f, image_size, image_size);
         nk_draw_image(canvas, image_bounds, &image, nk_rgb(255, 255, 255));
@@ -130,42 +188,12 @@ bool bongo_cat_neo_ui_header(struct nk_context *context, const char *title,
     return false;
 }
 
-static void nav_icon(struct nk_command_buffer *canvas, int index,
-    struct nk_rect bounds, struct nk_color color) {
-    float x = bounds.x + bounds.w * .5f, y = bounds.y + 17;
-    if (index == 0) {
-        nk_stroke_circle(canvas, nk_rect(x - 9, y - 7, 18, 16), 2, color);
-        nk_stroke_triangle(canvas, x - 9, y - 3, x - 7, y - 11,
-            x - 2, y - 6, 2, color);
-        nk_stroke_triangle(canvas, x + 2, y - 6, x + 7, y - 11,
-            x + 9, y - 3, 2, color);
-    } else if (index == 1) {
-        nk_stroke_circle(canvas, nk_rect(x - 9, y - 9, 18, 18), 5, color);
-        nk_fill_circle(canvas, nk_rect(x - 3, y - 3, 6, 6), color);
-    } else if (index == 2) {
-        nk_stroke_line(canvas, x - 8, y + 8, x + 7, y - 7, 3, color);
-        nk_stroke_line(canvas, x - 7, y - 7, x + 7, y + 7, 2, color);
-        nk_fill_circle(canvas, nk_rect(x + 7, y - 11, 4, 4), color);
-    } else if (index == 3) {
-        nk_stroke_rect(canvas, nk_rect(x - 10, y - 7, 20, 14), 3, 2, color);
-        for (int row = 0; row < 2; ++row)
-            for (int col = 0; col < 4; ++col)
-                nk_fill_rect(canvas, nk_rect(x - 7 + col * 4, y - 4 + row * 5,
-                    2, 2), 0, color);
-    } else {
-        nk_fill_circle(canvas, nk_rect(x - 9, y - 8, 11, 13), color);
-        nk_fill_circle(canvas, nk_rect(x - 1, y - 8, 11, 13), color);
-        nk_fill_triangle(canvas, x - 8, y - 1, x + 9, y - 1, x, y + 10, color);
-    }
-}
-
 void bongo_cat_neo_ui_tabs(struct nk_context *context, const char *const *labels,
-    int count, int *active, bool interactive, bool dark) {
+    int count, int *active, bool interactive, bool dark,
+    BongoCatNeoUIIconDraw draw_icon, void *icon_userdata) {
     BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(dark);
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     const struct nk_user_font *font = bongo_cat_neo_ui_caption_font(context);
-    float nav_position = bongo_cat_neo_ui_animate(context,
-        "sidebar-selection", (float)*active, 200.0f);
     for (int i = 0; i < count; ++i) {
         struct nk_rect bounds;
         nk_layout_row_dynamic(context, 68, 1);
@@ -173,18 +201,30 @@ void bongo_cat_neo_ui_tabs(struct nk_context *context, const char *const *labels
         bool hover = interactive &&
             nk_input_is_mouse_hovering_rect(&context->input, bounds);
         bool selected = *active == i;
+        char selection_id[32], hover_id[32];
+        snprintf(selection_id, sizeof(selection_id), "sidebar-active-%d", i);
+        snprintf(hover_id, sizeof(hover_id), "sidebar-hover-%d", i);
+        float weight = bongo_cat_neo_ui_animate_eased(context, selection_id,
+            selected ? 1.0f : 0.0f, 200.0f, BONGO_CAT_NEO_UI_EASE_SWIFT);
+        float hover_weight = bongo_cat_neo_ui_animate_eased(context, hover_id,
+            hover ? 1.0f : 0.0f, 200.0f, BONGO_CAT_NEO_UI_EASE_SWIFT);
         struct nk_rect tile = nk_rect(bounds.x + 10, bounds.y + 1,
             bounds.w - 20, bounds.h - 1);
-        tile.y += 16.0f + i * 8.0f;
+        tile.y += 16.0f + i * 8.0f - hover_weight;
         if (hover) nk_fill_rect(canvas, tile, 8, p.hover);
-        float weight = NK_MAX(0.0f, 1.0f - fabsf(nav_position - i));
+        if (selected && p.effects) bongo_cat_neo_ui_paint_shadow(context,
+            tile, 8, 0, 5, 14, 0,
+            nk_rgba(p.pink.r, p.pink.g, p.pink.b, 89));
         if (weight > 0.0f) nk_fill_rect(canvas, tile, 8,
             nk_rgba(p.pink.r, p.pink.g, p.pink.b, (nk_byte)(255 * weight)));
         struct nk_color color = selected ? nk_rgb(255, 255, 255) :
             (hover ? p.accent : p.muted);
         struct nk_rect icon_tile = tile;
         if (tile.w < 80.0f) icon_tile.y += 17.0f;
-        nav_icon(canvas, i, icon_tile, color);
+        if (draw_icon) draw_icon(icon_userdata, canvas, i,
+            nk_rect(icon_tile.x + (icon_tile.w - 24) * .5f,
+            icon_tile.y + 5, 24, 24), color);
+        else bongo_cat_neo_ui_fallback_icon(canvas, i, icon_tile, color);
         if (tile.w >= 80.0f)
             nav_label(canvas, nk_rect(tile.x, tile.y + 31, tile.w, 36),
                 labels[i], font, color);
@@ -194,8 +234,6 @@ void bongo_cat_neo_ui_tabs(struct nk_context *context, const char *const *labels
         if (hover && nk_input_is_mouse_click_in_rect(&context->input,
             NK_BUTTON_LEFT, tile)) {
             *active = i;
-            bongo_cat_neo_ui_animate(context, "sidebar-selection",
-                (float)*active, 200.0f);
         }
     }
 }
@@ -207,8 +245,12 @@ bool bongo_cat_neo_ui_content_header(struct nk_context *context,
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return false;
     BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(dark);
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
+    nk_fill_rect(canvas, bounds, 0,
+        bongo_cat_neo_ui_color_mix(p.surface_glass, p.surface, .2f));
     struct nk_rect icon_bounds = nk_rect(bounds.x + 20, bounds.y + 16, 22, 22);
-    nav_icon(canvas, icon, icon_bounds, p.accent);
+    if (external_icon_draw) external_icon_draw(external_icon_userdata, canvas,
+        icon, icon_bounds, p.accent);
+    else bongo_cat_neo_ui_fallback_icon(canvas, icon, icon_bounds, p.accent);
     const struct nk_user_font *font = bongo_cat_neo_ui_label_font(context);
     struct nk_rect text = nk_rect(bounds.x + 52,
         bounds.y + (bounds.h - font->height) * .5f, bounds.w - 110, font->height);
@@ -217,10 +259,13 @@ bool bongo_cat_neo_ui_content_header(struct nk_context *context,
     struct nk_rect close = nk_rect(bounds.x + bounds.w - 48, bounds.y + 11, 34, 34);
     bool hover = interactive && nk_input_is_mouse_hovering_rect(&context->input, close);
     struct nk_color color = hover ? p.accent : p.muted;
-    nk_stroke_line(canvas, close.x + 10, close.y + 10,
-        close.x + 24, close.y + 24, 2, color);
-    nk_stroke_line(canvas, close.x + 24, close.y + 10,
-        close.x + 10, close.y + 24, 2, color);
+    if (!bongo_cat_neo_ui_draw_icon(canvas, BONGO_CAT_NEO_UI_ICON_CLOSE,
+        nk_rect(close.x + 7, close.y + 7, 20, 20), color)) {
+        nk_stroke_line(canvas, close.x + 10, close.y + 10,
+            close.x + 24, close.y + 24, 2, color);
+        nk_stroke_line(canvas, close.x + 24, close.y + 10,
+            close.x + 10, close.y + 24, 2, color);
+    }
     if (hover) bongo_cat_neo_ui_cursor_hover_rect(context, close,
         BONGO_CAT_NEO_UI_CURSOR_POINTER);
     return hover && nk_input_is_mouse_click_in_rect(&context->input,

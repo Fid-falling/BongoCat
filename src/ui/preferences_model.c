@@ -1,70 +1,18 @@
 #include "preferences_state.h"
+#include "preferences_model_cover.h"
 #include "preferences_widgets.h"
 #include "preferences_notice.h"
 #include "ui_backend.h"
 #include "ui_catime.h"
 #include "ui_animation.h"
+#include "ui_paint.h"
+#include "ui_icons.h"
 #include "bongo_cat_neo/i18n.h"
-#include "bongo_cat_neo/image.h"
-#include "bongo_cat_neo/path.h"
 #include "bongo_cat_neo/preferences.h"
 
-#include <SDL3/SDL_opengl.h>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
-
-typedef struct ModelCoverSlot {
-    BongoCatNeoApp *app;
-    char path[BONGO_CAT_NEO_PATH_CAP];
-    GLuint texture;
-    int width, height;
-    uint64_t generation;
-} ModelCoverSlot;
-
-static ModelCoverSlot cover_cache[BONGO_CAT_NEO_MODEL_CAP];
-static uint64_t cover_generation;
-
-void bongo_cat_neo_preferences_model_cache_clear(BongoCatNeoApp *app) {
-    bongo_cat_neo_preferences_remove_dialog_clear(app);
-    for (size_t i = 0; i < BONGO_CAT_NEO_MODEL_CAP; ++i) {
-        ModelCoverSlot *slot = &cover_cache[i];
-        if ((!app || slot->app == app) && slot->texture)
-            glDeleteTextures(1, &slot->texture);
-        if (!app || slot->app == app) memset(slot, 0, sizeof(*slot));
-    }
-}
-
-static ModelCoverSlot *model_cover(BongoCatNeoApp *app,
-    const BongoCatNeoModelEntry *entry) {
-    char path[BONGO_CAT_NEO_PATH_CAP];
-    if (!bongo_cat_neo_path_join(path, sizeof(path), entry->adapter_directory,
-        "resources/cover.png") || !bongo_cat_neo_path_is_file(path)) return NULL;
-    ModelCoverSlot *empty = NULL;
-    for (size_t i = 0; i < BONGO_CAT_NEO_MODEL_CAP; ++i) {
-        ModelCoverSlot *slot = &cover_cache[i];
-        if (slot->texture && slot->app == app && !strcmp(slot->path, path)) {
-            slot->generation = cover_generation; return slot;
-        }
-        if (!slot->texture && !empty) empty = slot;
-    }
-    if (!empty) return NULL;
-    BongoCatNeoError ignored = {0};
-    empty->texture = bongo_cat_neo_image_texture_thumbnail(path, 384, 224,
-        &empty->width, &empty->height, &ignored);
-    if (!empty->texture) return NULL;
-    empty->app = app; empty->generation = cover_generation;
-    snprintf(empty->path, sizeof(empty->path), "%s", path);
-    return empty;
-}
-
-static void prune_covers(BongoCatNeoApp *app) {
-    for (size_t i = 0; i < BONGO_CAT_NEO_MODEL_CAP; ++i) {
-        ModelCoverSlot *slot = &cover_cache[i];
-        if (slot->app != app || !slot->texture ||
-            slot->generation == cover_generation) continue;
-        glDeleteTextures(1, &slot->texture); memset(slot, 0, sizeof(*slot));
-    }
-}
 
 static const char *tr(BongoCatNeoApp *app, const char *key,
     const char *fallback) {
@@ -113,14 +61,14 @@ static void text(struct nk_context *context, struct nk_command_buffer *canvas,
 
 static void dashed_rect(struct nk_command_buffer *canvas, struct nk_rect r,
     struct nk_color color) {
-    const float dash = 7.0f, gap = 5.0f;
-    for (float x = r.x + 8; x < r.x + r.w - 8; x += dash + gap) {
-        float end = NK_MIN(x + dash, r.x + r.w - 8);
+    const float dash = 5.0f, gap = 5.0f;
+    for (float x = r.x + 14; x < r.x + r.w - 10; x += dash + gap) {
+        float end = NK_MIN(x + dash, r.x + r.w - 10);
         nk_stroke_line(canvas, x, r.y, end, r.y, 2, color);
         nk_stroke_line(canvas, x, r.y + r.h, end, r.y + r.h, 2, color);
     }
-    for (float y = r.y + 8; y < r.y + r.h - 8; y += dash + gap) {
-        float end = NK_MIN(y + dash, r.y + r.h - 8);
+    for (float y = r.y + 14; y < r.y + r.h - 10; y += dash + gap) {
+        float end = NK_MIN(y + dash, r.y + r.h - 10);
         nk_stroke_line(canvas, r.x, y, r.x, end, 2, color);
         nk_stroke_line(canvas, r.x + r.w, y, r.x + r.w, end, 2, color);
     }
@@ -134,17 +82,17 @@ static bool import_card(BongoCatNeoPreferences *value,
     bounds.y += 5.0f; bounds.h += 1.0f;
     BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
     bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
-    float lift = bongo_cat_neo_ui_animate(context, "model-import-hover",
-        hover ? 1.0f : 0.0f, 250.0f);
+    float lift = bongo_cat_neo_ui_animate_eased(context, "model-import-hover",
+        hover ? 1.0f : 0.0f, 250.0f, BONGO_CAT_NEO_UI_EASE_STANDARD);
     bounds.y -= 2.0f * lift;
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
-    nk_fill_rect(canvas, bounds, 13, hover ? p.hover_pink : p.selection);
+    if (hover && p.effects) bongo_cat_neo_ui_paint_shadow(context, bounds, 14,
+        0, 8, 24, 0, nk_rgba(p.pink.r, p.pink.g, p.pink.b, 89));
+    nk_fill_rect(canvas, bounds, 14, hover ? p.hover_pink : p.hover);
     dashed_rect(canvas, bounds, hover ? p.pink : p.accent);
     float cx = bounds.x + bounds.w * .5f, cy = bounds.y + 94;
-    nk_stroke_rect(canvas, nk_rect(cx - 16, cy - 17, 32, 34), 8, 2, p.pink);
-    nk_stroke_line(canvas, cx, cy - 8, cx, cy + 8, 2, p.pink);
-    nk_stroke_line(canvas, cx - 6, cy - 2, cx, cy - 8, 2, p.pink);
-    nk_stroke_line(canvas, cx + 6, cy - 2, cx, cy - 8, 2, p.pink);
+    bongo_cat_neo_preferences_icon_draw(value, canvas,
+        BONGO_CAT_NEO_UI_ICON_UPLOAD, nk_rect(cx - 20, cy - 20, 40, 40), p.pink);
     const char *label = tr(value->app,
         "pages.preference.model.hints.clickOrDragToImport", "Import model directory");
     float width = value->ui.caption_font->width(value->ui.caption_font->userdata,
@@ -158,27 +106,11 @@ static bool import_card(BongoCatNeoPreferences *value,
         NK_BUTTON_LEFT, bounds);
 }
 
-static void action_icon(struct nk_command_buffer *canvas, struct nk_rect r,
-    bool behavior, bool folder, bool trash, struct nk_color color) {
-    float x = r.x + r.w * .5f, y = r.y + r.h * .5f;
-    if (trash) {
-        nk_stroke_rect(canvas, nk_rect(x - 6, y - 5, 12, 12), 1, 1.5f, color);
-        nk_stroke_line(canvas, x - 8, y - 8, x + 8, y - 8, 1.5f, color);
-        nk_stroke_line(canvas, x - 3, y - 11, x + 3, y - 11, 1.5f, color);
-    } else if (folder) {
-        nk_stroke_rect(canvas, nk_rect(x - 8, y - 5, 17, 12), 2, 1.5f, color);
-        nk_stroke_line(canvas, x - 7, y - 7, x - 1, y - 7, 1.5f, color);
-    } else if (behavior) {
-        nk_stroke_circle(canvas, nk_rect(x - 7, y - 7, 14, 14), 1.5f, color);
-        nk_fill_circle(canvas, nk_rect(x - 4, y - 2, 2, 2), color);
-        nk_fill_circle(canvas, nk_rect(x + 2, y - 2, 2, 2), color);
-        nk_stroke_curve(canvas, x - 4, y + 2, x - 2, y + 5,
-            x + 2, y + 5, x + 4, y + 2, 1.5f, color);
-    } else {
-        nk_stroke_circle(canvas, nk_rect(x - 7, y - 7, 14, 14), 1.5f, color);
-        nk_stroke_line(canvas, x - 3, y, x, y + 3, 1.5f, color);
-        nk_stroke_line(canvas, x, y + 3, x + 5, y - 3, 1.5f, color);
-    }
+static void action_icon(BongoCatNeoPreferences *value,
+    struct nk_command_buffer *canvas, struct nk_rect r, int icon,
+    struct nk_color color) {
+    bongo_cat_neo_preferences_icon_draw(value, canvas, icon,
+        nk_rect(r.x + (r.w - 18) * .5f, r.y + (r.h - 18) * .5f, 18, 18), color);
 }
 
 static void model_card(BongoCatNeoPreferences *value, struct nk_context *context,
@@ -193,18 +125,29 @@ static void model_card(BongoCatNeoPreferences *value, struct nk_context *context
     bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
     char animation_id[BONGO_CAT_NEO_ID_CAP + 24];
     snprintf(animation_id, sizeof(animation_id), "model-hover-%s", entry->id);
-    float lift = bongo_cat_neo_ui_animate(context, animation_id,
-        hover ? 1.0f : 0.0f, 250.0f);
+    float lift = bongo_cat_neo_ui_animate_eased(context, animation_id,
+        hover ? 1.0f : 0.0f, 250.0f, BONGO_CAT_NEO_UI_EASE_SWIFT);
     bounds.y -= 3.0f * lift;
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
-    nk_fill_rect(canvas, bounds, 13, p.surface);
-    nk_stroke_rect(canvas, bounds, 13, selected ? 2.0f : 1.0f,
-        selected ? p.pink : (hover ? p.accent : p.border));
+    if (selected && p.effects) bongo_cat_neo_ui_paint_shadow(context, bounds,
+        14, 0, 8, 20, 0, nk_rgba(p.pink.r, p.pink.g, p.pink.b, 89));
+    else if (hover && p.effects) bongo_cat_neo_ui_paint_shadow(context, bounds,
+        14, 0, 10, 28, 0, nk_rgba(p.accent.r, p.accent.g, p.accent.b, 46));
+    nk_fill_rect(canvas, bounds, 14, p.surface);
+    nk_stroke_rect(canvas, bounds, 14, selected ? 2.0f : 1.0f,
+        selected ? p.pink : (hover ? p.accent : p.border_subtle));
     float preview_height = NK_MIN(128.0f, bounds.w * 354.0f / 612.0f);
     struct nk_rect preview = nk_rect(bounds.x + 1, bounds.y + 1,
         bounds.w - 2, preview_height);
     nk_fill_rect(canvas, preview, 12, p.field);
-    ModelCoverSlot *cover = model_cover(app, entry);
+    int logical_width = 0, logical_height = 0, pixel_width = 0, pixel_height = 0;
+    SDL_GetWindowSize(value->window, &logical_width, &logical_height);
+    SDL_GetWindowSizeInPixels(value->window, &pixel_width, &pixel_height);
+    float scale_x = logical_width > 0 ? (float)pixel_width / logical_width : 1;
+    float scale_y = logical_height > 0 ? (float)pixel_height / logical_height : 1;
+    const BongoCatNeoModelCover *cover = bongo_cat_neo_preferences_model_cover(
+        app, entry, NK_MAX(1, (int)lroundf(preview.w * scale_x)),
+        NK_MAX(1, (int)lroundf(preview.h * scale_y)));
     if (cover) {
         float scale = NK_MIN(preview.w / cover->width, preview.h / cover->height);
         struct nk_rect image = nk_rect(preview.x + (preview.w - cover->width * scale) * .5f,
@@ -229,19 +172,23 @@ static void model_card(BongoCatNeoPreferences *value, struct nk_context *context
     struct nk_rect third = nk_rect(second.x + second.w, actions.y,
         action_width, actions.h);
     nk_stroke_line(canvas, second.x, second.y + 10, second.x,
-        second.y + second.h - 10, 1, p.border);
+        second.y + second.h - 10, 1, p.border_subtle);
     bool first_hover = nk_input_is_mouse_hovering_rect(&context->input, first);
     bool second_hover = nk_input_is_mouse_hovering_rect(&context->input, second);
     bool third_hover = deletable &&
         nk_input_is_mouse_hovering_rect(&context->input, third);
-    action_icon(canvas, first, selected, false, false,
+    if (first_hover) nk_fill_rect(canvas, first, 0, p.hover_pink);
+    if (second_hover) nk_fill_rect(canvas, second, 0, p.hover_pink);
+    if (third_hover) nk_fill_rect(canvas, third, 0, p.hover_pink);
+    action_icon(value, canvas, first, selected ? BONGO_CAT_NEO_UI_ICON_SMILE :
+        BONGO_CAT_NEO_UI_ICON_CHECK,
         first_hover ? p.pink : p.muted);
-    action_icon(canvas, second, false, true, false,
+    action_icon(value, canvas, second, BONGO_CAT_NEO_UI_ICON_FOLDER,
         second_hover ? p.pink : p.muted);
     if (deletable) {
         nk_stroke_line(canvas, third.x, third.y + 10, third.x,
-            third.y + third.h - 10, 1, p.border);
-        action_icon(canvas, third, false, false, true,
+            third.y + third.h - 10, 1, p.border_subtle);
+        action_icon(value, canvas, third, BONGO_CAT_NEO_UI_ICON_TRASH,
             third_hover ? p.danger : p.muted);
     }
     if (first_hover || second_hover || third_hover || hover)
@@ -249,7 +196,8 @@ static void model_card(BongoCatNeoPreferences *value, struct nk_context *context
             BONGO_CAT_NEO_UI_CURSOR_POINTER);
     if (first_hover && nk_input_is_mouse_click_in_rect(&context->input,
         NK_BUTTON_LEFT, first)) {
-        if (selected && app->config.model.behavior) value->behavior_dialog = true;
+        if (selected && app->config.model.behavior)
+            bongo_cat_neo_preferences_behavior_dialog_open(value);
         else bongo_cat_neo_app_select_model(app, entry->id);
     } else if (second_hover && nk_input_is_mouse_click_in_rect(&context->input,
         NK_BUTTON_LEFT, second)) bongo_cat_neo_app_select_model(app, entry->id);
@@ -276,7 +224,7 @@ static void draw_named(BongoCatNeoPreferences *value, struct nk_context *context
 void bongo_cat_neo_preferences_page_model(BongoCatNeoPreferences *value,
     struct nk_context *context) {
     BongoCatNeoApp *app = value->app;
-    cover_generation++; if (!cover_generation) cover_generation++;
+    bongo_cat_neo_preferences_model_covers_begin();
     bongo_cat_neo_pref_section(context,
         tr(app, "pages.preference.model.title", "Installed models"));
     float width = nk_window_get_content_region(context).w;
@@ -293,5 +241,5 @@ void bongo_cat_neo_preferences_page_model(BongoCatNeoPreferences *value,
         if (!is_builtin(app->models.entries[i].id))
             model_card(value, context, &app->models.entries[i]);
     context->style.window.spacing = old_spacing;
-    prune_covers(app);
+    bongo_cat_neo_preferences_model_covers_prune(app);
 }

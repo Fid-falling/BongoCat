@@ -19,7 +19,7 @@ bool bongo_cat_neo_pref_slider(struct nk_context *context, const char *id,
 int bongo_cat_neo_pref_combo(struct nk_context *context, const char *id,
     const char *title, const char *description, const char *const *items,
     int count, int selected);
-bool bongo_cat_neo_pref_edit(struct nk_context *context, const char *id,
+int bongo_cat_neo_pref_edit(struct nk_context *context, const char *id,
     const char *title, const char *description, const char *value,
     bool recording, const char *idle_hint, const char *record_hint);
 bool bongo_cat_neo_pref_button(struct nk_context *context, const char *id,

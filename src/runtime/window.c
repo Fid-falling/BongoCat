@@ -31,7 +31,7 @@ static bool try_window(BongoCatNeoApp *app, bool transparent, bool multisampling
         snprintf(failure, capacity, "OpenGL attributes: %s", SDL_GetError()); return false;
     }
     SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS |
-        SDL_WINDOW_HIGH_PIXEL_DENSITY;
+        SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_HIDDEN;
     if (transparent) flags |= SDL_WINDOW_TRANSPARENT;
     app->window = SDL_CreateWindow(BONGO_CAT_NEO_NAME, app->config.window.width,
         app->config.window.height, flags);
@@ -216,6 +216,8 @@ bool bongo_cat_neo_window_event(BongoCatNeoApp *app, const SDL_Event *event) {
         app->config.window.visible = false;
         return true;
     }
+    if (event->type == SDL_EVENT_WINDOW_HIDDEN)
+        app->config.window.visible = false;
     if (event->type == SDL_EVENT_WINDOW_RESIZED) {
         app->config.window.width = event->window.data1;
         app->config.window.height = event->window.data2;

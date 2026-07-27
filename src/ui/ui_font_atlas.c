@@ -206,13 +206,16 @@ bool bongo_cat_neo_ui_font_atlas_create(BongoCatNeoUIBackend *ui,
         heading_fallback_source, 20.0f, glyph_ranges, latin_ranges, cjk_ranges);
     struct nk_font *heading_font = add_family_font(&ui->atlas, heading_source,
         heading_fallback_source, 28.0f, glyph_ranges, latin_ranges, cjk_ranges);
+    struct nk_font *hero_font = add_family_font(&ui->atlas, heading_source,
+        heading_fallback_source, 36.0f, glyph_ranges, latin_ranges, cjk_ranges);
     bool uploaded = caption_font && body_font && label_font && heading_font &&
-        upload_atlas(ui);
+        hero_font && upload_atlas(ui);
     if (uploaded) {
         ui->caption_font = &caption_font->handle;
         ui->body_font = &body_font->handle;
         ui->label_font = &label_font->handle;
         ui->heading_font = &heading_font->handle;
+        ui->hero_font = &hero_font->handle;
         ui->latin_glyph_ranges = latin_ranges;
         ui->cjk_glyph_ranges = cjk_ranges;
         ui->font_probe_loaded = font_has_ranges(body_font, glyph_ranges);
@@ -242,4 +245,5 @@ void bongo_cat_neo_ui_font_atlas_destroy(BongoCatNeoUIBackend *ui) {
     ui->body_font = NULL;
     ui->label_font = NULL;
     ui->heading_font = NULL;
+    ui->hero_font = NULL;
 }

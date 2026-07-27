@@ -20,6 +20,7 @@ typedef struct LinuxX11State {
     Display *display;
     Window window;
     SDL_Thread *thread;
+    bool key_down[BONGO_CAT_NEO_INPUT_KEY_STATE_CAP];
     atomic_bool running;
     atomic_bool supported;
 } LinuxX11State;
@@ -103,8 +104,9 @@ static void raw_event(LinuxX11State *state, Display *display, XIRawEvent *raw) {
     if (raw->evtype == XI_RawKeyPress || raw->evtype == XI_RawKeyRelease) {
         name = key_name(XkbKeycodeToKeysym(display, (KeyCode)raw->detail, 0, 0), buffer);
         bool down = raw->evtype == XI_RawKeyPress;
-        push(state, down ? BONGO_CAT_NEO_INPUT_KEY_DOWN : BONGO_CAT_NEO_INPUT_KEY_UP,
-            name, down ? 1.0f : 0.0f);
+        if (bongo_cat_neo_input_edge(state->key_down, raw->detail, down))
+            push(state, down ? BONGO_CAT_NEO_INPUT_KEY_DOWN :
+                BONGO_CAT_NEO_INPUT_KEY_UP, name, down ? 1.0f : 0.0f);
     } else if (raw->evtype == XI_RawButtonPress || raw->evtype == XI_RawButtonRelease) {
         if (raw->detail == 1) name = "Left";
         else if (raw->detail == 2) name = "Middle";

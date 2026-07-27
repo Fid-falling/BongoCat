@@ -11,6 +11,8 @@ void bongo_cat_neo_preferences_page_model(BongoCatNeoPreferences *value,
     struct nk_context *context);
 bool bongo_cat_neo_preferences_behavior_dialog_active(
     const BongoCatNeoPreferences *value);
+void bongo_cat_neo_preferences_behavior_dialog_open(
+    BongoCatNeoPreferences *value);
 void bongo_cat_neo_preferences_behavior_dialog_draw(
     BongoCatNeoPreferences *value, struct nk_context *context);
 void bongo_cat_neo_preferences_behavior_dialog_close(
@@ -34,6 +36,7 @@ void bongo_cat_neo_preferences_remove_dialog_open(BongoCatNeoApp *app, const cha
 void bongo_cat_neo_preferences_remove_dialog_draw(BongoCatNeoApp *app,
     struct nk_context *context);
 void bongo_cat_neo_preferences_remove_dialog_clear(const BongoCatNeoApp *app);
+void bongo_cat_neo_preferences_remove_dialog_close(BongoCatNeoApp *app);
 
 typedef struct BongoCatNeoImportDialog BongoCatNeoImportDialog;
 BongoCatNeoImportDialog *bongo_cat_neo_preferences_import_create(void);

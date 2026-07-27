@@ -6,6 +6,7 @@
 
 #define BONGO_CAT_NEO_INPUT_QUEUE_CAP 256u
 #define BONGO_CAT_NEO_INPUT_RECOVERY_CAP 65u
+#define BONGO_CAT_NEO_INPUT_KEY_STATE_CAP 256u
 
 typedef enum BongoCatNeoInputKind {
     BONGO_CAT_NEO_INPUT_NONE,
@@ -52,6 +53,8 @@ typedef struct BongoCatNeoInputState {
 } BongoCatNeoInputState;
 
 void bongo_cat_neo_input_init(BongoCatNeoInputState *state);
+bool bongo_cat_neo_input_edge(bool states[BONGO_CAT_NEO_INPUT_KEY_STATE_CAP],
+    unsigned code, bool down);
 bool bongo_cat_neo_input_push(BongoCatNeoInputState *state, const BongoCatNeoInputEvent *event);
 bool bongo_cat_neo_input_pop(BongoCatNeoInputState *state, BongoCatNeoInputEvent *event);
 bool bongo_cat_neo_input_mouse(BongoCatNeoInputState *state, double x, double y);

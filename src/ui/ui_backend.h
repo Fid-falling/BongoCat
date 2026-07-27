@@ -29,6 +29,7 @@ typedef struct BongoCatNeoUIBackend {
     const struct nk_user_font *body_font;
     const struct nk_user_font *label_font;
     const struct nk_user_font *heading_font;
+    const struct nk_user_font *hero_font;
     nk_rune *latin_glyph_ranges;
     nk_rune *cjk_glyph_ranges;
     void *vertices;
@@ -73,6 +74,8 @@ const struct nk_user_font *bongo_cat_neo_ui_body_font(
 const struct nk_user_font *bongo_cat_neo_ui_label_font(
     const struct nk_context *context);
 const struct nk_user_font *bongo_cat_neo_ui_heading_font(
+    const struct nk_context *context);
+const struct nk_user_font *bongo_cat_neo_ui_hero_font(
     const struct nk_context *context);
 void bongo_cat_neo_ui_cursor_begin(BongoCatNeoUIBackend *ui);
 void bongo_cat_neo_ui_cursor_apply(BongoCatNeoUIBackend *ui);

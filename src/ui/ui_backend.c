@@ -1,5 +1,6 @@
 #include "ui_backend.h"
 #include "ui_font_atlas.h"
+#include "ui_paint.h"
 
 #include <stddef.h>
 #include <stdlib.h>
@@ -91,6 +92,7 @@ bool bongo_cat_neo_ui_init(BongoCatNeoUIBackend *ui, SDL_Window *window,
 void bongo_cat_neo_ui_destroy(BongoCatNeoUIBackend *ui) {
     if (!ui) return;
     if (context_backend == ui) context_backend = NULL;
+    bongo_cat_neo_ui_paint_destroy(ui);
     bongo_cat_neo_ui_font_atlas_destroy(ui);
     nk_buffer_free(&ui->commands);
     nk_free(&ui->context);
@@ -230,4 +232,10 @@ const struct nk_user_font *bongo_cat_neo_ui_heading_font(
     const struct nk_context *context) {
     const BongoCatNeoUIBackend *ui = backend(context);
     return ui && ui->heading_font ? ui->heading_font : context->style.font;
+}
+
+const struct nk_user_font *bongo_cat_neo_ui_hero_font(
+    const struct nk_context *context) {
+    const BongoCatNeoUIBackend *ui = backend(context);
+    return ui && ui->hero_font ? ui->hero_font : context->style.font;
 }

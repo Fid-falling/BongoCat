@@ -1,8 +1,11 @@
 #include "preferences_state.h"
+#include "preferences_about_community.h"
 #include "preferences_notice.h"
 #include "ui_backend.h"
 #include "ui_catime.h"
 #include "ui_animation.h"
+#include "ui_paint.h"
+#include "ui_icons.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
@@ -15,13 +18,11 @@ static const char *tr(BongoCatNeoPreferences *value, const char *key,
 static float width(const struct nk_user_font *font, const char *value) {
     return font->width(font->userdata, font->height, value, nk_strlen(value));
 }
-
 static void text(struct nk_command_buffer *canvas, struct nk_rect bounds,
     const char *value, const struct nk_user_font *font, struct nk_color color) {
     nk_draw_text(canvas, bounds, value, nk_strlen(value), font,
         nk_rgba(0, 0, 0, 0), color);
 }
-
 static void centered_span(struct nk_command_buffer *canvas,
     struct nk_rect bounds, const char *value, int length,
     const struct nk_user_font *font, struct nk_color color) {
@@ -31,12 +32,10 @@ static void centered_span(struct nk_command_buffer *canvas,
         bounds.y + (bounds.h - font->height) * .5f, target_width,
         font->height), value, length, font, nk_rgba(0, 0, 0, 0), color);
 }
-
 static void centered(struct nk_command_buffer *canvas, struct nk_rect bounds,
     const char *value, const struct nk_user_font *font, struct nk_color color) {
     centered_span(canvas, bounds, value, nk_strlen(value), font, color);
 }
-
 static void centered_wrapped(struct nk_command_buffer *canvas,
     struct nk_rect bounds, const char *value,
     const struct nk_user_font *font, struct nk_color color) {
@@ -58,23 +57,19 @@ static void centered_wrapped(struct nk_command_buffer *canvas,
     centered_span(canvas, line, value, split, font, color); line.y += font->height;
     centered_span(canvas, line, value + split + 1, length - split - 1, font, color);
 }
-
 static bool hit(struct nk_context *context, struct nk_rect bounds) {
     return nk_input_is_mouse_hovering_rect(&context->input, bounds) &&
         nk_input_is_mouse_click_in_rect(&context->input, NK_BUTTON_LEFT, bounds);
 }
-
 static void link_cursor(struct nk_context *context, struct nk_rect bounds) {
     if (nk_input_is_mouse_hovering_rect(&context->input, bounds))
         bongo_cat_neo_ui_cursor_hover_rect(context, bounds,
             BONGO_CAT_NEO_UI_CURSOR_POINTER);
 }
-
 static void open_url(const char *url) {
     if (!SDL_OpenURL(url)) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
         "Cannot open URL: %s", SDL_GetError());
 }
-
 static void image_contain(struct nk_command_buffer *canvas, unsigned int texture,
     int image_width, int image_height, struct nk_rect bounds) {
     if (!texture || image_width < 1 || image_height < 1) return;
@@ -85,16 +80,20 @@ static void image_contain(struct nk_command_buffer *canvas, unsigned int texture
     struct nk_image image = nk_image_id((int)texture);
     nk_draw_image(canvas, target, &image, nk_rgb(255, 255, 255));
 }
-
 static void logo(BongoCatNeoPreferences *value, struct nk_context *context,
     struct nk_command_buffer *canvas, struct nk_rect bounds,
     BongoCatNeoUIPalette p) {
     bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
-    float lift = bongo_cat_neo_ui_animate(context, "support-logo-hover",
-        hover ? 1.0f : 0.0f, 250.0f);
+    float lift = bongo_cat_neo_ui_animate_eased(context, "support-logo-hover",
+        hover ? 1.0f : 0.0f, 250.0f, BONGO_CAT_NEO_UI_EASE_SPRING);
     struct nk_rect raised = bounds; raised.y -= 5.0f * lift;
-    nk_fill_rect(canvas, raised, 36, p.accent);
-    nk_stroke_rect(canvas, raised, 36, 4, p.pink);
+    if (p.effects) {
+        bongo_cat_neo_ui_paint_shadow(context, raised, 36, 0, 18, 42, 0,
+            nk_rgba(p.accent.r, p.accent.g, p.accent.b, 89));
+        bongo_cat_neo_ui_paint_shadow(context, raised, 36, 0, 8, 22, 0,
+            nk_rgba(p.pink.r, p.pink.g, p.pink.b, 89));
+        bongo_cat_neo_ui_paint_gradient(context, raised, 36, p.accent, p.pink);
+    } else nk_fill_rect(canvas, raised, 36, p.accent);
     struct nk_rect inner = nk_rect(raised.x + 5, raised.y + 5,
         raised.w - 10, raised.h - 10);
     nk_fill_rect(canvas, inner, 31, p.surface);
@@ -110,11 +109,21 @@ static void star_button(BongoCatNeoPreferences *value,
     struct nk_rect bounds, BongoCatNeoUIPalette p) {
     bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
     if (hover) bounds.y -= 2;
-    nk_fill_rect(canvas, bounds, 23, hover ? p.pink_hover : p.pink);
-    nk_stroke_circle(canvas, nk_rect(bounds.x + 22, bounds.y + 14, 17, 17),
-        1.5f, nk_rgb(255, 255, 255));
-    centered(canvas, nk_rect(bounds.x + 42, bounds.y, bounds.w - 49, bounds.h),
-        "Star on GitHub", value->ui.caption_font, nk_rgb(255, 255, 255));
+    if (p.effects) {
+        bongo_cat_neo_ui_paint_shadow(context, bounds, 24, 0, 10, 26, 0,
+            nk_rgba(p.pink.r, p.pink.g, p.pink.b, hover ? 97 : 77));
+        bongo_cat_neo_ui_paint_gradient(context, bounds, 24,
+            hover ? nk_rgb(255, 141, 184) : nk_rgb(255, 155, 193),
+            hover ? nk_rgb(237, 103, 154) : nk_rgb(244, 119, 168));
+    } else nk_fill_rect(canvas, bounds, 23, hover ? p.pink_hover : p.pink);
+    nk_stroke_rect(canvas, bounds, 24, 1, nk_rgba(255, 255, 255, 133));
+    bongo_cat_neo_preferences_icon_draw(value, canvas,
+        BONGO_CAT_NEO_UI_ICON_GITHUB,
+        nk_rect(bounds.x + 22, bounds.y + 14.5f, 19, 19), nk_rgb(255, 255, 255));
+    text(canvas, nk_rect(bounds.x + 50, bounds.y +
+        (bounds.h - value->ui.label_font->height) * .5f,
+        bounds.w - 62, value->ui.label_font->height), "Star on GitHub",
+        value->ui.label_font, nk_rgb(255, 255, 255));
     link_cursor(context, bounds);
     if (hit(context, bounds))
         open_url("https://github.com/vladelaina/BongoCatNeo");
@@ -125,11 +134,11 @@ static void hero_title(BongoCatNeoPreferences *value,
     BongoCatNeoUIPalette p) {
     const char *title = "Bongo Cat Neo";
     const char *by = "by vladelaina";
-    float gap = 8, title_width = width(value->ui.heading_font, title);
+    float gap = 8, title_width = width(value->ui.hero_font, title);
     float by_width = width(value->ui.caption_font, by);
     float x = bounds.x + (bounds.w - title_width - by_width - gap) * .5f;
     text(canvas, nk_rect(x, bounds.y, title_width + 1, 32), title,
-        value->ui.heading_font, p.text);
+        value->ui.hero_font, p.text);
     text(canvas, nk_rect(x + title_width + gap, bounds.y + 8,
         by_width + 1, 22), by, value->ui.caption_font, p.accent);
 }
@@ -145,8 +154,8 @@ static void footer(BongoCatNeoPreferences *value, struct nk_context *context,
     float version_width = width(value->ui.label_font, version) + 2;
     float update_width = NK_MAX(110.0f,
         width(value->ui.caption_font, update) + 28.0f);
-    float feedback_width = NK_MAX(70.0f,
-        width(value->ui.caption_font, feedback) + 12.0f);
+    float feedback_width = NK_MAX(56.0f,
+        width(value->ui.caption_font, feedback) + 4.0f);
     float total = label_width + version_width + update_width +
         feedback_width + 36.0f;
     bool stacked = total > bounds.w;
@@ -162,13 +171,23 @@ static void footer(BongoCatNeoPreferences *value, struct nk_context *context,
         x + info_width + 14.0f;
     float actions_y = bounds.y + (stacked ? 22.0f : 0.0f);
     struct nk_rect update_button = nk_rect(actions_x, actions_y, update_width, 36);
+    if (p.effects) bongo_cat_neo_ui_paint_shadow(context, update_button, 10,
+        0, 4, 14, 0, nk_rgba(p.accent.r, p.accent.g, p.accent.b, 89));
     nk_fill_rect(canvas, update_button, 10, p.accent);
-    centered(canvas, update_button, update, value->ui.caption_font,
+    bongo_cat_neo_preferences_icon_draw(value, canvas,
+        BONGO_CAT_NEO_UI_ICON_SYNC, nk_rect(update_button.x + 14,
+        update_button.y + 10, 16, 16), nk_rgb(255, 255, 255));
+    centered(canvas, nk_rect(update_button.x + 28, update_button.y,
+        update_button.w - 32, update_button.h), update, value->ui.caption_font,
         nk_rgb(255, 255, 255));
     link_cursor(context, update_button);
-    if (hit(context, update_button))
-        bongo_cat_neo_preferences_notice_show(value->app, tr(value,
-            "native.support.latest", "Already up to date"), false);
+    if (hit(context, update_button)) {
+        char message[160];
+        snprintf(message, sizeof(message), "%s v%s", tr(value,
+            "native.support.latest", "Already up to date"),
+            BONGO_CAT_NEO_VERSION);
+        bongo_cat_neo_preferences_notice_show(value->app, message, false);
+    }
     struct nk_rect feedback_link = nk_rect(actions_x + update_width + 14,
         actions_y, feedback_width, 36);
     centered(canvas, feedback_link, feedback, value->ui.caption_font, p.accent);
@@ -183,23 +202,21 @@ static void hero(BongoCatNeoPreferences *value, struct nk_context *context) {
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return;
     BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
-    for (int i = 0; i < 14; ++i) {
-        float inset = (float)i * 14.0f;
-        nk_fill_circle(canvas, nk_rect(bounds.x + bounds.w * .5f - 360 + inset,
-            bounds.y - 205 + inset * .6f, 720 - inset * 2,
-            390 - inset * 1.2f), nk_rgba(84, 174, 255, 1));
-    }
-    for (int i = 0; i < 10; ++i) {
-        float inset = (float)i * 14.0f;
-        nk_fill_circle(canvas, nk_rect(bounds.x + bounds.w * .5f - 300 + inset,
-            bounds.y - 165 + inset * .6f, 600 - inset * 2,
-            310 - inset * 1.2f), nk_rgba(247, 125, 170, 1));
+    if (p.effects) {
+        nk_push_scissor(canvas, bounds);
+        bongo_cat_neo_ui_paint_radial_circle(context,
+            nk_rect(bounds.x + bounds.w * .5f - 300,
+            bounds.y - 190, 600, 360),
+            nk_rgba(p.accent.r, p.accent.g, p.accent.b, 41),
+            nk_rgba(p.pink.r, p.pink.g, p.pink.b, 20), .49f, .84f);
+        nk_push_scissor(canvas, nk_window_get_content_region(context));
     }
     star_button(value, context, canvas,
-        nk_rect(bounds.x + bounds.w - 196, bounds.y + 6, 177, 46), p);
-    logo(value, context, canvas, nk_rect(bounds.x + (bounds.w - 144) * .5f,
-        bounds.y + 19, 144, 144), p);
-    hero_title(value, canvas, nk_rect(bounds.x, bounds.y + 181, bounds.w, 36), p);
+        nk_rect(bounds.x + bounds.w - 188, bounds.y + 6, 177, 46), p);
+    logo(value, context, canvas, nk_rect(bounds.x + (bounds.w - 144) * .5f + 3,
+        bounds.y + 18, 144, 144), p);
+    hero_title(value, canvas, nk_rect(bounds.x + 3, bounds.y + 178,
+        bounds.w, 36), p);
     centered_wrapped(canvas, nk_rect(bounds.x + 36, bounds.y + 215,
         bounds.w - 72, 40),
         tr(value, "native.support.heroText",
@@ -216,15 +233,26 @@ static void project(BongoCatNeoPreferences *value, struct nk_context *context,
     bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
     char animation_id[48];
     snprintf(animation_id, sizeof(animation_id), "project-hover-%s", name);
-    float lift = bongo_cat_neo_ui_animate(context, animation_id,
-        hover ? 1.0f : 0.0f, 280.0f);
+    float lift = bongo_cat_neo_ui_animate_eased(context, animation_id,
+        hover ? 1.0f : 0.0f, 280.0f, BONGO_CAT_NEO_UI_EASE_SWIFT);
     struct nk_rect icon = nk_rect(bounds.x + (bounds.w - 148) * .5f,
         bounds.y - 7.0f * lift, 148, 148);
-    nk_fill_rect(canvas, icon, 37, pink ? p.hover_pink : p.selection);
-    image_contain(canvas, texture, image_width, image_height,
-        nk_rect(icon.x + 5, icon.y + 5, icon.w - 10, icon.h - 10));
+    if (p.effects) {
+        bongo_cat_neo_ui_paint_radial(context,
+            nk_rect(icon.x - 16, icon.y - 16, icon.w + 32, icon.h + 32),
+            nk_rgba(pink ? p.pink.r : p.accent.r,
+                pink ? p.pink.g : p.accent.g, pink ? p.pink.b : p.accent.b, 43),
+            nk_rgba(0, 0, 0, 0), .05f, 1.0f);
+        bongo_cat_neo_ui_paint_shadow(context, icon, 37, 0, 18, 34, 0,
+            nk_rgba(p.text.r, p.text.g, p.text.b, 38));
+    }
+    if (!pink && p.effects) bongo_cat_neo_ui_paint_gradient(context, icon, 37,
+        nk_rgb(245, 241, 255), nk_rgb(234, 247, 255));
+    else nk_fill_rect(canvas, icon, 37, pink ? p.surface : p.selection);
+    image_contain(canvas, texture, image_width, image_height, pink ? icon :
+        nk_rect(icon.x + 5, icon.y + 8, icon.w - 10, icon.h - 16));
     centered(canvas, nk_rect(bounds.x, bounds.y + 166, bounds.w, 30), name,
-        value->ui.label_font, hover ? (pink ? p.pink : p.accent) : p.text);
+        value->ui.heading_font, hover ? (pink ? p.pink : p.accent) : p.text);
     link_cursor(context, bounds);
     if (hit(context, bounds)) open_url(url);
 }
@@ -236,46 +264,20 @@ static void projects(BongoCatNeoPreferences *value, struct nk_context *context) 
     BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     nk_stroke_line(canvas, bounds.x + 8, bounds.y - 5, bounds.x + bounds.w - 8,
-        bounds.y - 5, 1, p.border);
+        bounds.y - 5, 1, p.border_subtle);
     centered(canvas, nk_rect(bounds.x, bounds.y + 20, bounds.w, 30),
         tr(value, "native.support.works", "More apps"),
         value->ui.heading_font, p.text);
     centered(canvas, nk_rect(bounds.x, bounds.y + 49, bounds.w, 24),
         tr(value, "native.support.worksText", "More software from vladelaina"),
         value->ui.caption_font, p.muted);
-    float card_width = 220, center = bounds.x + bounds.w * .5f;
-    project(value, context, canvas, nk_rect(center - 262, bounds.y + 100,
+    float card_width = 220, center = bounds.x + bounds.w * .5f + 3;
+    project(value, context, canvas, nk_rect(center - 262, bounds.y + 103,
         card_width, 200), value->catime_texture, value->catime_width,
         value->catime_height, "Catime", "https://cati.me/", false, p);
-    project(value, context, canvas, nk_rect(center + 42, bounds.y + 100,
+    project(value, context, canvas, nk_rect(center + 42, bounds.y + 103,
         card_width, 200), value->vlaina_texture, value->vlaina_width,
         value->vlaina_height, "vlaina", "https://vlaina.com/", true, p);
-}
-
-static void community(BongoCatNeoPreferences *value,
-    struct nk_context *context) {
-    struct nk_rect bounds;
-    nk_layout_row_dynamic(context, 180, 1);
-    if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return;
-    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
-    struct nk_command_buffer *canvas = nk_window_get_canvas(context);
-    centered(canvas, nk_rect(bounds.x, bounds.y, bounds.w, 30),
-        tr(value, "native.support.community", "Community"),
-        value->ui.heading_font, p.text);
-    const char *labels[] = {"Discord", "QQ Group"};
-    const char *urls[] = {"https://discord.gg/vf8jqnattk",
-        "https://qm.qq.com/q/jmr39ESZIk"};
-    for (int i = 0; i < 2; ++i) {
-        struct nk_rect link = nk_rect(bounds.x + bounds.w * .5f - 289 + i * 298,
-            bounds.y + 48, 280, 68);
-        bool hover = nk_input_is_mouse_hovering_rect(&context->input, link);
-        nk_fill_rect(canvas, link, 18, hover ? p.selection : p.field);
-        nk_fill_rect(canvas, nk_rect(link.x + 12, link.y + 12, 44, 44), 14,
-            i ? p.accent : nk_rgb(88, 101, 242));
-        text(canvas, nk_rect(link.x + 68, link.y + 15, link.w - 80, 24),
-            labels[i], value->ui.label_font, p.text);
-        link_cursor(context, link); if (hit(context, link)) open_url(urls[i]);
-    }
 }
 
 void bongo_cat_neo_preferences_page_about(BongoCatNeoPreferences *value,
@@ -283,5 +285,5 @@ void bongo_cat_neo_preferences_page_about(BongoCatNeoPreferences *value,
     bongo_cat_neo_preferences_support_assets_load(value);
     hero(value, context);
     projects(value, context);
-    community(value, context);
+    bongo_cat_neo_preferences_about_community(value, context);
 }

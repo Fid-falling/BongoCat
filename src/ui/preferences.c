@@ -187,6 +187,8 @@ void bongo_cat_neo_preferences_request_model_import(BongoCatNeoPreferences *valu
     if (value && !bongo_cat_neo_preferences_import_is_open(value->import_dialog))
         value->import_requested = true; }
 bool bongo_cat_neo_preferences_visible(const BongoCatNeoPreferences *value) { return value && value->window; }
+bool bongo_cat_neo_preferences_needs_frame(const BongoCatNeoPreferences *value) {
+    return value && value->window && value->render_dirty; }
 void bongo_cat_neo_preferences_input_begin(BongoCatNeoPreferences *value) {
     if (!value || !value->window || value->input_active) return;
     bongo_cat_neo_ui_input_begin(&value->ui);
@@ -219,7 +221,7 @@ static bool chrome_event(BongoCatNeoPreferences *value, const SDL_Event *event) 
             return true;
         }
         if (bongo_cat_neo_preferences_remove_dialog_active(value->app)) {
-            bongo_cat_neo_preferences_remove_dialog_clear(value->app);
+            bongo_cat_neo_preferences_remove_dialog_close(value->app);
             value->render_dirty = true;
             return true;
         }

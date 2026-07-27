@@ -23,6 +23,12 @@ void test_input(void) {
 #endif
     BongoCatNeoInputState state;
     bongo_cat_neo_input_init(&state);
+    bool edges[BONGO_CAT_NEO_INPUT_KEY_STATE_CAP] = {0};
+    CHECK(bongo_cat_neo_input_edge(edges, 42, true));
+    CHECK(!bongo_cat_neo_input_edge(edges, 42, true));
+    CHECK(bongo_cat_neo_input_edge(edges, 42, false));
+    CHECK(!bongo_cat_neo_input_edge(edges, 42, false));
+    CHECK(bongo_cat_neo_input_edge(edges, BONGO_CAT_NEO_INPUT_KEY_STATE_CAP, true));
     BongoCatNeoInputEvent event = {.kind = BONGO_CAT_NEO_INPUT_KEY_DOWN, .value = 1.0f};
     memcpy(event.name, "KeyA", sizeof("KeyA"));
     CHECK(bongo_cat_neo_input_push(&state, &event));

@@ -4,6 +4,17 @@
 #include "nuklear_config.h"
 #include <stdbool.h>
 
+typedef enum BongoCatNeoUIEasing {
+    BONGO_CAT_NEO_UI_EASE_LINEAR,
+    BONGO_CAT_NEO_UI_EASE_OUT_CUBIC,
+    BONGO_CAT_NEO_UI_EASE_STANDARD,
+    BONGO_CAT_NEO_UI_EASE_SWIFT,
+    BONGO_CAT_NEO_UI_EASE_SPRING
+} BongoCatNeoUIEasing;
+
+float bongo_cat_neo_ui_ease(BongoCatNeoUIEasing easing, float progress);
+float bongo_cat_neo_ui_animate_eased(struct nk_context *context,
+    const char *id, float target, float duration_ms, BongoCatNeoUIEasing easing);
 float bongo_cat_neo_ui_animate(struct nk_context *context, const char *id,
     float target, float duration_ms);
 bool bongo_cat_neo_ui_animations_active(const struct nk_context *context);

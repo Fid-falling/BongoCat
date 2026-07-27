@@ -71,12 +71,10 @@ void bongo_cat_neo_preferences_page_cat(BongoCatNeoApp *app, struct nk_context *
     bongo_cat_neo_pref_toggle(context, "behavior", tr(app,
         "pages.preference.cat.labels.behavior", "Motions and Expressions"), "",
         &model->behavior);
-#ifdef _WIN32
     bongo_cat_neo_pref_float(context, "release-delay", tr(app,
         "pages.preference.cat.labels.autoReleaseDelay", "Auto Release Delay"), tr(app,
         "pages.preference.cat.hints.autoReleaseDelay", "Release system keys after timeout."),
         .05f, &model->auto_release_seconds, 30.0f, .05f);
-#endif
     bongo_cat_neo_pref_int(context, "max-fps", tr(app,
         "pages.preference.cat.labels.maxFPS", "Max Frame Rate"), tr(app,
         "pages.preference.cat.hints.maxFPS", "Lower values reduce resource usage."),

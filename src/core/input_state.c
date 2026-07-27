@@ -22,6 +22,14 @@ void bongo_cat_neo_input_init(BongoCatNeoInputState *state) {
     state->release_count = 0;
 }
 
+bool bongo_cat_neo_input_edge(bool states[BONGO_CAT_NEO_INPUT_KEY_STATE_CAP],
+    unsigned code, bool down) {
+    if (!states || code >= BONGO_CAT_NEO_INPUT_KEY_STATE_CAP) return true;
+    if (states[code] == down) return false;
+    states[code] = down;
+    return true;
+}
+
 static void update_modifiers(BongoCatNeoInputState *state, const BongoCatNeoInputEvent *event) {
     if (event->kind != BONGO_CAT_NEO_INPUT_KEY_DOWN && event->kind != BONGO_CAT_NEO_INPUT_KEY_UP) return;
     atomic_uint_fast8_t *value = &state->control;

@@ -210,11 +210,14 @@ static void take_instance_wake(BongoCatNeoApp *app) {
     SDL_Log("Existing instance requested window reveal");
 }
 static void loop(BongoCatNeoApp *app) {
+    uint64_t iterations = 0, wakes = 0;
     while (app->running) {
+        iterations++;
         int wait_ms = bongo_cat_neo_window_wait_timeout(app, SDL_GetTicksNS());
         bongo_cat_neo_preferences_input_begin(app->preferences);
         SDL_Event event;
         if (SDL_WaitEventTimeout(&event, wait_ms)) {
+            wakes++;
             handle_event(app, &event);
             while (SDL_PollEvent(&event)) handle_event(app, &event);
         }
@@ -232,6 +235,8 @@ static void loop(BongoCatNeoApp *app) {
         bongo_cat_neo_config_store_update(app, now);
         if (app->smoke_deadline_ns && now >= app->smoke_deadline_ns) app->running = false;
     }
+    if (app->smoke) SDL_Log("Smoke loop: iterations=%llu wakes=%llu",
+        (unsigned long long)iterations, (unsigned long long)wakes);
 }
 static void shutdown(BongoCatNeoApp *app) {
     bongo_cat_neo_config_store_flush(app);

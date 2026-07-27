@@ -115,7 +115,8 @@ BongoCatNeoResult bongo_cat_neo_image_load(const char *path, BongoCatNeoImage *i
     image->pixels_stbi = image->pixels != NULL;
     if (file) fclose(file);
     if (!image->pixels) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO, "Cannot decode PNG: %s", path);
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO,
+            "Cannot decode image: %s", path);
         return BONGO_CAT_NEO_ERROR_IO;
     }
     image->surface = SDL_CreateSurfaceFrom(image->width, image->height,

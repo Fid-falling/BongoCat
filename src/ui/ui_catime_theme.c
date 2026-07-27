@@ -18,14 +18,17 @@ static bool high_contrast(BongoCatNeoUIPalette *value) {
     COLORREF text = GetSysColor(COLOR_WINDOWTEXT);
     COLORREF accent = GetSysColor(COLOR_HIGHLIGHT);
     #define NK_SYS(c) nk_rgb(GetRValue(c), GetGValue(c), GetBValue(c))
-    value->background = value->surface = value->field = NK_SYS(window);
-    value->border = value->text = value->muted = NK_SYS(text);
+    value->background = value->surface = value->surface_glass =
+        value->field = NK_SYS(window);
+    value->border = value->border_subtle = value->text = value->muted =
+        NK_SYS(text);
     value->accent = value->accent_hover = value->accent_pressed = NK_SYS(accent);
     value->pink = value->pink_hover = NK_SYS(accent);
     value->hover = value->selection = NK_SYS(accent);
     value->hover_pink = NK_SYS(accent);
     value->danger = NK_SYS(GetSysColor(COLOR_HIGHLIGHTTEXT));
     value->danger_background = NK_SYS(accent);
+    value->effects = false;
     #undef NK_SYS
     return true;
 }
@@ -38,8 +41,10 @@ BongoCatNeoUIPalette bongo_cat_neo_ui_palette(bool dark) {
 #endif
     value.background = rgb(dark ? 0x16181D : 0xF0F4F9);
     value.surface = rgb(dark ? 0x21242B : 0xFFFFFF);
-    value.field = rgb(dark ? 0x2A2E37 : 0xF3F5F8);
-    value.border = rgb(dark ? 0x3B424F : 0xD8DEE8);
+    value.surface_glass = rgb(dark ? 0x20232A : 0xFBFCFE);
+    value.field = rgb(dark ? 0x2A2E37 : 0xF5F8FC);
+    value.border = rgb(dark ? 0x345473 : 0xDAEDFE);
+    value.border_subtle = rgb(dark ? 0x343A45 : 0xE8EBF1);
     value.text = rgb(dark ? 0xF4F7FB : 0x182230);
     value.muted = rgb(dark ? 0xA9B2C0 : 0x6D7888);
     value.accent = rgb(0x54AEFF);
@@ -47,11 +52,12 @@ BongoCatNeoUIPalette bongo_cat_neo_ui_palette(bool dark) {
     value.accent_pressed = rgb(0x2587CF);
     value.pink = rgb(0xF77DAA);
     value.pink_hover = rgb(0xED6F9D);
-    value.hover = rgb(dark ? 0x292E37 : 0xF7FAFD);
-    value.hover_pink = rgb(dark ? 0x3B2933 : 0xFFF1F6);
-    value.selection = rgb(dark ? 0x27384B : 0xEAF5FF);
-    value.danger = rgb(dark ? 0xFFA4A4 : 0xC93D4D);
+    value.hover = rgb(dark ? 0x292E37 : 0xEFF7FE);
+    value.hover_pink = rgb(dark ? 0x3B2933 : 0xFBEFF6);
+    value.selection = rgb(dark ? 0x27384B : 0xE7F3FE);
+    value.danger = rgb(dark ? 0xFFA4A4 : 0xFF4D6D);
     value.danger_background = rgb(dark ? 0x4B2B31 : 0xFFECF0);
+    value.effects = true;
     return value;
 }
 
@@ -91,12 +97,12 @@ void bongo_cat_neo_ui_apply_theme(struct nk_context *context, bool dark) {
     table[NK_COLOR_TEXT] = p.text;
     table[NK_COLOR_WINDOW] = p.background;
     table[NK_COLOR_HEADER] = p.surface;
-    table[NK_COLOR_BORDER] = p.border;
+    table[NK_COLOR_BORDER] = p.border_subtle;
     table[NK_COLOR_BUTTON] = p.accent;
     table[NK_COLOR_BUTTON_HOVER] = p.accent_hover;
     table[NK_COLOR_BUTTON_ACTIVE] = p.accent_pressed;
     table[NK_COLOR_TOGGLE] = p.field;
-    table[NK_COLOR_TOGGLE_HOVER] = p.border;
+    table[NK_COLOR_TOGGLE_HOVER] = p.border_subtle;
     table[NK_COLOR_TOGGLE_CURSOR] = p.accent;
     table[NK_COLOR_SELECT] = p.field;
     table[NK_COLOR_SELECT_ACTIVE] = p.selection;
@@ -112,7 +118,7 @@ void bongo_cat_neo_ui_apply_theme(struct nk_context *context, bool dark) {
     table[NK_COLOR_CHART_COLOR] = p.accent;
     table[NK_COLOR_CHART_COLOR_HIGHLIGHT] = p.accent_hover;
     table[NK_COLOR_SCROLLBAR] = p.background;
-    table[NK_COLOR_SCROLLBAR_CURSOR] = p.border;
+    table[NK_COLOR_SCROLLBAR_CURSOR] = p.border_subtle;
     table[NK_COLOR_SCROLLBAR_CURSOR_HOVER] = p.muted;
     table[NK_COLOR_SCROLLBAR_CURSOR_ACTIVE] = p.accent;
     table[NK_COLOR_TAB_HEADER] = p.surface;
@@ -126,7 +132,7 @@ void bongo_cat_neo_ui_apply_theme(struct nk_context *context, bool dark) {
     context->style.button.text_hover = nk_rgb(255, 255, 255);
     context->style.button.text_active = nk_rgb(255, 255, 255);
     context->style.window.fixed_background = nk_style_item_color(p.background);
-    context->style.window.group_border_color = p.border;
+    context->style.window.group_border_color = p.border_subtle;
     context->style.text.color = p.text;
     BongoCatNeoUIBackend *ui = bongo_cat_neo_ui_backend_for_context(context);
     if (ui) ui->dark_theme = dark;

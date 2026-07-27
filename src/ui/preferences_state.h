@@ -6,6 +6,13 @@
 #include "bongo_cat_neo/i18n.h"
 #include "bongo_cat_neo/preferences.h"
 
+typedef struct BongoCatNeoPreferenceNotice {
+    char message[384];
+    uint64_t started_ns;
+    uint64_t until_ns;
+    bool error;
+} BongoCatNeoPreferenceNotice;
+
 struct BongoCatNeoPreferences {
     BongoCatNeoApp *app;
     SDL_Window *window;
@@ -13,6 +20,8 @@ struct BongoCatNeoPreferences {
     bool owns_gl_context;
     BongoCatNeoUIBackend ui;
     unsigned int logo_texture;
+    unsigned int icon_texture;
+    unsigned int icon_texture_hidpi;
     int logo_width;
     int logo_height;
     unsigned int catime_texture;
@@ -36,12 +45,13 @@ struct BongoCatNeoPreferences {
     bool page_seen;
     int last_page;
     uint64_t page_transition_ns;
-    char notice[384];
-    uint64_t notice_started_ns;
-    uint64_t notice_until_ns;
-    bool notice_error;
+    BongoCatNeoPreferenceNotice notices[4];
     bool behavior_dialog;
     int behavior_tab;
+    uint64_t behavior_dialog_opened_ns;
+    uint64_t behavior_dialog_closing_ns;
+    uint64_t behavior_tab_transition_ns;
+    float behavior_scroll[2];
     bool native_drag;
     bool chrome_dragging;
     bool live_resize_active;
@@ -66,5 +76,8 @@ void bongo_cat_neo_preferences_live_resize_uninstall(BongoCatNeoPreferences *val
 void bongo_cat_neo_preferences_assets_load(BongoCatNeoPreferences *value);
 void bongo_cat_neo_preferences_support_assets_load(BongoCatNeoPreferences *value);
 void bongo_cat_neo_preferences_assets_clear(BongoCatNeoPreferences *value);
+void bongo_cat_neo_preferences_icon_draw(const BongoCatNeoPreferences *value,
+    struct nk_command_buffer *canvas, int icon, struct nk_rect bounds,
+    struct nk_color color);
 
 #endif

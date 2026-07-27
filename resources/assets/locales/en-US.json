@@ -182,7 +182,9 @@
       "latest": "Already up to date",
       "works": "More apps",
       "worksText": "More software from vladelaina",
-      "community": "Community"
+      "community": "Community",
+      "qqGroup": "QQ Group",
+      "coffee": "Buy the author a coffee? Ovo"
     },
     "hoverDelay": "Hover delay (seconds)",
     "modeStandard": "Standard",

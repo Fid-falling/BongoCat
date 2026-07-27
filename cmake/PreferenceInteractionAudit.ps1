@@ -158,14 +158,22 @@ function Capture-Scenario([string]$Name, [int]$Page, [scriptblock]$Actions,
 
 Capture-Scenario "behavior-open" 2 { param($window) Click-At $window 468 320 }
 Capture-Scenario "behavior-expression" 2 { param($window)
-    Click-At $window 468 320; Click-At $window 585 166 }
+    Click-At $window 468 320; Click-At $window 585 252 }
 Capture-Scenario "behavior-escape" 2 { param($window)
     Click-At $window 468 320; Press-Key 0x1b }
 Capture-Scenario "shortcut-recorded" 3 { param($window)
     Click-At $window 758 141; Press-Shortcut 0x11 0x4b }
+Capture-Scenario "shortcut-cleared" 3 { param($window)
+    Click-At $window 758 141; Press-Shortcut 0x11 0x4b
+    Click-At $window 832 141 }
 Capture-Scenario "language-changed" 1 { param($window)
     Click-At $window 765 350; Click-At $window 765 435 }
+Capture-Scenario "language-open" 1 { param($window) Click-At $window 765 350 }
 Capture-Scenario "toggle-changed" 0 { param($window) Click-At $window 820 141 }
+Capture-Scenario "stepper-changed" 0 { param($window) Click-At $window 833 293 }
+Capture-Scenario "slider-changed" 0 { param($window) Click-At $window 700 388 }
+Capture-Scenario "behavior-outside-close" 2 { param($window)
+    Click-At $window 468 320; Click-At $window 170 100 }
 Capture-Scenario "update-toast" 4 { param($window) Click-At $window 559 359 }
 if ($ImportFixture) {
     Capture-Scenario "delete-confirm" 2 {

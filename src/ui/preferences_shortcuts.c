@@ -153,12 +153,16 @@ static void shortcut_row(BongoCatNeoPreferences *value, struct nk_context *conte
     const char *id, const char *label_key, const char *label_fallback,
     char *target, int capacity) {
     bool active = bongo_cat_neo_preferences_shortcut_active(value, id);
-    bool clicked = bongo_cat_neo_pref_edit(context, id,
+    int action = bongo_cat_neo_pref_edit(context, id,
         tr(value, label_key, label_fallback), "",
         target, active, tr(value, "components.shortcut.hints.clickRecordShortcut",
         "Click to record shortcut"), tr(value,
         "components.shortcut.hints.pressRecordShortcut", "Press shortcut"));
-    if (clicked) bongo_cat_neo_preferences_shortcut_begin(value, id, target, capacity);
+    if (action < 0) {
+        target[0] = '\0'; value->render_dirty = true;
+    } else if (action > 0) {
+        bongo_cat_neo_preferences_shortcut_begin(value, id, target, capacity);
+    }
 }
 
 void bongo_cat_neo_preferences_page_shortcuts(BongoCatNeoPreferences *value,

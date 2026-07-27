@@ -28,6 +28,21 @@ function Stop-AuditProcess([Diagnostics.Process]$Process) {
     $Process.WaitForExit()
 }
 
+function Measure-Capture([Drawing.Bitmap]$Bitmap) {
+    $colors = [Collections.Generic.HashSet[int]]::new()
+    $black = 0
+    $samples = 0
+    for ($y = 0; $y -lt $Bitmap.Height; $y += 12) {
+        for ($x = 0; $x -lt $Bitmap.Width; $x += 12) {
+            $pixel = $Bitmap.GetPixel($x, $y)
+            [void]$colors.Add($pixel.ToArgb())
+            if ($pixel.R -le 1 -and $pixel.G -le 1 -and $pixel.B -le 1) { $black++ }
+            $samples++
+        }
+    }
+    return [pscustomobject]@{ Colors=$colors; BlackRatio=$black / [double]$samples }
+}
+
 function Wait-Frame([string]$Path) {
     $deadline = [DateTime]::UtcNow.AddSeconds(30)
     while (-not (Test-Path $Path) -and [DateTime]::UtcNow -lt $deadline) {

@@ -79,7 +79,7 @@ endif()
 add_library(bongo_cat_neo_runtime STATIC
   src/core/app_state.c
   src/media/audio.c
-  src/media/image.c
+  src/media/image.c src/media/image_resize.c
   src/media/stb_image_impl.c
   src/platform/memory.c src/render/gl_api.c
   src/render/overlay.c
@@ -109,21 +109,21 @@ add_library(bongo_cat_neo_runtime STATIC
   src/runtime/window_hit.c src/runtime/window_wheel.c
   src/ui/nuklear_impl.c
   src/ui/ui_backend.c src/ui/ui_cursor.c
-  src/ui/ui_animation.c
+  src/ui/ui_animation.c src/ui/ui_paint.c
   src/ui/ui_font.c src/ui/ui_font_atlas.c
   src/ui/ui_input.c
-  src/ui/ui_catime.c src/ui/ui_catime_theme.c
+  src/ui/ui_catime.c src/ui/ui_catime_theme.c src/ui/ui_catime_icons.c
   src/ui/ui_native_theme.c
   src/ui/preferences.c src/ui/preferences_render.c
-  src/ui/preferences_assets.c src/ui/preferences_about.c
+  src/ui/preferences_assets.c src/ui/preferences_about.c src/ui/preferences_about_community.c
   src/ui/preferences_live_resize.c
-  src/ui/preferences_dialog.c src/ui/preferences_import.c
+  src/ui/preferences_dialog.c src/ui/preferences_import.c src/ui/preferences_overlay.c
   src/ui/preferences_behavior_dialog.c
   src/ui/preferences_notice.c
-  src/ui/preferences_model.c
+  src/ui/preferences_model.c src/ui/preferences_model_cover.c
   src/ui/preferences_pages.c
-  src/ui/preferences_shortcuts.c
-  src/ui/preferences_widgets.c src/ui/preferences_controls.c
+  src/ui/preferences_shortcuts.c src/ui/preferences_shortcut_clear.c
+  src/ui/preferences_widgets.c src/ui/preferences_controls.c src/ui/preferences_toggle.c
   ${BONGO_CAT_NEO_LIVE2D_SOURCES})
 target_include_directories(bongo_cat_neo_runtime PUBLIC include)
 target_include_directories(bongo_cat_neo_runtime SYSTEM PRIVATE
@@ -131,10 +131,10 @@ target_include_directories(bongo_cat_neo_runtime SYSTEM PRIVATE
 target_link_libraries(bongo_cat_neo_runtime PRIVATE bongo_cat_neo_warnings)
 target_link_libraries(bongo_cat_neo_runtime PUBLIC bongo_cat_neo_core SDL3::SDL3-static OpenGL::GL ${BONGO_CAT_NEO_MINIAUDIO_TARGET})
 if(MSVC)
-  set_source_files_properties(src/media/stb_image_impl.c src/ui/nuklear_impl.c
+  set_source_files_properties(src/media/stb_image_impl.c src/media/image_resize.c src/ui/nuklear_impl.c
     PROPERTIES COMPILE_OPTIONS "/W0")
 else()
-  set_source_files_properties(src/media/stb_image_impl.c src/ui/nuklear_impl.c
+  set_source_files_properties(src/media/stb_image_impl.c src/media/image_resize.c src/ui/nuklear_impl.c
     PROPERTIES COMPILE_OPTIONS "-w")
 endif()
 if(BONGO_CAT_NEO_CUBISM_ENABLED)

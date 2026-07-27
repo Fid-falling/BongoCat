@@ -12,6 +12,7 @@ void bongo_cat_neo_preferences_destroy(BongoCatNeoPreferences *preferences);
 void bongo_cat_neo_preferences_show(BongoCatNeoPreferences *preferences);
 void bongo_cat_neo_preferences_close(BongoCatNeoPreferences *preferences);
 bool bongo_cat_neo_preferences_visible(const BongoCatNeoPreferences *preferences);
+bool bongo_cat_neo_preferences_needs_frame(const BongoCatNeoPreferences *preferences);
 void bongo_cat_neo_preferences_input_begin(BongoCatNeoPreferences *preferences);
 void bongo_cat_neo_preferences_input_end(BongoCatNeoPreferences *preferences);
 bool bongo_cat_neo_preferences_event(BongoCatNeoPreferences *preferences, const SDL_Event *event);

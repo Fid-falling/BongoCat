@@ -1,4 +1,5 @@
 #include "runtime.h"
+#include "bongo_cat_neo/preferences.h"
 
 #include <SDL3/SDL_opengl.h>
 #include <stdlib.h>
@@ -56,6 +57,8 @@ void bongo_cat_neo_window_schedule_hit_check(BongoCatNeoApp *app) {
 int bongo_cat_neo_window_wait_timeout(const BongoCatNeoApp *app, uint64_t now) {
     if (!app) return 250;
     int wait_ms = app->config.window.visible ? BONGO_CAT_NEO_FRAME_WAIT(app) : 250;
+    if (bongo_cat_neo_preferences_needs_frame(app->preferences) && wait_ms > 16)
+        wait_ms = 16;
     if (app->wheel_animation_active && wait_ms > 8) wait_ms = 8;
     bool pending_hit = app->config.window.visible && app->pointer_hit_dirty &&
         app->pointer_hit_deadline_ns &&
