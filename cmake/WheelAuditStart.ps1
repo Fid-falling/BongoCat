@@ -6,11 +6,12 @@ $data = if ($DataRoot) { [IO.Path]::GetFullPath($DataRoot) } else {
 $arguments = @("--ci-smoke", "--ci-frame-series", "--ci-exit-ms=9000",
     "--data-root=$data")
 if ($ControlOpacity) {
-    $config = Join-Path $OutputDir "opacity-settings.json"
-    $json = @{ schemaVersion=2; window=@{ opacity=$InitialOpacity } } |
+    $config = Join-Path $OutputDir "opacity-session.json"
+    $json = @{ format="bongo-cat-neo/session"; version=1;
+        window=@{ opacity=$InitialOpacity } } |
         ConvertTo-Json -Compress
     [IO.File]::WriteAllText($config, $json, [Text.UTF8Encoding]::new($false))
-    $arguments += "--config=$config"
+    $arguments += "--session=$config"
 }
 $frameSeries = Join-Path $data "frame-series.csv"
 for ($attempt = 0; $attempt -lt 20; $attempt++) {

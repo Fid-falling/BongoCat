@@ -175,7 +175,7 @@ imported models are kept in the per-user data directory.
 ## Runtime Data and Test Switches
 
 The default data directory comes from SDL's preference path and contains
-`settings.json`, `custom-models/`, and the generated `portable-mver/` adapter
+`preferences.json`, `session.json`, `custom-models/`, and the generated `portable-mver/` adapter
 cache. A Bongo-Cat-Mver package can be used without importing by placing its
 `config.json` and `img/` beside `BongoCatNeo`, or by placing the intact package
 directory there. A collection such as `露西亚-誓焰版` may be placed as one
@@ -183,7 +183,7 @@ folder; its full package and nested image patches are discovered together.
 Tests and portable launches may override both paths:
 
 ```text
-BongoCatNeo --data-root=C:\path\to\data --config=C:\path\to\settings.json
+BongoCatNeo --data-root=C:\path\to\data --preferences=C:\path\to\preferences.json --session=C:\path\to\session.json
 ```
 
 Arguments beginning with `--ci-` are test instrumentation. They select a model,

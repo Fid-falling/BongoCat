@@ -136,12 +136,15 @@ function Invoke-Smoke {
 function Write-Settings {
     param([string]$DataRoot, [bool]$Visible, [bool]$Tray, [int]$X = 0,
         [int]$Y = 0, [string]$Model = "standard")
-    $visibleText = $Visible.ToString().ToLowerInvariant()
-    $trayText = $Tray.ToString().ToLowerInvariant()
-    $json = "{`"schemaVersion`":2,`"window`":{`"visible`":$visibleText," +
-        "`"keepInScreen`":false,`"x`":$X,`"y`":$Y,`"width`":612,`"height`":354}," +
-        "`"app`":{`"trayVisible`":$trayText},`"currentModel`":`"$Model`",`"currentMode`":`"standard`"}"
-    [IO.File]::WriteAllText((Join-Path $DataRoot "settings.json"), $json,
+    $preferences = @{format="bongo-cat-neo/preferences"; version=1;
+        window=@{keepInScreen=$false}; app=@{trayVisible=$Tray}} |
+        ConvertTo-Json -Compress -Depth 4
+    $session = @{format="bongo-cat-neo/session"; version=1;
+        window=@{visible=$Visible; x=$X; y=$Y; width=612; height=354};
+        currentModel=$Model} | ConvertTo-Json -Compress -Depth 4
+    [IO.File]::WriteAllText((Join-Path $DataRoot "preferences.json"), $preferences,
+        (New-Object Text.UTF8Encoding($false)))
+    [IO.File]::WriteAllText((Join-Path $DataRoot "session.json"), $session,
         (New-Object Text.UTF8Encoding($false)))
 }
 
@@ -158,10 +161,10 @@ $log = Invoke-Smoke "same-size asset repair" $shared
 if ((Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash -ne $expectedHash -or
     $log -notmatch "cache is incomplete") { throw "Corrupt asset cache was not repaired" }
 
-[IO.File]::WriteAllText((Join-Path $shared "settings.json"), "{ invalid",
+[IO.File]::WriteAllText((Join-Path $shared "preferences.json"), "{ invalid",
     (New-Object Text.UTF8Encoding($false)))
 $log = Invoke-Smoke "invalid settings recovery" $shared -Probe
-if ($log -notmatch "Invalid settings JSON") { throw "Invalid settings were not diagnosed" }
+if ($log -notmatch "Invalid configuration JSON") { throw "Invalid preferences were not diagnosed" }
 
 Write-Settings $shared $false $false 1000000 1000000
 $log = Invoke-Smoke "hidden and off-screen recovery" $shared -Probe

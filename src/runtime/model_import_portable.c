@@ -191,8 +191,7 @@ static bool add_candidate(BongoCatNeoApp *app, const char *cache_root,
     snprintf(entry->id, sizeof(entry->id), "%s", id);
     snprintf(entry->directory, sizeof(entry->directory), "%s", candidate->directory);
     snprintf(entry->adapter_directory, sizeof(entry->adapter_directory), "%s", adapter);
-    snprintf(entry->storage_directory, sizeof(entry->storage_directory), "%s",
-        entry->adapter_directory);
+    snprintf(entry->storage_directory, sizeof(entry->storage_directory), "%s", adapter);
     snprintf(entry->setting_file, sizeof(entry->setting_file), "%s", candidate->setting);
     entry->mode = candidate->mode;
     entry->managed = true;

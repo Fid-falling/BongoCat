@@ -36,8 +36,8 @@ void bongo_cat_neo_runtime_flow_update(BongoCatNeoApp *app, uint64_t now) {
     if (!app || !app->smoke_runtime_flow) return;
     if (!app->smoke_runtime_flow_ns) {
         app->smoke_runtime_flow_ns = now;
-        snprintf(app->smoke_runtime_model, sizeof(app->smoke_runtime_model), "%s",
-            app->config.current_model);
+        snprintf(app->smoke_runtime_model, sizeof(app->smoke_runtime_model), "%.*s",
+            (int)sizeof(app->smoke_runtime_model) - 1, app->config.current_model);
         mark(app, "startup"); return;
     }
     uint64_t elapsed = now - app->smoke_runtime_flow_ns;

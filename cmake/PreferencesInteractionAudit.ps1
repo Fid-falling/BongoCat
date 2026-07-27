@@ -10,9 +10,11 @@ if (-not $OutputDir) { $OutputDir = Join-Path $root "build-cubism\preferences-in
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
 $dataRoot = Join-Path $OutputDir "data"
-$configPath = Join-Path $dataRoot "config.json"
+$configPath = Join-Path $dataRoot "preferences.json"
+$sessionPath = Join-Path $dataRoot "session.json"
 New-Item -ItemType Directory -Force -Path $dataRoot | Out-Null
 Remove-Item -LiteralPath $configPath -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $sessionPath -Force -ErrorAction SilentlyContinue
 
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName System.Windows.Forms
@@ -213,7 +215,7 @@ function Measure-Difference([string]$First, [string]$Second) {
 $env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
 $env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "preferences-interaction-audit-$PID"
 $arguments = @("--ci-preferences", "--ci-preference-page=0", "--ci-language=zh-CN",
-    "--ci-theme=light", "--config=$configPath", "--data-root=$dataRoot")
+    "--ci-theme=light", "--preferences=$configPath", "--data-root=$dataRoot")
 $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
     -WorkingDirectory (Split-Path $Exe) -PassThru
 try {
@@ -222,6 +224,16 @@ try {
     $baseline = Save-Window $window "01-baseline.png"
     Invoke-Click $window 820 141
     $toggled = Save-Window $window "02-toggle-card.png"
+    $debouncePersisted = $false
+    for ($i = 0; $i -lt 40 -and -not $debouncePersisted; $i++) {
+        Start-Sleep -Milliseconds 50
+        if (Test-Path $configPath) {
+            try {
+                $liveConfig = Get-Content -Raw -Encoding utf8 $configPath | ConvertFrom-Json
+                $debouncePersisted = $liveConfig.window.passThrough -eq $true
+            } catch {}
+        }
+    }
     Invoke-Wheel $window 450 540
     Focus-Window $window 450 520
     [BongoCatNeoPreferencesNative]::keybd_event(0x22, 0, 0, [UIntPtr]::Zero)
@@ -252,6 +264,7 @@ try {
         Start-Sleep -Milliseconds 50
     }
     $config = Get-Content -Raw -Encoding utf8 $configPath | ConvertFrom-Json
+    $session = Get-Content -Raw -Encoding utf8 $sessionPath | ConvertFrom-Json
     $result = [ordered]@{
         ToggleDifference = Measure-Difference $baseline $toggled
         ScrollDifference = Measure-Difference $toggled $scrolled
@@ -259,6 +272,11 @@ try {
         ComboDifference = Measure-Difference $general $combo
         LanguageDifference = Measure-Difference $general $language
         EditDifference = Measure-Difference $shortcuts $edited
+        DebouncePersisted = $debouncePersisted
+        PreferencesFormatValid = $config.format -eq "bongo-cat-neo/preferences" -and
+            $config.version -eq 1
+        SessionFormatValid = $session.format -eq "bongo-cat-neo/session" -and
+            $session.version -eq 1
         TogglePersisted = $config.window.passThrough -eq $true
         ShortcutPersisted = $config.shortcuts.visibleCat -eq "Control+Shift+B"
     }
@@ -267,7 +285,9 @@ try {
     $passed = $result.ToggleDifference -gt 0.0001 -and $result.ScrollDifference -gt 0.02 -and
         $result.PageDifference -gt 0.02 -and $result.ComboDifference -gt 0.002 -and
         $result.LanguageDifference -gt 0.01 -and
-        $result.EditDifference -gt 0.0001 -and $result.TogglePersisted -and
+        $result.EditDifference -gt 0.0001 -and $result.DebouncePersisted -and
+        $result.PreferencesFormatValid -and $result.SessionFormatValid -and
+        $result.TogglePersisted -and
         $result.ShortcutPersisted
     if (-not $passed) { exit 1 }
 } finally {

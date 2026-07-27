@@ -9,7 +9,6 @@ static float clampf(float value, float low, float high) {
 void bongo_cat_neo_config_defaults(BongoCatNeoConfig *config) {
     if (!config) return;
     memset(config, 0, sizeof(*config));
-    config->schema_version = 2;
     config->model.motion_sound = true;
     config->model.behavior = true;
     config->model.auto_release_seconds = 3.0f;
@@ -30,7 +29,6 @@ void bongo_cat_neo_config_defaults(BongoCatNeoConfig *config) {
 
 void bongo_cat_neo_config_validate(BongoCatNeoConfig *config) {
     if (!config) return;
-    config->schema_version = 2;
     config->model.auto_release_seconds = clampf(config->model.auto_release_seconds, 0.05f, 30.0f);
     if (config->model.max_fps < 1) config->model.max_fps = 1;
     if (config->model.max_fps > 240) config->model.max_fps = 240;

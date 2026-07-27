@@ -57,8 +57,8 @@ else()
 endif()
 
 add_library(bongo_cat_neo_core STATIC
-  src/core/config_defaults.c
-  src/core/config_io.c
+  src/core/config_defaults.c src/core/config_io.c
+  src/core/config_file.c src/core/config_session_io.c
   src/core/error.c
   src/core/file.c
   src/core/i18n.c
@@ -83,7 +83,7 @@ add_library(bongo_cat_neo_runtime STATIC
   src/media/stb_image_impl.c
   src/platform/memory.c src/render/gl_api.c
   src/render/overlay.c
-  src/runtime/app.c
+  src/runtime/app.c src/runtime/config_store.c
   src/runtime/assets.c src/runtime/startup.c
   src/runtime/frame_audit.c
   src/runtime/gamepad.c

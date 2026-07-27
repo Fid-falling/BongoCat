@@ -29,8 +29,8 @@ void bongo_cat_neo_window_menu_preview_init(BongoCatNeoWindowMenuPreview *state,
         app ? app->config.window.scale_percent : 100.0f,
         app ? app->config.window.opacity_percent : 100.0f,
         BONGO_CAT_NEO_MENU_NONE, SDL_GetTicksNS()};
-    if (app) snprintf(state->model, sizeof(state->model), "%s",
-        app->config.current_model);
+    if (app) snprintf(state->model, sizeof(state->model), "%.*s",
+        (int)sizeof(state->model) - 1, app->config.current_model);
 }
 
 void bongo_cat_neo_window_menu_preview(void *userdata, BongoCatNeoMenuAction action) {

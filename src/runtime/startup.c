@@ -71,9 +71,12 @@ static bool parse_arguments(BongoCatNeoApp *app, int argc, char **argv,
             uint64_t delay = strtoull(arg + 13, NULL, 10);
             app->smoke_deadline_ns = delay > UINT64_MAX / 1000000ull
                 ? UINT64_MAX : delay * 1000000ull;
-        } else if (strncmp(arg, "--config=", 9) == 0) {
-            if (!store_argument(app->config_path, sizeof(app->config_path),
-                arg + 9, "Configuration", error)) return false;
+        } else if (strncmp(arg, "--preferences=", 14) == 0) {
+            if (!store_argument(app->preferences_path, sizeof(app->preferences_path),
+                arg + 14, "Preferences", error)) return false;
+        } else if (strncmp(arg, "--session=", 10) == 0) {
+            if (!store_argument(app->session_path, sizeof(app->session_path),
+                arg + 10, "Session", error)) return false;
         } else if (strncmp(arg, "--data-root=", 12) == 0) {
             if (!store_argument(app->data_root, sizeof(app->data_root),
                 arg + 12, "Data", error)) return false;
@@ -162,8 +165,10 @@ static void begin_log(BongoCatNeoApp *app) {
 bool bongo_cat_neo_startup_prepare(BongoCatNeoApp *app, int argc, char **argv,
     BongoCatNeoError *error) {
     if (!parse_arguments(app, argc, argv, error) || !locate_data_root(app, error)) return false;
-    if (!app->config_path[0] && !bongo_cat_neo_path_join(app->config_path,
-        sizeof(app->config_path), app->data_root, "settings.json")) {
+    if ((!app->preferences_path[0] && !bongo_cat_neo_path_join(app->preferences_path,
+        sizeof(app->preferences_path), app->data_root, "preferences.json")) ||
+        (!app->session_path[0] && !bongo_cat_neo_path_join(app->session_path,
+        sizeof(app->session_path), app->data_root, "session.json"))) {
         bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO,
             "Configuration path is too long"); return false;
     }

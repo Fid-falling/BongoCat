@@ -64,7 +64,6 @@ typedef struct BongoCatNeoBehaviorShortcut {
 } BongoCatNeoBehaviorShortcut;
 
 typedef struct BongoCatNeoConfig {
-    uint32_t schema_version;
     BongoCatNeoModelOptions model;
     BongoCatNeoWindowOptions window;
     BongoCatNeoAppOptions app;
@@ -81,8 +80,14 @@ extern "C" {
 
 void bongo_cat_neo_config_defaults(BongoCatNeoConfig *config);
 void bongo_cat_neo_config_validate(BongoCatNeoConfig *config);
-BongoCatNeoResult bongo_cat_neo_config_load(const char *path, BongoCatNeoConfig *config, BongoCatNeoError *error);
-BongoCatNeoResult bongo_cat_neo_config_save(const char *path, const BongoCatNeoConfig *config, BongoCatNeoError *error);
+BongoCatNeoResult bongo_cat_neo_preferences_load(const char *path,
+    BongoCatNeoConfig *config, BongoCatNeoError *error);
+BongoCatNeoResult bongo_cat_neo_preferences_save(const char *path,
+    const BongoCatNeoConfig *config, BongoCatNeoError *error);
+BongoCatNeoResult bongo_cat_neo_session_load(const char *path,
+    BongoCatNeoConfig *config, BongoCatNeoError *error);
+BongoCatNeoResult bongo_cat_neo_session_save(const char *path,
+    const BongoCatNeoConfig *config, BongoCatNeoError *error);
 const char *bongo_cat_neo_theme_name(BongoCatNeoTheme value);
 const char *bongo_cat_neo_language_name(BongoCatNeoLanguage value);
 const char *bongo_cat_neo_mode_name(BongoCatNeoModelMode value);

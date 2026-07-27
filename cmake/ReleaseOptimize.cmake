@@ -17,7 +17,8 @@ endif()
 
 function(bongo_cat_neo_enable_release_ipo)
   foreach(target IN LISTS ARGN)
-    if(BONGO_CAT_NEO_OPTIMIZE_RELEASE_IPO AND BONGO_CAT_NEO_IPO_SUPPORTED AND TARGET "${target}")
+    if(BONGO_CAT_NEO_OPTIMIZE_RELEASE_IPO AND BONGO_CAT_NEO_IPO_SUPPORTED AND
+        NOT MINGW AND TARGET "${target}")
       set_property(TARGET "${target}" PROPERTY
         INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
     endif()

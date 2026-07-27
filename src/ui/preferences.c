@@ -176,11 +176,7 @@ void bongo_cat_neo_preferences_close(BongoCatNeoPreferences *value) {
     value->chrome_dragging = false;
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
     bongo_cat_neo_platform_trim_memory();
-    BongoCatNeoError error = {0};
-    if (!value->app->smoke && value->app->config_path[0] &&
-        bongo_cat_neo_config_save(value->app->config_path,
-        &value->app->config, &error) != BONGO_CAT_NEO_OK)
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
+    bongo_cat_neo_config_store_flush(value->app);
 }
 void bongo_cat_neo_preferences_destroy(BongoCatNeoPreferences *value) {
     if (value) { bongo_cat_neo_preferences_close(value);

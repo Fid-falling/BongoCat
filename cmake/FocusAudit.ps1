@@ -22,6 +22,7 @@ using System.Runtime.InteropServices;
 public static class BongoCatNeoFocusNative {
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L,T,R,B; }
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr handle);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr handle, out Rect rect);
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] public static extern void mouse_event(
@@ -40,6 +41,9 @@ try {
         Start-Sleep -Milliseconds 25
     }
     if (-not (Test-Path $frame)) { throw "bongo_cat_neo frame audit was not created" }
+    $process.Refresh()
+    $catWindow = $process.MainWindowHandle
+    if ($catWindow -eq [IntPtr]::Zero) { throw "Bongo Cat window was not found" }
     $samples = [Collections.Generic.List[object]]::new()
     $started = [Diagnostics.Stopwatch]::StartNew()
     $explorer = Start-Process explorer.exe -ArgumentList (Get-Location) -PassThru
@@ -49,15 +53,30 @@ try {
         Select-Object -First 1
     if ($explorerWindow) {
         [void][BongoCatNeoFocusNative]::SetForegroundWindow($explorerWindow.MainWindowHandle)
-        $rect = [BongoCatNeoFocusNative+Rect]::new()
-        if ([BongoCatNeoFocusNative]::GetWindowRect($explorerWindow.MainWindowHandle,
-            [ref]$rect)) {
-            [void][BongoCatNeoFocusNative]::SetCursorPos(
-                [int](($rect.L + $rect.R) / 2), [int](($rect.T + $rect.B) / 2))
-            [BongoCatNeoFocusNative]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)
-            [BongoCatNeoFocusNative]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
-        }
+        Start-Sleep -Milliseconds 200
     }
+    $inactiveBeforeDrag = [BongoCatNeoFocusNative]::GetForegroundWindow() -ne $catWindow
+    $before = [BongoCatNeoFocusNative+Rect]::new()
+    if (-not [BongoCatNeoFocusNative]::GetWindowRect($catWindow, [ref]$before)) {
+        throw "Bongo Cat bounds were not available"
+    }
+    $startX = [int](($before.L + $before.R) / 2)
+    $startY = [int](($before.T + $before.B) / 2)
+    [void][BongoCatNeoFocusNative]::SetCursorPos($startX, $startY)
+    [BongoCatNeoFocusNative]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)
+    for ($step = 1; $step -le 5; $step++) {
+        [void][BongoCatNeoFocusNative]::SetCursorPos($startX + 14 * $step,
+            $startY + 8 * $step)
+        Start-Sleep -Milliseconds 35
+    }
+    [BongoCatNeoFocusNative]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
+    Start-Sleep -Milliseconds 250
+    $after = [BongoCatNeoFocusNative+Rect]::new()
+    [void][BongoCatNeoFocusNative]::GetWindowRect($catWindow, [ref]$after)
+    $dragDeltaX = $after.L - $before.L
+    $dragDeltaY = $after.T - $before.T
+    $movedOnFirstPress = [Math]::Abs($dragDeltaX) -ge 20 -or
+        [Math]::Abs($dragDeltaY) -ge 20
     while ($started.ElapsedMilliseconds -lt $DurationMilliseconds - 1000) {
         $last = (Get-Item $frame).LastWriteTimeUtc
         $samples.Add([pscustomobject]@{
@@ -74,11 +93,15 @@ try {
         Samples=$samples.Count
         UniqueFrameTimestamps=$unique
         ExplorerFocused=($null -ne $explorerWindow)
+        InactiveBeforeDrag=$inactiveBeforeDrag
+        DragDeltaX=$dragDeltaX
+        DragDeltaY=$dragDeltaY
+        MovedOnFirstPress=$movedOnFirstPress
         LeftMouseDownEvents=$leftDown
         LeftMouseUpEvents=$leftUp
         ProcessExited=$process.HasExited
-        Passed=($unique -ge 5 -and $leftDown -ge 1 -and $leftUp -ge 1 -and
-            -not $process.HasExited)
+        Passed=($unique -ge 5 -and $inactiveBeforeDrag -and $movedOnFirstPress -and
+            $leftDown -ge 1 -and $leftUp -ge 1 -and -not $process.HasExited)
     }
     $result | ConvertTo-Json | Set-Content (Join-Path $OutputDir "result.json")
     [pscustomobject]$result | Format-List

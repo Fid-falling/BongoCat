@@ -152,8 +152,9 @@ if (-not $BehaviorDisabled) {
 $data = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
 New-Item -ItemType Directory -Force -Path $data | Out-Null
 if ($BehaviorDisabled) {
-    $settings = @{schemaVersion=2; model=@{behavior=$false}} | ConvertTo-Json -Depth 4
-    [IO.File]::WriteAllText((Join-Path $data "settings.json"), $settings,
+    $settings = @{format="bongo-cat-neo/preferences"; version=1;
+        model=@{behavior=$false}} | ConvertTo-Json -Depth 4
+    [IO.File]::WriteAllText((Join-Path $data "preferences.json"), $settings,
         [Text.UTF8Encoding]::new($false))
 }
 $process = Start-Process -FilePath $Exe -ArgumentList @("--ci-smoke", "--ci-context-menu",

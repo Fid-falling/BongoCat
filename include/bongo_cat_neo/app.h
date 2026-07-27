@@ -29,7 +29,8 @@ typedef struct BongoCatNeoApp {
     BongoCatNeoPreferences *preferences;
     SDL_Window *window;
     void *gl_context;
-    char config_path[BONGO_CAT_NEO_PATH_CAP];
+    char preferences_path[BONGO_CAT_NEO_PATH_CAP];
+    char session_path[BONGO_CAT_NEO_PATH_CAP];
     char data_root[BONGO_CAT_NEO_PATH_CAP];
     char asset_root[BONGO_CAT_NEO_PATH_CAP];
     char locale_root[BONGO_CAT_NEO_PATH_CAP];
@@ -39,6 +40,8 @@ typedef struct BongoCatNeoApp {
     char smoke_live2d_scenario[BONGO_CAT_NEO_ID_CAP];
     char loaded_model[BONGO_CAT_NEO_ID_CAP];
     bool running;
+    bool preferences_store_valid;
+    bool session_store_valid;
     bool autostart_launch;
     bool smoke;
     bool smoke_preferences;
@@ -65,6 +68,9 @@ typedef struct BongoCatNeoApp {
     uint64_t pointer_hit_deadline_ns;
     uint64_t mouse_last_ns;
     uint64_t frame_audit_bmp_ns;
+    uint64_t preferences_saved_hash, preferences_observed_hash;
+    uint64_t session_saved_hash, session_observed_hash;
+    uint64_t preferences_save_due_ns, session_save_due_ns;
     BongoCatNeoMouseTracking mouse_tracking;
     bool hover_inside;
     bool hover_hidden;
@@ -107,5 +113,6 @@ bool bongo_cat_neo_app_run_behavior(BongoCatNeoApp *app,
 BongoCatNeoResult bongo_cat_neo_app_import_model(BongoCatNeoApp *app, const char *source, BongoCatNeoError *error);
 BongoCatNeoResult bongo_cat_neo_app_remove_model(BongoCatNeoApp *app, const char *id, BongoCatNeoError *error);
 void bongo_cat_neo_app_rescan_models(BongoCatNeoApp *app);
+void bongo_cat_neo_config_store_flush(BongoCatNeoApp *app);
 
 #endif

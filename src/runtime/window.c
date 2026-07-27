@@ -49,6 +49,7 @@ static bool try_window(BongoCatNeoApp *app, bool transparent, bool multisampling
 }
 
 BongoCatNeoResult bongo_cat_neo_window_create(BongoCatNeoApp *app, BongoCatNeoError *error) {
+    SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
         bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM,
             "SDL initialization failed: %s", SDL_GetError());

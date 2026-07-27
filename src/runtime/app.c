@@ -42,11 +42,19 @@ static bool initialize(BongoCatNeoApp *app, int argc, char **argv, BongoCatNeoEr
     bongo_cat_neo_shortcut_init(&app->shortcut_state);
     bongo_cat_neo_models_init(&app->models);
     if (!bongo_cat_neo_startup_prepare(app, argc, argv, error)) return false;
-    if (app->config_path[0]) {
-        BongoCatNeoResult loaded = bongo_cat_neo_config_load(app->config_path, &app->config, error);
-        if (loaded != BONGO_CAT_NEO_OK) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error->message);
-        *error = (BongoCatNeoError){0};
-    }
+    BongoCatNeoResult loaded = bongo_cat_neo_preferences_load(
+        app->preferences_path, &app->config, error);
+    app->preferences_store_valid = loaded == BONGO_CAT_NEO_OK &&
+        bongo_cat_neo_path_is_file(app->preferences_path);
+    if (loaded != BONGO_CAT_NEO_OK)
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Preferences ignored: %s", error->message);
+    *error = (BongoCatNeoError){0};
+    loaded = bongo_cat_neo_session_load(app->session_path, &app->config, error);
+    app->session_store_valid = loaded == BONGO_CAT_NEO_OK &&
+        bongo_cat_neo_path_is_file(app->session_path);
+    if (loaded != BONGO_CAT_NEO_OK)
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Session ignored: %s", error->message);
+    *error = (BongoCatNeoError){0};
     if (app->smoke_language >= 0)
         app->config.app.language = (BongoCatNeoLanguage)app->smoke_language;
     if (app->smoke_theme >= 0)
@@ -56,6 +64,7 @@ static bool initialize(BongoCatNeoApp *app, int argc, char **argv, BongoCatNeoEr
         snprintf(app->config.current_model, sizeof(app->config.current_model),
             "%s", app->smoke_model);
     if (!app->autostart_launch) app->config.window.visible = true;
+    bongo_cat_neo_config_store_initialize(app);
     bongo_cat_neo_startup_stage(app, "configuration-ready");
     if (bongo_cat_neo_window_create(app, error) != BONGO_CAT_NEO_OK) return false;
     bongo_cat_neo_startup_stage(app, "window-ready");
@@ -220,15 +229,12 @@ static void loop(BongoCatNeoApp *app) {
         if (app->config.window.visible && app->dirty) render(app);
         bongo_cat_neo_preferences_render(app->preferences);
         bongo_cat_neo_tray_sync(app->tray);
+        bongo_cat_neo_config_store_update(app, now);
         if (app->smoke_deadline_ns && now >= app->smoke_deadline_ns) app->running = false;
     }
 }
 static void shutdown(BongoCatNeoApp *app) {
-    if (!app->smoke && app->config_path[0]) {
-        BongoCatNeoError error = {0};
-        if (bongo_cat_neo_config_save(app->config_path, &app->config, &error) != BONGO_CAT_NEO_OK)
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
-    }
+    bongo_cat_neo_config_store_flush(app);
     bongo_cat_neo_preferences_destroy(app->preferences);
     bongo_cat_neo_i18n_destroy(app->i18n); bongo_cat_neo_tray_destroy(app->tray);
     bongo_cat_neo_gamepads_set_enabled(app, false);

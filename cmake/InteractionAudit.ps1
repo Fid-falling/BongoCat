@@ -188,8 +188,8 @@ $env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
 $env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "interaction-audit-$PID"
 Remove-Item $frame -Force -ErrorAction SilentlyContinue
 Remove-Item $inputAudit -Force -ErrorAction SilentlyContinue
-$settings = Join-Path $DataRoot "settings.json"
-Set-Content -LiteralPath $settings -Value '{"schemaVersion":2,"model":{"ignoreMouse":true}}' -NoNewline
+$settings = Join-Path $DataRoot "preferences.json"
+Set-Content -LiteralPath $settings -Value '{"format":"bongo-cat-neo/preferences","version":1,"model":{"ignoreMouse":true}}' -NoNewline
 $arguments = @("--ci-smoke", "--ci-input-audit", "--ci-exit-ms=14000",
     "--ci-model=$Model", "--data-root=$DataRoot")
 $process = Start-Process $Exe -ArgumentList $arguments -WorkingDirectory `

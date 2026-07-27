@@ -168,7 +168,7 @@ static void behavior_row(BongoCatNeoPreferences *value,
         entry->id);
     if (!shortcut) return;
     char id[BONGO_CAT_NEO_ID_CAP + 16];
-    snprintf(id, sizeof(id), "behavior-%s", entry->id);
+    snprintf(id, sizeof(id), "behavior-%.*s", (int)sizeof(id) - 10, entry->id);
     if (editor(value, context, edit, id, shortcut->shortcut, p))
         bongo_cat_neo_preferences_shortcut_begin(value, id,
             shortcut->shortcut, sizeof(shortcut->shortcut));

@@ -60,5 +60,8 @@ void bongo_cat_neo_live2d_audit_run(BongoCatNeoApp *app);
 void bongo_cat_neo_frame_audit(BongoCatNeoApp *app, int width, int height);
 void bongo_cat_neo_app_render_now(BongoCatNeoApp *app);
 void bongo_cat_neo_runtime_flow_update(BongoCatNeoApp *app, uint64_t now);
+void bongo_cat_neo_config_store_initialize(BongoCatNeoApp *app);
+void bongo_cat_neo_config_store_update(BongoCatNeoApp *app, uint64_t now);
+void bongo_cat_neo_config_store_flush(BongoCatNeoApp *app);
 
 #endif
