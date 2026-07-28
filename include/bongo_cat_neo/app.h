@@ -45,6 +45,7 @@ typedef struct BongoCatNeoApp {
     bool autostart_launch;
     bool smoke;
     bool smoke_preferences;
+    bool smoke_preference_shortcut;
     bool smoke_remove_imported;
     bool smoke_shortcuts;
     bool smoke_menu;

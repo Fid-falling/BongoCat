@@ -39,6 +39,7 @@ bool bongo_cat_neo_gl_load(BongoCatNeoGL *gl, BongoCatNeoError *error) {
     LOAD(uniform_matrix_4fv, PFNGLUNIFORMMATRIX4FVPROC, "glUniformMatrix4fv");
     LOAD(active_texture, PFNGLACTIVETEXTUREPROC, "glActiveTexture");
     LOAD(blend_equation, PFNGLBLENDEQUATIONPROC, "glBlendEquation");
+    LOAD(blend_func_separate, PFNGLBLENDFUNCSEPARATEPROC, "glBlendFuncSeparate");
     return true;
 }
 

@@ -159,7 +159,8 @@ void bongo_cat_neo_ui_render(BongoCatNeoUIBackend *ui) {
     glViewport(0, 0, pixel_width, pixel_height);
     glEnable(GL_BLEND);
     ui->gl.blend_equation(GL_FUNC_ADD);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    ui->gl.blend_func_separate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+        GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     glDisable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_SCISSOR_TEST);

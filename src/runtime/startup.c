@@ -45,6 +45,8 @@ static bool parse_arguments(BongoCatNeoApp *app, int argc, char **argv,
         if (strcmp(arg, "--autostart") == 0) app->autostart_launch = true;
         else if (strcmp(arg, "--ci-smoke") == 0) app->smoke = true;
         else if (strcmp(arg, "--ci-preferences") == 0) app->smoke_preferences = true;
+        else if (strcmp(arg, "--ci-preference-shortcut") == 0)
+            app->smoke_preference_shortcut = true;
         else if (strcmp(arg, "--ci-remove-imported") == 0) app->smoke_remove_imported = true;
         else if (strcmp(arg, "--ci-shortcuts") == 0) app->smoke_shortcuts = true;
         else if (strcmp(arg, "--ci-menu") == 0) app->smoke_menu = true;

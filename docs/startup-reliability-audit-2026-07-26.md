@@ -1,124 +1,149 @@
-# Startup and preferences reliability audit - 2026-07-26
+# Startup and preferences reliability audit - updated 2026-07-29
 
 ## Scope and outcome
 
-This audit covers the native release executable built on the available Windows
-host, with emphasis on double-click startup, recovery from damaged user data,
-preferences behavior, visual parity, resource stability and portable paths.
-The audited binary is:
+This audit covers the standalone native release on the available Windows host,
+with emphasis on double-click startup, damaged-data recovery, first-frame
+validity, preferences behavior, transparent rendering, resource stability and
+portable paths. The audited binary is:
 
 - `build-final/Release/BongoCatNeo.exe`
-- Code commit: `a774faf`
-- SHA-256: `F81B66008086CF0EFEAFFB2BDAD420F75966FBB4098C0B54513750E82EC9F487`
-- Size: 5,280,768 bytes
+- Source baseline before this final audit set: `378fd43`
+- SHA-256: `F924800D504356AD30034E975A2B9610DE489A109C2A39739E99756BC0B79037`
+- Size: 5,456,384 bytes
 
-The Windows release passed every automated test and UI audit listed below.
-No finite test suite can prove that startup will succeed on every possible
-machine, so signing, other Windows versions and real macOS/Linux machines remain
-explicit release gates rather than being represented as completed work.
+The MSVC and MinGW Release configurations each pass 10/10 CTest cases. No
+finite suite can guarantee startup on every possible machine, so signing,
+other Windows versions and real macOS/Linux machines remain explicit gates.
 
-## Reliability corrections
+## Startup protections
 
 | Failure class | Implemented protection |
 |---|---|
-| A second launch appeared to do nothing | A named wake event notifies the primary process, which restores, moves on-screen and raises its window. |
-| Hidden or off-screen saved state | Startup recovers a visible on-screen main window when launched interactively. |
-| Invalid or partially written settings | Strict JSON parsing rejects corruption and falls back to defaults; writes remain atomic. |
-| Damaged extracted assets | Every embedded asset is checked by size and SHA-256 and the cache is repaired. |
-| Damaged custom Live2D model | Model and texture validation occurs before install/load; a bundled model is used as fallback. |
-| Unavailable global input hooks | Startup continues without global hooks and records an actionable diagnostic. |
-| Unsupported multisampling | OpenGL context creation retries without MSAA. |
-| Fatal graphics initialization | Startup stage and error logs are persisted instead of failing silently. |
-| Deep or Unicode paths | UTF-8/UTF-16 path I/O and long-path-aware startup/import paths are used on Windows. |
-| Large portable model trees | Discovery has depth, directory and time budgets and avoids recursive stack growth. |
-| Interrupted model import | Temporary imports are isolated and stale residue is cleaned on the next startup. |
+| A second launch appeared to do nothing | Notify the primary process, restore it on-screen and raise the window. |
+| Hidden or off-screen saved state | Recover a visible on-screen main window for interactive launch. |
+| Invalid or partially written settings | Strict versioned JSON parsing, defaults on corruption and atomic writes. |
+| Damaged extracted assets | Verify embedded assets by size and SHA-256 and repair the cache. |
+| Damaged custom Live2D model | Validate packages before install/load and fall back to a bundled model. |
+| Unavailable global hooks | Continue startup and persist an actionable diagnostic. |
+| Unsupported multisampling | Retry without MSAA and prove the resulting sample count is zero. |
+| Fatal graphics initialization | Persist startup stage and error logs instead of failing silently. |
+| Deep, spaced or Unicode paths | Use bounded UTF-safe path handling and long-path-aware Windows I/O. |
+| Large portable model trees | Apply depth, directory and time budgets without recursive stack growth. |
+| Interrupted model import | Isolate temporary imports and clean stale residue on startup. |
+| Stale first-frame evidence | Wait for a newly completed audit file and retry transient sharing failures. |
 
 ## Automated startup evidence
 
-The MSVC/Cubism Release configuration passed 9/9 CTest cases: core, i18n,
-Nuklear UI, app state, model-import unit tests, model format fixtures, optional
-real-sample discovery, portable startup soak and the startup reliability matrix.
+The test set covers core, i18n, UI, app state, model import units and formats,
+optional real samples, portable startup soak, the startup reliability matrix
+and preferences navigation.
 
-The startup matrix independently exercises:
+The startup matrix independently verifies:
 
 - fresh extraction and a visible nonblank first frame with `gl_error=0`;
-- same-size asset corruption and cache repair;
-- malformed settings recovery;
-- hidden and far off-screen state recovery;
-- blocked global hooks and the no-MSAA OpenGL fallback;
-- malformed model fallback;
+- actual normal MSAA values of `sample_buffers=1`, `sample_count=4`;
+- forced fallback values of `sample_buffers=0`, `sample_count=0`;
+- same-size embedded-asset corruption and cache repair;
+- malformed settings and malformed model recovery;
+- hidden and far off-screen window recovery;
+- unavailable global hooks;
 - bounded portable-directory scanning;
-- Unicode, spaces and paths longer than the legacy Windows `MAX_PATH` limit;
+- spaces, Unicode and paths longer than the legacy Windows `MAX_PATH` limit;
 - long-path cache reuse, cleanup and model import;
-- fatal OpenGL diagnostics; and
-- second-instance wake-up both from initial hidden state and after closing a
-  running window to the tray, without hanging either process.
+- persisted fatal OpenGL diagnostics; and
+- second-instance wake-up from hidden and tray-closed states without hanging.
 
-The same source also completed a MinGW GCC 16.1 build with warnings treated as
-errors and passed 9/9 tests. All 27 PowerShell audit scripts parse successfully,
-`git diff --check` is clean and the 300-line source policy passes.
+All 30 PowerShell audit scripts parse successfully, `git diff --check` is clean
+and the 300-line handwritten-source policy passes.
 
 ## Preferences verification
 
 | Area | Result | Evidence |
 |---|---|---|
-| Visual matrix | PASS 50/50 | 5 pages x 5 locales x 2 themes |
-| Main interactions | PASS | Toggle, scroll, navigation, combo, locale and shortcut editing |
-| Persistence | PASS | Toggle and shortcut survive process restart |
-| Dialog/state scenarios | PASS 7/7 | Behavior, expression, Escape, shortcut, locale, toggle and update toast |
+| Visual matrix | PASS 53/53 | 50 preferences combinations plus 3 models |
+| HTML reference parity | PASS | 98.4996% average pixel similarity; 97.9526% minimum page |
+| Main interactions | PASS x6 | Toggle, scroll, navigation, combo, locale and shortcut editing |
+| Sidebar navigation | PASS x10 | 50/50 clicks; all five pages selected every loop |
+| Persistence | PASS | Locale, toggle, stepper and shortcut survive save/restart paths |
+| Dialog/state scenarios | PASS 12/12 | Behavior, expression, Escape, outside-close, shortcut, locale, controls and toast |
 | Pointer feedback | PASS 11/11 | Tabs, close, toggles, combo, shortcut, import/model cards and cancel |
-| Localization fonts | PASS | Western base font plus merged CJK fallback; no missing glyphs in the matrix |
+| Focus recovery | PASS | First inactive-window press drags 56 x 32 px |
+| Tray ordering | PASS | Preferences is the first tray entry |
+| Localization fonts | PASS | Five locales, both themes, 2x oversampling, `1024x8192` atlas |
 
-Primary retained artifacts are under `build-final`:
+Configuration is intentionally split by ownership rather than retaining Tauri
+compatibility: user preferences and runtime session state are separately
+versioned and atomically persisted. The interaction audit validates both file
+formats and debounce behavior.
 
-- `preferences-visual-matrix-current/audit.csv`
-- `preferences-interaction-current/result.json`
-- `preference-scenarios-current/audit.csv`
-- `preferences-cursor-current/result.json`
+## Rendering integrity
+
+The model overlay now emits premultiplied RGBA and uses independent color/alpha
+blend factors. Preferences retain straight-alpha color blending with an
+independent alpha channel. The software compositor uses the complete
+source-over equation, and model textures use linear no-mipmap filtering aligned
+with the original renderer.
+
+Across 11 model/input captures, each audited frame contains 2,149 to 2,361
+semi-transparent antialiased pixels and zero RGB-greater-than-alpha violations.
+Standard, keyboard and gamepad models, left/right/both hands, releases, stress
+and gamepad-button states all pass.
 
 ## Performance and stability
 
-Seven warm launches averaged 549 ms to the first valid frame, with a 592 ms
-P95; the clean-cache launch reached its first valid frame in 1,030 ms.
+- Cold first valid frame: 1,192 ms.
+- Seven warm launches: 511 ms average, 550 ms P95.
+- Navigation settles in 235.1 ms, with 9.50 ms average, 15.20 ms P90 and
+  16.76 ms maximum audited frame time.
+- Active preferences animation uses about 19.5% CPU on this host; idle is 0%.
+- Main 30-second soak trends about +0.38 MiB with one additional handle.
+- Preferences 30-second soak trends about +0.17 MiB with no handle growth.
+- Full runtime close/reopen/recovery flow stays below 170 MiB working set and
+  140 MiB private bytes and shows no continuing growth.
 
-| 60-second scenario | Peak working set | Peak private bytes | Final change | Handle change |
-|---|---:|---:|---:|---:|
-| Main window | 87.027 MiB | 64.461 MiB | Negative | +1 |
-| Preferences open | 131.207 MiB | 104.539 MiB | About +0.8 MiB | +1 |
-
-The preferences process has a separate 150/120 MiB working/private threshold
-because it owns a second OpenGL drawable and a multilingual font atlas. The main
-window retains the stricter 120/90 MiB threshold. Temporary font baking memory
-is released after atlas upload, and opening preferences triggers allocator
-cleanup. No unbounded growth was observed in either run.
+The larger font atlas is a deliberate quality/performance tradeoff. Baking
+memory is temporary, runtime memory remains within measured budgets, and idle
+rendering does not continue consuming CPU.
 
 ## Windows release properties
 
-- x64 GUI executable with the static MSVC runtime; imported DLLs are Windows
-  system components only.
+- x64 GUI executable with the static MSVC runtime; imported dependencies are
+  Windows system components.
 - ASLR, high-entropy VA, DEP/NX and Control Flow Guard are enabled.
-- Stack reserve is 1 MiB; large startup catalogs and application state live on
-  the heap.
-- The executable is not Authenticode-signed. Signing is required before broad
-  public distribution to reduce SmartScreen warnings and establish provenance.
+- Large application state and startup catalogs live on the heap.
+- The executable is not Authenticode-signed. Signing remains required before
+  broad public distribution to establish provenance and reduce SmartScreen
+  warnings.
 
 ## Cross-platform boundary
 
-Platform I/O now uses shared bounded/atomic helpers, while Windows-specific
-startup behavior remains isolated in the Windows platform layer. The repository
-CI defines warnings-as-errors builds and native tests for Windows x64, Ubuntu
-Linux x64 and macOS. A local Windows host cannot provide honest macOS/Linux GUI,
-permission, compositor or packaging validation; those jobs and real-machine
-smokes must pass for each release candidate.
+Portable configuration, rendering and bounded/atomic I/O are shared. Native
+window, input, tray and startup behavior remain isolated by platform. CI defines
+warnings-as-errors build/test/package jobs for Windows x64, Ubuntu Linux x64 and
+macOS. This Windows host cannot honestly certify other systems' compositor,
+permissions, signing or GUI behavior; their CI and real-machine smokes must pass
+for every release candidate.
 
-The optional external real-model audit reports no configured samples on this
-host. Bundled models and generated malformed fixtures are covered, but a curated
-external model corpus remains a release gate.
+## Retained evidence
+
+- `build-final/visual-audit-final-current/audit.csv`
+- `build-final/parity-antialias-current/page0.json` through `page4.json`
+- `build-final/overlay-audit-final-current-3/overlay-audit.csv`
+- `build-final/preference-scenarios-final-current/audit.csv`
+- `build-final/preferences-navigation-stable/result.json`
+- `build-final/preferences-interaction-robust-6/result.json`
+- `build-final/preferences-performance-current-2/result.json`
+- `build-final/focus-current/result.json`
+- `build-final/cursor-current/result.json`
+- `build-final/context-menu-current/result.json`
+- `build-final/runtime-flow-current/runtime-flow-summary.csv`
 
 ## Repeatable commands
 
 - `cmake --build build-final --config Release --parallel 2`
 - `ctest --test-dir build-final -C Release --output-on-failure`
+- `ctest --test-dir build-mingw-final -C Release --output-on-failure`
 - `cmake -DROOT=. -P cmake/CheckLines.cmake`
-- `powershell -NoProfile -ExecutionPolicy Bypass -File cmake/StartupPerformanceAudit.ps1 -Exe build-final/Release/BongoCatNeo.exe -OutputDir build-final/startup-performance-final`
-- `powershell -NoProfile -ExecutionPolicy Bypass -File cmake/VisualAudit.ps1 -Exe build-final/Release/BongoCatNeo.exe -OutputDir build-final/preferences-visual-matrix-current -PreferencesMatrix`
+- `powershell -NoProfile -ExecutionPolicy Bypass -File cmake/StartupPerformanceAudit.ps1 -Exe build-final/Release/BongoCatNeo.exe -OutputDir build-final/startup-performance-current`
+- `powershell -NoProfile -ExecutionPolicy Bypass -File cmake/VisualAudit.ps1 -Exe build-final/Release/BongoCatNeo.exe -OutputDir build-final/visual-audit-current -PreferencesMatrix`

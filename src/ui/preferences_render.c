@@ -268,6 +268,7 @@ void bongo_cat_neo_preferences_render(BongoCatNeoPreferences *value) {
     bongo_cat_neo_ui_cursor_begin(&value->ui);
     bool dark = bongo_cat_neo_preferences_resolved_theme(value) != 0;
     bool close_requested = draw_frame(value, width, height, dark);
+    bongo_cat_neo_preferences_shortcut_smoke(value);
     BongoCatNeoUIPalette palette = bongo_cat_neo_ui_palette(dark);
     glClearColor(palette.background.r / 255.0f, palette.background.g / 255.0f,
         palette.background.b / 255.0f, 1.0f);

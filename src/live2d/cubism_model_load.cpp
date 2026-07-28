@@ -256,7 +256,7 @@ bool NativeModel::load_textures(BongoCatNeoError *error) {
     release_textures();
     textures_.assign((size_t)setting_->GetTextureCount(), 0);
     for (int i = 0; i < setting_->GetTextureCount(); ++i) {
-        textures_[(size_t)i] = bongo_cat_neo_image_texture_mipmapped(
+        textures_[(size_t)i] = bongo_cat_neo_image_texture_model(
             path(setting_->GetTextureFileName(i)).c_str(), direct_textures_,
             nullptr, nullptr, error);
         if (!textures_[(size_t)i]) {

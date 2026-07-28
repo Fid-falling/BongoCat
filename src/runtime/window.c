@@ -63,8 +63,12 @@ BongoCatNeoResult bongo_cat_neo_window_create(BongoCatNeoApp *app, BongoCatNeoEr
             SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO, "Test requested OpenGL fallback"); continue;
         }
         if (try_window(app, options[i][0], options[i][1], failure, sizeof(failure))) {
-            SDL_Log("OpenGL window ready (transparent=%d, MSAA=%d)",
-                options[i][0], options[i][1]);
+            int sample_buffers = 0, sample_count = 0;
+            SDL_GL_GetAttribute(SDL_GL_MULTISAMPLEBUFFERS, &sample_buffers);
+            SDL_GL_GetAttribute(SDL_GL_MULTISAMPLESAMPLES, &sample_count);
+            SDL_Log("OpenGL window ready (transparent=%d, MSAA=%d, "
+                "sample_buffers=%d, sample_count=%d)", options[i][0], options[i][1],
+                sample_buffers, sample_count);
             if (!SDL_GL_SetSwapInterval(1)) SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
                 "Vertical sync unavailable: %s", SDL_GetError());
             return BONGO_CAT_NEO_OK;

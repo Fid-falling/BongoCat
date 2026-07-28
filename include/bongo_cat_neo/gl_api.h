@@ -32,6 +32,7 @@ typedef struct BongoCatNeoGL {
     PFNGLUNIFORMMATRIX4FVPROC uniform_matrix_4fv;
     PFNGLACTIVETEXTUREPROC active_texture;
     PFNGLBLENDEQUATIONPROC blend_equation;
+    PFNGLBLENDFUNCSEPARATEPROC blend_func_separate;
 } BongoCatNeoGL;
 
 bool bongo_cat_neo_gl_load(BongoCatNeoGL *gl, BongoCatNeoError *error);

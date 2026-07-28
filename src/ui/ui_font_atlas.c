@@ -54,8 +54,8 @@ static void source_release(UIFontSource *source) {
 static struct nk_font_config font_config(float size, const nk_rune *ranges) {
     struct nk_font_config config = nk_font_config(size);
     config.range = ranges;
-    config.oversample_h = 1;
-    config.oversample_v = 1;
+    config.oversample_h = 2;
+    config.oversample_v = 2;
     return config;
 }
 

@@ -106,3 +106,23 @@ function Measure-ModelAppearance([string]$Path) {
         return $bright
     } finally { $bitmap.Dispose() }
 }
+
+function Measure-PremultipliedAlpha([string]$Path) {
+    if (-not (Test-Path $Path)) {
+        return [pscustomobject]@{ SemiTransparent=0; Violations=1 }
+    }
+    $bitmap = [Drawing.Bitmap]::new($Path)
+    try {
+        $semi = 0; $violations = 0
+        for ($y = 0; $y -lt $bitmap.Height; ++$y) {
+            for ($x = 0; $x -lt $bitmap.Width; ++$x) {
+                $pixel = $bitmap.GetPixel($x, $y)
+                if ($pixel.A -le 0 -or $pixel.A -ge 255) { continue }
+                $semi++
+                if ($pixel.R -gt $pixel.A + 1 -or $pixel.G -gt $pixel.A + 1 -or
+                    $pixel.B -gt $pixel.A + 1) { $violations++ }
+            }
+        }
+        return [pscustomobject]@{ SemiTransparent=$semi; Violations=$violations }
+    } finally { $bitmap.Dispose() }
+}

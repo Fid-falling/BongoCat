@@ -28,6 +28,7 @@ void bongo_cat_neo_preferences_shortcut_begin(BongoCatNeoPreferences *value,
 bool bongo_cat_neo_preferences_shortcut_event(BongoCatNeoPreferences *value,
     const SDL_Event *event);
 void bongo_cat_neo_preferences_shortcut_cancel(BongoCatNeoPreferences *value);
+void bongo_cat_neo_preferences_shortcut_smoke(BongoCatNeoPreferences *value);
 void bongo_cat_neo_preferences_import_path(BongoCatNeoApp *app, SDL_Window *window,
     const char *path);
 void bongo_cat_neo_preferences_model_cache_clear(BongoCatNeoApp *app);

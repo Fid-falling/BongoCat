@@ -55,7 +55,7 @@ static const char *fragment_source =
     "vec2 dl=(tex-vec2(.700,.515))/vec2(.080,.170);"
     "vec2 dr=(tex-vec2(.275,.397))/vec2(.070,.160);"
     "bool l=dot(dl,dl)<1.;bool r=dot(dr,dr)<1.;"
-    "if((erase_left&&l)||(erase_right&&r))color.rgb=vec3(1);}";
+    "if((erase_left&&l)||(erase_right&&r))color.rgb=vec3(1);color.rgb*=color.a;}";
 static void clear_textures(BongoCatNeoOverlay *value) {
     if (value->background) glDeleteTextures(1, &value->background);
     if (value->composite) glDeleteTextures(1, &value->composite);
@@ -220,7 +220,8 @@ static void draw(BongoCatNeoOverlay *value, GLuint texture, bool mirror, bool bl
     if (!value || !texture) return;
     if (blend) {
         glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        value->gl.blend_func_separate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA,
+            GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     } else glDisable(GL_BLEND);
     value->gl.use_program(value->program);
     value->gl.uniform_1i(value->mirror_location, mirror);

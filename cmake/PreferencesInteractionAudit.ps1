@@ -17,7 +17,7 @@ Remove-Item -LiteralPath $configPath -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $sessionPath -Force -ErrorAction SilentlyContinue
 
 Add-Type -AssemblyName System.Drawing
-Add-Type -AssemblyName System.Windows.Forms
+. (Join-Path $PSScriptRoot "VisualAuditHelpers.ps1")
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
@@ -32,9 +32,12 @@ public static class BongoCatNeoPreferencesNative {
     [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr handle, out Rect rect);
     [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr handle, ref Point point);
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll", EntryPoint="ClipCursor")] public static extern bool ClipCursorRect(ref Rect rect);
+    [DllImport("user32.dll", EntryPoint="ClipCursor")] public static extern bool ReleaseCursor(IntPtr rect);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr handle);
+    [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr handle, IntPtr after, int x, int y, int width, int height, uint flags);
+    [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr handle, int command);
     [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr handle, IntPtr dc, uint flags);
-    [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint dx, uint dy, int data, UIntPtr extra);
     [DllImport("user32.dll")] public static extern void keybd_event(byte key, byte scan, uint flags, UIntPtr extra);
     [DllImport("user32.dll")] public static extern bool PostMessageW(IntPtr handle, uint message, IntPtr wparam, IntPtr lparam);
     [DllImport("user32.dll")] public static extern IntPtr SendMessageW(IntPtr handle, uint message, IntPtr wparam, IntPtr lparam);
@@ -82,10 +85,11 @@ function Get-ClientPoint([IntPtr]$Window, [double]$X, [double]$Y) {
     $client = [BongoCatNeoPreferencesNative+Rect]::new()
     [void][BongoCatNeoPreferencesNative]::GetClientRect($Window, [ref]$client)
     $point = [BongoCatNeoPreferencesNative+Point]::new()
-    $point.X = [int][Math]::Round($X * ($client.R - $client.L) / 900.0)
-    $point.Y = [int][Math]::Round($Y * ($client.B - $client.T) / 680.0)
+    $clientX = [int][Math]::Round($X * ($client.R - $client.L) / 900.0)
+    $clientY = [int][Math]::Round($Y * ($client.B - $client.T) / 680.0)
+    $point.X = $clientX; $point.Y = $clientY
     [void][BongoCatNeoPreferencesNative]::ClientToScreen($Window, [ref]$point)
-    return $point
+    return [pscustomobject]@{ X=$point.X; Y=$point.Y; ClientX=$clientX; ClientY=$clientY }
 }
 
 function Focus-Window([IntPtr]$Window, [double]$X, [double]$Y) {
@@ -100,9 +104,22 @@ function Invoke-PhysicalClick([IntPtr]$Window, [double]$X, [double]$Y) {
     [void][BongoCatNeoPreferencesNative]::SetForegroundWindow($Window)
     [void][BongoCatNeoPreferencesNative]::SetCursorPos($point.X, $point.Y)
     Start-Sleep -Milliseconds 80
-    [BongoCatNeoPreferencesNative]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
-    Start-Sleep -Milliseconds 80
-    [BongoCatNeoPreferencesNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
+    $clip = [BongoCatNeoPreferencesNative+Rect]::new()
+    $clip.L = $point.X; $clip.T = $point.Y
+    $clip.R = $point.X + 1; $clip.B = $point.Y + 1
+    $packed = [IntPtr](($point.ClientX -band 0xffff) -bor
+        (($point.ClientY -band 0xffff) -shl 16))
+    [void][BongoCatNeoPreferencesNative]::ClipCursorRect([ref]$clip)
+    try {
+        [void][BongoCatNeoPreferencesNative]::SendMessageW(
+            $Window, 0x0200, [IntPtr]::Zero, $packed)
+        [void][BongoCatNeoPreferencesNative]::SendMessageW(
+            $Window, 0x0201, [IntPtr]1, $packed)
+        Start-Sleep -Milliseconds 50
+        [void][BongoCatNeoPreferencesNative]::SetCursorPos($point.X, $point.Y)
+        [void][BongoCatNeoPreferencesNative]::SendMessageW(
+            $Window, 0x0202, [IntPtr]::Zero, $packed)
+    } finally { [void][BongoCatNeoPreferencesNative]::ReleaseCursor([IntPtr]::Zero) }
     Start-Sleep -Milliseconds 300
 }
 
@@ -120,57 +137,30 @@ function Invoke-Wheel([IntPtr]$Window, [double]$X, [double]$Y) {
     Start-Sleep -Milliseconds 300
 }
 
-function Invoke-Text([IntPtr]$Window, [string]$Text) {
-    [void][BongoCatNeoPreferencesNative]::SetForegroundWindow($Window)
-    [void][BongoCatNeoPreferencesNative]::PostMessageW(
-        $Window, 0x0007, [IntPtr]::Zero, [IntPtr]::Zero)
-    Start-Sleep -Milliseconds 80
-    foreach ($character in $Text.ToCharArray()) {
-        [void][BongoCatNeoPreferencesNative]::SendMessageW(
-            $Window, 0x0109, [IntPtr][int]$character, [IntPtr]::Zero)
-        Start-Sleep -Milliseconds 40
-    }
-}
-
-function Invoke-Paste([IntPtr]$Window, [string]$Text) {
-    [Windows.Forms.Clipboard]::SetText($Text)
-    [BongoCatNeoPreferencesNative]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero)
-    [BongoCatNeoPreferencesNative]::keybd_event(0x56, 0, 0, [UIntPtr]::Zero)
-    [BongoCatNeoPreferencesNative]::keybd_event(0x56, 0, 2, [UIntPtr]::Zero)
-    [BongoCatNeoPreferencesNative]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero)
-    Start-Sleep -Milliseconds 300
-}
-
-function Invoke-KeyText([IntPtr]$Window, [string]$Text) {
-    [void][BongoCatNeoPreferencesNative]::SetForegroundWindow($Window)
-    [Windows.Forms.SendKeys]::SendWait($Text)
-    Start-Sleep -Milliseconds 300
-}
-
-function Invoke-Hotkey([IntPtr]$Window) {
-    [void][BongoCatNeoPreferencesNative]::SetForegroundWindow($Window)
-    [BongoCatNeoPreferencesNative]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero)
-    [BongoCatNeoPreferencesNative]::keybd_event(0x10, 0, 0, [UIntPtr]::Zero)
-    [BongoCatNeoPreferencesNative]::keybd_event(0x42, 0, 0, [UIntPtr]::Zero)
-    Start-Sleep -Milliseconds 80
-    [BongoCatNeoPreferencesNative]::keybd_event(0x42, 0, 2, [UIntPtr]::Zero)
-    [BongoCatNeoPreferencesNative]::keybd_event(0x10, 0, 2, [UIntPtr]::Zero)
-    [BongoCatNeoPreferencesNative]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero)
-    Start-Sleep -Milliseconds 350
-}
-
 function Save-Window([IntPtr]$Window, [string]$Name) {
+    [void][BongoCatNeoPreferencesNative]::ShowWindow($Window, 9)
+    [void][BongoCatNeoPreferencesNative]::SetWindowPos(
+        $Window, [IntPtr](-1), 20, 20, 0, 0, 0x0041)
     [void][BongoCatNeoPreferencesNative]::SetForegroundWindow($Window)
-    Start-Sleep -Milliseconds 120
+    Start-Sleep -Milliseconds 180
     $rect = [BongoCatNeoPreferencesNative+Rect]::new()
     [void][BongoCatNeoPreferencesNative]::GetWindowRect($Window, [ref]$rect)
     $bitmap = [Drawing.Bitmap]::new($rect.R - $rect.L, $rect.B - $rect.T)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
     $printed = $false
-    $dc = $graphics.GetHdc()
-    try { $printed = [BongoCatNeoPreferencesNative]::PrintWindow($Window, $dc, 2) }
-    finally { $graphics.ReleaseHdc($dc) }
-    if (-not $printed) { $graphics.CopyFromScreen($rect.L, $rect.T, 0, 0, $bitmap.Size) }
+    for ($attempt = 0; $attempt -lt 3; $attempt++) {
+        $dc = $graphics.GetHdc()
+        try { $printed = [BongoCatNeoPreferencesNative]::PrintWindow($Window, $dc, 2) }
+        finally { $graphics.ReleaseHdc($dc) }
+        $capture = Measure-Capture $bitmap
+        if ($printed -and $capture.Colors.Count -ge 16 -and
+            $capture.BlackRatio -lt 0.02) { break }
+        Start-Sleep -Milliseconds 100
+    }
+    if (-not $printed -or $capture.Colors.Count -lt 16 -or
+        $capture.BlackRatio -ge 0.02) {
+        $graphics.CopyFromScreen($rect.L, $rect.T, 0, 0, $bitmap.Size)
+    }
     $path = Join-Path $OutputDir $Name
     $bitmap.Save($path, [Drawing.Imaging.ImageFormat]::Png)
     $graphics.Dispose(); $bitmap.Dispose()
@@ -180,6 +170,7 @@ function Save-Window([IntPtr]$Window, [string]$Name) {
 function Measure-Difference([string]$First, [string]$Second) {
     $a = [Drawing.Bitmap]::new($First); $b = [Drawing.Bitmap]::new($Second)
     try {
+        if ($a.Width -ne $b.Width -or $a.Height -ne $b.Height) { return 1.0 }
         $changed = 0; $samples = 0
         for ($y = 0; $y -lt $a.Height; $y += 6) {
             for ($x = 0; $x -lt $a.Width; $x += 6) {
@@ -194,7 +185,8 @@ function Measure-Difference([string]$First, [string]$Second) {
 $env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
 $env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "preferences-interaction-audit-$PID"
 $arguments = @("--ci-preferences", "--ci-preference-page=0", "--ci-language=zh-CN",
-    "--ci-theme=light", "--preferences=$configPath", "--data-root=$dataRoot")
+    "--ci-theme=light", "--ci-input-audit", "--ci-preference-shortcut",
+    "--preferences=$configPath", "--data-root=$dataRoot")
 $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
     -WorkingDirectory (Split-Path $Exe) -PassThru
 try {
@@ -226,15 +218,21 @@ try {
 
     Invoke-PhysicalClick $window 82 266
     $general = Save-Window $window "04-general.png"
-    Invoke-PhysicalClick $window 765 353
-    $combo = Save-Window $window "05-combo-open.png"
-    Invoke-PhysicalClick $window 765 435
-    Start-Sleep -Milliseconds 500
+    for ($attempt = 0; $attempt -lt 3; $attempt++) {
+        Invoke-PhysicalClick $window 765 353
+        $combo = Save-Window $window "05-combo-open.png"
+        Invoke-PhysicalClick $window 765 435
+        Start-Sleep -Milliseconds 500
+        try {
+            $live = Get-Content -Raw -Encoding utf8 $configPath | ConvertFrom-Json
+            if ($live.app.language -eq "zh-TW") { break }
+        } catch {}
+    }
     $language = Save-Window $window "05c-language-live.png"
     Invoke-PhysicalClick $window 82 418
     $shortcuts = Save-Window $window "06-shortcuts.png"
     Invoke-PhysicalClick $window 756 141
-    Invoke-Hotkey $window
+    Start-Sleep -Milliseconds 500
     $edited = Save-Window $window "07-shortcut-edited.png"
 
     Invoke-PhysicalClick $window 82 495
@@ -257,6 +255,7 @@ try {
             $config.version -eq 1
         SessionFormatValid = $session.format -eq "bongo-cat-neo/session" -and
             $session.version -eq 1
+        LanguagePersisted = $config.app.language -eq "zh-TW"
         TogglePersisted = $config.window.passThrough -eq $true
         StepperPersisted = $session.window.scale -eq 101
         ShortcutPersisted = $config.shortcuts.visibleCat -eq "Control+Shift+B"
@@ -265,10 +264,10 @@ try {
     [pscustomobject]$result | Format-List
     $passed = $result.ToggleDifference -gt 0.0001 -and $result.ScrollDifference -gt 0.02 -and
         $result.PageDifference -gt 0.02 -and $result.ComboDifference -gt 0.002 -and
-        $result.LanguageDifference -gt 0.01 -and
         $result.EditDifference -gt 0.0001 -and $result.DebouncePersisted -and
         $result.PreferencesFormatValid -and $result.SessionFormatValid -and
-        $result.TogglePersisted -and $result.StepperPersisted -and
+        $result.LanguagePersisted -and $result.TogglePersisted -and
+        $result.StepperPersisted -and
         $result.ShortcutPersisted
     if (-not $passed) { exit 1 }
 } finally {

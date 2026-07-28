@@ -26,7 +26,7 @@ unsigned int bongo_cat_neo_image_texture_thumbnail(const char *path, int max_wid
 unsigned int bongo_cat_neo_image_texture_resampled(const char *path,
     int max_width, int max_height, float rounding, int *width, int *height,
     BongoCatNeoError *error);
-unsigned int bongo_cat_neo_image_texture_mipmapped(const char *path, bool direct_decode,
+unsigned int bongo_cat_neo_image_texture_model(const char *path, bool direct_decode,
     int *width, int *height, BongoCatNeoError *error);
 unsigned int bongo_cat_neo_image_composite_texture(const char *base, const char *left,
     const char *right, unsigned int texture, bool erase_left, bool erase_right,

@@ -268,6 +268,9 @@ bool bongo_cat_neo_preferences_event(BongoCatNeoPreferences *value, const SDL_Ev
         value->render_dirty = true; return false;
     }
     if (event_window(event) != SDL_GetWindowID(value->window)) return false;
+    if (value->app->smoke_input_audit && (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
+        event->type == SDL_EVENT_MOUSE_BUTTON_UP)) SDL_Log("Preferences mouse %s at %.1f,%.1f",
+            event->button.down ? "down" : "up", event->button.x, event->button.y);
     if (bongo_cat_neo_preferences_shortcut_event(value, event)) return true;
     if (event->type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
         bongo_cat_neo_preferences_close(value);

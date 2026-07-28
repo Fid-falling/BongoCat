@@ -139,7 +139,7 @@ void bongo_cat_neo_image_free(BongoCatNeoImage *image) {
     memset(image, 0, sizeof(*image));
 }
 
-static unsigned int upload(const BongoCatNeoImage *image, GLuint texture, bool mipmapped) {
+static unsigned int upload(const BongoCatNeoImage *image, GLuint texture, bool model_texture) {
     bool created = texture == 0;
     if (created) glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -151,7 +151,7 @@ static unsigned int upload(const BongoCatNeoImage *image, GLuint texture, bool m
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        if (mipmapped && SDL_GL_ExtensionSupported(
+        if (model_texture && SDL_GL_ExtensionSupported(
             "GL_EXT_texture_filter_anisotropic")) {
             GLfloat maximum = 1.0f;
             glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maximum);
@@ -221,7 +221,7 @@ unsigned int bongo_cat_neo_image_texture_thumbnail(const char *path, int max_wid
     return texture;
 }
 
-unsigned int bongo_cat_neo_image_texture_mipmapped(const char *path, bool direct_decode,
+unsigned int bongo_cat_neo_image_texture_model(const char *path, bool direct_decode,
     int *width, int *height, BongoCatNeoError *error) {
     BongoCatNeoImage image;
 #ifdef _WIN32
@@ -271,11 +271,15 @@ static bool blend_file(BongoCatNeoImage *base, const char *path, BongoCatNeoErro
     bool valid = layer.width == base->width && layer.height == base->height;
     if (valid) for (int i = 0; i < base->width * base->height; ++i) {
         unsigned char *dst = base->pixels + i * 4, *src = layer.pixels + i * 4;
-        unsigned alpha = src[3], inverse = 255 - alpha;
-        for (int channel = 0; channel < 3; ++channel)
-            dst[channel] = (unsigned char)((src[channel] * alpha +
-                dst[channel] * inverse + 127) / 255);
-        dst[3] = (unsigned char)(alpha + (dst[3] * inverse + 127) / 255);
+        unsigned alpha = src[3], inverse = 255 - alpha, destination_alpha = dst[3];
+        unsigned output_alpha = alpha * 255 + destination_alpha * inverse;
+        if (!output_alpha) { memset(dst, 0, 4); continue; }
+        for (int channel = 0; channel < 3; ++channel) {
+            unsigned color = src[channel] * alpha * 255 +
+                dst[channel] * destination_alpha * inverse;
+            dst[channel] = (unsigned char)((color + output_alpha / 2) / output_alpha);
+        }
+        dst[3] = (unsigned char)((output_alpha + 127) / 255);
     }
     bongo_cat_neo_image_free(&layer);
     return valid;

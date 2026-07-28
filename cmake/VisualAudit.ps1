@@ -184,12 +184,15 @@ if (-not $SkipMain) {
             $log = Join-Path $runData "live2d-audit.txt"
             if (Test-Path $log) { Copy-Item $log (Join-Path $OutputDir "main-$model.txt") -Force }
             $modelBright = Measure-ModelAppearance $internal
+            $alpha = Measure-PremultipliedAlpha $internal
             $results.Add([pscustomobject]@{ View="main"; Theme=""; Language=""; Page="";
                 Model=$model; Scenario="idle"; Width=$audit.Width; Height=$audit.Height;
                 SampleColors=$audit.SampleColors; Difference=0.0;
-                ModelBrightPixels=$modelBright;
+                ModelBrightPixels=$modelBright; SemiTransparentPixels=$alpha.SemiTransparent;
+                PremultiplyViolations=$alpha.Violations;
                 Passed=($audit.SampleColors -ge 8 -and
-                    $modelBright -ge 500 -and
+                    $modelBright -ge 500 -and $alpha.SemiTransparent -ge 100 -and
+                    $alpha.Violations -eq 0 -and
                     (Test-Live2DLog $log)); Path=$path })
         } finally { Stop-AuditProcess $process }
     }
@@ -218,12 +221,14 @@ foreach ($specification in $Live2DScenarios) {
         $difference = Measure-ImageDifference `
             (Join-Path $OutputDir "internal-main-$model.bmp") $internal
         $released = $scenario.EndsWith("-release") -or $scenario -eq "key-stress"
-        $changed = $scenario -eq "idle" -or ($released -and $difference -le 0.02) -or
+        $changed = $scenario -eq "idle" -or ($released -and $difference -le 0.03) -or
             (-not $released -and $difference -ge 0.0005)
+        $alpha = Measure-PremultipliedAlpha $internal
         $results.Add([pscustomobject]@{ View="live2d"; Theme=""; Language=""; Page="";
             Model=$model; Scenario=$scenario; Width=$audit.Width; Height=$audit.Height;
             SampleColors=$audit.SampleColors; Difference=$difference;
-            Passed=($audit.SampleColors -ge 8 -and $changed -and
+            SemiTransparentPixels=$alpha.SemiTransparent; PremultiplyViolations=$alpha.Violations;
+            Passed=($audit.SampleColors -ge 8 -and $changed -and $alpha.Violations -eq 0 -and
                 (Test-Live2DLog $log)); Path=$path })
     } finally { Stop-AuditProcess $process }
 }

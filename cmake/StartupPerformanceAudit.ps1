@@ -13,6 +13,15 @@ $runRoot = Join-Path $OutputDir ("run-" + [DateTime]::UtcNow.Ticks)
 $dataRoot = Join-Path $runRoot "data"
 [IO.Directory]::CreateDirectory($dataRoot) | Out-Null
 
+function Read-TextRetry([string]$Path) {
+    $deadline = [DateTime]::UtcNow.AddSeconds(2)
+    do {
+        try { return [IO.File]::ReadAllText($Path) }
+        catch [IO.IOException] { Start-Sleep -Milliseconds 10 }
+    } while ([DateTime]::UtcNow -lt $deadline)
+    throw "Timed out reading completed frame audit: $Path"
+}
+
 function Measure-FirstFrame([string]$Name) {
     $frame = Join-Path $dataRoot "frame-alpha.txt"
     $previousWrite = if ([IO.File]::Exists($frame)) {
@@ -35,7 +44,7 @@ function Measure-FirstFrame([string]$Name) {
             Start-Sleep -Milliseconds 10
         }
         $timer.Stop()
-        $frameAudit = [IO.File]::ReadAllText($frame)
+        $frameAudit = Read-TextRetry $frame
         if ($frameAudit -notmatch "opaque=[1-9]" -or $frameAudit -notmatch "gl_error=0") {
             throw "$Name produced an invalid first frame: $frameAudit"
         }

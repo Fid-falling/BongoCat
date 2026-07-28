@@ -58,12 +58,23 @@ function Restore-ProcessEnvironment([hashtable]$Prior) {
     }
 }
 
-function Assert-Frame([string]$DataRoot) {
+function Assert-Frame([string]$DataRoot, [bool]$ExpectMsaa = $true) {
     $frame = [IO.Path]::Combine((Get-IoPath $DataRoot), "frame-alpha.txt")
     if (-not [IO.File]::Exists($frame)) { throw "Missing first-frame audit: $frame" }
     $text = [IO.File]::ReadAllText($frame)
     if ($text -notmatch "opaque=[1-9]" -or $text -notmatch "gl_error=0") {
         throw "First frame is blank or invalid: $text"
+    }
+    $buffers = [regex]::Match($text, "sample_buffers=(\d+)")
+    $samples = [regex]::Match($text, "sample_count=(\d+)")
+    if (-not $buffers.Success -or -not $samples.Success) { throw "Missing MSAA evidence: $text" }
+    $bufferCount = [int]$buffers.Groups[1].Value
+    $sampleCount = [int]$samples.Groups[1].Value
+    if ($ExpectMsaa -and ($bufferCount -lt 1 -or $sampleCount -lt 1)) {
+        throw "Requested MSAA was not active: $text"
+    }
+    if (-not $ExpectMsaa -and ($bufferCount -ne 0 -or $sampleCount -ne 0)) {
+        throw "MSAA fallback still had samples: $text"
     }
 }
 
@@ -90,7 +101,8 @@ function Assert-OnScreen([IntPtr]$Window) {
 
 function Invoke-Smoke {
     param([string]$Name, [string]$DataRoot, [string[]]$Extra = @(),
-        [hashtable]$Environment = @{}, [switch]$Probe, [switch]$ExpectFailure)
+        [hashtable]$Environment = @{}, [switch]$Probe, [switch]$ExpectFailure,
+        [switch]$NoMSAA)
     [IO.Directory]::CreateDirectory((Get-IoPath $DataRoot)) | Out-Null
     $arguments = @("--ci-smoke", "--ci-exit-ms=1800", "`"--data-root=$DataRoot`"") + $Extra
     $prior = Set-ProcessEnvironment $Environment
@@ -128,7 +140,7 @@ function Invoke-Smoke {
     if ([IO.File]::Exists([IO.Path]::Combine($ioRoot, "startup-error.log"))) {
         throw "$Name left a stale startup error"
     }
-    Assert-Frame $DataRoot
+    Assert-Frame $DataRoot (-not $NoMSAA)
     Write-Host "PASS $Name"
     return $log
 }
@@ -173,7 +185,7 @@ Write-Settings $shared $true $true
 $log = Invoke-Smoke "blocked global hooks" $shared `
     -Environment @{BONGO_CAT_NEO_TEST_HOOK_FAILURE="1"}
 if ($log -notmatch "Global input hooks are unavailable") { throw "Hook fallback was not used" }
-$log = Invoke-Smoke "OpenGL fallback" $shared `
+$log = Invoke-Smoke "OpenGL fallback" $shared -NoMSAA `
     -Environment @{BONGO_CAT_NEO_TEST_GL_FALLBACK="1"}
 if ($log -notmatch "transparent=1, MSAA=0") { throw "OpenGL fallback was not used" }
 

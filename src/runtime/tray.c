@@ -101,6 +101,10 @@ BongoCatNeoTray *bongo_cat_neo_tray_create(BongoCatNeoApp *app, BongoCatNeoError
         return NULL;
     }
     SDL_TrayMenu *menu = SDL_CreateTrayMenu(tray->handle);
+    tray->preferences = add(menu, bongo_cat_neo_i18n_get(app->i18n,
+        "composables.useAppMenu.labels.preference", "Preferences"), SDL_TRAYENTRY_BUTTON,
+        on_preferences, tray);
+    add(menu, NULL, 0, NULL, tray);
     tray->visible = add(menu, bongo_cat_neo_i18n_get(app->i18n,
         "composables.useAppMenu.labels.showCat", "Show Bongo Cat Neo"), SDL_TRAYENTRY_CHECKBOX,
         on_visible, tray);
@@ -111,9 +115,6 @@ BongoCatNeoTray *bongo_cat_neo_tray_create(BongoCatNeoApp *app, BongoCatNeoError
         "composables.useAppMenu.labels.alwaysOnTop", "Always on top"), SDL_TRAYENTRY_CHECKBOX,
         on_always_on_top, tray);
     add(menu, NULL, 0, NULL, tray);
-    tray->preferences = add(menu, bongo_cat_neo_i18n_get(app->i18n,
-        "composables.useAppMenu.labels.preference", "Preferences"), SDL_TRAYENTRY_BUTTON,
-        on_preferences, tray);
     tray->exit = add(menu, bongo_cat_neo_i18n_get(app->i18n,
         "composables.useAppMenu.labels.quitApp", "Exit"), SDL_TRAYENTRY_BUTTON, on_exit, tray);
     bongo_cat_neo_platform_set_tray_left_click(tray->handle, on_tray_left_click, tray);
@@ -154,6 +155,10 @@ void bongo_cat_neo_tray_sync(BongoCatNeoTray *tray) {
 bool bongo_cat_neo_tray_self_test(BongoCatNeoTray *tray) {
     if (!tray || !tray->handle || !tray->visible || !tray->pass_through ||
         !tray->always_on_top || !tray->preferences || !tray->exit) return false;
+    int count = 0;
+    const SDL_TrayEntry **entries = SDL_GetTrayEntries(
+        SDL_GetTrayEntryParent(tray->preferences), &count);
+    if (!entries || count < 1 || entries[0] != tray->preferences) return false;
     BongoCatNeoApp *app = tray->app;
     bool visible = app->config.window.visible;
     bool pass_through = app->config.window.pass_through;

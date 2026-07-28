@@ -56,8 +56,12 @@ void bongo_cat_neo_frame_audit(BongoCatNeoApp *app, int width, int height) {
         bongo_cat_neo_path_join(path, sizeof(path), app->data_root, "frame-alpha.txt");
         FILE *file = bongo_cat_neo_file_open(path, "wb");
         if (file) {
-            fprintf(file, "samples=5 transparent=%u opaque=%u gl_error=%u\n",
-                transparent, opaque, (unsigned)glGetError());
+            int sample_buffers = 0, sample_count = 0;
+            SDL_GL_GetAttribute(SDL_GL_MULTISAMPLEBUFFERS, &sample_buffers);
+            SDL_GL_GetAttribute(SDL_GL_MULTISAMPLESAMPLES, &sample_count);
+            fprintf(file, "samples=5 transparent=%u opaque=%u sample_buffers=%d "
+                "sample_count=%d gl_error=%u\n", transparent, opaque,
+                sample_buffers, sample_count, (unsigned)glGetError());
             fclose(file);
         }
     }
