@@ -2,7 +2,9 @@ install(TARGETS bongo_cat_neo
   RUNTIME DESTINATION . COMPONENT Runtime
   BUNDLE DESTINATION . COMPONENT Runtime)
 if(UNIX AND NOT APPLE)
-  install(DIRECTORY resources/assets DESTINATION . COMPONENT Runtime)
+  install(DIRECTORY resources/assets DESTINATION . COMPONENT Runtime
+    PATTERN "logo-mac.png" EXCLUDE PATTERN "ui-icons.png" EXCLUDE
+    PATTERN "ui-symbols-1x.png" EXCLUDE PATTERN "ui-symbols-4x.png" EXCLUDE)
 endif()
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)

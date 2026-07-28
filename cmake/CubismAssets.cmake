@@ -13,6 +13,13 @@ function(bongo_cat_neo_configure_embedded_cubism_assets)
 endfunction()
 
 function(bongo_cat_neo_stage_cubism_assets target)
+  if(APPLE)
+    add_custom_command(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E rm -f
+      "$<TARGET_FILE_DIR:${target}>/assets/logo-mac.png"
+      "$<TARGET_FILE_DIR:${target}>/assets/ui-icons.png"
+      "$<TARGET_FILE_DIR:${target}>/assets/ui-symbols-1x.png"
+      "$<TARGET_FILE_DIR:${target}>/assets/ui-symbols-4x.png")
+  endif()
   if(NOT BONGO_CAT_NEO_CUBISM_ENABLED)
     return()
   endif()

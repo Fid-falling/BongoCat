@@ -58,6 +58,10 @@ static bool collect(const fs::path &root, std::vector<Asset> &assets) {
         Asset asset;
         asset.path = root.filename().generic_u8string() + "/" +
             fs::relative(entry.path(), root).generic_u8string();
+        if (asset.path == "assets/logo-mac.png" ||
+            asset.path == "assets/ui-icons.png" ||
+            asset.path == "assets/ui-symbols-1x.png" ||
+            asset.path == "assets/ui-symbols-4x.png") continue;
         if (asset.path.size() > std::numeric_limits<uint16_t>::max() ||
             !read_file(entry.path(), asset.data)) return false;
         assets.push_back(std::move(asset));

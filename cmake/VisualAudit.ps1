@@ -39,6 +39,7 @@ public static class BongoCatNeoVisualNative {
     [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr handle, IntPtr after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr handle);
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr handle, int command);
+    [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr handle, IntPtr dc, uint flags);
     [DllImport("user32.dll")] public static extern void keybd_event(byte key, byte scan, uint flags, UIntPtr extra);
     [DllImport("user32.dll")] public static extern uint MapVirtualKeyW(uint code, uint mapType);
@@ -93,7 +94,9 @@ function Save-Window([object]$Window, [string]$Path) {
             40, 40, 0, 0, 0x0041)
     }
     [void][BongoCatNeoVisualNative]::SetForegroundWindow($Window.Handle)
+    [void][BongoCatNeoVisualNative]::SetCursorPos(2, 2)
     Start-Sleep -Milliseconds $(if ($Window.Width -gt 700) { 650 } else { 80 })
+    [void][BongoCatNeoVisualNative]::SetCursorPos(2, 2)
     $rect = [BongoCatNeoVisualNative+Rect]::new()
     [void][BongoCatNeoVisualNative]::GetWindowRect($Window.Handle, [ref]$rect)
     $width = $rect.Right - $rect.Left

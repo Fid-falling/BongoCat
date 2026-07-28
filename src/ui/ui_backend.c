@@ -74,8 +74,8 @@ bool bongo_cat_neo_ui_init(BongoCatNeoUIBackend *ui, SDL_Window *window,
     const nk_rune *glyph_ranges, BongoCatNeoError *error) {
     memset(ui, 0, sizeof(*ui));
     ui->window = window;
-    ui->vertex_capacity = 512 * 1024;
-    ui->element_capacity = 128 * 1024;
+    ui->vertex_capacity = 256 * 1024;
+    ui->element_capacity = 96 * 1024;
     ui->vertices = malloc(ui->vertex_capacity);
     ui->elements = malloc(ui->element_capacity);
     if (!ui->vertices || !ui->elements || !nk_init_default(&ui->context, NULL) ||
