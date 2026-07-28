@@ -17,3 +17,10 @@ add_test(NAME preferences-navigation COMMAND powershell.exe -NoProfile
   -Exe $<TARGET_FILE:bongo_cat_neo>
   -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/preferences-navigation-test)
 set_tests_properties(preferences-navigation PROPERTIES TIMEOUT 30 RUN_SERIAL TRUE)
+
+add_test(NAME preferences-slider-drag COMMAND powershell.exe -NoProfile
+  -ExecutionPolicy Bypass -File
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/PreferencesSliderDragAudit.ps1
+  -Exe $<TARGET_FILE:bongo_cat_neo>
+  -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/preferences-slider-drag-test)
+set_tests_properties(preferences-slider-drag PROPERTIES TIMEOUT 30 RUN_SERIAL TRUE)

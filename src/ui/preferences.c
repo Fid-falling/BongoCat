@@ -3,6 +3,7 @@
 #include "bongo_cat_neo/i18n.h"
 #include "bongo_cat_neo/memory.h"
 #include "bongo_cat_neo/platform.h"
+#include "preferences_controls.h"
 #include "preferences_state.h"
 #include "ui_catime.h"
 #include "ui_animation.h"
@@ -164,6 +165,7 @@ void bongo_cat_neo_preferences_close(BongoCatNeoPreferences *value) {
     if (value->input_active) bongo_cat_neo_preferences_input_end(value);
     SDL_StopTextInput(value->window);
     bongo_cat_neo_preferences_model_cache_clear(value->app);
+    bongo_cat_neo_pref_controls_reset(&value->ui.context);
     bongo_cat_neo_ui_animations_reset(&value->ui.context);
     bongo_cat_neo_preferences_assets_clear(value);
     bongo_cat_neo_ui_cursor_destroy(&value->ui); bongo_cat_neo_ui_destroy(&value->ui);
@@ -268,6 +270,8 @@ bool bongo_cat_neo_preferences_event(BongoCatNeoPreferences *value, const SDL_Ev
         value->render_dirty = true; return false;
     }
     if (event_window(event) != SDL_GetWindowID(value->window)) return false;
+    if (event->type == SDL_EVENT_WINDOW_FOCUS_LOST)
+        bongo_cat_neo_pref_controls_reset(&value->ui.context);
     if (value->app->smoke_input_audit && (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
         event->type == SDL_EVENT_MOUSE_BUTTON_UP)) SDL_Log("Preferences mouse %s at %.1f,%.1f",
             event->button.down ? "down" : "up", event->button.x, event->button.y);

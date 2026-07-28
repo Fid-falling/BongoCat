@@ -15,5 +15,6 @@ bool bongo_cat_neo_pref_control_toggle(struct nk_context *context,
 int bongo_cat_neo_pref_control_combo(struct nk_context *context, const char *id,
     const char *const *items, int count, int selected);
 bool bongo_cat_neo_pref_controls_animating(struct nk_context *context);
+void bongo_cat_neo_pref_controls_reset(struct nk_context *context);
 
 #endif

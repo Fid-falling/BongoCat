@@ -15,7 +15,41 @@ typedef struct RepeatState {
     uint64_t next_ns;
 } RepeatState;
 
+typedef struct SliderDragState {
+    struct nk_context *context;
+    char id[64];
+    bool captured;
+} SliderDragState;
+
 static RepeatState repeat_state;
+static SliderDragState slider_drag_state;
+
+static bool slider_drag_active(struct nk_context *context, const char *id) {
+    return slider_drag_state.context == context &&
+        strcmp(slider_drag_state.id, id) == 0;
+}
+
+static void slider_drag_stop(struct nk_context *context) {
+    if (slider_drag_state.context != context) return;
+    if (slider_drag_state.captured) SDL_CaptureMouse(false);
+    memset(&slider_drag_state, 0, sizeof(slider_drag_state));
+}
+
+static bool slider_drag_begin(struct nk_context *context, const char *id,
+    struct nk_rect hit) {
+    bool active = slider_drag_active(context, id);
+    bool pressed = nk_input_is_mouse_click_down_in_rect(&context->input,
+        NK_BUTTON_LEFT, hit, nk_true) != 0;
+    if (!active && pressed) {
+        if (slider_drag_state.context)
+            slider_drag_stop(slider_drag_state.context);
+        slider_drag_state.context = context;
+        snprintf(slider_drag_state.id, sizeof(slider_drag_state.id), "%s", id);
+        slider_drag_state.captured = SDL_CaptureMouse(true);
+        active = true;
+    }
+    return active;
+}
 
 static void centered(struct nk_command_buffer *canvas, struct nk_rect bounds,
     const char *text, const struct nk_user_font *font, struct nk_color color) {
@@ -57,8 +91,18 @@ static int repeat_direction(struct nk_context *context, const char *id,
 }
 
 bool bongo_cat_neo_pref_controls_animating(struct nk_context *context) {
-    return repeat_state.context == context &&
-        nk_input_is_mouse_down(&context->input, NK_BUTTON_LEFT);
+    bool down = nk_input_is_mouse_down(&context->input, NK_BUTTON_LEFT);
+    if (!down && repeat_state.context == context)
+        memset(&repeat_state, 0, sizeof(repeat_state));
+    if (!down) slider_drag_stop(context);
+    return (repeat_state.context == context && down) ||
+        slider_drag_state.context == context;
+}
+
+void bongo_cat_neo_pref_controls_reset(struct nk_context *context) {
+    if (repeat_state.context == context)
+        memset(&repeat_state, 0, sizeof(repeat_state));
+    slider_drag_stop(context);
 }
 
 static double stepper(struct nk_context *context, const char *id,
@@ -159,18 +203,24 @@ bool bongo_cat_neo_pref_control_slider(struct nk_context *context, const char *i
         track.w + 6, bounds.h);
     bool hover = nk_input_is_mouse_hovering_rect(&context->input, hit);
     bool value_hover = nk_input_is_mouse_hovering_rect(&context->input, value_box);
+    bool dragging = slider_drag_begin(context, id, hit);
+    bool mouse_down = nk_input_is_mouse_down(&context->input, NK_BUTTON_LEFT);
     char hover_id[80];
     snprintf(hover_id, sizeof(hover_id), "slider-hover-%s", id);
     float hover_amount = bongo_cat_neo_ui_animate_eased(context, hover_id,
-        hover ? 1.0f : 0.0f, 150, BONGO_CAT_NEO_UI_EASE_STANDARD);
+        hover || (dragging && mouse_down) ? 1.0f : 0.0f, 150,
+        BONGO_CAT_NEO_UI_EASE_STANDARD);
     float before = *value;
-    if (hover && nk_input_is_mouse_down(&context->input, NK_BUTTON_LEFT)) {
-        float ratio = (context->input.mouse.pos.x - track.x) / track.w;
+    if (dragging) {
+        float pointer_x = mouse_down ? context->input.mouse.pos.x :
+            context->input.mouse.buttons[NK_BUTTON_LEFT].clicked_pos.x;
+        float ratio = (pointer_x - track.x) / track.w;
         ratio = NK_CLAMP(0.0f, ratio, 1.0f);
         float raw = minimum + ratio * (maximum - minimum);
         *value = minimum + roundf((raw - minimum) / step) * step;
         *value = NK_CLAMP(minimum, *value, maximum);
     }
+    if (dragging && !mouse_down) slider_drag_stop(context);
     float wheel = context->input.mouse.scroll_delta.y;
     if ((hover || value_hover) && wheel != 0.0f) {
         *value = NK_CLAMP(minimum, *value + (wheel > 0 ? step : -step), maximum);

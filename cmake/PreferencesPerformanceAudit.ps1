@@ -131,7 +131,7 @@ try {
     $activeWatch = [Diagnostics.Stopwatch]::StartNew()
     Move-Pointer $window 833 293
     Start-Sleep -Milliseconds 25
-    Click-Point $window 82 266
+    Click-Point $window 82 283
     Start-Sleep -Milliseconds 400
     $process.Refresh(); $activeCpu =
         ($process.TotalProcessorTime - $activeStart).TotalMilliseconds
