@@ -243,6 +243,17 @@ static bool reload_language(BongoCatNeoPreferences *value) {
     return true;
 }
 
+static void record_frame(BongoCatNeoPreferences *value) {
+    if (!value->app->smoke_frame_series) return;
+    char path[BONGO_CAT_NEO_PATH_CAP];
+    bongo_cat_neo_path_join(path, sizeof(path), value->app->data_root,
+        "preferences-frames.csv");
+    FILE *file = bongo_cat_neo_file_open(path, "ab");
+    if (!file) return;
+    fprintf(file, "%llu\n", (unsigned long long)SDL_GetTicksNS());
+    fclose(file);
+}
+
 void bongo_cat_neo_preferences_render(BongoCatNeoPreferences *value) {
     if (!value || !value->window) return;
     uint64_t now = SDL_GetTicksNS();
@@ -251,6 +262,7 @@ void bongo_cat_neo_preferences_render(BongoCatNeoPreferences *value) {
     value->last_render_ns = now;
     bongo_cat_neo_preferences_input_end(value);
     SDL_GL_MakeCurrent(value->window, value->gl_context);
+    if (!value->owns_gl_context) SDL_GL_SetSwapInterval(0);
     bongo_cat_neo_preferences_apply_theme(value);
     int width, height;
     SDL_GetWindowSize(value->window, &width, &height);
@@ -263,8 +275,10 @@ void bongo_cat_neo_preferences_render(BongoCatNeoPreferences *value) {
     glClear(GL_COLOR_BUFFER_BIT);
     bongo_cat_neo_ui_render(&value->ui);
     SDL_GL_SwapWindow(value->window);
+    record_frame(value);
     write_smoke_frame(value);
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
+    if (!value->owns_gl_context) SDL_GL_SetSwapInterval(1);
     bongo_cat_neo_ui_cursor_apply(&value->ui);
     if (close_requested) {
         bongo_cat_neo_preferences_close(value);

@@ -198,8 +198,11 @@ void bongo_cat_neo_ui_tabs(struct nk_context *context, const char *const *labels
         struct nk_rect bounds;
         nk_layout_row_dynamic(context, 68, 1);
         if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) continue;
+        struct nk_rect hit = nk_rect(bounds.x + 10, bounds.y + 1,
+            bounds.w - 20, bounds.h - 1);
+        hit.y += 16.0f + i * 8.0f;
         bool hover = interactive &&
-            nk_input_is_mouse_hovering_rect(&context->input, bounds);
+            nk_input_is_mouse_hovering_rect(&context->input, hit);
         bool selected = *active == i;
         char selection_id[32], hover_id[32];
         snprintf(selection_id, sizeof(selection_id), "sidebar-active-%d", i);
@@ -208,9 +211,8 @@ void bongo_cat_neo_ui_tabs(struct nk_context *context, const char *const *labels
             selected ? 1.0f : 0.0f, 200.0f, BONGO_CAT_NEO_UI_EASE_SWIFT);
         float hover_weight = bongo_cat_neo_ui_animate_eased(context, hover_id,
             hover ? 1.0f : 0.0f, 200.0f, BONGO_CAT_NEO_UI_EASE_SWIFT);
-        struct nk_rect tile = nk_rect(bounds.x + 10, bounds.y + 1,
-            bounds.w - 20, bounds.h - 1);
-        tile.y += 16.0f + i * 8.0f - hover_weight;
+        struct nk_rect tile = hit;
+        tile.y -= hover_weight;
         if (hover) nk_fill_rect(canvas, tile, 8, p.hover);
         if (selected && p.effects) bongo_cat_neo_ui_paint_shadow(context,
             tile, 8, 0, 5, 14, 0,
@@ -229,10 +231,10 @@ void bongo_cat_neo_ui_tabs(struct nk_context *context, const char *const *labels
             nav_label(canvas, nk_rect(tile.x, tile.y + 31, tile.w, 36),
                 labels[i], font, color);
         else if (hover) nk_tooltip(context, labels[i]);
-        if (hover) bongo_cat_neo_ui_cursor_hover_rect(context, tile,
+        if (hover) bongo_cat_neo_ui_cursor_hover_rect(context, hit,
             BONGO_CAT_NEO_UI_CURSOR_POINTER);
         if (hover && nk_input_is_mouse_click_in_rect(&context->input,
-            NK_BUTTON_LEFT, tile)) {
+            NK_BUTTON_LEFT, hit)) {
             *active = i;
         }
     }

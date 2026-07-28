@@ -127,11 +127,13 @@ static bool open_window(BongoCatNeoPreferences *value) {
     SDL_GetWindowSizeInPixels(value->window, &pixel_width, &pixel_height);
     SDL_Log("Preferences GL ready: dedicated=%d pixels=%dx%d",
         value->owns_gl_context, pixel_width, pixel_height);
-    SDL_GL_SetSwapInterval(1);
+    if (!SDL_GL_SetSwapInterval(0)) SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
+        "Preferences VSync disable unavailable: %s", SDL_GetError());
     SDL_StartTextInput(value->window);
     value->render_dirty = true;
     bongo_cat_neo_preferences_live_resize_install(value);
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
+    if (!value->owns_gl_context) SDL_GL_SetSwapInterval(1);
     return true;
 }
 BongoCatNeoPreferences *bongo_cat_neo_preferences_create(BongoCatNeoApp *app) {
