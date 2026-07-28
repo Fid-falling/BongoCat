@@ -9,12 +9,10 @@
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
-
 static const char *tr(BongoCatNeoPreferences *value, const char *key,
     const char *fallback) {
     return bongo_cat_neo_i18n_get(value->app->i18n, key, fallback);
 }
-
 static float width(const struct nk_user_font *font, const char *value) {
     return font->width(font->userdata, font->height, value, nk_strlen(value));
 }
@@ -103,7 +101,6 @@ static void logo(BongoCatNeoPreferences *value, struct nk_context *context,
     link_cursor(context, bounds);
     if (hit(context, bounds)) open_url("https://bongocatneo.com");
 }
-
 static void star_button(BongoCatNeoPreferences *value,
     struct nk_context *context, struct nk_command_buffer *canvas,
     struct nk_rect bounds, BongoCatNeoUIPalette p) {
@@ -128,21 +125,30 @@ static void star_button(BongoCatNeoPreferences *value,
     if (hit(context, bounds))
         open_url("https://github.com/vladelaina/BongoCatNeo");
 }
-
-static void hero_title(BongoCatNeoPreferences *value,
+static void hero_title(BongoCatNeoPreferences *value, struct nk_context *context,
     struct nk_command_buffer *canvas, struct nk_rect bounds,
     BongoCatNeoUIPalette p) {
     const char *title = "Bongo Cat Neo";
-    const char *by = "by vladelaina";
+    const char *by = "by ", *developer = "vladelaina";
     float gap = 8, title_width = width(value->ui.hero_font, title);
-    float by_width = width(value->ui.caption_font, by);
-    float x = bounds.x + (bounds.w - title_width - by_width - gap) * .5f;
+    float by_width = width(value->ui.caption_font, by),
+        developer_width = width(value->ui.caption_font, developer);
+    float x = bounds.x + (bounds.w - title_width - by_width -
+        developer_width - gap) * .5f;
     text(canvas, nk_rect(x, bounds.y, title_width + 1, 32), title,
         value->ui.hero_font, p.text);
     text(canvas, nk_rect(x + title_width + gap, bounds.y + 8,
-        by_width + 1, 22), by, value->ui.caption_font, p.accent);
+        by_width + 1, 22), by, value->ui.caption_font, p.muted);
+    struct nk_rect link = nk_rect(x + title_width + gap + by_width,
+        bounds.y + 8, developer_width + 1, 22);
+    bool hover = nk_input_is_mouse_hovering_rect(&context->input, link);
+    float amount = bongo_cat_neo_ui_animate_eased(context, "support-author-hover",
+        hover ? 1.0f : 0.0f, 200, BONGO_CAT_NEO_UI_EASE_STANDARD);
+    text(canvas, link, developer, value->ui.caption_font,
+        bongo_cat_neo_ui_color_mix(p.accent, p.pink, amount));
+    link_cursor(context, link); if (hit(context, link))
+        open_url("http://vladelaina.com");
 }
-
 static void footer(BongoCatNeoPreferences *value, struct nk_context *context,
     struct nk_command_buffer *canvas, struct nk_rect bounds,
     BongoCatNeoUIPalette p) {
@@ -190,7 +196,12 @@ static void footer(BongoCatNeoPreferences *value, struct nk_context *context,
     }
     struct nk_rect feedback_link = nk_rect(actions_x + update_width + 14,
         actions_y, feedback_width, 36);
-    centered(canvas, feedback_link, feedback, value->ui.caption_font, p.accent);
+    bool feedback_hover = nk_input_is_mouse_hovering_rect(&context->input, feedback_link);
+    float feedback_amount = bongo_cat_neo_ui_animate_eased(context,
+        "support-feedback-hover", feedback_hover ? 1.0f : 0.0f, 200,
+        BONGO_CAT_NEO_UI_EASE_STANDARD);
+    centered(canvas, feedback_link, feedback, value->ui.caption_font,
+        bongo_cat_neo_ui_color_mix(p.accent, p.pink, feedback_amount));
     link_cursor(context, feedback_link);
     if (hit(context, feedback_link))
         open_url("https://github.com/vladelaina/BongoCatNeo/issues");
@@ -215,7 +226,7 @@ static void hero(BongoCatNeoPreferences *value, struct nk_context *context) {
         nk_rect(bounds.x + bounds.w - 188, bounds.y + 6, 177, 46), p);
     logo(value, context, canvas, nk_rect(bounds.x + (bounds.w - 144) * .5f + 3,
         bounds.y + 18, 144, 144), p);
-    hero_title(value, canvas, nk_rect(bounds.x + 3, bounds.y + 178,
+    hero_title(value, context, canvas, nk_rect(bounds.x + 3, bounds.y + 178,
         bounds.w, 36), p);
     centered_wrapped(canvas, nk_rect(bounds.x + 36, bounds.y + 215,
         bounds.w - 72, 40),

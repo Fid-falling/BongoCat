@@ -80,13 +80,15 @@ static void push(LinuxX11State *state, BongoCatNeoInputKind kind,
     BongoCatNeoInputEvent input = {.kind = kind, .timestamp_ms = SDL_GetTicks(), .value = value};
     snprintf(input.name, sizeof(input.name), "%s", name);
     if (bongo_cat_neo_input_push(state->platform->input, &input)) {
-        SDL_Event wake = {.type = SDL_EVENT_USER}; SDL_PushEvent(&wake);
+        SDL_Event wake = {0};
+        wake.type = state->platform->wake_event_type; SDL_PushEvent(&wake);
     }
 }
 
 static void wake_mouse(LinuxX11State *state, double x, double y) {
     if (bongo_cat_neo_input_mouse(state->platform->input, x, y)) {
-        SDL_Event wake = {.type = SDL_EVENT_USER};
+        SDL_Event wake = {0};
+        wake.type = state->platform->wake_event_type;
         SDL_PushEvent(&wake);
     }
 }

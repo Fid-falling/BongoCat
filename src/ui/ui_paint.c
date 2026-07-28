@@ -1,5 +1,6 @@
 #include "ui_paint.h"
 #include "ui_backend.h"
+#include "ui_paint_border.h"
 
 #include <SDL3/SDL_opengl.h>
 #include <math.h>
@@ -8,7 +9,7 @@
 #include <string.h>
 
 enum { PAINT_GRADIENT = 1, PAINT_RADIAL = 2, PAINT_SHADOW = 3,
-    PAINT_RADIAL_CIRCLE = 4 };
+    PAINT_RADIAL_CIRCLE = 4, PAINT_DASHED_ROUNDED = 5 };
 
 typedef struct PaintKey {
     int kind, width, height, radius;
@@ -115,11 +116,15 @@ static bool upload(PaintTexture *item, const unsigned char *pixels) {
     return item->texture != 0;
 }
 
+static void draw_texture_tinted(struct nk_context *context,
+    struct nk_rect bounds, PaintTexture *item, struct nk_color tint) {
+    struct nk_image image = nk_image_id((int)item->texture);
+    nk_draw_image(nk_window_get_canvas(context), bounds, &image, tint);
+}
+
 static void draw_texture(struct nk_context *context, struct nk_rect bounds,
     PaintTexture *item) {
-    struct nk_image image = nk_image_id((int)item->texture);
-    nk_draw_image(nk_window_get_canvas(context), bounds, &image,
-        nk_rgb(255, 255, 255));
+    draw_texture_tinted(context, bounds, item, nk_rgb(255, 255, 255));
 }
 
 void bongo_cat_neo_ui_paint_gradient(struct nk_context *context,
@@ -204,6 +209,7 @@ void bongo_cat_neo_ui_paint_shadow(struct nk_context *context,
     if (!texture_dimensions(context, target, &width, &height, &sx, &sy,
         &backend)) return;
     float scale = (sx + sy) * .5f;
+    struct nk_color tint = color; color = nk_rgb(255, 255, 255);
     PaintKey key = {PAINT_SHADOW, width, height,
         (int)lroundf(rounding * scale), (int)lroundf(blur * scale),
         (int)lroundf(spread * scale), pack(color), 0};
@@ -229,7 +235,36 @@ void bongo_cat_neo_ui_paint_shadow(struct nk_context *context,
         }
         if (!upload(item, pixels)) { free(pixels); return; } free(pixels);
     }
-    draw_texture(context, target, item);
+    draw_texture_tinted(context, target, item, tint);
+}
+
+void bongo_cat_neo_ui_paint_dashed_rounded(struct nk_context *context,
+    struct nk_rect bounds, float rounding, float thickness, float dash,
+    float gap, struct nk_color color) {
+    int width, height; float sx, sy; BongoCatNeoUIBackend *backend;
+    if (!texture_dimensions(context, bounds, &width, &height, &sx, &sy,
+        &backend)) {
+        nk_stroke_rect(nk_window_get_canvas(context), bounds, rounding,
+            thickness, color); return;
+    }
+    float scale = (sx + sy) * .5f;
+    int gap_and_thickness = NK_CLAMP(1, (int)lroundf(gap * scale), 32767) << 16 |
+        NK_CLAMP(1, (int)lroundf(thickness * scale), 65535);
+    PaintKey key = {PAINT_DASHED_ROUNDED, width, height,
+        (int)lroundf(rounding * scale),
+        NK_MAX(1, (int)lroundf(dash * scale)), gap_and_thickness,
+        pack(color), 0};
+    PaintTexture *item = cached(backend, &key); if (!item) return;
+    if (!item->texture) {
+        unsigned char *pixels = malloc((size_t)width * height * 4);
+        if (!pixels) return;
+        bongo_cat_neo_ui_raster_dashed_rounded(pixels, width, height,
+            (float)key.radius, (float)(key.second_parameter & 65535),
+            (float)key.first_parameter, (float)(key.second_parameter >> 16),
+            color);
+        if (!upload(item, pixels)) { free(pixels); return; } free(pixels);
+    }
+    draw_texture(context, bounds, item);
 }
 
 void bongo_cat_neo_ui_paint_destroy(BongoCatNeoUIBackend *backend) {

@@ -133,7 +133,6 @@ static bool open_window(BongoCatNeoPreferences *value) {
     value->render_dirty = true;
     bongo_cat_neo_preferences_live_resize_install(value);
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
-    if (!value->owns_gl_context) SDL_GL_SetSwapInterval(1);
     return true;
 }
 BongoCatNeoPreferences *bongo_cat_neo_preferences_create(BongoCatNeoApp *app) {
@@ -177,6 +176,7 @@ void bongo_cat_neo_preferences_close(BongoCatNeoPreferences *value) {
     value->native_drag = false;
     value->chrome_dragging = false;
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
+    SDL_GL_SetSwapInterval(1);
     bongo_cat_neo_platform_trim_memory();
     bongo_cat_neo_config_store_flush(value->app);
 }

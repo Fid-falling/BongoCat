@@ -78,6 +78,7 @@ function Move-Pointer([IntPtr]$Window, [int]$X, [int]$Y) {
 
 function Click-Point([IntPtr]$Window, [int]$X, [int]$Y) {
     Move-Pointer $Window $X $Y
+    Start-Sleep -Milliseconds 75
     [BongoCatNeoPreferencePerformanceNative]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 35
     [BongoCatNeoPreferencePerformanceNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
@@ -114,7 +115,8 @@ function Measure-Difference([string]$First, [string]$Second) {
 $env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
 $env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "preferences-performance-audit-$PID"
 $arguments = @("--autostart", "--ci-smoke", "--ci-preferences", "--ci-preference-page=0",
-    "--ci-language=zh-CN", "--ci-theme=light", "--ci-exit-ms=9000",
+    "--ci-language=zh-CN", "--ci-theme=light", "--ci-ignore-global-input",
+    "--ci-exit-ms=9000",
     "--data-root=$data")
 $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
     -WorkingDirectory (Split-Path $Exe) -PassThru

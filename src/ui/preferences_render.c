@@ -262,7 +262,6 @@ void bongo_cat_neo_preferences_render(BongoCatNeoPreferences *value) {
     value->last_render_ns = now;
     bongo_cat_neo_preferences_input_end(value);
     SDL_GL_MakeCurrent(value->window, value->gl_context);
-    if (!value->owns_gl_context) SDL_GL_SetSwapInterval(0);
     bongo_cat_neo_preferences_apply_theme(value);
     int width, height;
     SDL_GetWindowSize(value->window, &width, &height);
@@ -278,7 +277,6 @@ void bongo_cat_neo_preferences_render(BongoCatNeoPreferences *value) {
     record_frame(value);
     write_smoke_frame(value);
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
-    if (!value->owns_gl_context) SDL_GL_SetSwapInterval(1);
     bongo_cat_neo_ui_cursor_apply(&value->ui);
     if (close_requested) {
         bongo_cat_neo_preferences_close(value);

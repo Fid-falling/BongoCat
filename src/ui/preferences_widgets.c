@@ -193,7 +193,7 @@ int bongo_cat_neo_pref_combo(struct nk_context *context, const char *id,
     int count, int selected) {
     int lines = detail_lines(context, detail); FormStyle saved;
     if (!form_begin(context, id, lines, &saved)) return selected;
-    form_title_sized(context, title, 156.0f);
+    form_title_sized(context, title, 176.0f);
     selected = bongo_cat_neo_pref_control_combo(context, id,
         items, count, selected);
     nk_layout_row_end(context); description(context, detail, lines);

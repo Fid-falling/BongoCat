@@ -8,7 +8,8 @@
 typedef enum BongoCatNeoUICursor {
     BONGO_CAT_NEO_UI_CURSOR_DEFAULT,
     BONGO_CAT_NEO_UI_CURSOR_POINTER,
-    BONGO_CAT_NEO_UI_CURSOR_TEXT
+    BONGO_CAT_NEO_UI_CURSOR_TEXT,
+    BONGO_CAT_NEO_UI_CURSOR_RESIZE_EW
 } BongoCatNeoUICursor;
 
 typedef struct BongoCatNeoUIBackend {
@@ -52,6 +53,7 @@ typedef struct BongoCatNeoUIBackend {
     SDL_Cursor *default_cursor;
     SDL_Cursor *pointer_cursor;
     SDL_Cursor *text_cursor;
+    SDL_Cursor *resize_ew_cursor;
     BongoCatNeoUICursor requested_cursor;
 } BongoCatNeoUIBackend;
 

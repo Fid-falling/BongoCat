@@ -59,21 +59,6 @@ static void text(struct nk_context *context, struct nk_command_buffer *canvas,
         nk_rgba(0, 0, 0, 0), color);
 }
 
-static void dashed_rect(struct nk_command_buffer *canvas, struct nk_rect r,
-    struct nk_color color) {
-    const float dash = 5.0f, gap = 5.0f;
-    for (float x = r.x + 14; x < r.x + r.w - 10; x += dash + gap) {
-        float end = NK_MIN(x + dash, r.x + r.w - 10);
-        nk_stroke_line(canvas, x, r.y, end, r.y, 2, color);
-        nk_stroke_line(canvas, x, r.y + r.h, end, r.y + r.h, 2, color);
-    }
-    for (float y = r.y + 14; y < r.y + r.h - 10; y += dash + gap) {
-        float end = NK_MIN(y + dash, r.y + r.h - 10);
-        nk_stroke_line(canvas, r.x, y, r.x, end, 2, color);
-        nk_stroke_line(canvas, r.x + r.w, y, r.x + r.w, end, 2, color);
-    }
-}
-
 static bool import_card(BongoCatNeoPreferences *value,
     struct nk_context *context) {
     struct nk_rect bounds;
@@ -89,7 +74,8 @@ static bool import_card(BongoCatNeoPreferences *value,
     if (hover && p.effects) bongo_cat_neo_ui_paint_shadow(context, bounds, 14,
         0, 8, 24, 0, nk_rgba(p.pink.r, p.pink.g, p.pink.b, 89));
     nk_fill_rect(canvas, bounds, 14, hover ? p.hover_pink : p.hover);
-    dashed_rect(canvas, bounds, hover ? p.pink : p.accent);
+    bongo_cat_neo_ui_paint_dashed_rounded(context, bounds, 14, 2, 5, 5,
+        hover ? p.pink : p.accent);
     float cx = bounds.x + bounds.w * .5f, cy = bounds.y + 94;
     bongo_cat_neo_preferences_icon_draw(value, canvas,
         BONGO_CAT_NEO_UI_ICON_UPLOAD, nk_rect(cx - 20, cy - 20, 40, 40), p.pink);
@@ -111,6 +97,12 @@ static void action_icon(BongoCatNeoPreferences *value,
     struct nk_color color) {
     bongo_cat_neo_preferences_icon_draw(value, canvas, icon,
         nk_rect(r.x + (r.w - 18) * .5f, r.y + (r.h - 18) * .5f, 18, 18), color);
+}
+
+static void select_model(BongoCatNeoPreferences *value,
+    const BongoCatNeoModelEntry *entry) {
+    if (bongo_cat_neo_app_select_model(value->app, entry->id))
+        bongo_cat_neo_preferences_invalidate(value);
 }
 
 static void model_card(BongoCatNeoPreferences *value, struct nk_context *context,
@@ -198,14 +190,14 @@ static void model_card(BongoCatNeoPreferences *value, struct nk_context *context
         NK_BUTTON_LEFT, first)) {
         if (selected && app->config.model.behavior)
             bongo_cat_neo_preferences_behavior_dialog_open(value);
-        else bongo_cat_neo_app_select_model(app, entry->id);
+        else select_model(value, entry);
     } else if (second_hover && nk_input_is_mouse_click_in_rect(&context->input,
-        NK_BUTTON_LEFT, second)) bongo_cat_neo_app_select_model(app, entry->id);
+        NK_BUTTON_LEFT, second)) select_model(value, entry);
     else if (third_hover && nk_input_is_mouse_click_in_rect(&context->input,
         NK_BUTTON_LEFT, third))
         bongo_cat_neo_preferences_remove_dialog_open(app, entry->id);
     else if (hover && nk_input_is_mouse_click_in_rect(&context->input,
-        NK_BUTTON_LEFT, bounds)) bongo_cat_neo_app_select_model(app, entry->id);
+        NK_BUTTON_LEFT, bounds)) select_model(value, entry);
 }
 
 static bool is_builtin(const char *id) {

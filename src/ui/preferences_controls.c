@@ -27,11 +27,6 @@ static void centered(struct nk_command_buffer *canvas, struct nk_rect bounds,
         nk_rgba(0, 0, 0, 0), color);
 }
 
-static bool clicked(struct nk_context *context, struct nk_rect bounds) {
-    return nk_input_is_mouse_click_in_rect(&context->input,
-        NK_BUTTON_LEFT, bounds) != 0;
-}
-
 static int repeat_direction(struct nk_context *context, const char *id,
     struct nk_rect minus, struct nk_rect plus) {
     bool down = nk_input_is_mouse_down(&context->input, NK_BUTTON_LEFT);
@@ -187,108 +182,20 @@ bool bongo_cat_neo_pref_control_slider(struct nk_context *context, const char *i
         3, p.accent);
     float thumb_x = track.x + track.w * ratio;
     float thumb_width = 4.0f + 4.0f * hover_amount;
+    float thumb_rounding = thumb_width * .5f;
     struct nk_rect thumb = nk_rect(thumb_x - thumb_width * .5f,
         track.y - 9, thumb_width, 24);
-    if (p.effects) bongo_cat_neo_ui_paint_shadow(context, thumb, 3,
+    if (p.effects) bongo_cat_neo_ui_paint_shadow(context, thumb, thumb_rounding,
         0, 1, 4.0f + 3.0f * hover_amount, 0,
         nk_rgba(p.accent.r, p.accent.g, p.accent.b, 89));
-    nk_fill_rect(canvas, thumb, 3, p.accent);
+    nk_fill_rect(canvas, thumb, thumb_rounding, p.accent);
     nk_fill_rect(canvas, value_box, 8, p.field);
     nk_stroke_rect(canvas, value_box, 8, 1, p.border_subtle);
     char number[24]; snprintf(number, sizeof(number), "%.0f%%", *value);
     centered(canvas, value_box, number, bongo_cat_neo_ui_body_font(context), p.text);
     if (hover || value_hover) bongo_cat_neo_ui_cursor_hover_rect(context,
         hover ? hit : value_box,
+        hover ? BONGO_CAT_NEO_UI_CURSOR_RESIZE_EW :
         BONGO_CAT_NEO_UI_CURSOR_POINTER);
     return before != *value;
-}
-
-static void combo_chevron(struct nk_command_buffer *canvas,
-    struct nk_rect bounds, struct nk_color color, float open) {
-    float x = bounds.x + bounds.w - 24, y = bounds.y + bounds.h * .5f;
-    float angle = 3.14159265f * open, cosine = cosf(angle), sine = sinf(angle);
-    float ax = -5 * cosine + 3 * sine, ay = -5 * sine - 3 * cosine;
-    float bx = -2 * sine, by = 2 * cosine;
-    float cx = 5 * cosine + 3 * sine, cy = 5 * sine - 3 * cosine;
-    nk_stroke_line(canvas, x + ax, y + ay, x + bx, y + by, 2, color);
-    nk_stroke_line(canvas, x + bx, y + by, x + cx, y + cy, 2, color);
-}
-
-static void combo_item(struct nk_context *context, struct nk_rect bounds,
-    const char *label, bool selected, bool hover, BongoCatNeoUIPalette p) {
-    struct nk_command_buffer *canvas = nk_window_get_canvas(context);
-    struct nk_rect selection = nk_rect(bounds.x + 6, bounds.y + 3,
-        bounds.w - 12, bounds.h - 6);
-    if (selected || hover) nk_fill_rect(canvas, selection, 9,
-        selected ? p.selection : p.field);
-    const struct nk_user_font *font = bongo_cat_neo_ui_body_font(context);
-    struct nk_rect text = nk_rect(bounds.x + 12,
-        bounds.y + (bounds.h - font->height) * .5f, bounds.w - 48, font->height);
-    nk_draw_text(canvas, text, label, nk_strlen(label), font,
-        nk_rgba(0, 0, 0, 0), selected ? p.accent : p.text);
-    if (selected) {
-        float x = bounds.x + bounds.w - 24, y = bounds.y + bounds.h * .5f;
-        nk_stroke_line(canvas, x - 5, y, x - 1, y + 4, 2, p.accent);
-        nk_stroke_line(canvas, x - 1, y + 4, x + 7, y - 5, 2, p.accent);
-    }
-}
-
-int bongo_cat_neo_pref_control_combo(struct nk_context *context, const char *id,
-    const char *const *items, int count, int selected) {
-    if (count <= 0) return selected;
-    selected = NK_CLAMP(0, selected, count - 1);
-    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
-    struct nk_rect bounds = nk_widget_bounds(context);
-    struct nk_command_buffer *parent = nk_window_get_canvas(context);
-    struct nk_style_combo saved_combo = context->style.combo;
-    struct nk_style_window saved_window = context->style.window;
-    context->style.combo.normal = nk_style_item_color(p.field);
-    context->style.combo.hover = nk_style_item_color(p.hover);
-    context->style.combo.active = nk_style_item_color(p.selection);
-    context->style.combo.border_color = p.border_subtle;
-    context->style.combo.label_normal = p.text;
-    context->style.combo.label_hover = p.text;
-    context->style.combo.label_active = p.accent;
-    context->style.combo.sym_normal = context->style.combo.sym_hover =
-        context->style.combo.sym_active = NK_SYMBOL_NONE;
-    context->style.window.fixed_background = nk_style_item_color(p.surface);
-    context->style.window.background = p.surface;
-    context->style.window.border_color = p.border;
-    context->style.window.border = 1;
-    context->style.window.rounding = 12;
-    context->style.window.padding = nk_vec2(8, 8);
-    bool open = nk_combo_begin_label(context, items[selected],
-        nk_vec2(bounds.w, NK_MIN(236.0f, 16.0f + count * 38.0f)));
-    bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
-    char hover_id[80], open_id[80];
-    snprintf(hover_id, sizeof(hover_id), "combo-hover-%s", id);
-    snprintf(open_id, sizeof(open_id), "combo-open-%s", id);
-    float hover_amount = bongo_cat_neo_ui_animate_eased(context, hover_id,
-        open || hover ? 1.0f : 0.0f, 200, BONGO_CAT_NEO_UI_EASE_STANDARD);
-    float open_amount = bongo_cat_neo_ui_animate_eased(context, open_id,
-        open ? 1.0f : 0.0f, 160, BONGO_CAT_NEO_UI_EASE_STANDARD);
-    nk_stroke_rect(parent, bounds, 10, 1.0f,
-        bongo_cat_neo_ui_color_mix(p.border_subtle, p.accent, hover_amount));
-    combo_chevron(parent, bounds,
-        bongo_cat_neo_ui_color_mix(p.muted, p.accent, hover_amount), open_amount);
-    if (hover) bongo_cat_neo_ui_cursor_hover_rect(context, bounds,
-        BONGO_CAT_NEO_UI_CURSOR_POINTER);
-    if (open) {
-        nk_layout_row_dynamic(context, 38, 1);
-        for (int i = 0; i < count; ++i) {
-            struct nk_rect item;
-            if (nk_widget(&item, context) == NK_WIDGET_INVALID) continue;
-            bool item_hover = nk_input_is_mouse_hovering_rect(&context->input, item);
-            combo_item(context, item, items[i], i == selected, item_hover, p);
-            if (item_hover) bongo_cat_neo_ui_cursor_hover_rect(context, item,
-                BONGO_CAT_NEO_UI_CURSOR_POINTER);
-            if (item_hover && clicked(context, item)) {
-                selected = i; nk_combo_close(context);
-            }
-        }
-        nk_combo_end(context);
-    }
-    context->style.combo = saved_combo;
-    context->style.window = saved_window;
-    return selected;
 }

@@ -21,6 +21,9 @@ void bongo_cat_neo_ui_paint_radial_circle(struct nk_context *context,
 void bongo_cat_neo_ui_paint_shadow(struct nk_context *context,
     struct nk_rect bounds, float rounding, float offset_x, float offset_y,
     float blur, float spread, struct nk_color color);
+void bongo_cat_neo_ui_paint_dashed_rounded(struct nk_context *context,
+    struct nk_rect bounds, float rounding, float thickness, float dash,
+    float gap, struct nk_color color);
 void bongo_cat_neo_ui_paint_destroy(struct BongoCatNeoUIBackend *backend);
 
 #endif

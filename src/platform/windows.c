@@ -26,7 +26,10 @@ typedef struct WindowsState {
 
 static WindowsState *global_state;
 static void wake_main_thread(void) {
-    SDL_Event wake = {.type = SDL_EVENT_USER};
+    WindowsState *state = global_state;
+    if (!state || !state->platform) return;
+    SDL_Event wake = {0};
+    wake.type = state->platform->wake_event_type;
     SDL_PushEvent(&wake);
 }
 static HWND native_window(BongoCatNeoPlatform *platform) {
@@ -121,6 +124,12 @@ BongoCatNeoResult bongo_cat_neo_platform_init(BongoCatNeoPlatform *platform, SDL
     memset(platform, 0, sizeof(*platform));
     platform->window = window;
     platform->input = input;
+    platform->wake_event_type = SDL_RegisterEvents(1);
+    if (platform->wake_event_type == (Uint32)-1) {
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM,
+            "Cannot reserve the Windows input wake event");
+        return BONGO_CAT_NEO_ERROR_PLATFORM;
+    }
     WindowsState *state = calloc(1, sizeof(*state));
     if (!state) {
         bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_MEMORY,

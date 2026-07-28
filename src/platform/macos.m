@@ -87,10 +87,15 @@ static void observe_instance(void) {
 }
 BongoCatNeoResult bongo_cat_neo_platform_init(BongoCatNeoPlatform *platform, SDL_Window *window,
     BongoCatNeoInputState *input, BongoCatNeoError *error) {
-    (void)error;
     memset(platform, 0, sizeof(*platform));
     platform->window = window;
     platform->input = input;
+    platform->wake_event_type = SDL_RegisterEvents(1);
+    if (platform->wake_event_type == (Uint32)-1) {
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM,
+            "Cannot reserve the macOS input wake event");
+        return BONGO_CAT_NEO_ERROR_PLATFORM;
+    }
     active_platform = platform;
     [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
     BongoCatNeoError input_error = {0};

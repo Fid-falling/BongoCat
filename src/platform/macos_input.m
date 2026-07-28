@@ -28,7 +28,8 @@ static void push(MacInputState *state, BongoCatNeoInputKind kind,
     BongoCatNeoInputEvent input = {.kind = kind, .timestamp_ms = SDL_GetTicks(), .value = value};
     snprintf(input.name, sizeof(input.name), "%s", name);
     if (bongo_cat_neo_input_push(state->platform->input, &input)) {
-        SDL_Event wake = {.type = SDL_EVENT_USER};
+        SDL_Event wake = {0};
+        wake.type = state->platform->wake_event_type;
         SDL_PushEvent(&wake);
     }
 }
@@ -55,7 +56,8 @@ static CGEventRef event_tap(CGEventTapProxy proxy, CGEventType type,
         type == kCGEventRightMouseDragged || type == kCGEventOtherMouseDragged) {
         CGPoint point = CGEventGetLocation(event);
         if (bongo_cat_neo_input_mouse(state->platform->input, point.x, point.y)) {
-            SDL_Event wake = {.type = SDL_EVENT_USER};
+            SDL_Event wake = {0};
+            wake.type = state->platform->wake_event_type;
             SDL_PushEvent(&wake);
         }
         return event;

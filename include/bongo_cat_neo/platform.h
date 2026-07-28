@@ -4,12 +4,15 @@
 #include "bongo_cat_neo/config.h"
 #include "bongo_cat_neo/input.h"
 
+#include <stdint.h>
+
 typedef struct SDL_Window SDL_Window;
 
 typedef struct BongoCatNeoPlatform {
     SDL_Window *window;
     BongoCatNeoInputState *input;
     void *native;
+    uint32_t wake_event_type;
 } BongoCatNeoPlatform;
 
 typedef enum BongoCatNeoMenuAction {

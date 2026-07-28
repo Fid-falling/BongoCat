@@ -9,6 +9,8 @@ typedef struct BongoCatNeoImportJob {
     char **paths;
 } BongoCatNeoImportJob;
 
+enum { BONGO_CAT_NEO_IMPORT_EVENT_CODE = 0x42434e49 };
+
 struct BongoCatNeoImportDialog {
     SDL_Mutex *mutex;
     Uint32 event_type;
@@ -58,7 +60,10 @@ void bongo_cat_neo_preferences_import_destroy(BongoCatNeoImportDialog *dialog) {
     dialog->open = false;
     SDL_Event event;
     while (SDL_PeepEvents(&event, 1, SDL_GETEVENT, dialog->event_type,
-        dialog->event_type) > 0) free_job((BongoCatNeoImportJob *)event.user.data1);
+        dialog->event_type) > 0)
+        if (event.user.code == BONGO_CAT_NEO_IMPORT_EVENT_CODE &&
+            event.user.data2 == dialog)
+            free_job((BongoCatNeoImportJob *)event.user.data1);
     SDL_UnlockMutex(dialog->mutex);
     release_dialog(dialog);
 }
@@ -97,7 +102,9 @@ static void SDLCALL import_callback(void *userdata, const char *const *files,
     SDL_LockMutex(dialog->mutex);
     event.type = dialog->event_type;
     event.user.windowID = dialog->window_id;
+    event.user.code = BONGO_CAT_NEO_IMPORT_EVENT_CODE;
     event.user.data1 = job;
+    event.user.data2 = dialog;
     if (dialog->active) pushed = SDL_PushEvent(&event);
     if (!pushed) dialog->open = false;
     SDL_UnlockMutex(dialog->mutex);
@@ -123,7 +130,9 @@ bool bongo_cat_neo_preferences_import_open(BongoCatNeoImportDialog *dialog,
 
 bool bongo_cat_neo_preferences_import_event(BongoCatNeoImportDialog *dialog,
     BongoCatNeoApp *app, SDL_Window *window, const SDL_Event *event) {
-    if (!dialog || !event || event->type != dialog->event_type) return false;
+    if (!dialog || !event || event->type != dialog->event_type ||
+        event->user.code != BONGO_CAT_NEO_IMPORT_EVENT_CODE ||
+        event->user.data2 != dialog) return false;
     BongoCatNeoImportJob *job = (BongoCatNeoImportJob *)event->user.data1;
     SDL_WindowID current = window ? SDL_GetWindowID(window) : 0;
     SDL_LockMutex(dialog->mutex);

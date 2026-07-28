@@ -109,7 +109,7 @@ add_library(bongo_cat_neo_runtime STATIC
   src/runtime/window_hit.c src/runtime/window_wheel.c
   src/ui/nuklear_impl.c
   src/ui/ui_backend.c src/ui/ui_cursor.c
-  src/ui/ui_animation.c src/ui/ui_paint.c
+  src/ui/ui_animation.c src/ui/ui_paint.c src/ui/ui_paint_border.c
   src/ui/ui_font.c src/ui/ui_font_atlas.c
   src/ui/ui_input.c
   src/ui/ui_catime.c src/ui/ui_catime_theme.c src/ui/ui_catime_icons.c
@@ -123,7 +123,7 @@ add_library(bongo_cat_neo_runtime STATIC
   src/ui/preferences_model.c src/ui/preferences_model_cover.c
   src/ui/preferences_pages.c
   src/ui/preferences_shortcuts.c src/ui/preferences_shortcut_clear.c
-  src/ui/preferences_widgets.c src/ui/preferences_controls.c src/ui/preferences_toggle.c
+  src/ui/preferences_widgets.c src/ui/preferences_controls.c src/ui/preferences_combo.c src/ui/preferences_toggle.c
   ${BONGO_CAT_NEO_LIVE2D_SOURCES})
 target_include_directories(bongo_cat_neo_runtime PUBLIC include)
 target_include_directories(bongo_cat_neo_runtime SYSTEM PRIVATE
@@ -260,7 +260,7 @@ if(BUILD_TESTING)
   target_compile_definitions(bongo_cat_neo_i18n_tests PRIVATE
     BONGO_CAT_NEO_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   add_test(NAME i18n COMMAND bongo_cat_neo_i18n_tests)
-  add_executable(bongo_cat_neo_ui_tests tests/test_nuklear.c src/ui/nuklear_impl.c)
+  add_executable(bongo_cat_neo_ui_tests tests/test_nuklear.c src/ui/nuklear_impl.c src/ui/ui_paint_border.c)
   target_include_directories(bongo_cat_neo_ui_tests SYSTEM PRIVATE ${BONGO_CAT_NEO_NUKLEAR_INCLUDE_DIR})
   target_link_libraries(bongo_cat_neo_ui_tests PRIVATE bongo_cat_neo_warnings)
   add_test(NAME ui COMMAND bongo_cat_neo_ui_tests)

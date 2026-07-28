@@ -65,10 +65,15 @@ static bool executable_path(char output[BONGO_CAT_NEO_PATH_CAP]) {
 
 BongoCatNeoResult bongo_cat_neo_platform_init(BongoCatNeoPlatform *platform, SDL_Window *window,
     BongoCatNeoInputState *input, BongoCatNeoError *error) {
-    (void)error;
     memset(platform, 0, sizeof(*platform));
     platform->window = window;
     platform->input = input;
+    platform->wake_event_type = SDL_RegisterEvents(1);
+    if (platform->wake_event_type == (Uint32)-1) {
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM,
+            "Cannot reserve the Linux input wake event");
+        return BONGO_CAT_NEO_ERROR_PLATFORM;
+    }
     active_platform = platform;
     publish_instance_window(window);
     BongoCatNeoError input_error = {0};

@@ -1,8 +1,39 @@
 #include "../src/ui/nuklear_config.h"
+#include "../src/ui/ui_paint_border.h"
 
 #include <stdio.h>
+#include <stdlib.h>
+
+static int region_alpha(const unsigned char *pixels, int width,
+    int x0, int y0, int size) {
+    int count = 0;
+    for (int y = y0; y < y0 + size; ++y)
+        for (int x = x0; x < x0 + size; ++x)
+            if (pixels[((size_t)y * width + x) * 4 + 3]) ++count;
+    return count;
+}
+
+static int dashed_border_test(void) {
+    enum { WIDTH = 100, HEIGHT = 80 };
+    unsigned char *pixels = calloc((size_t)WIDTH * HEIGHT, 4);
+    if (!pixels) return 1;
+    bongo_cat_neo_ui_raster_dashed_rounded(pixels, WIDTH, HEIGHT,
+        14, 2, 5, 5, nk_rgb(84, 174, 255));
+    enum { ARC_INSET = 2, ARC_REGION = 10 };
+    int failed = !region_alpha(pixels, WIDTH, ARC_INSET, ARC_INSET,
+            ARC_REGION) ||
+        !region_alpha(pixels, WIDTH, WIDTH - ARC_INSET - ARC_REGION,
+            ARC_INSET, ARC_REGION) ||
+        !region_alpha(pixels, WIDTH, ARC_INSET,
+            HEIGHT - ARC_INSET - ARC_REGION, ARC_REGION) ||
+        !region_alpha(pixels, WIDTH, WIDTH - ARC_INSET - ARC_REGION,
+            HEIGHT - ARC_INSET - ARC_REGION, ARC_REGION) ||
+        pixels[((size_t)(HEIGHT / 2) * WIDTH + WIDTH / 2) * 4 + 3];
+    free(pixels); return failed;
+}
 
 int main(void) {
+    if (dashed_border_test()) return 10;
     struct nk_context context;
     struct nk_font_atlas atlas;
     struct nk_draw_null_texture null_texture;

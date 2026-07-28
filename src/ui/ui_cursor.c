@@ -8,6 +8,8 @@ static void apply_requested(BongoCatNeoUIBackend *ui) {
         cursor = ui->pointer_cursor;
     else if (ui->requested_cursor == BONGO_CAT_NEO_UI_CURSOR_TEXT && ui->text_cursor)
         cursor = ui->text_cursor;
+    else if (ui->requested_cursor == BONGO_CAT_NEO_UI_CURSOR_RESIZE_EW &&
+        ui->resize_ew_cursor) cursor = ui->resize_ew_cursor;
     if (cursor && SDL_GetCursor() != cursor) SDL_SetCursor(cursor);
 }
 
@@ -25,6 +27,8 @@ void bongo_cat_neo_ui_cursor_begin(BongoCatNeoUIBackend *ui) {
         ui->pointer_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
     if (!ui->text_cursor)
         ui->text_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_TEXT);
+    if (!ui->resize_ew_cursor)
+        ui->resize_ew_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_EW_RESIZE);
     ui->requested_cursor = BONGO_CAT_NEO_UI_CURSOR_DEFAULT;
 }
 
@@ -60,13 +64,15 @@ void bongo_cat_neo_ui_cursor_destroy(BongoCatNeoUIBackend *ui) {
     if (!ui) return;
     SDL_Cursor *current = SDL_GetCursor();
     if (current == ui->default_cursor || current == ui->pointer_cursor ||
-        current == ui->text_cursor)
+        current == ui->text_cursor || current == ui->resize_ew_cursor)
         SDL_SetCursor(SDL_GetDefaultCursor());
     if (ui->default_cursor) SDL_DestroyCursor(ui->default_cursor);
     if (ui->pointer_cursor) SDL_DestroyCursor(ui->pointer_cursor);
     if (ui->text_cursor) SDL_DestroyCursor(ui->text_cursor);
+    if (ui->resize_ew_cursor) SDL_DestroyCursor(ui->resize_ew_cursor);
     ui->default_cursor = NULL;
     ui->pointer_cursor = NULL;
     ui->text_cursor = NULL;
+    ui->resize_ew_cursor = NULL;
     if (active_backend == ui) active_backend = NULL;
 }
