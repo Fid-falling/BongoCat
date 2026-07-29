@@ -59,11 +59,17 @@ static void text(struct nk_context *context, struct nk_command_buffer *canvas,
         nk_rgba(0, 0, 0, 0), color);
 }
 
+static struct nk_rect outline_bounds(struct nk_rect bounds, float thickness) {
+    float inset = thickness * .5f;
+    return nk_rect(bounds.x + inset, bounds.y + inset,
+        NK_MAX(1.0f, bounds.w - thickness),
+        NK_MAX(1.0f, bounds.h - thickness));
+}
+
 static bool import_card(BongoCatNeoPreferences *value,
     struct nk_context *context) {
     struct nk_rect bounds;
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return false;
-    bounds.x += 2.0f; bounds.w += 2.0f;
     bounds.y += 5.0f; bounds.h += 1.0f;
     BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
     bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
@@ -111,7 +117,6 @@ static void model_card(BongoCatNeoPreferences *value, struct nk_context *context
     bool selected = !strcmp(entry->id, app->config.current_model);
     struct nk_rect bounds;
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return;
-    bounds.x += 2.0f; bounds.w += 2.0f;
     bounds.y += 5.0f; bounds.h += 1.0f;
     BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
     bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
@@ -126,8 +131,6 @@ static void model_card(BongoCatNeoPreferences *value, struct nk_context *context
     else if (hover && p.effects) bongo_cat_neo_ui_paint_shadow(context, bounds,
         14, 0, 10, 28, 0, nk_rgba(p.accent.r, p.accent.g, p.accent.b, 46));
     nk_fill_rect(canvas, bounds, 14, p.surface);
-    nk_stroke_rect(canvas, bounds, 14, selected ? 2.0f : 1.0f,
-        selected ? p.pink : (hover ? p.accent : p.border_subtle));
     float preview_height = NK_MIN(128.0f, bounds.w * 354.0f / 612.0f);
     struct nk_rect preview = nk_rect(bounds.x + 1, bounds.y + 1,
         bounds.w - 2, preview_height);
@@ -183,6 +186,12 @@ static void model_card(BongoCatNeoPreferences *value, struct nk_context *context
         action_icon(value, canvas, third, BONGO_CAT_NEO_UI_ICON_TRASH,
             third_hover ? p.danger : p.muted);
     }
+    float outline_width = selected ? 2.0f : 1.0f;
+    struct nk_rect outline = outline_bounds(bounds, outline_width);
+    struct nk_color outline_color = selected ? p.pink :
+        bongo_cat_neo_ui_color_mix(p.border_subtle, p.accent, lift);
+    nk_stroke_rect(canvas, outline, 14.0f - outline_width * .5f,
+        outline_width, outline_color);
     if (first_hover || second_hover || third_hover || hover)
         bongo_cat_neo_ui_cursor_hover_rect(context, bounds,
             BONGO_CAT_NEO_UI_CURSOR_POINTER);

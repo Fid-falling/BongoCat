@@ -24,3 +24,10 @@ add_test(NAME preferences-slider-drag COMMAND powershell.exe -NoProfile
   -Exe $<TARGET_FILE:bongo_cat_neo>
   -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/preferences-slider-drag-test)
 set_tests_properties(preferences-slider-drag PROPERTIES TIMEOUT 30 RUN_SERIAL TRUE)
+
+add_test(NAME preferences-model-border COMMAND powershell.exe -NoProfile
+  -ExecutionPolicy Bypass -File
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/PreferencesModelBorderAudit.ps1
+  -Exe $<TARGET_FILE:bongo_cat_neo>
+  -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/preferences-model-border-test)
+set_tests_properties(preferences-model-border PROPERTIES TIMEOUT 30 RUN_SERIAL TRUE)
