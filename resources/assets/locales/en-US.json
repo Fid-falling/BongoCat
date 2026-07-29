@@ -173,6 +173,7 @@
     }
   },
   "native": {
+    "modelLoadFailed": "Unable to display this model",
     "support": {
       "title": "Support Developer",
       "heroText": "Thank you for your support. Every use and share helps Bongo Cat Neo continue to grow.",

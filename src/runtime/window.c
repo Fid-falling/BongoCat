@@ -163,9 +163,9 @@ void bongo_cat_neo_window_show_context_menu(BongoCatNeoApp *app) { context_menu(
 
 void bongo_cat_neo_window_menu_action(BongoCatNeoApp *app, BongoCatNeoMenuAction action) {
     if (action == BONGO_CAT_NEO_MENU_PREFERENCES) bongo_cat_neo_preferences_show(app->preferences);
-    else if (action == BONGO_CAT_NEO_MENU_HIDE) {
-        app->config.window.visible = false; SDL_HideWindow(app->window);
-    } else if (action == BONGO_CAT_NEO_MENU_PASS_THROUGH) {
+    else if (action == BONGO_CAT_NEO_MENU_HIDE)
+        bongo_cat_neo_window_set_visible(app, false);
+    else if (action == BONGO_CAT_NEO_MENU_PASS_THROUGH) {
         app->config.window.pass_through = !app->config.window.pass_through;
         bongo_cat_neo_window_mark_hit_dirty(app);
         bongo_cat_neo_window_sync_click_through(app);
@@ -216,8 +216,7 @@ bool bongo_cat_neo_window_event(BongoCatNeoApp *app, const SDL_Event *event) {
         event->window.windowID != SDL_GetWindowID(app->window)) return true;
     if (event->type == SDL_EVENT_QUIT) return false;
     if (event->type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
-        SDL_HideWindow(app->window);
-        app->config.window.visible = false;
+        bongo_cat_neo_window_set_visible(app, false);
         return true;
     }
     if (event->type == SDL_EVENT_WINDOW_HIDDEN)

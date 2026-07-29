@@ -7,17 +7,23 @@
 #include <stdlib.h>
 #include <string.h>
 
-static unsigned visible_pixels(const unsigned char *pixels,
+typedef struct FrameStats {
+    unsigned visible;
+    unsigned alpha;
+} FrameStats;
+
+static FrameStats frame_stats(const unsigned char *pixels,
     int width, int height, size_t pitch) {
-    unsigned visible = 0;
+    FrameStats stats = {0};
     for (int y = 0; y < height; y += 4) {
         const unsigned char *row = pixels + (size_t)y * pitch;
         for (int x = 0; x < width; x += 4) {
             const unsigned char *pixel = row + (size_t)x * 4;
-            if ((unsigned)pixel[0] + pixel[1] + pixel[2] > 60) visible++;
+            if ((unsigned)pixel[0] + pixel[1] + pixel[2] > 60) stats.visible++;
+            if (pixel[3] > 8) stats.alpha++;
         }
     }
-    return visible;
+    return stats;
 }
 
 static void record_frame(BongoCatNeoApp *app, const unsigned char *pixels,
@@ -28,13 +34,22 @@ static void record_frame(BongoCatNeoApp *app, const unsigned char *pixels,
     bool header = !bongo_cat_neo_path_is_file(path);
     FILE *file = bongo_cat_neo_file_open(path, "ab");
     if (!file) return;
-    if (header) fputs("ticks_ns,width,height,visible_pixels,scale_percent,"
-        "opacity_percent,window_opacity\n", file);
-    fprintf(file, "%llu,%d,%d,%u,%.3f,%.3f,%.5f\n",
+    if (header) fputs("ticks_ns,width,height,visible_pixels,alpha_pixels,"
+        "scale_percent,opacity_percent,window_opacity,model_mode,"
+        "model_state_consistent,selection_serial,window_config_visible,"
+        "window_os_visible\n", file);
+    FrameStats stats = frame_stats(pixels, width, height, pitch);
+    bool model_consistent = bongo_cat_neo_live2d_ready(app->live2d) &&
+        app->loaded_model[0] &&
+        strcmp(app->loaded_model, app->config.current_model) == 0;
+    bool os_visible = (SDL_GetWindowFlags(app->window) & SDL_WINDOW_HIDDEN) == 0;
+    fprintf(file, "%llu,%d,%d,%u,%u,%.3f,%.3f,%.5f,%s,%d,%u,%d,%d\n",
         (unsigned long long)SDL_GetTicksNS(), width, height,
-        visible_pixels(pixels, width, height, pitch),
+        stats.visible, stats.alpha,
         app->config.window.scale_percent, app->config.window.opacity_percent,
-        SDL_GetWindowOpacity(app->window));
+        SDL_GetWindowOpacity(app->window),
+        bongo_cat_neo_mode_name(app->config.current_mode), model_consistent,
+        app->model_selection_serial, app->config.window.visible, os_visible);
     fclose(file);
 }
 

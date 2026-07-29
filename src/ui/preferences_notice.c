@@ -51,14 +51,37 @@ static size_t active_notices(BongoCatNeoPreferences *value, uint64_t now,
     return count;
 }
 
+static float fit_notice_text(const struct nk_user_font *font,
+    const char *source, float maximum, char *output, size_t capacity) {
+    snprintf(output, capacity, "%s", source);
+    float width = font->width(font->userdata, font->height,
+        output, nk_strlen(output));
+    if (width <= maximum) return width;
+    size_t prefix = strlen(source);
+    if (prefix > capacity - 4) prefix = capacity - 4;
+    while (prefix) {
+        prefix--;
+        while (prefix && ((unsigned char)source[prefix] & 0xc0) == 0x80)
+            prefix--;
+        memcpy(output, source, prefix);
+        memcpy(output + prefix, "...", 4);
+        width = font->width(font->userdata, font->height,
+            output, nk_strlen(output));
+        if (width <= maximum) return width;
+    }
+    snprintf(output, capacity, "...");
+    return font->width(font->userdata, font->height, output, 3);
+}
+
 static void draw_notice(BongoCatNeoPreferences *value,
     struct nk_context *context, BongoCatNeoPreferenceNotice *notice,
     float width, float y, uint64_t now) {
     BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(
         bongo_cat_neo_ui_dark(context));
     const struct nk_user_font *font = bongo_cat_neo_ui_label_font(context);
-    float text_width = font->width(font->userdata, font->height,
-        notice->message, nk_strlen(notice->message));
+    char label_text[sizeof(notice->message)];
+    float text_width = fit_notice_text(font, notice->message,
+        NK_MAX(40.0f, width - 100.0f), label_text, sizeof(label_text));
     float toast_width = NK_MIN(text_width + 36.0f, width - 64.0f);
     float elapsed = (float)(now - notice->started_ns) /
         (NOTICE_ENTER_MS * 1000000.0f);
@@ -78,7 +101,7 @@ static void draw_notice(BongoCatNeoPreferences *value,
     struct nk_rect label = nk_rect(bounds.x + (bounds.w - text_width) * .5f,
         bounds.y + (bounds.h - font->height) * .5f,
         NK_MIN(text_width + 1, bounds.w - 20), font->height);
-    nk_draw_text(canvas, label, notice->message, nk_strlen(notice->message), font,
+    nk_draw_text(canvas, label, label_text, nk_strlen(label_text), font,
         nk_rgba(0, 0, 0, 0), nk_rgba(255, 255, 255, (nk_byte)(255 * opacity)));
     value->render_dirty = true;
 }

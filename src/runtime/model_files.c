@@ -26,6 +26,24 @@ static void select_model_state(BongoCatNeoApp *app, const BongoCatNeoModelEntry 
     bongo_cat_neo_gamepads_set_enabled(app, entry->mode == BONGO_CAT_NEO_MODE_GAMEPAD);
 }
 
+static void request_model_frame(BongoCatNeoApp *app) {
+    if (!app) return;
+    if (app->window && app->config.window.visible) {
+        if (SDL_GetWindowFlags(app->window) & SDL_WINDOW_HIDDEN)
+            bongo_cat_neo_window_set_visible(app, true);
+        else bongo_cat_neo_window_clamp_to_display(app);
+    }
+    bongo_cat_neo_window_mark_hit_dirty(app);
+    app->dirty = true;
+}
+
+static void commit_model(BongoCatNeoApp *app,
+    const BongoCatNeoModelEntry *entry) {
+    select_model_state(app, entry);
+    app->model_selection_serial++;
+    request_model_frame(app);
+}
+
 static bool mver_entry(const BongoCatNeoModelEntry *entry) {
     if (!entry) return false;
     if (entry->managed) return true;
@@ -34,19 +52,35 @@ static bool mver_entry(const BongoCatNeoModelEntry *entry) {
         ".bongo-cat-neo-mver.json") && bongo_cat_neo_path_is_file(marker);
 }
 
-bool bongo_cat_neo_app_select_model(BongoCatNeoApp *app, const char *id) {
-    if (!app || !app->live2d || !id) return false;
+bool bongo_cat_neo_app_select_model_with_error(BongoCatNeoApp *app,
+    const char *id, BongoCatNeoError *error) {
+    BongoCatNeoError local = {0};
+    BongoCatNeoError *failure = error ? error : &local;
+    *failure = (BongoCatNeoError){0};
+    if (!app || !app->live2d || !id) {
+        bongo_cat_neo_error_set(failure, BONGO_CAT_NEO_ERROR_ARGUMENT,
+            "Cannot select a model without an active renderer and model id");
+        return false;
+    }
     const BongoCatNeoModelEntry *entry = bongo_cat_neo_models_find(&app->models, id);
-    if (!entry) return false;
+    if (!entry) {
+        bongo_cat_neo_error_set(failure, BONGO_CAT_NEO_ERROR_ARGUMENT,
+            "Model is not installed: %s", id);
+        return false;
+    }
     if (app->loaded_model[0] && strcmp(app->loaded_model, entry->id) == 0) {
-        select_model_state(app, entry);
+        commit_model(app, entry);
         return true;
     }
-    BongoCatNeoError error = {0};
+    BongoCatNeoError optional = {0};
     BongoCatNeoBehaviorCatalog *behaviors = calloc(1, sizeof(*behaviors));
-    if (!behaviors) return false;
-    if (bongo_cat_neo_behaviors_load(behaviors, entry, &error) != BONGO_CAT_NEO_OK)
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
+    if (!behaviors) {
+        bongo_cat_neo_error_set(failure, BONGO_CAT_NEO_ERROR_MEMORY,
+            "Cannot allocate model behavior state");
+        return false;
+    }
+    if (bongo_cat_neo_behaviors_load(behaviors, entry, &optional) != BONGO_CAT_NEO_OK)
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", optional.message);
     int pixel_width = app->config.window.width, pixel_height = app->config.window.height;
     if (app->window) SDL_GetWindowSizeInPixels(app->window, &pixel_width, &pixel_height);
     SDL_Window *previous_window = SDL_GL_GetCurrentWindow();
@@ -54,30 +88,44 @@ bool bongo_cat_neo_app_select_model(BongoCatNeoApp *app, const char *id) {
     bool restore_context = previous_window != app->window ||
         previous_context != app->gl_context;
     if (restore_context && !SDL_GL_MakeCurrent(app->window, app->gl_context)) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+        bongo_cat_neo_error_set(failure, BONGO_CAT_NEO_ERROR_PLATFORM,
             "Cannot activate the main OpenGL context: %s", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", failure->message);
         free(behaviors);
         return false;
     }
     bongo_cat_neo_live2d_reshape(app->live2d, pixel_width, pixel_height);
     if (bongo_cat_neo_live2d_load(app->live2d, entry->directory,
-        entry->setting_file, entry->preset, &error) != BONGO_CAT_NEO_OK) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
-        if (restore_context) SDL_GL_MakeCurrent(previous_window, previous_context);
+        entry->setting_file, entry->preset, failure) != BONGO_CAT_NEO_OK) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", failure->message);
+        if (restore_context && previous_window && previous_context &&
+            !SDL_GL_MakeCurrent(previous_window, previous_context))
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                "Cannot restore the previous OpenGL context: %s", SDL_GetError());
         free(behaviors);
+        if (!bongo_cat_neo_live2d_ready(app->live2d)) app->loaded_model[0] = '\0';
+        request_model_frame(app);
         return false;
     }
     bongo_cat_neo_live2d_set_mver_compatibility(app->live2d, mver_entry(entry));
     app->behaviors = *behaviors;
     free(behaviors);
-    bongo_cat_neo_overlay_load(app->overlay, entry->adapter_directory, &error);
+    optional = (BongoCatNeoError){0};
+    if (bongo_cat_neo_overlay_load(app->overlay, entry->adapter_directory,
+        &optional) != BONGO_CAT_NEO_OK && optional.message[0])
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", optional.message);
     snprintf(app->loaded_model, sizeof(app->loaded_model), "%s", entry->id);
-    select_model_state(app, entry);
     bongo_cat_neo_live2d_resize(app->live2d, pixel_width, pixel_height);
-    if (restore_context) SDL_GL_MakeCurrent(previous_window, previous_context);
-    bongo_cat_neo_window_mark_hit_dirty(app);
-    app->dirty = true;
+    if (restore_context && previous_window && previous_context &&
+        !SDL_GL_MakeCurrent(previous_window, previous_context))
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+            "Cannot restore the previous OpenGL context: %s", SDL_GetError());
+    commit_model(app, entry);
     return true;
+}
+
+bool bongo_cat_neo_app_select_model(BongoCatNeoApp *app, const char *id) {
+    return bongo_cat_neo_app_select_model_with_error(app, id, NULL);
 }
 
 static bool copy_tree(const char *source, const char *target, unsigned depth,
@@ -202,6 +250,15 @@ BongoCatNeoResult bongo_cat_neo_app_remove_model(BongoCatNeoApp *app, const char
     snprintf(directory, sizeof(directory), "%s", entry->storage_directory);
     if (!bongo_cat_neo_model_remove_tree(directory, error)) return BONGO_CAT_NEO_ERROR_IO;
     bongo_cat_neo_app_rescan_models(app);
-    if (selected && app->models.count) bongo_cat_neo_app_select_model(app, app->models.entries[0].id);
+    if (selected) {
+        BongoCatNeoError load_error = {0};
+        for (size_t i = 0; i < app->models.count; ++i)
+            if (bongo_cat_neo_app_select_model_with_error(app,
+                app->models.entries[i].id, &load_error)) return BONGO_CAT_NEO_OK;
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_CUBISM,
+            "Model was removed, but no replacement could be displayed: %s",
+            load_error.message[0] ? load_error.message : "no installed models");
+        return BONGO_CAT_NEO_ERROR_CUBISM;
+    }
     return BONGO_CAT_NEO_OK;
 }

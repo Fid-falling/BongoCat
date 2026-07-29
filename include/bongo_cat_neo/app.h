@@ -56,7 +56,9 @@ typedef struct BongoCatNeoApp {
     bool smoke_frame_audited;
     bool smoke_frame_series;
     bool smoke_runtime_flow;
+    bool smoke_freeze_model;
     unsigned smoke_runtime_stage;
+    unsigned model_selection_serial;
     uint64_t smoke_runtime_flow_ns;
     int smoke_language;
     int smoke_theme;
@@ -109,6 +111,8 @@ void bongo_cat_neo_app_reset_gamepad(BongoCatNeoApp *app);
 void bongo_cat_neo_gamepad_event(BongoCatNeoApp *app, const void *sdl_event);
 void bongo_cat_neo_app_shortcuts(BongoCatNeoApp *app, const BongoCatNeoInputEvent *event);
 bool bongo_cat_neo_app_select_model(BongoCatNeoApp *app, const char *id);
+bool bongo_cat_neo_app_select_model_with_error(BongoCatNeoApp *app,
+    const char *id, BongoCatNeoError *error);
 bool bongo_cat_neo_app_run_behavior(BongoCatNeoApp *app,
     const BongoCatNeoBehaviorEntry *behavior);
 BongoCatNeoResult bongo_cat_neo_app_import_model(BongoCatNeoApp *app, const char *source, BongoCatNeoError *error);

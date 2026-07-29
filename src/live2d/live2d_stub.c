@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 
-struct BongoCatNeoLive2D { int width; int height; };
+struct BongoCatNeoLive2D { int width; int height; bool loaded; };
 
 BongoCatNeoLive2D *bongo_cat_neo_live2d_create(const char *asset_root, BongoCatNeoError *error) {
     (void)asset_root;
@@ -20,7 +20,12 @@ BongoCatNeoResult bongo_cat_neo_live2d_load(BongoCatNeoLive2D *live2d, const cha
     if (!live2d || !model_dir || !setting_file) return BONGO_CAT_NEO_ERROR_ARGUMENT;
     if (!bongo_cat_neo_import_manifest_valid(model_dir, setting_file, error))
         return BONGO_CAT_NEO_ERROR_FORMAT;
+    live2d->loaded = true;
     return BONGO_CAT_NEO_OK;
+}
+
+bool bongo_cat_neo_live2d_ready(const BongoCatNeoLive2D *live2d) {
+    return live2d && live2d->loaded;
 }
 
 void bongo_cat_neo_live2d_resize(BongoCatNeoLive2D *live2d, int width, int height) {

@@ -8,9 +8,7 @@
 #include <string.h>
 
 static void visible(BongoCatNeoApp *app) {
-    app->config.window.visible = !app->config.window.visible;
-    app->config.window.visible ? SDL_ShowWindow(app->window) : SDL_HideWindow(app->window);
-    if (app->config.window.visible) app->dirty = true;
+    bongo_cat_neo_window_set_visible(app, !app->config.window.visible);
 }
 
 bool bongo_cat_neo_app_run_behavior(BongoCatNeoApp *app,

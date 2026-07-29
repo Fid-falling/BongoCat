@@ -56,6 +56,7 @@ static bool parse_arguments(BongoCatNeoApp *app, int argc, char **argv,
         else if (strcmp(arg, "--ci-context-menu") == 0) app->smoke_context_menu = true;
         else if (strcmp(arg, "--ci-frame-series") == 0) app->smoke_frame_series = true;
         else if (strcmp(arg, "--ci-runtime-flow") == 0) app->smoke_runtime_flow = true;
+        else if (strcmp(arg, "--ci-freeze-model") == 0) app->smoke_freeze_model = true;
         else if (strncmp(arg, "--ci-preference-page=", 21) == 0) {
             int page = atoi(arg + 21);
             if (page >= 0 && page < 5) app->smoke_preference_page = page;

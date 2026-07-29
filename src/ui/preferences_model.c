@@ -107,8 +107,15 @@ static void action_icon(BongoCatNeoPreferences *value,
 
 static void select_model(BongoCatNeoPreferences *value,
     const BongoCatNeoModelEntry *entry) {
-    if (bongo_cat_neo_app_select_model(value->app, entry->id))
+    BongoCatNeoError error = {0};
+    if (bongo_cat_neo_app_select_model_with_error(value->app, entry->id, &error)) {
         bongo_cat_neo_preferences_invalidate(value);
+        return;
+    }
+    const char *message = tr(value->app, "native.modelLoadFailed",
+        "Unable to display this model");
+    bongo_cat_neo_preferences_notice_show(value->app, message, true);
+    bongo_cat_neo_preferences_invalidate(value);
 }
 
 static void model_card(BongoCatNeoPreferences *value, struct nk_context *context,

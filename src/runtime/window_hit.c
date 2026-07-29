@@ -36,6 +36,22 @@ void bongo_cat_neo_window_mark_hit_dirty(BongoCatNeoApp *app) {
     app->pointer_hit_deadline_ns = 0;
 }
 
+void bongo_cat_neo_window_set_visible(BongoCatNeoApp *app, bool visible) {
+    if (!app || !app->window) return;
+    app->config.window.visible = visible;
+    if (!visible) {
+        SDL_HideWindow(app->window);
+        return;
+    }
+    app->hover_hidden = false;
+    SDL_SetWindowOpacity(app->window,
+        app->config.window.opacity_percent / 100.0f);
+    SDL_ShowWindow(app->window);
+    bongo_cat_neo_window_clamp_to_display(app);
+    bongo_cat_neo_window_mark_hit_dirty(app);
+    app->dirty = true;
+}
+
 void bongo_cat_neo_window_schedule_pointer_hit(BongoCatNeoApp *app) {
     if (!app) return;
     uint64_t deadline = SDL_GetTicksNS() + 8000000ull;

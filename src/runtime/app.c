@@ -107,7 +107,7 @@ static bool initialize(BongoCatNeoApp *app, int argc, char **argv, BongoCatNeoEr
     if (!app->preferences) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
         "Preferences are unavailable because their state could not be allocated");
     if (!app->tray && !app->config.window.visible) {
-        app->config.window.visible = true; SDL_ShowWindow(app->window);
+        bongo_cat_neo_window_set_visible(app, true);
     }
     if (app->smoke_context_menu) bongo_cat_neo_window_show_context_menu(app);
     bongo_cat_neo_live2d_audit_run(app);
@@ -176,6 +176,7 @@ static void update_model(BongoCatNeoApp *app, uint64_t now) {
     float elapsed = (float)((now - app->last_frame_ns) / 1000000000.0);
     if (elapsed > 0.25f) elapsed = 0.25f;
     app->last_frame_ns = now;
+    if (app->smoke_freeze_model) return;
     if (bongo_cat_neo_live2d_update(app->live2d, elapsed)) app->dirty = true;
 }
 static void render(BongoCatNeoApp *app) {
@@ -201,12 +202,8 @@ static void render(BongoCatNeoApp *app) {
 void bongo_cat_neo_app_render_now(BongoCatNeoApp *app) { if (app && app->window && app->config.window.visible) render(app); }
 static void take_instance_wake(BongoCatNeoApp *app) {
     if (!bongo_cat_neo_platform_single_instance_take_wake()) return;
-    app->config.window.visible = true;
-    bongo_cat_neo_window_clamp_to_display(app);
-    SDL_ShowWindow(app->window);
+    bongo_cat_neo_window_set_visible(app, true);
     bongo_cat_neo_platform_raise_window(app->window);
-    bongo_cat_neo_window_mark_hit_dirty(app);
-    app->dirty = true;
     SDL_Log("Existing instance requested window reveal");
 }
 static void loop(BongoCatNeoApp *app) {
@@ -231,6 +228,7 @@ static void loop(BongoCatNeoApp *app) {
         if (app->config.window.visible) update_model(app, now); else app->last_frame_ns = now;
         if (app->config.window.visible && app->dirty) render(app);
         bongo_cat_neo_preferences_render(app->preferences);
+        if (app->config.window.visible && app->dirty) render(app);
         bongo_cat_neo_tray_sync(app->tray);
         bongo_cat_neo_config_store_update(app, now);
         if (app->smoke_deadline_ns && now >= app->smoke_deadline_ns) app->running = false;

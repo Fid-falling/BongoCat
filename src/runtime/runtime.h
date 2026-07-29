@@ -23,6 +23,7 @@ void bongo_cat_neo_window_apply(BongoCatNeoApp *app);
 bool bongo_cat_neo_window_event(BongoCatNeoApp *app, const SDL_Event *event);
 bool bongo_cat_neo_window_visible_at_pointer(BongoCatNeoApp *app, float x, float y);
 void bongo_cat_neo_window_mark_hit_dirty(BongoCatNeoApp *app);
+void bongo_cat_neo_window_set_visible(BongoCatNeoApp *app, bool visible);
 void bongo_cat_neo_window_schedule_pointer_hit(BongoCatNeoApp *app);
 void bongo_cat_neo_window_schedule_hit_check(BongoCatNeoApp *app);
 int bongo_cat_neo_window_wait_timeout(const BongoCatNeoApp *app, uint64_t now);

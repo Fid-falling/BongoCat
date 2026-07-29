@@ -231,6 +231,10 @@ extern "C" BongoCatNeoResult bongo_cat_neo_live2d_load(BongoCatNeoLive2D *runtim
     return error ? error->code : BONGO_CAT_NEO_ERROR_CUBISM;
 }
 
+extern "C" bool bongo_cat_neo_live2d_ready(const BongoCatNeoLive2D *runtime) {
+    return runtime && runtime->model;
+}
+
 extern "C" void bongo_cat_neo_live2d_resize(BongoCatNeoLive2D *runtime, int width, int height) {
     if (!runtime) return;
     if (width > 0 && height > 0) {

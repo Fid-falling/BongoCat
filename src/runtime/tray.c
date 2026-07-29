@@ -27,8 +27,7 @@ static void on_visible(void *userdata, SDL_TrayEntry *entry) {
     (void)entry;
     BongoCatNeoTray *tray = userdata;
     BongoCatNeoApp *app = tray->app;
-    app->config.window.visible = !app->config.window.visible;
-    app->config.window.visible ? SDL_ShowWindow(app->window) : SDL_HideWindow(app->window);
+    bongo_cat_neo_window_set_visible(app, !app->config.window.visible);
     bongo_cat_neo_tray_sync(tray);
     bongo_cat_neo_preferences_invalidate(app->preferences);
 }
