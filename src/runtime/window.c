@@ -96,25 +96,6 @@ void bongo_cat_window_apply(BongoCatApp *app) {
     bongo_cat_platform_set_taskbar(&app->platform, value->taskbar_visible);
 }
 
-static void begin_drag_candidate(BongoCatApp *app, const SDL_MouseButtonEvent *event) {
-    bongo_cat_window_cancel_wheel_animation(app);
-    app->drag_candidate = bongo_cat_window_visible_at_pointer(app, event->x, event->y);
-    app->drag_start_x = event->x;
-    app->drag_start_y = event->y;
-}
-
-static void update_drag_candidate(BongoCatApp *app, const SDL_MouseMotionEvent *event) {
-    if (!app->drag_candidate) return;
-    if (!(event->state & SDL_BUTTON_LMASK)) {
-        app->drag_candidate = false; app->window_drag_active = false; return;
-    }
-    float x = event->x - app->drag_start_x, y = event->y - app->drag_start_y;
-    if (x * x + y * y < 9.0f) return;
-    app->drag_candidate = false;
-    app->window_drag_active = true;
-    bongo_cat_platform_begin_drag(&app->platform);
-}
-
 static const char *tr(BongoCatApp *app, const char *key, const char *fallback) {
     return bongo_cat_i18n_get(app->i18n, key, fallback);
 }
@@ -222,8 +203,10 @@ bool bongo_cat_window_event(BongoCatApp *app, const SDL_Event *event) {
         bongo_cat_window_set_visible(app, false);
         return true;
     }
-    if (event->type == SDL_EVENT_WINDOW_HIDDEN)
+    if (event->type == SDL_EVENT_WINDOW_HIDDEN) {
         app->config.window.visible = false;
+        bongo_cat_window_drag_end(app);
+    }
     if (event->type == SDL_EVENT_WINDOW_RESIZED) {
         app->config.window.width = event->window.data1;
         app->config.window.height = event->window.data2;
@@ -245,21 +228,20 @@ bool bongo_cat_window_event(BongoCatApp *app, const SDL_Event *event) {
     } else if (event->type == SDL_EVENT_WINDOW_MOVED) {
         app->config.window.x = event->window.data1;
         app->config.window.y = event->window.data2;
-        bongo_cat_window_clamp_to_display(app);
+        if (!app->window_drag_active) bongo_cat_window_clamp_to_display(app);
         bongo_cat_window_mark_hit_dirty(app);
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
         event->button.button == SDL_BUTTON_LEFT) {
-        begin_drag_candidate(app, &event->button);
+        bongo_cat_window_drag_begin(app, &event->button);
     } else if (event->type == SDL_EVENT_MOUSE_MOTION) {
         bongo_cat_window_resize_by_pointer(app, event);
-        update_drag_candidate(app, &event->motion);
+        bongo_cat_window_drag_motion(app, &event->motion);
     } else if (event->type == SDL_EVENT_MOUSE_WHEEL) {
         bongo_cat_window_wheel(app, &event->wheel);
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_UP &&
         event->button.button == SDL_BUTTON_LEFT) {
         bongo_cat_window_mark_hit_dirty(app);
-        app->drag_candidate = false;
-        app->window_drag_active = false;
+        bongo_cat_window_drag_end(app);
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_UP &&
         event->button.button == SDL_BUTTON_RIGHT) {
         bongo_cat_window_mark_hit_dirty(app);
@@ -270,6 +252,7 @@ bool bongo_cat_window_event(BongoCatApp *app, const SDL_Event *event) {
 }
 
 void bongo_cat_window_destroy(BongoCatApp *app) {
+    bongo_cat_window_drag_end(app);
     if (app->gl_context) SDL_GL_DestroyContext(app->gl_context);
     if (app->window) SDL_DestroyWindow(app->window);
     app->gl_context = NULL;

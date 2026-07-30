@@ -101,6 +101,9 @@ typedef struct BongoCatApp {
     bool drag_candidate;
     bool window_drag_active;
     float drag_start_x, drag_start_y;
+    int drag_window_x, drag_window_y;
+    void *drag_display_bounds;
+    int drag_display_count;
     float left_stick_x, left_stick_y;
     float right_stick_x, right_stick_y;
     bool left_stick_pressed, right_stick_pressed;

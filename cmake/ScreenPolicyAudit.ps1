@@ -17,11 +17,15 @@ using System.Runtime.InteropServices;
 public static class BongoCatScreenPolicyNative {
     public delegate bool EnumProc(IntPtr handle, IntPtr data);
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L,T,R,B; }
+    [StructLayout(LayoutKind.Sequential)] public struct Point { public int X,Y; }
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc proc, IntPtr data);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr handle);
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr handle, out uint process);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr handle, out Rect rect);
     [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr handle, IntPtr after, int x, int y, int width, int height, uint flags);
+    [DllImport("user32.dll")] public static extern bool GetCursorPos(out Point point);
+    [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint x, uint y, uint data, UIntPtr extra);
     [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
 }
 '@
@@ -118,6 +122,43 @@ function Wait-PreferencesFile([string]$Data) {
     return $path
 }
 
+function Test-LiveConstrainedDrag([IntPtr]$Window) {
+    $before = Get-Rect $Window
+    $startX = [int](($before.L + $before.R) / 2)
+    $startY = [int](($before.T + $before.B) / 2)
+    $original = [BongoCatScreenPolicyNative+Point]::new()
+    [void][BongoCatScreenPolicyNative]::GetCursorPos([ref]$original)
+    $pressed = $false
+    try {
+        [void][BongoCatScreenPolicyNative]::SetCursorPos($startX, $startY)
+        Start-Sleep -Milliseconds 120
+        [BongoCatScreenPolicyNative]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
+        $pressed = $true
+        foreach ($step in 1..6) {
+            [void][BongoCatScreenPolicyNative]::SetCursorPos(
+                $startX + 10 * $step, $startY)
+            Start-Sleep -Milliseconds 35
+        }
+        $moved = Get-Rect $Window
+        foreach ($step in 1..10) {
+            $x = [int](($startX + 60) + ($work.Left - ($startX + 60)) * $step / 10)
+            [void][BongoCatScreenPolicyNative]::SetCursorPos($x, $startY)
+            Start-Sleep -Milliseconds 35
+        }
+        $held = Get-Rect $Window
+        return [pscustomobject]@{
+            Moved = [Math]::Abs($moved.L - $before.L) -ge 20
+            BlockedWhileHeld = $held.L -ge $work.Left
+        }
+    } finally {
+        if ($pressed) {
+            [BongoCatScreenPolicyNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
+        }
+        [void][BongoCatScreenPolicyNative]::SetCursorPos($original.X, $original.Y)
+        Start-Sleep -Milliseconds 120
+    }
+}
+
 $off = $null; $on = $null; $recovery = $null
 try {
     $off = Start-Case "default-off" $false $false ($work.Left + 100) ($work.Top + 100)
@@ -137,6 +178,7 @@ try {
     Start-Sleep -Milliseconds 900
     $onRect = Get-Rect $on.Window
     $onConstrained = $onRect.L -ge $work.Left -and $onRect.T -ge $work.Top
+    $liveDrag = Test-LiveConstrainedDrag $on.Window
     Stop-Case $on; $on = $null
 
     $recovery = Start-Case "detached-display" $false $false `
@@ -145,10 +187,11 @@ try {
     $recoveryRect = Get-Rect $recovery.Window
     $detachedRecovered = Intersects-Screen $recoveryRect
     $passed = $defaultOff -and $offAllowed -and $onConstrained -and
-        $detachedRecovered
+        $liveDrag.Moved -and $liveDrag.BlockedWhileHeld -and $detachedRecovered
     $result = [ordered]@{ DefaultOff=$defaultOff; OffAllowsPartial=$offAllowed;
-        EnabledConstrained=$onConstrained; DetachedRecovered=$detachedRecovered;
-        Passed=$passed }
+        EnabledConstrained=$onConstrained; EnabledLiveDragMoved=$liveDrag.Moved;
+        EnabledBlockedWhileHeld=$liveDrag.BlockedWhileHeld;
+        DetachedRecovered=$detachedRecovered; Passed=$passed }
     $result | ConvertTo-Json | Set-Content -Encoding utf8 `
         (Join-Path $OutputDir "result.json")
     $result | Format-List
