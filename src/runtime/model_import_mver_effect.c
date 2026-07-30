@@ -1,38 +1,38 @@
 #include "model_import_mver_internal.h"
-#include "bongo_cat_neo/image.h"
-#include "bongo_cat_neo/path.h"
+#include "bongo_cat/image.h"
+#include "bongo_cat/path.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <yyjson.h>
 
-static bool effect_source(const BongoCatNeoImportCandidate *candidate, const char *name,
+static bool effect_source(const BongoCatImportCandidate *candidate, const char *name,
     char *output, size_t capacity) {
-    char directory[BONGO_CAT_NEO_PATH_CAP];
+    char directory[BONGO_CAT_PATH_CAP];
     if (candidate->overrides[0] &&
-        bongo_cat_neo_path_join(directory, sizeof(directory), candidate->overrides, "face") &&
-        bongo_cat_neo_path_join(output, capacity, directory, name) &&
-        bongo_cat_neo_path_is_file(output)) return true;
-    return bongo_cat_neo_path_join(directory, sizeof(directory), candidate->assets, "face") &&
-        bongo_cat_neo_path_join(output, capacity, directory, name) &&
-        bongo_cat_neo_path_is_file(output);
+        bongo_cat_path_join(directory, sizeof(directory), candidate->overrides, "face") &&
+        bongo_cat_path_join(output, capacity, directory, name) &&
+        bongo_cat_path_is_file(output)) return true;
+    return bongo_cat_path_join(directory, sizeof(directory), candidate->assets, "face") &&
+        bongo_cat_path_join(output, capacity, directory, name) &&
+        bongo_cat_path_is_file(output);
 }
 
 static bool clear_binding(yyjson_mut_doc *output, yyjson_mut_val *items,
-    yyjson_val *root, const BongoCatNeoImportCandidate *candidate) {
+    yyjson_val *root, const BongoCatImportCandidate *candidate) {
     yyjson_val *decoration = yyjson_obj_get(root, "decoration");
     yyjson_val *row = yyjson_obj_get(decoration, "emoticonClear");
     if (!row) return true;
-    char shortcut[BONGO_CAT_NEO_SHORTCUT_CAP];
-    if (!bongo_cat_neo_mver_chord(candidate, row, shortcut, sizeof(shortcut))) return false;
+    char shortcut[BONGO_CAT_SHORTCUT_CAP];
+    if (!bongo_cat_mver_chord(candidate, row, shortcut, sizeof(shortcut))) return false;
     yyjson_mut_val *item = yyjson_mut_arr_add_obj(output, items);
     return item && yyjson_mut_obj_add_str(output, item, "kind", "effect-clear") &&
         yyjson_mut_obj_add_strcpy(output, item, "shortcut", shortcut);
 }
 
-bool bongo_cat_neo_mver_effects(void *raw_output, void *raw_items, void *raw_root,
+bool bongo_cat_mver_effects(void *raw_output, void *raw_items, void *raw_root,
     void *raw_mode,
-    const BongoCatNeoImportCandidate *candidate, const char *target) {
+    const BongoCatImportCandidate *candidate, const char *target) {
     yyjson_mut_doc *output = raw_output;
     yyjson_mut_val *items = raw_items;
     yyjson_val *root = raw_root;
@@ -42,24 +42,24 @@ bool bongo_cat_neo_mver_effects(void *raw_output, void *raw_items, void *raw_roo
     yyjson_val *decoration = yyjson_obj_get(root, "decoration");
     bool momentary = !yyjson_get_bool(yyjson_obj_get(decoration, "emoticonKeep"));
     size_t emitted = 0;
-    char resources[BONGO_CAT_NEO_PATH_CAP], target_effects[BONGO_CAT_NEO_PATH_CAP];
-    if (!bongo_cat_neo_path_join(resources, sizeof(resources), target, "resources") ||
-        !bongo_cat_neo_path_join(target_effects, sizeof(target_effects), resources, "effects") ||
-        !bongo_cat_neo_path_create_directory(target_effects)) return false;
+    char resources[BONGO_CAT_PATH_CAP], target_effects[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_path_join(resources, sizeof(resources), target, "resources") ||
+        !bongo_cat_path_join(target_effects, sizeof(target_effects), resources, "effects") ||
+        !bongo_cat_path_create_directory(target_effects)) return false;
     size_t index, count; yyjson_val *row;
     yyjson_arr_foreach(rows, index, count, row) {
-        char shortcut[BONGO_CAT_NEO_SHORTCUT_CAP], name[32];
-        char source[BONGO_CAT_NEO_PATH_CAP], destination[BONGO_CAT_NEO_PATH_CAP];
+        char shortcut[BONGO_CAT_SHORTCUT_CAP], name[32];
+        char source[BONGO_CAT_PATH_CAP], destination[BONGO_CAT_PATH_CAP];
         snprintf(name, sizeof(name), "%zu.png", index);
-        if (!bongo_cat_neo_mver_chord(candidate, row, shortcut, sizeof(shortcut))) return false;
+        if (!bongo_cat_mver_chord(candidate, row, shortcut, sizeof(shortcut))) return false;
         if (!effect_source(candidate, name, source, sizeof(source))) continue;
-        BongoCatNeoImage image;
-        if (bongo_cat_neo_image_load(source, &image, NULL) != BONGO_CAT_NEO_OK) return false;
-        bongo_cat_neo_image_free(&image);
-        if (!bongo_cat_neo_path_join(destination, sizeof(destination), target_effects, name) ||
-            !bongo_cat_neo_path_copy_file(source, destination)) return false;
+        BongoCatImage image;
+        if (bongo_cat_image_load(source, &image, NULL) != BONGO_CAT_OK) return false;
+        bongo_cat_image_free(&image);
+        if (!bongo_cat_path_join(destination, sizeof(destination), target_effects, name) ||
+            !bongo_cat_path_copy_file(source, destination)) return false;
         yyjson_mut_val *item = yyjson_mut_arr_add_obj(output, items);
-        char relative[BONGO_CAT_NEO_PATH_CAP];
+        char relative[BONGO_CAT_PATH_CAP];
         snprintf(relative, sizeof(relative), "resources/effects/%s", name);
         if (!item || !yyjson_mut_obj_add_str(output, item, "kind", "effect") ||
             !yyjson_mut_obj_add_int(output, item, "index", (int)index) ||

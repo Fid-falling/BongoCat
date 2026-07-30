@@ -16,15 +16,15 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build\BongoCatNeo.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build\BongoCat.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build\soak-audit" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
 if ($DurationSeconds -lt 5 -or $IntervalSeconds -lt 1 -or $WarmupSeconds -lt 1 -or
     $IntervalSeconds -ge $DurationSeconds) { throw "Invalid soak duration or interval" }
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
-$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
-$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "soak-audit-$PID"
+$env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_TEST_INSTANCE_ID = "soak-audit-$PID"
 
 $data = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
 $exitMilliseconds = ($WarmupSeconds + $DurationSeconds + 3) * 1000
@@ -41,7 +41,7 @@ $samples = [Collections.Generic.List[object]]::new()
 try {
     Start-Sleep -Seconds $WarmupSeconds
     if ($process.HasExited) {
-        throw "bongo_cat_neo exited during warmup with code $($process.ExitCode)"
+        throw "bongo_cat exited during warmup with code $($process.ExitCode)"
     }
     $process.Refresh()
     $started = [DateTime]::UtcNow
@@ -49,7 +49,7 @@ try {
     $previousAt = $started
     while (([DateTime]::UtcNow - $started).TotalSeconds -lt $DurationSeconds) {
         if ($process.HasExited) {
-            throw "bongo_cat_neo exited before the soak duration with code $($process.ExitCode)"
+            throw "bongo_cat exited before the soak duration with code $($process.ExitCode)"
         }
         $process.Refresh()
         $now = [DateTime]::UtcNow

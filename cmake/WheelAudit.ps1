@@ -8,11 +8,11 @@ try {
     $window = Wait-Window $process
     Start-Sleep -Milliseconds 400
     $initial = Get-Rect $window
-    $workArea = [BongoCatNeoWheelNative+Rect]::new()
-    $workAreaAvailable = [BongoCatNeoWheelNative]::SystemParametersInfoW(
+    $workArea = [BongoCatWheelNative+Rect]::new()
+    $workAreaAvailable = [BongoCatWheelNative]::SystemParametersInfoW(
         0x0030, 0, [ref]$workArea, 0)
     if ($AtEdge -and $workAreaAvailable) {
-        [void][BongoCatNeoWheelNative]::SetWindowPos($window, [IntPtr]::Zero,
+        [void][BongoCatWheelNative]::SetWindowPos($window, [IntPtr]::Zero,
             $workArea.R - ($initial.R - $initial.L),
             $workArea.B - ($initial.B - $initial.T), 0, 0, 0x0015)
         Start-Sleep -Milliseconds 100
@@ -22,29 +22,29 @@ try {
     $opacitySamples = [Collections.Generic.List[object]]::new()
     for ($index = 0; $index -lt 30; $index++) {
         [uint32]$sampleColor = 0; [byte]$sampleAlpha = 255; [uint32]$sampleFlags = 0
-        [void][BongoCatNeoWheelNative]::GetLayeredWindowAttributes(
+        [void][BongoCatWheelNative]::GetLayeredWindowAttributes(
             $window, [ref]$sampleColor, [ref]$sampleAlpha, [ref]$sampleFlags)
         $opacitySamples.Add([pscustomobject]@{Index=$index; Alpha=$sampleAlpha})
         Start-Sleep -Milliseconds 16
     }
     [uint32]$color = 0; [byte]$alpha = 255; [uint32]$flags = 0
-    $opacityAvailable = [BongoCatNeoWheelNative]::GetLayeredWindowAttributes(
+    $opacityAvailable = [BongoCatWheelNative]::GetLayeredWindowAttributes(
         $window, [ref]$color, [ref]$alpha, [ref]$flags)
 
     $foregroundSeparated = $false
     if ($GlobalControl) {
-        $shell = [BongoCatNeoWheelNative]::GetShellWindow()
+        $shell = [BongoCatWheelNative]::GetShellWindow()
         if ($shell -ne [IntPtr]::Zero) {
-            [void][BongoCatNeoWheelNative]::SetForegroundWindow($shell)
+            [void][BongoCatWheelNative]::SetForegroundWindow($shell)
             Start-Sleep -Milliseconds 120
         }
-        $foregroundSeparated = [BongoCatNeoWheelNative]::GetForegroundWindow() -ne $window
+        $foregroundSeparated = [BongoCatWheelNative]::GetForegroundWindow() -ne $window
     }
     if ($ControlOpacity) {
-        [BongoCatNeoWheelNative]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero)
+        [BongoCatWheelNative]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero)
         $globalControlDown = $true; Start-Sleep -Milliseconds 80
     } elseif (-not $GlobalControl) {
-        [void][BongoCatNeoWheelNative]::PostMessageW(
+        [void][BongoCatWheelNative]::PostMessageW(
             $window, 0x0101, [IntPtr]0x11, [IntPtr]::Zero)
     }
     $process.Refresh()
@@ -67,16 +67,16 @@ try {
     } else { 0.0 }
     $wheelKeys = if ($ControlOpacity) { 8 } else { 0 }
     if ($SystemWheel) {
-        [void][BongoCatNeoWheelNative]::SetCursorPos(
+        [void][BongoCatWheelNative]::SetCursorPos(
             [int](($initial.L + $initial.R) / 2), [int](($initial.T + $initial.B) / 2))
         Start-Sleep -Milliseconds 80
     }
     for ($index = 0; $index -lt [Math]::Max(1, $BurstCount); $index++) {
         if ($SystemWheel) {
-            [BongoCatNeoWheelNative]::mouse_event(
+            [BongoCatWheelNative]::mouse_event(
                 0x0800, 0, 0, $ScaleDelta, [UIntPtr]::Zero)
         } else {
-            [void][BongoCatNeoWheelNative]::PostMessageW($window, 0x020A,
+            [void][BongoCatWheelNative]::PostMessageW($window, 0x020A,
                 (Wheel-WParam $ScaleDelta $wheelKeys), $position)
         }
         if ($BurstDelayMs -gt 0) { Start-Sleep -Milliseconds $BurstDelayMs }
@@ -95,10 +95,10 @@ try {
         Start-Sleep -Milliseconds 16
     }
     if ($ControlOpacity) {
-        [BongoCatNeoWheelNative]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero)
+        [BongoCatWheelNative]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero)
         $globalControlDown = $false
     } elseif (-not $GlobalControl) {
-        [void][BongoCatNeoWheelNative]::PostMessageW(
+        [void][BongoCatWheelNative]::PostMessageW(
             $window, 0x0101, [IntPtr]0x11, [IntPtr]::Zero)
     }
     Start-Sleep -Milliseconds 80
@@ -291,7 +291,7 @@ try {
     if (-not $result.Passed) { exit 1 }
 } finally {
     if ($globalControlDown) {
-        [BongoCatNeoWheelNative]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero)
+        [BongoCatWheelNative]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero)
     }
     if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
 }

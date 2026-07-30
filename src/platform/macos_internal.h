@@ -1,12 +1,12 @@
-#ifndef BONGO_CAT_NEO_MACOS_INTERNAL_H
-#define BONGO_CAT_NEO_MACOS_INTERNAL_H
+#ifndef BONGO_CAT_MACOS_INTERNAL_H
+#define BONGO_CAT_MACOS_INTERNAL_H
 
-#include "bongo_cat_neo/platform.h"
+#include "bongo_cat/platform.h"
 
-bool bongo_cat_neo_macos_input_start(BongoCatNeoPlatform *platform, BongoCatNeoError *error);
-void bongo_cat_neo_macos_input_stop(BongoCatNeoPlatform *platform);
-bool bongo_cat_neo_macos_input_supported(void);
-BongoCatNeoMenuAction bongo_cat_neo_macos_context_menu(BongoCatNeoPlatform *platform,
-    const BongoCatNeoMenuLabels *labels);
+bool bongo_cat_macos_input_start(BongoCatPlatform *platform, BongoCatError *error);
+void bongo_cat_macos_input_stop(BongoCatPlatform *platform);
+bool bongo_cat_macos_input_supported(void);
+BongoCatMenuAction bongo_cat_macos_context_menu(BongoCatPlatform *platform,
+    const BongoCatMenuLabels *labels);
 
 #endif

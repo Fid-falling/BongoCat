@@ -11,14 +11,14 @@
 
 enum { NOTICE_DURATION_MS = 2600, NOTICE_ENTER_MS = 250 };
 
-void bongo_cat_neo_preferences_notice_show(BongoCatNeoApp *app,
+void bongo_cat_preferences_notice_show(BongoCatApp *app,
     const char *message, bool error) {
     if (!app || !app->preferences || !message || !message[0]) return;
-    BongoCatNeoPreferences *value = app->preferences;
+    BongoCatPreferences *value = app->preferences;
     uint64_t now = SDL_GetTicksNS();
-    BongoCatNeoPreferenceNotice *target = NULL;
+    BongoCatPreferenceNotice *target = NULL;
     for (size_t i = 0; i < sizeof(value->notices) / sizeof(value->notices[0]); ++i) {
-        BongoCatNeoPreferenceNotice *notice = &value->notices[i];
+        BongoCatPreferenceNotice *notice = &value->notices[i];
         if (!notice->message[0] || notice->until_ns <= now) {
             target = notice; break;
         }
@@ -31,17 +31,17 @@ void bongo_cat_neo_preferences_notice_show(BongoCatNeoApp *app,
     value->render_dirty = true;
 }
 
-static size_t active_notices(BongoCatNeoPreferences *value, uint64_t now,
-    BongoCatNeoPreferenceNotice **items) {
+static size_t active_notices(BongoCatPreferences *value, uint64_t now,
+    BongoCatPreferenceNotice **items) {
     size_t count = 0;
     for (size_t i = 0; i < sizeof(value->notices) / sizeof(value->notices[0]); ++i) {
-        BongoCatNeoPreferenceNotice *notice = &value->notices[i];
+        BongoCatPreferenceNotice *notice = &value->notices[i];
         if (notice->message[0] && notice->until_ns <= now)
             memset(notice, 0, sizeof(*notice));
         if (notice->message[0]) items[count++] = notice;
     }
     for (size_t i = 1; i < count; ++i) {
-        BongoCatNeoPreferenceNotice *item = items[i];
+        BongoCatPreferenceNotice *item = items[i];
         size_t j = i;
         while (j && items[j - 1]->started_ns > item->started_ns) {
             items[j] = items[j - 1]; j--;
@@ -73,26 +73,26 @@ static float fit_notice_text(const struct nk_user_font *font,
     return font->width(font->userdata, font->height, output, 3);
 }
 
-static void draw_notice(BongoCatNeoPreferences *value,
-    struct nk_context *context, BongoCatNeoPreferenceNotice *notice,
+static void draw_notice(BongoCatPreferences *value,
+    struct nk_context *context, BongoCatPreferenceNotice *notice,
     float width, float y, uint64_t now) {
-    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(
-        bongo_cat_neo_ui_dark(context));
-    const struct nk_user_font *font = bongo_cat_neo_ui_label_font(context);
+    BongoCatUIPalette p = bongo_cat_ui_palette(
+        bongo_cat_ui_dark(context));
+    const struct nk_user_font *font = bongo_cat_ui_label_font(context);
     char label_text[sizeof(notice->message)];
     float text_width = fit_notice_text(font, notice->message,
         NK_MAX(40.0f, width - 100.0f), label_text, sizeof(label_text));
     float toast_width = NK_MIN(text_width + 36.0f, width - 64.0f);
     float elapsed = (float)(now - notice->started_ns) /
         (NOTICE_ENTER_MS * 1000000.0f);
-    float progress = bongo_cat_neo_ui_ease(BONGO_CAT_NEO_UI_EASE_SPRING,
+    float progress = bongo_cat_ui_ease(BONGO_CAT_UI_EASE_SPRING,
         NK_CLAMP(0.0f, elapsed, 1.0f));
     float opacity = NK_CLAMP(0.0f, progress, 1.0f);
     float shown_width = toast_width * (.9f + .1f * progress);
     struct nk_rect bounds = nk_rect((width - shown_width) * .5f,
         y - 12.0f * (1.0f - progress), shown_width, 41.0f);
     struct nk_color tone = notice->error ? p.danger : p.pink;
-    if (p.effects) bongo_cat_neo_ui_paint_shadow(context, bounds, 20, 0, 8,
+    if (p.effects) bongo_cat_ui_paint_shadow(context, bounds, 20, 0, 8,
         notice->error ? 25.0f : 22.0f, 0, nk_rgba(tone.r, tone.g, tone.b,
         (nk_byte)((notice->error ? 102 : 89) * opacity)));
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
@@ -106,12 +106,12 @@ static void draw_notice(BongoCatNeoPreferences *value,
     value->render_dirty = true;
 }
 
-void bongo_cat_neo_preferences_notice_draw(BongoCatNeoPreferences *value,
+void bongo_cat_preferences_notice_draw(BongoCatPreferences *value,
     struct nk_context *context, float width, float height) {
     (void)height;
     if (!value) return;
     uint64_t now = SDL_GetTicksNS();
-    BongoCatNeoPreferenceNotice *items[4];
+    BongoCatPreferenceNotice *items[4];
     size_t count = active_notices(value, now, items);
     for (size_t i = 0; i < count; ++i)
         draw_notice(value, context, items[i], width, 20.0f + i * 51.0f, now);

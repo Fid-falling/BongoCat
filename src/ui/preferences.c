@@ -1,8 +1,8 @@
-#include "bongo_cat_neo/preferences.h"
-#include "bongo_cat_neo/app.h"
-#include "bongo_cat_neo/i18n.h"
-#include "bongo_cat_neo/memory.h"
-#include "bongo_cat_neo/platform.h"
+#include "bongo_cat/preferences.h"
+#include "bongo_cat/app.h"
+#include "bongo_cat/i18n.h"
+#include "bongo_cat/memory.h"
+#include "bongo_cat/platform.h"
 #include "preferences_controls.h"
 #include "preferences_state.h"
 #include "ui_catime.h"
@@ -13,31 +13,31 @@
 #include <SDL3/SDL_opengl.h>
 #include <stdlib.h>
 
-#define BONGO_CAT_NEO_PREF_WIDTH 900
-#define BONGO_CAT_NEO_PREF_HEIGHT 680
-#define BONGO_CAT_NEO_PREF_MIN_WIDTH 720
-#define BONGO_CAT_NEO_PREF_MIN_HEIGHT 560
+#define BONGO_CAT_PREF_WIDTH 900
+#define BONGO_CAT_PREF_HEIGHT 680
+#define BONGO_CAT_PREF_MIN_WIDTH 720
+#define BONGO_CAT_PREF_MIN_HEIGHT 560
 
-int bongo_cat_neo_preferences_resolved_theme(const BongoCatNeoPreferences *value) {
-    if (value->app->config.app.theme == BONGO_CAT_NEO_THEME_DARK) return 1;
-    if (value->app->config.app.theme == BONGO_CAT_NEO_THEME_LIGHT) return 0;
+int bongo_cat_preferences_resolved_theme(const BongoCatPreferences *value) {
+    if (value->app->config.app.theme == BONGO_CAT_THEME_DARK) return 1;
+    if (value->app->config.app.theme == BONGO_CAT_THEME_LIGHT) return 0;
     return SDL_GetSystemTheme() == SDL_SYSTEM_THEME_DARK;
 }
-void bongo_cat_neo_preferences_apply_theme(BongoCatNeoPreferences *value) {
+void bongo_cat_preferences_apply_theme(BongoCatPreferences *value) {
     bool topmost = value->app->config.window.always_on_top;
     if (((SDL_GetWindowFlags(value->window) & SDL_WINDOW_ALWAYS_ON_TOP) != 0) != topmost)
         SDL_SetWindowAlwaysOnTop(value->window, topmost);
-    int dark = bongo_cat_neo_preferences_resolved_theme(value);
+    int dark = bongo_cat_preferences_resolved_theme(value);
     if (dark == value->style_theme) return;
     value->style_theme = dark;
-    bongo_cat_neo_ui_apply_theme(&value->ui.context, dark != 0);
-    bongo_cat_neo_ui_native_theme_apply(value->window, dark != 0);
+    bongo_cat_ui_apply_theme(&value->ui.context, dark != 0);
+    bongo_cat_ui_native_theme_apply(value->window, dark != 0);
 }
 
 static SDL_HitTestResult SDLCALL preference_hit_test(SDL_Window *window,
     const SDL_Point *point, void *data) {
-    BongoCatNeoPreferences *value = data;
-    if (!value || !point || bongo_cat_neo_preferences_remove_dialog_active(value->app))
+    BongoCatPreferences *value = data;
+    if (!value || !point || bongo_cat_preferences_remove_dialog_active(value->app))
         return SDL_HITTEST_NORMAL;
     int width = 0, height = 0;
     SDL_GetWindowSize(window, &width, &height);
@@ -52,13 +52,13 @@ static SDL_HitTestResult SDLCALL preference_hit_test(SDL_Window *window,
     if (right) return SDL_HITTEST_RESIZE_RIGHT;
     if (bottom) return SDL_HITTEST_RESIZE_BOTTOM;
     if (left) return SDL_HITTEST_RESIZE_LEFT;
-    return bongo_cat_neo_ui_title_drag_hit((float)point->x, (float)point->y,
+    return bongo_cat_ui_title_drag_hit((float)point->x, (float)point->y,
         (float)width) ? SDL_HITTEST_DRAGGABLE : SDL_HITTEST_NORMAL;
 }
 
 static void preferred_window_size(int *width, int *height) {
-    *width = BONGO_CAT_NEO_PREF_WIDTH;
-    *height = BONGO_CAT_NEO_PREF_HEIGHT;
+    *width = BONGO_CAT_PREF_WIDTH;
+    *height = BONGO_CAT_PREF_HEIGHT;
     SDL_Rect usable;
     SDL_DisplayID display = SDL_GetPrimaryDisplay();
     if (!display || !SDL_GetDisplayUsableBounds(display, &usable)) return;
@@ -70,7 +70,7 @@ static void preferred_window_size(int *width, int *height) {
     if (*height < 520) *height = 520;
 }
 
-static bool open_window(BongoCatNeoPreferences *value) {
+static bool open_window(BongoCatPreferences *value) {
     SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS |
         SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;
     int width, height;
@@ -78,10 +78,10 @@ static bool open_window(BongoCatNeoPreferences *value) {
 #ifdef _WIN32
     SDL_SetHint(SDL_HINT_WINDOWS_ERASE_BACKGROUND_MODE, "0");
 #endif
-    value->window = SDL_CreateWindow(BONGO_CAT_NEO_NAME, width, height, flags);
+    value->window = SDL_CreateWindow(BONGO_CAT_NAME, width, height, flags);
     if (!value->window) return false;
-    SDL_SetWindowMinimumSize(value->window, BONGO_CAT_NEO_PREF_MIN_WIDTH,
-        BONGO_CAT_NEO_PREF_MIN_HEIGHT);
+    SDL_SetWindowMinimumSize(value->window, BONGO_CAT_PREF_MIN_WIDTH,
+        BONGO_CAT_PREF_MIN_HEIGHT);
     SDL_SetWindowPosition(value->window, SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED);
     value->native_drag = SDL_SetWindowHitTest(value->window,
@@ -96,32 +96,32 @@ static bool open_window(BongoCatNeoPreferences *value) {
         if (!value->gl_context ||
             !SDL_GL_MakeCurrent(value->window, value->gl_context)) return false;
     }
-    BongoCatNeoError error = {0};
-    char body_path[BONGO_CAT_NEO_PATH_CAP], body_fallback_path[BONGO_CAT_NEO_PATH_CAP];
-    char heading_path[BONGO_CAT_NEO_PATH_CAP], heading_fallback_path[BONGO_CAT_NEO_PATH_CAP];
+    BongoCatError error = {0};
+    char body_path[BONGO_CAT_PATH_CAP], body_fallback_path[BONGO_CAT_PATH_CAP];
+    char heading_path[BONGO_CAT_PATH_CAP], heading_fallback_path[BONGO_CAT_PATH_CAP];
     const char *body_font, *body_fallback, *heading_font, *heading_fallback;
     const nk_rune *ranges = NULL;
-    body_font = bongo_cat_neo_ui_system_font(body_path, sizeof(body_path), false);
-    body_fallback = bongo_cat_neo_ui_system_font(body_fallback_path,
+    body_font = bongo_cat_ui_system_font(body_path, sizeof(body_path), false);
+    body_fallback = bongo_cat_ui_system_font(body_fallback_path,
         sizeof(body_fallback_path), true);
-    heading_font = bongo_cat_neo_ui_system_heading_font(heading_path,
+    heading_font = bongo_cat_ui_system_heading_font(heading_path,
         sizeof(heading_path), false);
-    heading_fallback = bongo_cat_neo_ui_system_heading_font(heading_fallback_path,
+    heading_fallback = bongo_cat_ui_system_heading_font(heading_fallback_path,
         sizeof(heading_fallback_path), true);
     if (!heading_font) heading_font = body_font;
     if (!heading_fallback) heading_fallback = body_fallback;
     if (value->app->i18n) {
-        bongo_cat_neo_i18n_all_glyph_ranges(value->app->i18n, value->glyph_ranges,
+        bongo_cat_i18n_all_glyph_ranges(value->app->i18n, value->glyph_ranges,
             sizeof(value->glyph_ranges) / sizeof(value->glyph_ranges[0]));
         ranges = value->glyph_ranges;
     }
-    if (!bongo_cat_neo_ui_init(&value->ui, value->window, body_font,
+    if (!bongo_cat_ui_init(&value->ui, value->window, body_font,
         body_fallback, heading_font, heading_fallback, ranges, &error)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
         return false;
     }
-    bongo_cat_neo_preferences_assets_load(value);
-    bongo_cat_neo_platform_trim_memory();
+    bongo_cat_preferences_assets_load(value);
+    bongo_cat_platform_trim_memory();
     value->style_theme = -1;
     value->font_language = value->app->config.app.language;
     int pixel_width = 0, pixel_height = 0;
@@ -132,43 +132,43 @@ static bool open_window(BongoCatNeoPreferences *value) {
         "Preferences VSync disable unavailable: %s", SDL_GetError());
     SDL_StartTextInput(value->window);
     value->render_dirty = true;
-    bongo_cat_neo_preferences_live_resize_install(value);
+    bongo_cat_preferences_live_resize_install(value);
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
     return true;
 }
-BongoCatNeoPreferences *bongo_cat_neo_preferences_create(BongoCatNeoApp *app) {
+BongoCatPreferences *bongo_cat_preferences_create(BongoCatApp *app) {
     if (!app) return NULL;
-    BongoCatNeoPreferences *value = calloc(1, sizeof(*value));
+    BongoCatPreferences *value = calloc(1, sizeof(*value));
     if (value) { value->app = app;
-        value->import_dialog = bongo_cat_neo_preferences_import_create();
+        value->import_dialog = bongo_cat_preferences_import_create();
         if (!value->import_dialog) { free(value); return NULL; } }
     if (value && app->smoke_preference_page >= 0)
         value->page = app->smoke_preference_page;
     return value;
 }
-void bongo_cat_neo_preferences_show(BongoCatNeoPreferences *value) {
+void bongo_cat_preferences_show(BongoCatPreferences *value) {
     if (!value) return;
     if (!value->window && !open_window(value)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Preferences failed: %s", SDL_GetError());
-        bongo_cat_neo_preferences_close(value);
+        bongo_cat_preferences_close(value);
         return;
     }
     value->render_dirty = true;
-    bongo_cat_neo_preferences_render(value);
-    bongo_cat_neo_platform_raise_window(value->window);
+    bongo_cat_preferences_render(value);
+    bongo_cat_platform_raise_window(value->window);
 }
-void bongo_cat_neo_preferences_close(BongoCatNeoPreferences *value) {
+void bongo_cat_preferences_close(BongoCatPreferences *value) {
     if (!value || !value->window) return;
-    bongo_cat_neo_preferences_live_resize_uninstall(value);
-    bongo_cat_neo_preferences_shortcut_cancel(value);
+    bongo_cat_preferences_live_resize_uninstall(value);
+    bongo_cat_preferences_shortcut_cancel(value);
     SDL_GL_MakeCurrent(value->window, value->gl_context);
-    if (value->input_active) bongo_cat_neo_preferences_input_end(value);
+    if (value->input_active) bongo_cat_preferences_input_end(value);
     SDL_StopTextInput(value->window);
-    bongo_cat_neo_preferences_model_cache_clear(value->app);
-    bongo_cat_neo_pref_controls_reset(&value->ui.context);
-    bongo_cat_neo_ui_animations_reset(&value->ui.context);
-    bongo_cat_neo_preferences_assets_clear(value);
-    bongo_cat_neo_ui_cursor_destroy(&value->ui); bongo_cat_neo_ui_destroy(&value->ui);
+    bongo_cat_preferences_model_cache_clear(value->app);
+    bongo_cat_pref_controls_reset(&value->ui.context);
+    bongo_cat_ui_animations_reset(&value->ui.context);
+    bongo_cat_preferences_assets_clear(value);
+    bongo_cat_ui_cursor_destroy(&value->ui); bongo_cat_ui_destroy(&value->ui);
     if (value->owns_gl_context && value->gl_context)
         SDL_GL_DestroyContext(value->gl_context);
     SDL_DestroyWindow(value->window);
@@ -179,27 +179,27 @@ void bongo_cat_neo_preferences_close(BongoCatNeoPreferences *value) {
     value->chrome_dragging = false;
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
     SDL_GL_SetSwapInterval(1);
-    bongo_cat_neo_platform_trim_memory();
-    bongo_cat_neo_config_store_flush(value->app);
+    bongo_cat_platform_trim_memory();
+    bongo_cat_config_store_flush(value->app);
 }
-void bongo_cat_neo_preferences_destroy(BongoCatNeoPreferences *value) {
-    if (value) { bongo_cat_neo_preferences_close(value);
-        bongo_cat_neo_preferences_import_destroy(value->import_dialog);
+void bongo_cat_preferences_destroy(BongoCatPreferences *value) {
+    if (value) { bongo_cat_preferences_close(value);
+        bongo_cat_preferences_import_destroy(value->import_dialog);
         free(value); }
 }
-void bongo_cat_neo_preferences_request_model_import(BongoCatNeoPreferences *value) {
-    if (value && !bongo_cat_neo_preferences_import_is_open(value->import_dialog))
+void bongo_cat_preferences_request_model_import(BongoCatPreferences *value) {
+    if (value && !bongo_cat_preferences_import_is_open(value->import_dialog))
         value->import_requested = true; }
-bool bongo_cat_neo_preferences_visible(const BongoCatNeoPreferences *value) { return value && value->window; }
-bool bongo_cat_neo_preferences_needs_frame(const BongoCatNeoPreferences *value) {
+bool bongo_cat_preferences_visible(const BongoCatPreferences *value) { return value && value->window; }
+bool bongo_cat_preferences_needs_frame(const BongoCatPreferences *value) {
     return value && value->window && value->render_dirty; }
-void bongo_cat_neo_preferences_input_begin(BongoCatNeoPreferences *value) {
+void bongo_cat_preferences_input_begin(BongoCatPreferences *value) {
     if (!value || !value->window || value->input_active) return;
-    bongo_cat_neo_ui_input_begin(&value->ui);
+    bongo_cat_ui_input_begin(&value->ui);
     value->input_active = true; }
-void bongo_cat_neo_preferences_input_end(BongoCatNeoPreferences *value) {
+void bongo_cat_preferences_input_end(BongoCatPreferences *value) {
     if (!value || !value->window || !value->input_active) return;
-    bongo_cat_neo_ui_input_end(&value->ui);
+    bongo_cat_ui_input_end(&value->ui);
     value->input_active = false;
 }
 static Uint32 event_window(const SDL_Event *event) {
@@ -217,19 +217,19 @@ static Uint32 event_window(const SDL_Event *event) {
     }
 }
 
-static bool chrome_event(BongoCatNeoPreferences *value, const SDL_Event *event) {
+static bool chrome_event(BongoCatPreferences *value, const SDL_Event *event) {
     if (event->type == SDL_EVENT_KEY_DOWN && event->key.key == SDLK_ESCAPE) {
-        if (bongo_cat_neo_preferences_behavior_dialog_active(value)) {
-            bongo_cat_neo_preferences_behavior_dialog_close(value);
+        if (bongo_cat_preferences_behavior_dialog_active(value)) {
+            bongo_cat_preferences_behavior_dialog_close(value);
             value->render_dirty = true;
             return true;
         }
-        if (bongo_cat_neo_preferences_remove_dialog_active(value->app)) {
-            bongo_cat_neo_preferences_remove_dialog_close(value->app);
+        if (bongo_cat_preferences_remove_dialog_active(value->app)) {
+            bongo_cat_preferences_remove_dialog_close(value->app);
             value->render_dirty = true;
             return true;
         }
-        bongo_cat_neo_preferences_close(value);
+        bongo_cat_preferences_close(value);
         return true;
     }
     if (value->native_drag) return false;
@@ -237,7 +237,7 @@ static bool chrome_event(BongoCatNeoPreferences *value, const SDL_Event *event) 
         event->button.button == SDL_BUTTON_LEFT) {
         int width = 0;
         SDL_GetWindowSize(value->window, &width, NULL);
-        if (!bongo_cat_neo_ui_title_drag_hit(event->button.x, event->button.y,
+        if (!bongo_cat_ui_title_drag_hit(event->button.x, event->button.y,
             (float)width)) return false;
         SDL_GetWindowPosition(value->window, &value->drag_window_x,
             &value->drag_window_y);
@@ -260,9 +260,9 @@ static bool chrome_event(BongoCatNeoPreferences *value, const SDL_Event *event) 
     return true;
 }
 
-bool bongo_cat_neo_preferences_event(BongoCatNeoPreferences *value, const SDL_Event *event) {
+bool bongo_cat_preferences_event(BongoCatPreferences *value, const SDL_Event *event) {
     if (!value || !event) return false;
-    if (bongo_cat_neo_preferences_import_event(value->import_dialog, value->app,
+    if (bongo_cat_preferences_import_event(value->import_dialog, value->app,
         value->window, event)) { value->render_dirty = value->window != NULL;
         return true; }
     if (!value->window) return false;
@@ -271,25 +271,25 @@ bool bongo_cat_neo_preferences_event(BongoCatNeoPreferences *value, const SDL_Ev
     }
     if (event_window(event) != SDL_GetWindowID(value->window)) return false;
     if (event->type == SDL_EVENT_WINDOW_FOCUS_LOST)
-        bongo_cat_neo_pref_controls_reset(&value->ui.context);
+        bongo_cat_pref_controls_reset(&value->ui.context);
     if (value->app->smoke_input_audit && (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
         event->type == SDL_EVENT_MOUSE_BUTTON_UP)) SDL_Log("Preferences mouse %s at %.1f,%.1f",
             event->button.down ? "down" : "up", event->button.x, event->button.y);
-    if (bongo_cat_neo_preferences_shortcut_event(value, event)) return true;
+    if (bongo_cat_preferences_shortcut_event(value, event)) return true;
     if (event->type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
-        bongo_cat_neo_preferences_close(value);
+        bongo_cat_preferences_close(value);
         return true;
     }
     if (event->type == SDL_EVENT_DROP_FILE) {
-        bongo_cat_neo_preferences_import_path(value->app, value->window, event->drop.data);
+        bongo_cat_preferences_import_path(value->app, value->window, event->drop.data);
         return true;
     }
     if (chrome_event(value, event)) return true;
-    if (!value->input_active) bongo_cat_neo_preferences_input_begin(value);
-    bongo_cat_neo_ui_event(&value->ui, event);
+    if (!value->input_active) bongo_cat_preferences_input_begin(value);
+    bongo_cat_ui_event(&value->ui, event);
     value->render_dirty = true;
     return true;
 }
 
-void bongo_cat_neo_preferences_invalidate(BongoCatNeoPreferences *value) {
+void bongo_cat_preferences_invalidate(BongoCatPreferences *value) {
     if (value) value->render_dirty = true; }

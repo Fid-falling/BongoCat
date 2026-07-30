@@ -1,9 +1,9 @@
-#include "bongo_cat_neo/input.h"
+#include "bongo_cat/input.h"
 
 #include <stdio.h>
 #include <string.h>
 
-void bongo_cat_neo_input_init(BongoCatNeoInputState *state) {
+void bongo_cat_input_init(BongoCatInputState *state) {
     if (!state) return;
     memset(state->queue, 0, sizeof(state->queue));
     atomic_init(&state->head, 0);
@@ -22,16 +22,16 @@ void bongo_cat_neo_input_init(BongoCatNeoInputState *state) {
     state->release_count = 0;
 }
 
-bool bongo_cat_neo_input_edge(bool states[BONGO_CAT_NEO_INPUT_KEY_STATE_CAP],
+bool bongo_cat_input_edge(bool states[BONGO_CAT_INPUT_KEY_STATE_CAP],
     unsigned code, bool down) {
-    if (!states || code >= BONGO_CAT_NEO_INPUT_KEY_STATE_CAP) return true;
+    if (!states || code >= BONGO_CAT_INPUT_KEY_STATE_CAP) return true;
     if (states[code] == down) return false;
     states[code] = down;
     return true;
 }
 
-static void update_modifiers(BongoCatNeoInputState *state, const BongoCatNeoInputEvent *event) {
-    if (event->kind != BONGO_CAT_NEO_INPUT_KEY_DOWN && event->kind != BONGO_CAT_NEO_INPUT_KEY_UP) return;
+static void update_modifiers(BongoCatInputState *state, const BongoCatInputEvent *event) {
+    if (event->kind != BONGO_CAT_INPUT_KEY_DOWN && event->kind != BONGO_CAT_INPUT_KEY_UP) return;
     atomic_uint_fast8_t *value = &state->control;
     uint8_t mask = strcmp(event->name, "ControlLeft") == 0 ? 1 :
         strcmp(event->name, "ControlRight") == 0 ? 2 : 0;
@@ -41,24 +41,24 @@ static void update_modifiers(BongoCatNeoInputState *state, const BongoCatNeoInpu
             strcmp(event->name, "ShiftRight") == 0 ? 2 : 0;
     }
     if (!mask) return;
-    if (event->kind == BONGO_CAT_NEO_INPUT_KEY_DOWN)
+    if (event->kind == BONGO_CAT_INPUT_KEY_DOWN)
         atomic_fetch_or_explicit(value, mask, memory_order_release);
     else atomic_fetch_and_explicit(value, (uint8_t)~mask, memory_order_release);
 }
 
-bool bongo_cat_neo_input_push(BongoCatNeoInputState *state, const BongoCatNeoInputEvent *event) {
+bool bongo_cat_input_push(BongoCatInputState *state, const BongoCatInputEvent *event) {
     if (!state || !event) return false;
     update_modifiers(state, event);
     uint64_t sequence = atomic_fetch_add_explicit(&state->next_sequence, 1,
         memory_order_relaxed);
     uint16_t head = (uint16_t)atomic_load_explicit(&state->head, memory_order_relaxed);
-    uint16_t next = (uint16_t)((head + 1u) % BONGO_CAT_NEO_INPUT_QUEUE_CAP);
+    uint16_t next = (uint16_t)((head + 1u) % BONGO_CAT_INPUT_QUEUE_CAP);
     if (next == atomic_load_explicit(&state->tail, memory_order_acquire)) {
-        if (event->kind == BONGO_CAT_NEO_INPUT_KEY_UP || event->kind == BONGO_CAT_NEO_INPUT_MOUSE_UP) {
+        if (event->kind == BONGO_CAT_INPUT_KEY_UP || event->kind == BONGO_CAT_INPUT_MOUSE_UP) {
             uint8_t recovery_head = (uint8_t)atomic_load_explicit(
                 &state->recovery_head, memory_order_relaxed);
             uint8_t recovery_next = (uint8_t)((recovery_head + 1u) %
-                BONGO_CAT_NEO_INPUT_RECOVERY_CAP);
+                BONGO_CAT_INPUT_RECOVERY_CAP);
             if (recovery_next != atomic_load_explicit(&state->recovery_tail,
                 memory_order_acquire)) {
                 state->recovery[recovery_head] = *event;
@@ -77,7 +77,7 @@ bool bongo_cat_neo_input_push(BongoCatNeoInputState *state, const BongoCatNeoInp
     return true;
 }
 
-bool bongo_cat_neo_input_pop(BongoCatNeoInputState *state, BongoCatNeoInputEvent *event) {
+bool bongo_cat_input_pop(BongoCatInputState *state, BongoCatInputEvent *event) {
     if (!state || !event) return false;
     uint16_t tail = (uint16_t)atomic_load_explicit(&state->tail, memory_order_relaxed);
     uint16_t head = (uint16_t)atomic_load_explicit(&state->head, memory_order_acquire);
@@ -92,17 +92,17 @@ bool bongo_cat_neo_input_pop(BongoCatNeoInputState *state, BongoCatNeoInputEvent
         state->queue[tail].sequence)) {
         *event = state->recovery[recovery_tail];
         atomic_store_explicit(&state->recovery_tail,
-            (uint8_t)((recovery_tail + 1u) % BONGO_CAT_NEO_INPUT_RECOVERY_CAP),
+            (uint8_t)((recovery_tail + 1u) % BONGO_CAT_INPUT_RECOVERY_CAP),
             memory_order_release);
         return true;
     }
     *event = state->queue[tail];
     atomic_store_explicit(&state->tail,
-        (tail + 1u) % BONGO_CAT_NEO_INPUT_QUEUE_CAP, memory_order_release);
+        (tail + 1u) % BONGO_CAT_INPUT_QUEUE_CAP, memory_order_release);
     return true;
 }
 
-bool bongo_cat_neo_input_mouse(BongoCatNeoInputState *state, double x, double y) {
+bool bongo_cat_input_mouse(BongoCatInputState *state, double x, double y) {
     if (!state) return false;
     atomic_store_explicit(&state->mouse_x, x, memory_order_relaxed);
     atomic_store_explicit(&state->mouse_y, y, memory_order_relaxed);
@@ -110,7 +110,7 @@ bool bongo_cat_neo_input_mouse(BongoCatNeoInputState *state, double x, double y)
         memory_order_acq_rel);
 }
 
-bool bongo_cat_neo_input_take_mouse(BongoCatNeoInputState *state, double *x, double *y) {
+bool bongo_cat_input_take_mouse(BongoCatInputState *state, double *x, double *y) {
     if (!state || !x || !y ||
         !atomic_exchange_explicit(&state->mouse_dirty, false, memory_order_acquire)) return false;
     *x = atomic_load_explicit(&state->mouse_x, memory_order_relaxed);
@@ -118,38 +118,38 @@ bool bongo_cat_neo_input_take_mouse(BongoCatNeoInputState *state, double *x, dou
     return true;
 }
 
-bool bongo_cat_neo_input_control_down(const BongoCatNeoInputState *state) {
+bool bongo_cat_input_control_down(const BongoCatInputState *state) {
     return state && atomic_load_explicit(&state->control, memory_order_acquire) != 0;
 }
 
-bool bongo_cat_neo_input_shift_down(const BongoCatNeoInputState *state) {
+bool bongo_cat_input_shift_down(const BongoCatInputState *state) {
     return state && atomic_load_explicit(&state->shift, memory_order_acquire) != 0;
 }
 
-static size_t release_index(const BongoCatNeoInputState *state, const char *name) {
+static size_t release_index(const BongoCatInputState *state, const char *name) {
     for (size_t i = 0; i < state->release_count; ++i)
         if (strcmp(state->releases[i].name, name) == 0) return i;
     return state->release_count;
 }
 
-static void remove_release(BongoCatNeoInputState *state, size_t index) {
+static void remove_release(BongoCatInputState *state, size_t index) {
     if (index >= state->release_count) return;
     state->releases[index] = state->releases[state->release_count - 1];
     memset(&state->releases[--state->release_count], 0,
         sizeof(state->releases[0]));
 }
 
-void bongo_cat_neo_input_auto_release(BongoCatNeoInputState *state,
-    const BongoCatNeoInputEvent *event, uint64_t delay_ms) {
+void bongo_cat_input_auto_release(BongoCatInputState *state,
+    const BongoCatInputEvent *event, uint64_t delay_ms) {
     if (!state || !event || !event->name[0] ||
-        (event->kind != BONGO_CAT_NEO_INPUT_KEY_DOWN && event->kind != BONGO_CAT_NEO_INPUT_KEY_UP)) return;
+        (event->kind != BONGO_CAT_INPUT_KEY_DOWN && event->kind != BONGO_CAT_INPUT_KEY_UP)) return;
     size_t index = release_index(state, event->name);
-    if (event->kind == BONGO_CAT_NEO_INPUT_KEY_UP || !delay_ms) {
+    if (event->kind == BONGO_CAT_INPUT_KEY_UP || !delay_ms) {
         remove_release(state, index);
         return;
     }
     if (index == state->release_count) {
-        if (state->release_count >= BONGO_CAT_NEO_AUTO_RELEASE_CAP) return;
+        if (state->release_count >= BONGO_CAT_AUTO_RELEASE_CAP) return;
         index = state->release_count++;
         snprintf(state->releases[index].name,
             sizeof(state->releases[index].name), "%s", event->name);
@@ -157,13 +157,13 @@ void bongo_cat_neo_input_auto_release(BongoCatNeoInputState *state,
     state->releases[index].deadline_ms = event->timestamp_ms + delay_ms;
 }
 
-bool bongo_cat_neo_input_take_release(BongoCatNeoInputState *state, uint64_t now_ms,
-    BongoCatNeoInputEvent *event) {
+bool bongo_cat_input_take_release(BongoCatInputState *state, uint64_t now_ms,
+    BongoCatInputEvent *event) {
     if (!state || !event) return false;
     for (size_t i = 0; i < state->release_count; ++i) {
         if (state->releases[i].deadline_ms > now_ms) continue;
         memset(event, 0, sizeof(*event));
-        event->kind = BONGO_CAT_NEO_INPUT_KEY_UP;
+        event->kind = BONGO_CAT_INPUT_KEY_UP;
         event->timestamp_ms = now_ms;
         snprintf(event->name, sizeof(event->name), "%s", state->releases[i].name);
         remove_release(state, i);

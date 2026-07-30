@@ -1,22 +1,22 @@
 #include "runtime.h"
-#include "bongo_cat_neo/file.h"
-#include "bongo_cat_neo/path.h"
+#include "bongo_cat/file.h"
+#include "bongo_cat/path.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <string.h>
 
-static void audit_mouse(BongoCatNeoApp *app, double x, double y) {
+static void audit_mouse(BongoCatApp *app, double x, double y) {
     if (!app->smoke_input_audit) return;
-    char path[BONGO_CAT_NEO_PATH_CAP];
-    if (!bongo_cat_neo_path_join(path, sizeof(path), app->data_root, "input-audit.txt")) return;
-    FILE *file = bongo_cat_neo_file_open(path, "ab");
+    char path[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_path_join(path, sizeof(path), app->data_root, "input-audit.txt")) return;
+    FILE *file = bongo_cat_file_open(path, "ab");
     if (!file) return;
     fprintf(file, "mouse x=%.2f y=%.2f\n", x, y);
     fclose(file);
 }
 
-void bongo_cat_neo_app_track_hover(BongoCatNeoApp *app, double x, double y) {
+void bongo_cat_app_track_hover(BongoCatApp *app, double x, double y) {
     int window_x, window_y, width, height;
     SDL_GetWindowPosition(app->window, &window_x, &window_y);
     SDL_GetWindowSize(app->window, &width, &height);
@@ -25,7 +25,7 @@ void bongo_cat_neo_app_track_hover(BongoCatNeoApp *app, double x, double y) {
     app->pointer_known = true;
     app->pointer_x = x;
     app->pointer_y = y;
-    bongo_cat_neo_window_schedule_pointer_hit(app);
+    bongo_cat_window_schedule_pointer_hit(app);
     if (inside == app->hover_inside) return;
     app->hover_inside = inside;
     app->hover_deadline_ns = inside ? SDL_GetTicksNS() +
@@ -33,39 +33,39 @@ void bongo_cat_neo_app_track_hover(BongoCatNeoApp *app, double x, double y) {
     if (!inside && app->hover_hidden) {
         SDL_SetWindowOpacity(app->window, app->config.window.opacity_percent / 100.0f);
         app->hover_hidden = false;
-        bongo_cat_neo_window_sync_click_through(app);
+        bongo_cat_window_sync_click_through(app);
     }
 }
 
-void bongo_cat_neo_app_update_hover(BongoCatNeoApp *app, uint64_t now) {
+void bongo_cat_app_update_hover(BongoCatApp *app, uint64_t now) {
     if (!app->config.window.hide_on_hover || !app->hover_inside || app->hover_hidden ||
         !app->hover_deadline_ns || now < app->hover_deadline_ns) return;
     SDL_SetWindowOpacity(app->window, 0.0f);
     app->hover_hidden = true;
-    bongo_cat_neo_window_sync_click_through(app);
+    bongo_cat_window_sync_click_through(app);
 }
 
-static void set_parameter(BongoCatNeoApp *app, const char *id,
+static void set_parameter(BongoCatApp *app, const char *id,
     float x_ratio, float y_ratio) {
-    BongoCatNeoParameterRange range;
-    if (!bongo_cat_neo_live2d_parameter(app->live2d, id, &range)) return;
+    BongoCatParameterRange range;
+    if (!bongo_cat_live2d_parameter(app->live2d, id, &range)) return;
     size_t length = strlen(id);
     char axis = length ? id[length - 1] : 'X';
-    float value = bongo_cat_neo_mouse_parameter_value(range.minimum, range.maximum,
+    float value = bongo_cat_mouse_parameter_value(range.minimum, range.maximum,
         x_ratio, y_ratio, axis, app->config.model.mouse_mirror);
-    bongo_cat_neo_live2d_set_parameter(app->live2d, id, value);
+    bongo_cat_live2d_set_parameter(app->live2d, id, value);
 }
 
-static void reconcile_button(BongoCatNeoApp *app, bool *current, bool pressed,
+static void reconcile_button(BongoCatApp *app, bool *current, bool pressed,
     const char *parameter) {
     if (*current == pressed) return;
     *current = pressed;
-    bongo_cat_neo_live2d_set_parameter(app->live2d, parameter, pressed ? 1.0f : 0.0f);
-    if (!pressed) bongo_cat_neo_window_mark_hit_dirty(app);
+    bongo_cat_live2d_set_parameter(app->live2d, parameter, pressed ? 1.0f : 0.0f);
+    if (!pressed) bongo_cat_window_mark_hit_dirty(app);
     app->dirty = true;
 }
 
-static void apply_mouse_coordinates(BongoCatNeoApp *app, double x, double y) {
+static void apply_mouse_coordinates(BongoCatApp *app, double x, double y) {
     SDL_Point point = {(int)x, (int)y}; SDL_Rect bounds;
     SDL_DisplayID display = SDL_GetDisplayForPoint(&point);
     if (!display || !SDL_GetDisplayBounds(display, &bounds) ||
@@ -84,21 +84,21 @@ static void apply_mouse_coordinates(BongoCatNeoApp *app, double x, double y) {
     // Cubism TargetPoint in NativeModel, just like Bongo Cat Mver.
     set_parameter(app, "ParamMouseX", x_ratio, y_ratio);
     set_parameter(app, "ParamMouseY", x_ratio, y_ratio);
-    bongo_cat_neo_live2d_set_dragging(app->live2d, drag_x, drag_y);
+    bongo_cat_live2d_set_dragging(app->live2d, drag_x, drag_y);
     app->dirty = true;
 }
 
-void bongo_cat_neo_app_apply_mouse_position(BongoCatNeoApp *app, double x, double y,
+void bongo_cat_app_apply_mouse_position(BongoCatApp *app, double x, double y,
     float elapsed_seconds) {
     if (!app || app->config.model.ignore_mouse) return;
     (void)elapsed_seconds;
     apply_mouse_coordinates(app, x, y);
 }
 
-void bongo_cat_neo_app_apply_mouse(BongoCatNeoApp *app) {
+void bongo_cat_app_apply_mouse(BongoCatApp *app) {
     if (!app) return;
     double target_x, target_y;
-    bool received = bongo_cat_neo_input_take_mouse(&app->input, &target_x, &target_y);
+    bool received = bongo_cat_input_take_mouse(&app->input, &target_x, &target_y);
     float global_x = 0.0f, global_y = 0.0f;
     SDL_MouseButtonFlags buttons = SDL_GetGlobalMouseState(&global_x, &global_y);
     reconcile_button(app, &app->left_mouse_down,
@@ -113,9 +113,9 @@ void bongo_cat_neo_app_apply_mouse(BongoCatNeoApp *app) {
         app->pointer_y != target_y;
     if (moved) {
         audit_mouse(app, target_x, target_y);
-        bongo_cat_neo_app_track_hover(app, target_x, target_y);
+        bongo_cat_app_track_hover(app, target_x, target_y);
     }
-    bongo_cat_neo_window_sync_click_through(app);
+    bongo_cat_window_sync_click_through(app);
     uint64_t now = SDL_GetTicksNS();
     app->mouse_last_ns = now;
     if (app->config.model.ignore_mouse) return;

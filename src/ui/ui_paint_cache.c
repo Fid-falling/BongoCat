@@ -4,21 +4,21 @@
 #include <stddef.h>
 #include <string.h>
 
-struct BongoCatNeoUIPaintTexture {
-    BongoCatNeoUIBackend *backend;
-    BongoCatNeoUIPaintKey key;
+struct BongoCatUIPaintTexture {
+    BongoCatUIBackend *backend;
+    BongoCatUIPaintKey key;
     GLuint texture;
     uint64_t used;
 };
 
-static BongoCatNeoUIPaintTexture textures[128];
+static BongoCatUIPaintTexture textures[128];
 static uint64_t use_counter;
 
-BongoCatNeoUIPaintTexture *bongo_cat_neo_ui_paint_cache_get(
-    BongoCatNeoUIBackend *backend, const BongoCatNeoUIPaintKey *key) {
-    BongoCatNeoUIPaintTexture *empty = NULL, *oldest = NULL;
+BongoCatUIPaintTexture *bongo_cat_ui_paint_cache_get(
+    BongoCatUIBackend *backend, const BongoCatUIPaintKey *key) {
+    BongoCatUIPaintTexture *empty = NULL, *oldest = NULL;
     for (size_t i = 0; i < sizeof(textures) / sizeof(textures[0]); ++i) {
-        BongoCatNeoUIPaintTexture *item = &textures[i];
+        BongoCatUIPaintTexture *item = &textures[i];
         if (item->texture && item->backend == backend &&
             memcmp(&item->key, key, sizeof(*key)) == 0) {
             item->used = ++use_counter;
@@ -28,7 +28,7 @@ BongoCatNeoUIPaintTexture *bongo_cat_neo_ui_paint_cache_get(
         if (item->backend == backend && (!oldest || item->used < oldest->used))
             oldest = item;
     }
-    BongoCatNeoUIPaintTexture *item = empty ? empty : oldest;
+    BongoCatUIPaintTexture *item = empty ? empty : oldest;
     if (!item) return NULL;
     if (item->texture) glDeleteTextures(1, &item->texture);
     memset(item, 0, sizeof(*item));
@@ -38,12 +38,12 @@ BongoCatNeoUIPaintTexture *bongo_cat_neo_ui_paint_cache_get(
     return item;
 }
 
-bool bongo_cat_neo_ui_paint_cache_ready(
-    const BongoCatNeoUIPaintTexture *item) {
+bool bongo_cat_ui_paint_cache_ready(
+    const BongoCatUIPaintTexture *item) {
     return item && item->texture != 0;
 }
 
-bool bongo_cat_neo_ui_paint_cache_upload(BongoCatNeoUIPaintTexture *item,
+bool bongo_cat_ui_paint_cache_upload(BongoCatUIPaintTexture *item,
     const unsigned char *pixels, bool single_channel) {
     glGenTextures(1, &item->texture);
     glBindTexture(GL_TEXTURE_2D, item->texture);
@@ -65,16 +65,16 @@ bool bongo_cat_neo_ui_paint_cache_upload(BongoCatNeoUIPaintTexture *item,
     return item->texture != 0;
 }
 
-void bongo_cat_neo_ui_paint_cache_draw(struct nk_context *context,
-    struct nk_rect bounds, const BongoCatNeoUIPaintTexture *item,
+void bongo_cat_ui_paint_cache_draw(struct nk_context *context,
+    struct nk_rect bounds, const BongoCatUIPaintTexture *item,
     struct nk_color tint) {
     struct nk_image image = nk_image_id((int)item->texture);
     nk_draw_image(nk_window_get_canvas(context), bounds, &image, tint);
 }
 
-void bongo_cat_neo_ui_paint_cache_destroy(BongoCatNeoUIBackend *backend) {
+void bongo_cat_ui_paint_cache_destroy(BongoCatUIBackend *backend) {
     for (size_t i = 0; i < sizeof(textures) / sizeof(textures[0]); ++i) {
-        BongoCatNeoUIPaintTexture *item = &textures[i];
+        BongoCatUIPaintTexture *item = &textures[i];
         if (item->backend != backend) continue;
         if (item->texture) glDeleteTextures(1, &item->texture);
         memset(item, 0, sizeof(*item));

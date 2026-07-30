@@ -15,7 +15,7 @@ if ($OutputDir -eq [IO.Path]::GetPathRoot($OutputDir)) { throw "Unsafe output di
 if (Test-Path -LiteralPath $OutputDir) { [IO.Directory]::Delete((Get-IoPath $OutputDir), $true) }
 $portableRoot = Join-Path $OutputDir "portable root"
 New-Item -ItemType Directory -Force -Path $portableRoot | Out-Null
-$testExe = Join-Path $portableRoot "BongoCatNeo.exe"
+$testExe = Join-Path $portableRoot "BongoCat.exe"
 Copy-Item -LiteralPath $Exe -Destination $testExe
 
 Add-Type -TypeDefinition @"
@@ -148,10 +148,10 @@ function Invoke-Smoke {
 function Write-Settings {
     param([string]$DataRoot, [bool]$Visible, [bool]$Tray, [int]$X = 0,
         [int]$Y = 0, [string]$Model = "standard")
-    $preferences = @{format="bongo-cat-neo/preferences"; version=1;
+    $preferences = @{format="bongo-cat/preferences"; version=1;
         window=@{keepInScreen=$false}; app=@{trayVisible=$Tray}} |
         ConvertTo-Json -Compress -Depth 4
-    $session = @{format="bongo-cat-neo/session"; version=1;
+    $session = @{format="bongo-cat/session"; version=1;
         window=@{visible=$Visible; x=$X; y=$Y; width=612; height=354};
         currentModel=$Model} | ConvertTo-Json -Compress -Depth 4
     [IO.File]::WriteAllText((Join-Path $DataRoot "preferences.json"), $preferences,
@@ -160,7 +160,7 @@ function Write-Settings {
         (New-Object Text.UTF8Encoding($false)))
 }
 
-$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
 $shared = Join-Path $OutputDir "shared-data"
 $log = Invoke-Smoke "fresh startup" $shared -Probe
 
@@ -183,10 +183,10 @@ $log = Invoke-Smoke "hidden and off-screen recovery" $shared -Probe
 
 Write-Settings $shared $true $true
 $log = Invoke-Smoke "blocked global hooks" $shared `
-    -Environment @{BONGO_CAT_NEO_TEST_HOOK_FAILURE="1"}
+    -Environment @{BONGO_CAT_TEST_HOOK_FAILURE="1"}
 if ($log -notmatch "Global input hooks are unavailable") { throw "Hook fallback was not used" }
 $log = Invoke-Smoke "OpenGL fallback" $shared -NoMSAA `
-    -Environment @{BONGO_CAT_NEO_TEST_GL_FALLBACK="1"}
+    -Environment @{BONGO_CAT_TEST_GL_FALLBACK="1"}
 if ($log -notmatch "transparent=1, MSAA=0") { throw "OpenGL fallback was not used" }
 
 $cacheModel = Join-Path $shared "embedded-assets-0.1.0\assets\models\standard"
@@ -195,7 +195,7 @@ New-Item -ItemType Directory -Force -Path $broken | Out-Null
 Copy-Item -LiteralPath $cacheModel -Destination (Join-Path $broken "payload") -Recurse
 New-Item -ItemType Directory -Force -Path (Join-Path $broken "adapter") | Out-Null
 $descriptor = '{"schemaVersion":1,"directory":"payload","adapter":"adapter","setting":"cat.model3.json","mode":"standard"}'
-[IO.File]::WriteAllText((Join-Path $broken ".bongo-cat-neo-package.json"), $descriptor,
+[IO.File]::WriteAllText((Join-Path $broken ".bongo-cat-package.json"), $descriptor,
     (New-Object Text.UTF8Encoding($false)))
 [IO.File]::WriteAllText((Join-Path $broken "payload\cat.model3.json"), "{",
     (New-Object Text.UTF8Encoding($false)))
@@ -236,8 +236,8 @@ $log = Invoke-Smoke "OpenGL fatal diagnostics" $failureData `
     -Environment @{SDL_VIDEO_DRIVER="dummy"} -ExpectFailure
 if ($log -notmatch "Startup failed") { throw "Fatal startup was not logged" }
 
-Remove-Item Env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES -ErrorAction SilentlyContinue
-$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "startup-matrix"
+Remove-Item Env:BONGO_CAT_ALLOW_TEST_INSTANCES -ErrorAction SilentlyContinue
+$env:BONGO_CAT_TEST_INSTANCE_ID = "startup-matrix"
 $instanceData = Join-Path $OutputDir "single-instance"
 New-Item -ItemType Directory -Force -Path $instanceData | Out-Null
 Write-Settings $instanceData $false $true
@@ -268,8 +268,8 @@ if ($window -eq [IntPtr]::Zero) { throw "Runtime-hidden instance was not reveale
 Assert-OnScreen $window
 if (-not $first.WaitForExit(15000) -or $first.ExitCode -ne 0) { throw "Primary instance failed" }
 Assert-Frame $instanceData
-$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = $null
-$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_TEST_INSTANCE_ID = $null
+$env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
 Write-Host "PASS second-instance wake"
 Write-Host "PASS runtime-hidden second-instance wake"
 Write-Host "Startup reliability matrix passed"

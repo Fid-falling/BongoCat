@@ -1,6 +1,6 @@
 #include "cubism_model.hpp"
-#include "bongo_cat_neo/file.h"
-#include "bongo_cat_neo/image.h"
+#include "bongo_cat/file.h"
+#include "bongo_cat/image.h"
 
 #include <Effect/CubismEyeBlink.hpp>
 #include <Effect/CubismBreath.hpp>
@@ -21,7 +21,7 @@
 #include <utility>
 #include <yyjson.h>
 
-namespace bongo_cat_neo {
+namespace bongo_cat {
 
 namespace {
 
@@ -78,7 +78,7 @@ NativeModel::~NativeModel() {
 }
 
 std::vector<unsigned char> NativeModel::read(const std::string &file, size_t maximum) const {
-    FILE *stream = bongo_cat_neo_file_open(file.c_str(), "rb");
+    FILE *stream = bongo_cat_file_open(file.c_str(), "rb");
     if (!stream || std::fseek(stream, 0, SEEK_END) != 0) {
         if (stream) std::fclose(stream);
         return {};
@@ -100,7 +100,7 @@ std::string NativeModel::path(const char *relative) const {
 }
 
 bool NativeModel::load(const char *directory, const char *setting_file,
-    bool direct_textures, BongoCatNeoError *error) {
+    bool direct_textures, BongoCatError *error) {
     if (!directory || !setting_file) return false;
     direct_textures_ = direct_textures;
     directory_ = directory;
@@ -108,14 +108,14 @@ bool NativeModel::load(const char *directory, const char *setting_file,
         directory_ += '/';
     std::vector<unsigned char> json = read(path(setting_file), 4 * 1024 * 1024);
     if (json.empty()) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO, "Cannot read model setting: %s", setting_file);
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_IO, "Cannot read model setting: %s", setting_file);
         return false;
     }
     if (!validate_model_setting_json(json, setting_file, error)) return false;
     setting_ = new(std::nothrow)
         Csm::CubismModelSettingJson(json.data(), (Csm::csmSizeInt)json.size());
     if (!setting_) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_MEMORY, "Cannot allocate model setting");
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_MEMORY, "Cannot allocate model setting");
         return false;
     }
     if (!load_model(error)) return false;
@@ -129,16 +129,16 @@ bool NativeModel::load(const char *directory, const char *setting_file,
     return true;
 }
 
-bool NativeModel::load_model(BongoCatNeoError *error) {
+bool NativeModel::load_model(BongoCatError *error) {
     const char *name = setting_->GetModelFileName();
     std::vector<unsigned char> bytes = read(path(name));
     if (bytes.empty()) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO, "Cannot read moc3: %s", name);
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_IO, "Cannot read moc3: %s", name);
         return false;
     }
     LoadModel(bytes.data(), (Csm::csmSizeInt)bytes.size(), true);
     if (!_model) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_CUBISM, "Cubism rejected moc3: %s", name);
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_CUBISM, "Cubism rejected moc3: %s", name);
         return false;
     }
     pending_parameter_values_.resize((size_t)_model->GetParameterCount());
@@ -252,11 +252,11 @@ void NativeModel::load_lock_motion(const std::string &key,
     if (!lock.parameters.empty()) lock_motions_[key] = std::move(lock);
 }
 
-bool NativeModel::load_textures(BongoCatNeoError *error) {
+bool NativeModel::load_textures(BongoCatError *error) {
     release_textures();
     textures_.assign((size_t)setting_->GetTextureCount(), 0);
     for (int i = 0; i < setting_->GetTextureCount(); ++i) {
-        textures_[(size_t)i] = bongo_cat_neo_image_texture_model(
+        textures_[(size_t)i] = bongo_cat_image_texture_model(
             path(setting_->GetTextureFileName(i)).c_str(), direct_textures_,
             nullptr, nullptr, error);
         if (!textures_[(size_t)i]) {
@@ -297,4 +297,4 @@ void NativeModel::bind_textures() {
     renderer->IsPremultipliedAlpha(false);
 }
 
-} // namespace bongo_cat_neo
+} // namespace bongo_cat

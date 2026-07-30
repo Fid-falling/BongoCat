@@ -1,23 +1,23 @@
-option(BONGO_CAT_NEO_OPTIMIZE_RELEASE_SIZE
+option(BONGO_CAT_OPTIMIZE_RELEASE_SIZE
   "Enable conservative size and dead-code optimization for Release builds" ON)
-option(BONGO_CAT_NEO_OPTIMIZE_RELEASE_IPO
+option(BONGO_CAT_OPTIMIZE_RELEASE_IPO
   "Enable compiler link-time optimization for native project targets" ON)
 
 include(CheckIPOSupported)
-if(BONGO_CAT_NEO_OPTIMIZE_RELEASE_IPO)
-  set(BONGO_CAT_NEO_TRY_COMPILE_CONFIGURATION "${CMAKE_TRY_COMPILE_CONFIGURATION}")
+if(BONGO_CAT_OPTIMIZE_RELEASE_IPO)
+  set(BONGO_CAT_TRY_COMPILE_CONFIGURATION "${CMAKE_TRY_COMPILE_CONFIGURATION}")
   set(CMAKE_TRY_COMPILE_CONFIGURATION Release)
-  check_ipo_supported(RESULT BONGO_CAT_NEO_IPO_SUPPORTED OUTPUT BONGO_CAT_NEO_IPO_ERROR
+  check_ipo_supported(RESULT BONGO_CAT_IPO_SUPPORTED OUTPUT BONGO_CAT_IPO_ERROR
     LANGUAGES C CXX)
-  set(CMAKE_TRY_COMPILE_CONFIGURATION "${BONGO_CAT_NEO_TRY_COMPILE_CONFIGURATION}")
-  if(NOT BONGO_CAT_NEO_IPO_SUPPORTED)
-    message(STATUS "Native IPO unavailable; continuing without it: ${BONGO_CAT_NEO_IPO_ERROR}")
+  set(CMAKE_TRY_COMPILE_CONFIGURATION "${BONGO_CAT_TRY_COMPILE_CONFIGURATION}")
+  if(NOT BONGO_CAT_IPO_SUPPORTED)
+    message(STATUS "Native IPO unavailable; continuing without it: ${BONGO_CAT_IPO_ERROR}")
   endif()
 endif()
 
-function(bongo_cat_neo_enable_release_ipo)
+function(bongo_cat_enable_release_ipo)
   foreach(target IN LISTS ARGN)
-    if(BONGO_CAT_NEO_OPTIMIZE_RELEASE_IPO AND BONGO_CAT_NEO_IPO_SUPPORTED AND
+    if(BONGO_CAT_OPTIMIZE_RELEASE_IPO AND BONGO_CAT_IPO_SUPPORTED AND
         NOT MINGW AND TARGET "${target}")
       set_property(TARGET "${target}" PROPERTY
         INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
@@ -31,7 +31,7 @@ endif()
 
 # Apply before FetchContent so static dependencies use the same settings. LTO
 # stays disabled because not every supported third-party archive is LTO-safe.
-if(BONGO_CAT_NEO_OPTIMIZE_RELEASE_SIZE)
+if(BONGO_CAT_OPTIMIZE_RELEASE_SIZE)
   if(MSVC OR CMAKE_C_SIMULATE_ID STREQUAL "MSVC")
     add_compile_options($<$<CONFIG:Release>:/O1>
       $<$<CONFIG:Release>:/Gy> $<$<CONFIG:Release>:/Gw>)

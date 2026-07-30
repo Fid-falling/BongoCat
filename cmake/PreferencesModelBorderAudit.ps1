@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build-final\Release\BongoCatNeo.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build-final\Release\BongoCat.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build-final\model-border" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
@@ -15,7 +15,7 @@ Add-Type -AssemblyName System.Drawing
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
-public static class BongoCatNeoModelBorderNative {
+public static class BongoCatModelBorderNative {
     public delegate bool EnumProc(IntPtr handle, IntPtr data);
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L,T,R,B; }
     [StructLayout(LayoutKind.Sequential)] public struct Point { public int X,Y; }
@@ -30,21 +30,21 @@ public static class BongoCatNeoModelBorderNative {
     [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
 }
 '@
-[void][BongoCatNeoModelBorderNative]::SetProcessDPIAware()
+[void][BongoCatModelBorderNative]::SetProcessDPIAware()
 
 function Wait-Preferences([int]$ProcessId) {
     $deadline = [DateTime]::UtcNow.AddSeconds(20)
     do {
         $found = [Collections.Generic.List[IntPtr]]::new()
-        [BongoCatNeoModelBorderNative]::EnumWindows({
+        [BongoCatModelBorderNative]::EnumWindows({
             param($handle, $unused)
             [uint32]$owner = 0
-            [void][BongoCatNeoModelBorderNative]::GetWindowThreadProcessId(
+            [void][BongoCatModelBorderNative]::GetWindowThreadProcessId(
                 $handle, [ref]$owner)
-            $rect = [BongoCatNeoModelBorderNative+Rect]::new()
+            $rect = [BongoCatModelBorderNative+Rect]::new()
             if ($owner -eq $ProcessId -and
-                [BongoCatNeoModelBorderNative]::IsWindowVisible($handle) -and
-                [BongoCatNeoModelBorderNative]::GetClientRect($handle, [ref]$rect) -and
+                [BongoCatModelBorderNative]::IsWindowVisible($handle) -and
+                [BongoCatModelBorderNative]::GetClientRect($handle, [ref]$rect) -and
                 $rect.R -ge 700 -and $rect.B -ge 550) { $found.Add($handle) }
             return $true
         }, [IntPtr]::Zero) | Out-Null
@@ -55,17 +55,17 @@ function Wait-Preferences([int]$ProcessId) {
 }
 
 function Move-Client([IntPtr]$Window, [int]$X, [int]$Y) {
-    $point = [BongoCatNeoModelBorderNative+Point]::new()
+    $point = [BongoCatModelBorderNative+Point]::new()
     $point.X = $X; $point.Y = $Y
-    [void][BongoCatNeoModelBorderNative]::ClientToScreen($Window, [ref]$point)
-    [void][BongoCatNeoModelBorderNative]::SetCursorPos($point.X, $point.Y)
+    [void][BongoCatModelBorderNative]::ClientToScreen($Window, [ref]$point)
+    [void][BongoCatModelBorderNative]::SetCursorPos($point.X, $point.Y)
 }
 
 function Save-Client([IntPtr]$Window, [string]$Name) {
-    $rect = [BongoCatNeoModelBorderNative+Rect]::new()
-    [void][BongoCatNeoModelBorderNative]::GetClientRect($Window, [ref]$rect)
-    $origin = [BongoCatNeoModelBorderNative+Point]::new()
-    [void][BongoCatNeoModelBorderNative]::ClientToScreen($Window, [ref]$origin)
+    $rect = [BongoCatModelBorderNative+Rect]::new()
+    [void][BongoCatModelBorderNative]::GetClientRect($Window, [ref]$rect)
+    $origin = [BongoCatModelBorderNative+Point]::new()
+    [void][BongoCatModelBorderNative]::ClientToScreen($Window, [ref]$origin)
     $bitmap = [Drawing.Bitmap]::new($rect.R, $rect.B)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
     $graphics.CopyFromScreen($origin.X, $origin.Y, 0, 0, $bitmap.Size)
@@ -116,8 +116,8 @@ function Measure-Outline([string]$Path, [string]$Color,
     } finally { $bitmap.Dispose() }
 }
 
-$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
-$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "preferences-model-border-audit-$PID"
+$env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_TEST_INSTANCE_ID = "preferences-model-border-audit-$PID"
 $arguments = @("--ci-preferences", "--ci-preference-page=2",
     "--ci-language=zh-CN", "--ci-theme=light", "--ci-exit-ms=15000",
     "--data-root=$data")
@@ -125,14 +125,14 @@ $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
     -WorkingDirectory (Split-Path $Exe) -PassThru
 try {
     $window = Wait-Preferences $process.Id
-    [void][BongoCatNeoModelBorderNative]::SetWindowPos($window,
+    [void][BongoCatModelBorderNative]::SetWindowPos($window,
         [IntPtr](-1), 40, 40, 900, 680, 0x0040)
-    [void][BongoCatNeoModelBorderNative]::SetForegroundWindow($window)
+    [void][BongoCatModelBorderNative]::SetForegroundWindow($window)
     Move-Client $window 750 200
     Start-Sleep -Milliseconds 600
     $hoverPath = Save-Client $window "hover-default.png"
     $hover = Measure-Outline $hoverPath "blue" 620 100 875 350
-    [void][BongoCatNeoModelBorderNative]::SetWindowPos($window,
+    [void][BongoCatModelBorderNative]::SetWindowPos($window,
         [IntPtr](-1), 40, 40, 720, 560, 0x0040)
     Move-Client $window 100 500
     Start-Sleep -Milliseconds 600

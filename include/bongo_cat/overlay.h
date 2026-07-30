@@ -1,0 +1,19 @@
+#ifndef BONGO_CAT_OVERLAY_H
+#define BONGO_CAT_OVERLAY_H
+
+#include "bongo_cat/common.h"
+
+typedef struct BongoCatOverlay BongoCatOverlay;
+
+BongoCatOverlay *bongo_cat_overlay_create(BongoCatError *error);
+void bongo_cat_overlay_destroy(BongoCatOverlay *overlay);
+BongoCatResult bongo_cat_overlay_load(BongoCatOverlay *overlay, const char *model_directory,
+    BongoCatError *error);
+int bongo_cat_overlay_key(BongoCatOverlay *overlay, const char *name, bool pressed);
+bool bongo_cat_overlay_effect(BongoCatOverlay *overlay, const char *path);
+bool bongo_cat_overlay_hand_active(const BongoCatOverlay *overlay, bool right);
+void bongo_cat_overlay_draw_background(BongoCatOverlay *overlay, bool mirror);
+void bongo_cat_overlay_draw_keys(BongoCatOverlay *overlay, bool mirror);
+void bongo_cat_overlay_draw_effect(BongoCatOverlay *overlay, bool mirror);
+
+#endif

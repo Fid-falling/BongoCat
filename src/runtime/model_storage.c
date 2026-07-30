@@ -1,5 +1,5 @@
 #include "model_storage.h"
-#include "bongo_cat_neo/path.h"
+#include "bongo_cat/path.h"
 
 #include <SDL3/SDL.h>
 #include <ctype.h>
@@ -7,37 +7,37 @@
 
 #define MODEL_REMOVE_DEPTH_CAP 32
 
-typedef struct RemoveContext { BongoCatNeoError *error; unsigned depth; } RemoveContext;
-static bool remove_tree(const char *path, unsigned depth, BongoCatNeoError *error);
+typedef struct RemoveContext { BongoCatError *error; unsigned depth; } RemoveContext;
+static bool remove_tree(const char *path, unsigned depth, BongoCatError *error);
 
-static BongoCatNeoPathVisit remove_item(void *userdata,
+static BongoCatPathVisit remove_item(void *userdata,
     const char *dirname, const char *name) {
     RemoveContext *context = userdata;
-    char path[BONGO_CAT_NEO_PATH_CAP];
-    return bongo_cat_neo_path_join(path, sizeof(path), dirname, name) &&
+    char path[BONGO_CAT_PATH_CAP];
+    return bongo_cat_path_join(path, sizeof(path), dirname, name) &&
         remove_tree(path, context->depth + 1, context->error)
-        ? BONGO_CAT_NEO_PATH_CONTINUE : BONGO_CAT_NEO_PATH_FAILURE;
+        ? BONGO_CAT_PATH_CONTINUE : BONGO_CAT_PATH_FAILURE;
 }
 
-static bool remove_tree(const char *path, unsigned depth, BongoCatNeoError *error) {
+static bool remove_tree(const char *path, unsigned depth, BongoCatError *error) {
     if (!path || !path[0]) return true;
-    bool directory = bongo_cat_neo_path_is_dir(path);
-    if (!directory && !bongo_cat_neo_path_is_file(path)) return true;
+    bool directory = bongo_cat_path_is_dir(path);
+    if (!directory && !bongo_cat_path_is_file(path)) return true;
     if (depth > MODEL_REMOVE_DEPTH_CAP) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
             "Model directory nesting exceeds %u levels", MODEL_REMOVE_DEPTH_CAP);
         return false;
     }
     RemoveContext context = {error, depth};
     if (directory &&
-        !bongo_cat_neo_path_enumerate(path, remove_item, &context)) return false;
-    if (bongo_cat_neo_path_remove(path)) return true;
-    if (error) bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO,
+        !bongo_cat_path_enumerate(path, remove_item, &context)) return false;
+    if (bongo_cat_path_remove(path)) return true;
+    if (error) bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
         "Cannot remove %s: %s", path, SDL_GetError());
     return false;
 }
 
-bool bongo_cat_neo_model_remove_tree(const char *path, BongoCatNeoError *error) {
+bool bongo_cat_model_remove_tree(const char *path, BongoCatError *error) {
     return remove_tree(path, 0, error);
 }
 
@@ -57,18 +57,18 @@ static bool temporary_name(const char *name) {
     return true;
 }
 
-static BongoCatNeoPathVisit cleanup_item(void *userdata,
+static BongoCatPathVisit cleanup_item(void *userdata,
     const char *dirname, const char *name) {
-    BongoCatNeoError *error = userdata;
-    if (!temporary_name(name)) return BONGO_CAT_NEO_PATH_CONTINUE;
-    char path[BONGO_CAT_NEO_PATH_CAP];
-    if (!bongo_cat_neo_path_join(path, sizeof(path), dirname, name) ||
-        !bongo_cat_neo_path_is_dir(path)) return BONGO_CAT_NEO_PATH_CONTINUE;
-    return bongo_cat_neo_model_remove_tree(path, error)
-        ? BONGO_CAT_NEO_PATH_CONTINUE : BONGO_CAT_NEO_PATH_FAILURE;
+    BongoCatError *error = userdata;
+    if (!temporary_name(name)) return BONGO_CAT_PATH_CONTINUE;
+    char path[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_path_join(path, sizeof(path), dirname, name) ||
+        !bongo_cat_path_is_dir(path)) return BONGO_CAT_PATH_CONTINUE;
+    return bongo_cat_model_remove_tree(path, error)
+        ? BONGO_CAT_PATH_CONTINUE : BONGO_CAT_PATH_FAILURE;
 }
 
-bool bongo_cat_neo_model_cleanup_imports(const char *root, BongoCatNeoError *error) {
-    return root && bongo_cat_neo_path_is_dir(root) &&
-        bongo_cat_neo_path_enumerate(root, cleanup_item, error);
+bool bongo_cat_model_cleanup_imports(const char *root, BongoCatError *error) {
+    return root && bongo_cat_path_is_dir(root) &&
+        bongo_cat_path_enumerate(root, cleanup_item, error);
 }

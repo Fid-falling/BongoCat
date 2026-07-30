@@ -1,7 +1,7 @@
 $edgeMatches = $reports -eq $installed
 if ($fixture.NoGamepadShortcuts) {
     foreach ($model in $layouts) {
-        $metadata = Get-Content (Join-Path $model.Adapter ".bongo-cat-neo-mver.json") `
+        $metadata = Get-Content (Join-Path $model.Adapter ".bongo-cat-mver.json") `
             -Raw | ConvertFrom-Json
         $edgeMatches = $edgeMatches -and
             @($metadata.bindings | Where-Object shortcut -like "Gamepad:*").Count -eq 0
@@ -16,7 +16,7 @@ if ($fixture.PatchHash) {
 if ($fixture.MomentaryMedia) {
     $mediaCount = 0
     foreach ($model in $layouts) {
-        $metadata = Get-Content (Join-Path $model.Adapter ".bongo-cat-neo-mver.json") `
+        $metadata = Get-Content (Join-Path $model.Adapter ".bongo-cat-mver.json") `
             -Raw | ConvertFrom-Json
         $media = @($metadata.bindings | Where-Object kind -in "sound","effect")
         $mediaCount += $media.Count
@@ -29,7 +29,7 @@ if ($fixture.MomentaryMedia) {
 if ($fixture.SparseAssets) {
     $keyboard = $layouts | Where-Object Mode -eq "keyboard" | Select-Object -First 1
     $report = Get-Content (Join-Path $keyboard.Adapter `
-        ".bongo-cat-neo-import-report.json") -Raw | ConvertFrom-Json
+        ".bongo-cat-import-report.json") -Raw | ConvertFrom-Json
     $edgeMatches = $edgeMatches -and $report.assets.lefthand.declared -eq 2 -and
         $report.assets.lefthand.available -eq 1 -and
         $report.assets.lefthand.missing -eq 1

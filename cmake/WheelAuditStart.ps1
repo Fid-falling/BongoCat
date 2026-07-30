@@ -1,5 +1,5 @@
-$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
-$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "wheel-audit-$PID"
+$env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_TEST_INSTANCE_ID = "wheel-audit-$PID"
 $data = if ($DataRoot) { [IO.Path]::GetFullPath($DataRoot) } else {
     Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
 }
@@ -7,7 +7,7 @@ $arguments = @("--ci-smoke", "--ci-frame-series", "--ci-exit-ms=9000",
     "--data-root=$data")
 if ($ControlOpacity) {
     $config = Join-Path $OutputDir "opacity-session.json"
-    $json = @{ format="bongo-cat-neo/session"; version=1;
+    $json = @{ format="bongo-cat/session"; version=1;
         window=@{ opacity=$InitialOpacity } } |
         ConvertTo-Json -Compress
     [IO.File]::WriteAllText($config, $json, [Text.UTF8Encoding]::new($false))

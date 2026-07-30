@@ -1,14 +1,14 @@
 #include "ui_backend.h"
 
-void bongo_cat_neo_ui_input_begin(BongoCatNeoUIBackend *ui) {
+void bongo_cat_ui_input_begin(BongoCatUIBackend *ui) {
     if (ui) nk_input_begin(&ui->context);
 }
 
-void bongo_cat_neo_ui_input_end(BongoCatNeoUIBackend *ui) {
+void bongo_cat_ui_input_end(BongoCatUIBackend *ui) {
     if (ui) nk_input_end(&ui->context);
 }
 
-static void key_event(BongoCatNeoUIBackend *ui, const SDL_KeyboardEvent *event) {
+static void key_event(BongoCatUIBackend *ui, const SDL_KeyboardEvent *event) {
     bool down = event->down;
     bool control = (event->mod & SDL_KMOD_CTRL) != 0;
     struct nk_context *context = &ui->context;
@@ -46,7 +46,7 @@ static void key_event(BongoCatNeoUIBackend *ui, const SDL_KeyboardEvent *event) 
     }
 }
 
-static void text_event(BongoCatNeoUIBackend *ui, const char *text) {
+static void text_event(BongoCatUIBackend *ui, const char *text) {
     int length = text ? (int)SDL_strlen(text) : 0;
     while (length > 0) {
         nk_rune rune;
@@ -58,7 +58,7 @@ static void text_event(BongoCatNeoUIBackend *ui, const char *text) {
     }
 }
 
-bool bongo_cat_neo_ui_event(BongoCatNeoUIBackend *ui, const SDL_Event *event) {
+bool bongo_cat_ui_event(BongoCatUIBackend *ui, const SDL_Event *event) {
     if (!ui || !event) return false;
     struct nk_context *context = &ui->context;
     switch (event->type) {

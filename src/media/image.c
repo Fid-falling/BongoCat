@@ -1,5 +1,5 @@
-#include "bongo_cat_neo/file.h"
-#include "bongo_cat_neo/image.h"
+#include "bongo_cat/file.h"
+#include "bongo_cat/image.h"
 
 #ifdef _WIN32
 #define COBJMACROS
@@ -13,16 +13,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define BONGO_CAT_NEO_LIVE2D_TEXTURE_LIMIT 2048
+#define BONGO_CAT_LIVE2D_TEXTURE_LIMIT 2048
 
 #ifdef _WIN32
 static bool needs_wic_scaling(const char *path) {
-    FILE *file = bongo_cat_neo_file_open(path, "rb");
+    FILE *file = bongo_cat_file_open(path, "rb");
     int width = 0, height = 0, channels = 0;
     bool known = file && stbi_info_from_file(file, &width, &height, &channels);
     if (file) fclose(file);
-    return !known || width > BONGO_CAT_NEO_LIVE2D_TEXTURE_LIMIT ||
-        height > BONGO_CAT_NEO_LIVE2D_TEXTURE_LIMIT;
+    return !known || width > BONGO_CAT_LIVE2D_TEXTURE_LIMIT ||
+        height > BONGO_CAT_LIVE2D_TEXTURE_LIMIT;
 }
 
 static wchar_t *wide_path(const char *path) {
@@ -36,7 +36,7 @@ static wchar_t *wide_path(const char *path) {
     return wide;
 }
 
-static bool wic_scaled_image(const char *path, BongoCatNeoImage *image,
+static bool wic_scaled_image(const char *path, BongoCatImage *image,
     UINT max_width, UINT max_height) {
     memset(image, 0, sizeof(*image));
     HRESULT initialized = CoInitializeEx(NULL, COINIT_MULTITHREADED);
@@ -105,31 +105,31 @@ static bool wic_scaled_image(const char *path, BongoCatNeoImage *image,
 }
 #endif
 
-BongoCatNeoResult bongo_cat_neo_image_load(const char *path, BongoCatNeoImage *image, BongoCatNeoError *error) {
-    if (!path || !image) return BONGO_CAT_NEO_ERROR_ARGUMENT;
+BongoCatResult bongo_cat_image_load(const char *path, BongoCatImage *image, BongoCatError *error) {
+    if (!path || !image) return BONGO_CAT_ERROR_ARGUMENT;
     memset(image, 0, sizeof(*image));
     int channels;
-    FILE *file = bongo_cat_neo_file_open(path, "rb");
+    FILE *file = bongo_cat_file_open(path, "rb");
     image->pixels = file ? stbi_load_from_file(file, &image->width,
         &image->height, &channels, STBI_rgb_alpha) : NULL;
     image->pixels_stbi = image->pixels != NULL;
     if (file) fclose(file);
     if (!image->pixels) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO,
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
             "Cannot decode image: %s", path);
-        return BONGO_CAT_NEO_ERROR_IO;
+        return BONGO_CAT_ERROR_IO;
     }
     image->surface = SDL_CreateSurfaceFrom(image->width, image->height,
         SDL_PIXELFORMAT_RGBA32, image->pixels, image->width * 4);
     if (!image->surface) {
-        bongo_cat_neo_image_free(image);
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM, "Cannot create image surface");
-        return BONGO_CAT_NEO_ERROR_PLATFORM;
+        bongo_cat_image_free(image);
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM, "Cannot create image surface");
+        return BONGO_CAT_ERROR_PLATFORM;
     }
-    return BONGO_CAT_NEO_OK;
+    return BONGO_CAT_OK;
 }
 
-void bongo_cat_neo_image_free(BongoCatNeoImage *image) {
+void bongo_cat_image_free(BongoCatImage *image) {
     if (!image) return;
     if (image->surface) SDL_DestroySurface(image->surface);
     if (image->pixels) {
@@ -139,7 +139,7 @@ void bongo_cat_neo_image_free(BongoCatNeoImage *image) {
     memset(image, 0, sizeof(*image));
 }
 
-static unsigned int upload(const BongoCatNeoImage *image, GLuint texture, bool model_texture) {
+static unsigned int upload(const BongoCatImage *image, GLuint texture, bool model_texture) {
     bool created = texture == 0;
     if (created) glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -168,30 +168,30 @@ static unsigned int upload(const BongoCatNeoImage *image, GLuint texture, bool m
     return texture;
 }
 
-unsigned int bongo_cat_neo_image_texture(const char *path, int *width, int *height, BongoCatNeoError *error) {
-    BongoCatNeoImage image;
-    if (bongo_cat_neo_image_load(path, &image, error) != BONGO_CAT_NEO_OK) return 0;
+unsigned int bongo_cat_image_texture(const char *path, int *width, int *height, BongoCatError *error) {
+    BongoCatImage image;
+    if (bongo_cat_image_load(path, &image, error) != BONGO_CAT_OK) return 0;
     GLuint texture = upload(&image, 0, false);
     if (width) *width = image.width;
     if (height) *height = image.height;
-    bongo_cat_neo_image_free(&image);
+    bongo_cat_image_free(&image);
     return texture;
 }
 
-unsigned int bongo_cat_neo_image_texture_thumbnail(const char *path, int max_width,
-    int max_height, int *width, int *height, BongoCatNeoError *error) {
-    BongoCatNeoImage image;
+unsigned int bongo_cat_image_texture_thumbnail(const char *path, int max_width,
+    int max_height, int *width, int *height, BongoCatError *error) {
+    BongoCatImage image;
 #ifdef _WIN32
     if (max_width > 0 && max_height > 0 && wic_scaled_image(path, &image,
         (UINT)max_width, (UINT)max_height)) {
         GLuint texture = upload(&image, 0, false);
         if (width) *width = image.width;
         if (height) *height = image.height;
-        bongo_cat_neo_image_free(&image);
+        bongo_cat_image_free(&image);
         return texture;
     }
 #endif
-    if (bongo_cat_neo_image_load(path, &image, error) != BONGO_CAT_NEO_OK) return 0;
+    if (bongo_cat_image_load(path, &image, error) != BONGO_CAT_OK) return 0;
     int target_width = image.width, target_height = image.height;
     if (max_width > 0 && max_height > 0 &&
         (target_width > max_width || target_height > max_height)) {
@@ -202,13 +202,13 @@ unsigned int bongo_cat_neo_image_texture_thumbnail(const char *path, int max_wid
         SDL_Surface *scaled = SDL_ScaleSurface(image.surface, target_width,
             target_height, SDL_SCALEMODE_LINEAR);
         if (scaled) {
-            BongoCatNeoImage thumbnail = {
+            BongoCatImage thumbnail = {
                 .pixels = scaled->pixels, .width = scaled->w, .height = scaled->h};
             GLuint texture = upload(&thumbnail, 0, false);
             if (width) *width = thumbnail.width;
             if (height) *height = thumbnail.height;
             SDL_DestroySurface(scaled);
-            bongo_cat_neo_image_free(&image);
+            bongo_cat_image_free(&image);
             return texture;
         }
         target_width = image.width;
@@ -217,24 +217,24 @@ unsigned int bongo_cat_neo_image_texture_thumbnail(const char *path, int max_wid
     GLuint texture = upload(&image, 0, false);
     if (width) *width = target_width;
     if (height) *height = target_height;
-    bongo_cat_neo_image_free(&image);
+    bongo_cat_image_free(&image);
     return texture;
 }
 
-unsigned int bongo_cat_neo_image_texture_model(const char *path, bool direct_decode,
-    int *width, int *height, BongoCatNeoError *error) {
-    BongoCatNeoImage image;
+unsigned int bongo_cat_image_texture_model(const char *path, bool direct_decode,
+    int *width, int *height, BongoCatError *error) {
+    BongoCatImage image;
 #ifdef _WIN32
     /* Preset atlases are verified byte-identical in WIC and stb. Keep WIC for
        custom PNG color metadata and for memory-bounded oversized decoding. */
     if (!direct_decode || needs_wic_scaling(path)) {
-        if (!wic_scaled_image(path, &image, BONGO_CAT_NEO_LIVE2D_TEXTURE_LIMIT,
-            BONGO_CAT_NEO_LIVE2D_TEXTURE_LIMIT) &&
-            bongo_cat_neo_image_load(path, &image, error) != BONGO_CAT_NEO_OK) return 0;
-    } else if (bongo_cat_neo_image_load(path, &image, error) != BONGO_CAT_NEO_OK) return 0;
+        if (!wic_scaled_image(path, &image, BONGO_CAT_LIVE2D_TEXTURE_LIMIT,
+            BONGO_CAT_LIVE2D_TEXTURE_LIMIT) &&
+            bongo_cat_image_load(path, &image, error) != BONGO_CAT_OK) return 0;
+    } else if (bongo_cat_image_load(path, &image, error) != BONGO_CAT_OK) return 0;
 #else
     (void)direct_decode;
-    if (bongo_cat_neo_image_load(path, &image, error) != BONGO_CAT_NEO_OK) return 0;
+    if (bongo_cat_image_load(path, &image, error) != BONGO_CAT_OK) return 0;
 #endif
     while (glGetError() != GL_NO_ERROR) {}
     GLuint texture = upload(&image, 0, true);
@@ -242,17 +242,17 @@ unsigned int bongo_cat_neo_image_texture_model(const char *path, bool direct_dec
     if (!texture || upload_error != GL_NO_ERROR) {
         if (texture) glDeleteTextures(1, &texture);
         texture = 0;
-        bongo_cat_neo_error_set(error, upload_error == GL_OUT_OF_MEMORY
-            ? BONGO_CAT_NEO_ERROR_MEMORY : BONGO_CAT_NEO_ERROR_PLATFORM,
+        bongo_cat_error_set(error, upload_error == GL_OUT_OF_MEMORY
+            ? BONGO_CAT_ERROR_MEMORY : BONGO_CAT_ERROR_PLATFORM,
             "OpenGL texture upload failed (0x%x): %s", (unsigned)upload_error, path);
     }
     if (width) *width = image.width;
     if (height) *height = image.height;
-    bongo_cat_neo_image_free(&image);
+    bongo_cat_image_free(&image);
     return texture;
 }
 
-static void erase_paw(BongoCatNeoImage *image, bool left) {
+static void erase_paw(BongoCatImage *image, bool left) {
     float cx = left ? .700f : .275f, cy = left ? .515f : .397f;
     float rx = left ? .080f : .070f, ry = left ? .170f : .160f;
     for (int y = 0; y < image->height; ++y) for (int x = 0; x < image->width; ++x) {
@@ -264,10 +264,10 @@ static void erase_paw(BongoCatNeoImage *image, bool left) {
     }
 }
 
-static bool blend_file(BongoCatNeoImage *base, const char *path, BongoCatNeoError *error) {
+static bool blend_file(BongoCatImage *base, const char *path, BongoCatError *error) {
     if (!path || !path[0]) return true;
-    BongoCatNeoImage layer;
-    if (bongo_cat_neo_image_load(path, &layer, error) != BONGO_CAT_NEO_OK) return false;
+    BongoCatImage layer;
+    if (bongo_cat_image_load(path, &layer, error) != BONGO_CAT_OK) return false;
     bool valid = layer.width == base->width && layer.height == base->height;
     if (valid) for (int i = 0; i < base->width * base->height; ++i) {
         unsigned char *dst = base->pixels + i * 4, *src = layer.pixels + i * 4;
@@ -281,19 +281,19 @@ static bool blend_file(BongoCatNeoImage *base, const char *path, BongoCatNeoErro
         }
         dst[3] = (unsigned char)((output_alpha + 127) / 255);
     }
-    bongo_cat_neo_image_free(&layer);
+    bongo_cat_image_free(&layer);
     return valid;
 }
 
-unsigned int bongo_cat_neo_image_composite_texture(const char *base, const char *left,
+unsigned int bongo_cat_image_composite_texture(const char *base, const char *left,
     const char *right, unsigned int texture, bool erase_left, bool erase_right,
-    BongoCatNeoError *error) {
-    BongoCatNeoImage image;
-    if (bongo_cat_neo_image_load(base, &image, error) != BONGO_CAT_NEO_OK) return 0;
+    BongoCatError *error) {
+    BongoCatImage image;
+    if (bongo_cat_image_load(base, &image, error) != BONGO_CAT_OK) return 0;
     if (erase_left) erase_paw(&image, true);
     if (erase_right) erase_paw(&image, false);
     bool valid = blend_file(&image, left, error) && blend_file(&image, right, error);
     if (valid) texture = upload(&image, texture, false);
-    bongo_cat_neo_image_free(&image);
+    bongo_cat_image_free(&image);
     return texture;
 }

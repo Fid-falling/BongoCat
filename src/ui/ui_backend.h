@@ -1,20 +1,20 @@
-#ifndef BONGO_CAT_NEO_UI_BACKEND_H
-#define BONGO_CAT_NEO_UI_BACKEND_H
+#ifndef BONGO_CAT_UI_BACKEND_H
+#define BONGO_CAT_UI_BACKEND_H
 
-#include "bongo_cat_neo/gl_api.h"
+#include "bongo_cat/gl_api.h"
 #include <SDL3/SDL.h>
 #include "nuklear_config.h"
 
-typedef enum BongoCatNeoUICursor {
-    BONGO_CAT_NEO_UI_CURSOR_DEFAULT,
-    BONGO_CAT_NEO_UI_CURSOR_POINTER,
-    BONGO_CAT_NEO_UI_CURSOR_TEXT,
-    BONGO_CAT_NEO_UI_CURSOR_RESIZE_EW
-} BongoCatNeoUICursor;
+typedef enum BongoCatUICursor {
+    BONGO_CAT_UI_CURSOR_DEFAULT,
+    BONGO_CAT_UI_CURSOR_POINTER,
+    BONGO_CAT_UI_CURSOR_TEXT,
+    BONGO_CAT_UI_CURSOR_RESIZE_EW
+} BongoCatUICursor;
 
-typedef struct BongoCatNeoUIBackend {
+typedef struct BongoCatUIBackend {
     SDL_Window *window;
-    BongoCatNeoGL gl;
+    BongoCatGL gl;
     struct nk_context context;
     struct nk_font_atlas atlas;
     struct nk_buffer commands;
@@ -54,38 +54,38 @@ typedef struct BongoCatNeoUIBackend {
     SDL_Cursor *pointer_cursor;
     SDL_Cursor *text_cursor;
     SDL_Cursor *resize_ew_cursor;
-    BongoCatNeoUICursor requested_cursor;
-} BongoCatNeoUIBackend;
+    BongoCatUICursor requested_cursor;
+} BongoCatUIBackend;
 
-bool bongo_cat_neo_ui_init(BongoCatNeoUIBackend *ui, SDL_Window *window,
+bool bongo_cat_ui_init(BongoCatUIBackend *ui, SDL_Window *window,
     const char *body_font_path, const char *body_fallback_path,
     const char *heading_font_path, const char *heading_fallback_path,
-    const nk_rune *glyph_ranges, BongoCatNeoError *error);
-void bongo_cat_neo_ui_destroy(BongoCatNeoUIBackend *ui);
-void bongo_cat_neo_ui_input_begin(BongoCatNeoUIBackend *ui);
-void bongo_cat_neo_ui_input_end(BongoCatNeoUIBackend *ui);
-bool bongo_cat_neo_ui_event(BongoCatNeoUIBackend *ui, const SDL_Event *event);
-void bongo_cat_neo_ui_render(BongoCatNeoUIBackend *ui);
-bool bongo_cat_neo_ui_frame_valid(const BongoCatNeoUIBackend *ui);
-BongoCatNeoUIBackend *bongo_cat_neo_ui_backend_for_context(
+    const nk_rune *glyph_ranges, BongoCatError *error);
+void bongo_cat_ui_destroy(BongoCatUIBackend *ui);
+void bongo_cat_ui_input_begin(BongoCatUIBackend *ui);
+void bongo_cat_ui_input_end(BongoCatUIBackend *ui);
+bool bongo_cat_ui_event(BongoCatUIBackend *ui, const SDL_Event *event);
+void bongo_cat_ui_render(BongoCatUIBackend *ui);
+bool bongo_cat_ui_frame_valid(const BongoCatUIBackend *ui);
+BongoCatUIBackend *bongo_cat_ui_backend_for_context(
     const struct nk_context *context);
-const struct nk_user_font *bongo_cat_neo_ui_caption_font(
+const struct nk_user_font *bongo_cat_ui_caption_font(
     const struct nk_context *context);
-const struct nk_user_font *bongo_cat_neo_ui_body_font(
+const struct nk_user_font *bongo_cat_ui_body_font(
     const struct nk_context *context);
-const struct nk_user_font *bongo_cat_neo_ui_label_font(
+const struct nk_user_font *bongo_cat_ui_label_font(
     const struct nk_context *context);
-const struct nk_user_font *bongo_cat_neo_ui_heading_font(
+const struct nk_user_font *bongo_cat_ui_heading_font(
     const struct nk_context *context);
-const struct nk_user_font *bongo_cat_neo_ui_hero_font(
+const struct nk_user_font *bongo_cat_ui_hero_font(
     const struct nk_context *context);
-void bongo_cat_neo_ui_cursor_begin(BongoCatNeoUIBackend *ui);
-void bongo_cat_neo_ui_cursor_apply(BongoCatNeoUIBackend *ui);
-void bongo_cat_neo_ui_cursor_destroy(BongoCatNeoUIBackend *ui);
-void bongo_cat_neo_ui_cursor_reset(struct nk_context *context);
-void bongo_cat_neo_ui_cursor_hover_rect(struct nk_context *context,
-    struct nk_rect bounds, BongoCatNeoUICursor cursor);
-void bongo_cat_neo_ui_cursor_hover_widget(struct nk_context *context,
-    BongoCatNeoUICursor cursor);
+void bongo_cat_ui_cursor_begin(BongoCatUIBackend *ui);
+void bongo_cat_ui_cursor_apply(BongoCatUIBackend *ui);
+void bongo_cat_ui_cursor_destroy(BongoCatUIBackend *ui);
+void bongo_cat_ui_cursor_reset(struct nk_context *context);
+void bongo_cat_ui_cursor_hover_rect(struct nk_context *context,
+    struct nk_rect bounds, BongoCatUICursor cursor);
+void bongo_cat_ui_cursor_hover_widget(struct nk_context *context,
+    BongoCatUICursor cursor);
 
 #endif

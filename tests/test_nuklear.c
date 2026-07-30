@@ -17,7 +17,7 @@ static int dashed_border_test(void) {
     enum { WIDTH = 100, HEIGHT = 80 };
     unsigned char *pixels = calloc((size_t)WIDTH * HEIGHT, 4);
     if (!pixels) return 1;
-    bongo_cat_neo_ui_raster_dashed_rounded(pixels, WIDTH, HEIGHT,
+    bongo_cat_ui_raster_dashed_rounded(pixels, WIDTH, HEIGHT,
         14, 2, 5, 5, nk_rgb(84, 174, 255));
     enum { ARC_INSET = 2, ARC_REGION = 10 };
     int failed = !region_alpha(pixels, WIDTH, ARC_INSET, ARC_INSET,

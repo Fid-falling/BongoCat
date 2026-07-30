@@ -25,20 +25,20 @@ static void chevron(struct nk_command_buffer *canvas, struct nk_rect bounds,
 }
 
 static void trigger(struct nk_context *context, struct nk_command_buffer *canvas,
-    struct nk_rect bounds, const char *label, BongoCatNeoUIPalette p,
+    struct nk_rect bounds, const char *label, BongoCatUIPalette p,
     float hover, float open) {
     if (hover > .001f) nk_fill_rect(canvas,
         nk_rect(bounds.x - 3, bounds.y - 3, bounds.w + 6, bounds.h + 6), 13,
-        bongo_cat_neo_ui_color_mix(p.surface, p.hover, hover));
+        bongo_cat_ui_color_mix(p.surface, p.hover, hover));
     nk_fill_rect(canvas, bounds, 10,
-        bongo_cat_neo_ui_color_mix(p.field, p.surface, hover));
+        bongo_cat_ui_color_mix(p.field, p.surface, hover));
     nk_stroke_rect(canvas, bounds, 10, 1,
-        bongo_cat_neo_ui_color_mix(p.border_subtle, p.accent, hover));
-    const struct nk_user_font *font = bongo_cat_neo_ui_body_font(context);
+        bongo_cat_ui_color_mix(p.border_subtle, p.accent, hover));
+    const struct nk_user_font *font = bongo_cat_ui_body_font(context);
     text(canvas, nk_rect(bounds.x + 14,
         bounds.y + (bounds.h - font->height) * .5f, bounds.w - 42,
         font->height), label, font, p.text);
-    chevron(canvas, bounds, bongo_cat_neo_ui_color_mix(p.muted, p.accent,
+    chevron(canvas, bounds, bongo_cat_ui_color_mix(p.muted, p.accent,
         hover), open);
 }
 
@@ -51,48 +51,48 @@ static struct nk_rect transform_item(struct nk_rect item,
 }
 
 static bool draw_item(struct nk_context *context, struct nk_rect bounds,
-    const char *label, bool selected, BongoCatNeoUIPalette p, float opacity) {
+    const char *label, bool selected, BongoCatUIPalette p, float opacity) {
     bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     if (selected || hover) nk_fill_rect(canvas, bounds, 8,
-        bongo_cat_neo_ui_color_alpha(p.selection, opacity));
-    const struct nk_user_font *font = bongo_cat_neo_ui_body_font(context);
+        bongo_cat_ui_color_alpha(p.selection, opacity));
+    const struct nk_user_font *font = bongo_cat_ui_body_font(context);
     text(canvas, nk_rect(bounds.x + 12,
         bounds.y + (bounds.h - font->height) * .5f, bounds.w - 22,
-        font->height), label, font, bongo_cat_neo_ui_color_alpha(
+        font->height), label, font, bongo_cat_ui_color_alpha(
         selected || hover ? p.accent : p.text, opacity));
-    if (hover) bongo_cat_neo_ui_cursor_hover_rect(context, bounds,
-        BONGO_CAT_NEO_UI_CURSOR_POINTER);
+    if (hover) bongo_cat_ui_cursor_hover_rect(context, bounds,
+        BONGO_CAT_UI_CURSOR_POINTER);
     return hover && nk_input_is_mouse_click_in_rect(&context->input,
         NK_BUTTON_LEFT, bounds);
 }
 
 static void menu_background(struct nk_context *context, struct nk_rect menu,
-    struct nk_rect shadow, BongoCatNeoUIPalette p, float opacity) {
+    struct nk_rect shadow, BongoCatUIPalette p, float opacity) {
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     nk_push_scissor(canvas, nk_rect(menu.x - 64, menu.y - 48,
         menu.w + 128, menu.h + 112));
     if (p.effects) {
-        struct nk_color dark = bongo_cat_neo_ui_dark(context) ?
+        struct nk_color dark = bongo_cat_ui_dark(context) ?
             nk_rgba(0, 0, 0, 92) : nk_rgba(24, 34, 48, 46);
-        bongo_cat_neo_ui_paint_shadow(context, shadow, 12, 0, 14, 32, 0,
-            bongo_cat_neo_ui_color_alpha(dark, opacity));
-        bongo_cat_neo_ui_paint_shadow(context, shadow, 12, 0, 4, 12, 0,
+        bongo_cat_ui_paint_shadow(context, shadow, 12, 0, 14, 32, 0,
+            bongo_cat_ui_color_alpha(dark, opacity));
+        bongo_cat_ui_paint_shadow(context, shadow, 12, 0, 4, 12, 0,
             nk_rgba(p.accent.r, p.accent.g, p.accent.b,
             (nk_byte)(89.0f * opacity)));
     }
     nk_fill_rect(canvas, menu, 12,
-        bongo_cat_neo_ui_color_alpha(p.surface, opacity));
+        bongo_cat_ui_color_alpha(p.surface, opacity));
     nk_stroke_rect(canvas, menu, 12, 1,
-        bongo_cat_neo_ui_color_alpha(p.border, opacity));
+        bongo_cat_ui_color_alpha(p.border, opacity));
     nk_push_scissor(canvas, nk_window_get_content_region(context));
 }
 
-int bongo_cat_neo_pref_control_combo(struct nk_context *context, const char *id,
+int bongo_cat_pref_control_combo(struct nk_context *context, const char *id,
     const char *const *items, int count, int selected) {
     if (count <= 0) return selected;
     selected = NK_CLAMP(0, selected, count - 1);
-    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
+    BongoCatUIPalette p = bongo_cat_ui_palette(bongo_cat_ui_dark(context));
     struct nk_rect widget = nk_widget_bounds(context);
     struct nk_rect bounds = nk_rect(widget.x + NK_MAX(0.0f, widget.w - 156.0f),
         widget.y - 1, NK_MIN(156.0f, widget.w), 38);
@@ -105,13 +105,13 @@ int bongo_cat_neo_pref_control_combo(struct nk_context *context, const char *id,
     char hover_id[80], open_id[80];
     snprintf(hover_id, sizeof(hover_id), "combo-hover-%s", id);
     snprintf(open_id, sizeof(open_id), "combo-open-%s", id);
-    float hover_amount = bongo_cat_neo_ui_animate_eased(context, hover_id,
-        was_open || hover ? 1.0f : 0.0f, 200, BONGO_CAT_NEO_UI_EASE_STANDARD);
-    float open_amount = bongo_cat_neo_ui_animate_eased(context, open_id,
-        was_open ? 1.0f : 0.0f, 160, BONGO_CAT_NEO_UI_EASE_STANDARD);
+    float hover_amount = bongo_cat_ui_animate_eased(context, hover_id,
+        was_open || hover ? 1.0f : 0.0f, 200, BONGO_CAT_UI_EASE_STANDARD);
+    float open_amount = bongo_cat_ui_animate_eased(context, open_id,
+        was_open ? 1.0f : 0.0f, 160, BONGO_CAT_UI_EASE_STANDARD);
     trigger(context, parent, bounds, items[selected], p, hover_amount, open_amount);
-    if (hover) bongo_cat_neo_ui_cursor_hover_rect(context, bounds,
-        BONGO_CAT_NEO_UI_CURSOR_POINTER);
+    if (hover) bongo_cat_ui_cursor_hover_rect(context, bounds,
+        BONGO_CAT_UI_CURSOR_POINTER);
     struct nk_style_combo saved_combo = context->style.combo;
     struct nk_style_window saved_window = context->style.window;
     struct nk_color clear = nk_rgba(0, 0, 0, 0);

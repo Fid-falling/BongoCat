@@ -90,7 +90,7 @@ static int repeat_direction(struct nk_context *context, const char *id,
     return repeat_state.direction;
 }
 
-bool bongo_cat_neo_pref_controls_animating(struct nk_context *context) {
+bool bongo_cat_pref_controls_animating(struct nk_context *context) {
     bool down = nk_input_is_mouse_down(&context->input, NK_BUTTON_LEFT);
     if (!down && repeat_state.context == context)
         memset(&repeat_state, 0, sizeof(repeat_state));
@@ -99,7 +99,7 @@ bool bongo_cat_neo_pref_controls_animating(struct nk_context *context) {
         slider_drag_state.context == context;
 }
 
-void bongo_cat_neo_pref_controls_reset(struct nk_context *context) {
+void bongo_cat_pref_controls_reset(struct nk_context *context) {
     if (repeat_state.context == context)
         memset(&repeat_state, 0, sizeof(repeat_state));
     slider_drag_stop(context);
@@ -113,7 +113,7 @@ static double stepper(struct nk_context *context, const char *id,
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return value;
     bounds = nk_rect(bounds.x + bounds.w - 122.0f,
         bounds.y, 122.0f, bounds.h);
-    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
+    BongoCatUIPalette p = bongo_cat_ui_palette(bongo_cat_ui_dark(context));
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     struct nk_rect minus = nk_rect(bounds.x, bounds.y, 36, bounds.h);
     struct nk_rect plus = nk_rect(bounds.x + bounds.w - 36, bounds.y, 36, bounds.h);
@@ -126,25 +126,25 @@ static double stepper(struct nk_context *context, const char *id,
     snprintf(hover_id, sizeof(hover_id), "stepper-hover-%s", id);
     snprintf(minus_id, sizeof(minus_id), "stepper-minus-%s", id);
     snprintf(plus_id, sizeof(plus_id), "stepper-plus-%s", id);
-    float hover_amount = bongo_cat_neo_ui_animate_eased(context, hover_id,
-        hover ? 1.0f : 0.0f, 200, BONGO_CAT_NEO_UI_EASE_STANDARD);
-    float minus_amount = bongo_cat_neo_ui_animate_eased(context, minus_id,
+    float hover_amount = bongo_cat_ui_animate_eased(context, hover_id,
+        hover ? 1.0f : 0.0f, 200, BONGO_CAT_UI_EASE_STANDARD);
+    float minus_amount = bongo_cat_ui_animate_eased(context, minus_id,
         minus_hover && value > minimum ? 1.0f : 0.0f, 150,
-        BONGO_CAT_NEO_UI_EASE_STANDARD);
-    float plus_amount = bongo_cat_neo_ui_animate_eased(context, plus_id,
+        BONGO_CAT_UI_EASE_STANDARD);
+    float plus_amount = bongo_cat_ui_animate_eased(context, plus_id,
         plus_hover && value < maximum ? 1.0f : 0.0f, 150,
-        BONGO_CAT_NEO_UI_EASE_STANDARD);
+        BONGO_CAT_UI_EASE_STANDARD);
     nk_fill_rect(canvas, bounds, 11, p.field);
     if (minus_amount > 0) nk_fill_rect(canvas, minus, 10,
-        bongo_cat_neo_ui_color_mix(p.field, p.accent, minus_amount));
+        bongo_cat_ui_color_mix(p.field, p.accent, minus_amount));
     if (plus_amount > 0) nk_fill_rect(canvas, plus, 10,
-        bongo_cat_neo_ui_color_mix(p.field, p.accent, plus_amount));
+        bongo_cat_ui_color_mix(p.field, p.accent, plus_amount));
     nk_stroke_rect(canvas, bounds, 11, 1.0f,
-        bongo_cat_neo_ui_color_mix(p.border_subtle, p.accent, hover_amount));
+        bongo_cat_ui_color_mix(p.border_subtle, p.accent, hover_amount));
     struct nk_color minus_color = value <= minimum ? p.border_subtle :
-        bongo_cat_neo_ui_color_mix(p.muted, nk_rgb(255, 255, 255), minus_amount);
+        bongo_cat_ui_color_mix(p.muted, nk_rgb(255, 255, 255), minus_amount);
     struct nk_color plus_color = value >= maximum ? p.border_subtle :
-        bongo_cat_neo_ui_color_mix(p.muted, nk_rgb(255, 255, 255), plus_amount);
+        bongo_cat_ui_color_mix(p.muted, nk_rgb(255, 255, 255), plus_amount);
     float cy = bounds.y + bounds.h * .5f;
     nk_stroke_line(canvas, minus.x + 13, cy, minus.x + 27, cy, 2, minus_color);
     nk_stroke_line(canvas, plus.x + 13, cy, plus.x + 27, cy, 2, plus_color);
@@ -155,9 +155,9 @@ static double stepper(struct nk_context *context, const char *id,
     else if (step < .1) snprintf(number, sizeof(number), "%.2f", value);
     else if (step < 1.0) snprintf(number, sizeof(number), "%.1f", value);
     else snprintf(number, sizeof(number), "%.0f", value);
-    centered(canvas, number_box, number, bongo_cat_neo_ui_body_font(context), p.text);
-    if (hover) bongo_cat_neo_ui_cursor_hover_rect(context, bounds,
-        BONGO_CAT_NEO_UI_CURSOR_POINTER);
+    centered(canvas, number_box, number, bongo_cat_ui_body_font(context), p.text);
+    if (hover) bongo_cat_ui_cursor_hover_rect(context, bounds,
+        BONGO_CAT_UI_CURSOR_POINTER);
     int direction = repeat_direction(context, id, minus, plus);
     float wheel = context->input.mouse.scroll_delta.y;
     if (nk_input_is_mouse_hovering_rect(&context->input, number_box) && wheel != 0) {
@@ -169,7 +169,7 @@ static double stepper(struct nk_context *context, const char *id,
     return value;
 }
 
-bool bongo_cat_neo_pref_control_float(struct nk_context *context, const char *id,
+bool bongo_cat_pref_control_float(struct nk_context *context, const char *id,
     float minimum, float *value, float maximum, float step) {
     bool changed;
     double result = stepper(context, id, minimum, *value, maximum, step,
@@ -178,7 +178,7 @@ bool bongo_cat_neo_pref_control_float(struct nk_context *context, const char *id
     return changed;
 }
 
-bool bongo_cat_neo_pref_control_int(struct nk_context *context, const char *id,
+bool bongo_cat_pref_control_int(struct nk_context *context, const char *id,
     int minimum, int *value, int maximum, int step) {
     bool changed;
     double result = stepper(context, id, minimum, *value, maximum, step,
@@ -187,13 +187,13 @@ bool bongo_cat_neo_pref_control_int(struct nk_context *context, const char *id,
     return changed;
 }
 
-bool bongo_cat_neo_pref_control_slider(struct nk_context *context, const char *id,
+bool bongo_cat_pref_control_slider(struct nk_context *context, const char *id,
     float minimum, float *value, float maximum, float step) {
     struct nk_rect bounds;
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return false;
     bounds = nk_rect(bounds.x + bounds.w - 220.0f,
         bounds.y + 2.0f, 220.0f, bounds.h - 4.0f);
-    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
+    BongoCatUIPalette p = bongo_cat_ui_palette(bongo_cat_ui_dark(context));
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     struct nk_rect value_box = nk_rect(bounds.x + bounds.w - 49,
         bounds.y, 49, bounds.h);
@@ -207,9 +207,9 @@ bool bongo_cat_neo_pref_control_slider(struct nk_context *context, const char *i
     bool mouse_down = nk_input_is_mouse_down(&context->input, NK_BUTTON_LEFT);
     char hover_id[80];
     snprintf(hover_id, sizeof(hover_id), "slider-hover-%s", id);
-    float hover_amount = bongo_cat_neo_ui_animate_eased(context, hover_id,
+    float hover_amount = bongo_cat_ui_animate_eased(context, hover_id,
         hover || (dragging && mouse_down) ? 1.0f : 0.0f, 150,
-        BONGO_CAT_NEO_UI_EASE_STANDARD);
+        BONGO_CAT_UI_EASE_STANDARD);
     float before = *value;
     if (dragging) {
         float pointer_x = mouse_down ? context->input.mouse.pos.x :
@@ -235,17 +235,17 @@ bool bongo_cat_neo_pref_control_slider(struct nk_context *context, const char *i
     float thumb_rounding = thumb_width * .5f;
     struct nk_rect thumb = nk_rect(thumb_x - thumb_width * .5f,
         track.y - 9, thumb_width, 24);
-    if (p.effects) bongo_cat_neo_ui_paint_shadow(context, thumb, thumb_rounding,
+    if (p.effects) bongo_cat_ui_paint_shadow(context, thumb, thumb_rounding,
         0, 1, 4.0f + 3.0f * hover_amount, 0,
         nk_rgba(p.accent.r, p.accent.g, p.accent.b, 89));
     nk_fill_rect(canvas, thumb, thumb_rounding, p.accent);
     nk_fill_rect(canvas, value_box, 8, p.field);
     nk_stroke_rect(canvas, value_box, 8, 1, p.border_subtle);
     char number[24]; snprintf(number, sizeof(number), "%.0f%%", *value);
-    centered(canvas, value_box, number, bongo_cat_neo_ui_body_font(context), p.text);
-    if (hover || value_hover) bongo_cat_neo_ui_cursor_hover_rect(context,
+    centered(canvas, value_box, number, bongo_cat_ui_body_font(context), p.text);
+    if (hover || value_hover) bongo_cat_ui_cursor_hover_rect(context,
         hover ? hit : value_box,
-        hover ? BONGO_CAT_NEO_UI_CURSOR_RESIZE_EW :
-        BONGO_CAT_NEO_UI_CURSOR_POINTER);
+        hover ? BONGO_CAT_UI_CURSOR_RESIZE_EW :
+        BONGO_CAT_UI_CURSOR_POINTER);
     return before != *value;
 }

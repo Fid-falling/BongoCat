@@ -1,5 +1,5 @@
 #include "runtime.h"
-#include "bongo_cat_neo/path.h"
+#include "bongo_cat/path.h"
 
 #include <string.h>
 
@@ -15,7 +15,7 @@ static uint64_t hash_bytes(uint64_t hash, const void *data, size_t size) {
     return hash;
 }
 
-static uint64_t preferences_hash(const BongoCatNeoConfig *config) {
+static uint64_t preferences_hash(const BongoCatConfig *config) {
     uint64_t hash = 1469598103934665603ull;
 #define HASH_FIELD(field) hash = hash_bytes(hash, &(field), sizeof(field))
     HASH_FIELD(config->model);
@@ -34,7 +34,7 @@ static uint64_t preferences_hash(const BongoCatNeoConfig *config) {
     return hash;
 }
 
-static uint64_t session_hash(const BongoCatNeoConfig *config) {
+static uint64_t session_hash(const BongoCatConfig *config) {
     uint64_t hash = 1469598103934665603ull;
 #define HASH_FIELD(field) hash = hash_bytes(hash, &(field), sizeof(field))
     HASH_FIELD(config->window.visible);
@@ -49,7 +49,7 @@ static uint64_t session_hash(const BongoCatNeoConfig *config) {
     return hash;
 }
 
-void bongo_cat_neo_config_store_initialize(BongoCatNeoApp *app) {
+void bongo_cat_config_store_initialize(BongoCatApp *app) {
     uint64_t preferences = preferences_hash(&app->config);
     uint64_t session = session_hash(&app->config);
     app->preferences_observed_hash = preferences;
@@ -58,10 +58,10 @@ void bongo_cat_neo_config_store_initialize(BongoCatNeoApp *app) {
     app->session_saved_hash = app->session_store_valid ? session : 0;
 }
 
-static bool save_preferences(BongoCatNeoApp *app, uint64_t hash) {
-    BongoCatNeoError error = {0};
-    if (bongo_cat_neo_preferences_save(app->preferences_path,
-        &app->config, &error) != BONGO_CAT_NEO_OK) {
+static bool save_preferences(BongoCatApp *app, uint64_t hash) {
+    BongoCatError error = {0};
+    if (bongo_cat_preferences_save(app->preferences_path,
+        &app->config, &error) != BONGO_CAT_OK) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
         return false;
     }
@@ -69,10 +69,10 @@ static bool save_preferences(BongoCatNeoApp *app, uint64_t hash) {
     return true;
 }
 
-static bool save_session(BongoCatNeoApp *app, uint64_t hash) {
-    BongoCatNeoError error = {0};
-    if (bongo_cat_neo_session_save(app->session_path,
-        &app->config, &error) != BONGO_CAT_NEO_OK) {
+static bool save_session(BongoCatApp *app, uint64_t hash) {
+    BongoCatError error = {0};
+    if (bongo_cat_session_save(app->session_path,
+        &app->config, &error) != BONGO_CAT_OK) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
         return false;
     }
@@ -80,7 +80,7 @@ static bool save_session(BongoCatNeoApp *app, uint64_t hash) {
     return true;
 }
 
-void bongo_cat_neo_config_store_update(BongoCatNeoApp *app, uint64_t now) {
+void bongo_cat_config_store_update(BongoCatApp *app, uint64_t now) {
     if (!app || app->smoke || !app->preferences_path[0] || !app->session_path[0]) return;
     uint64_t preferences = preferences_hash(&app->config);
     uint64_t session = session_hash(&app->config);
@@ -102,7 +102,7 @@ void bongo_cat_neo_config_store_update(BongoCatNeoApp *app, uint64_t now) {
             ? 0 : now + RETRY_DELAY_NS;
 }
 
-void bongo_cat_neo_config_store_flush(BongoCatNeoApp *app) {
+void bongo_cat_config_store_flush(BongoCatApp *app) {
     if (!app || app->smoke || !app->preferences_path[0] || !app->session_path[0]) return;
     uint64_t preferences = preferences_hash(&app->config);
     uint64_t session = session_hash(&app->config);

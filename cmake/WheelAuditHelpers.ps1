@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build-cubism\Release\BongoCatNeo.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build-cubism\Release\BongoCat.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build-cubism\wheel-audit" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
@@ -10,7 +10,7 @@ Add-Type -AssemblyName System.Drawing
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
-public static class BongoCatNeoWheelNative {
+public static class BongoCatWheelNative {
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L,T,R,B; }
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out Rect r);
     [DllImport("user32.dll")] public static extern bool PostMessageW(
@@ -40,13 +40,13 @@ function Wait-Window([Diagnostics.Process]$Process) {
         }
         Start-Sleep -Milliseconds 40
     }
-    throw "Bongo Cat Neo window was not created"
+    throw "BongoCat window was not created"
 }
 
 function Get-Rect([IntPtr]$Window) {
-    $rect = [BongoCatNeoWheelNative+Rect]::new()
-    if (-not [BongoCatNeoWheelNative]::GetWindowRect($Window, [ref]$rect)) {
-        throw "Cannot read Bongo Cat Neo window bounds"
+    $rect = [BongoCatWheelNative+Rect]::new()
+    if (-not [BongoCatWheelNative]::GetWindowRect($Window, [ref]$rect)) {
+        throw "Cannot read BongoCat window bounds"
     }
     return $rect
 }

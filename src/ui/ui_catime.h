@@ -1,15 +1,15 @@
-#ifndef BONGO_CAT_NEO_UI_CATIME_H
-#define BONGO_CAT_NEO_UI_CATIME_H
+#ifndef BONGO_CAT_UI_CATIME_H
+#define BONGO_CAT_UI_CATIME_H
 
 #include <stdbool.h>
 #include "nuklear_config.h"
 
-#define BONGO_CAT_NEO_UI_MARGIN 8.0f
-#define BONGO_CAT_NEO_UI_HEADER_HEIGHT 56.0f
-#define BONGO_CAT_NEO_UI_SIDEBAR_WIDTH 148.0f
-#define BONGO_CAT_NEO_UI_SIDEBAR_NARROW 84.0f
+#define BONGO_CAT_UI_MARGIN 8.0f
+#define BONGO_CAT_UI_HEADER_HEIGHT 56.0f
+#define BONGO_CAT_UI_SIDEBAR_WIDTH 148.0f
+#define BONGO_CAT_UI_SIDEBAR_NARROW 84.0f
 
-typedef struct BongoCatNeoUIPalette {
+typedef struct BongoCatUIPalette {
     struct nk_color background;
     struct nk_color surface;
     struct nk_color surface_glass;
@@ -29,33 +29,33 @@ typedef struct BongoCatNeoUIPalette {
     struct nk_color danger;
     struct nk_color danger_background;
     bool effects;
-} BongoCatNeoUIPalette;
+} BongoCatUIPalette;
 
-BongoCatNeoUIPalette bongo_cat_neo_ui_palette(bool dark);
-bool bongo_cat_neo_ui_dark(const struct nk_context *context);
-void bongo_cat_neo_ui_apply_theme(struct nk_context *context, bool dark);
-void bongo_cat_neo_ui_shell_draw(struct nk_context *context, float width,
+BongoCatUIPalette bongo_cat_ui_palette(bool dark);
+bool bongo_cat_ui_dark(const struct nk_context *context);
+void bongo_cat_ui_apply_theme(struct nk_context *context, bool dark);
+void bongo_cat_ui_shell_draw(struct nk_context *context, float width,
     float height, bool dark);
-typedef void (*BongoCatNeoUIIconDraw)(void *userdata,
+typedef void (*BongoCatUIIconDraw)(void *userdata,
     struct nk_command_buffer *canvas, int icon, struct nk_rect bounds,
     struct nk_color color);
-bool bongo_cat_neo_ui_header(struct nk_context *context, const char *title,
+bool bongo_cat_ui_header(struct nk_context *context, const char *title,
     const struct nk_user_font *font, unsigned int logo_texture,
     bool *title_clicked, bool interactive, bool dark);
-bool bongo_cat_neo_ui_content_header(struct nk_context *context,
+bool bongo_cat_ui_content_header(struct nk_context *context,
     const char *title, int icon, bool interactive, bool dark);
-void bongo_cat_neo_ui_tabs(struct nk_context *context, const char *const *labels,
+void bongo_cat_ui_tabs(struct nk_context *context, const char *const *labels,
     int count, int *active, bool interactive, bool dark,
-    BongoCatNeoUIIconDraw draw_icon, void *icon_userdata);
-void bongo_cat_neo_ui_set_icons(BongoCatNeoUIIconDraw draw_icon,
+    BongoCatUIIconDraw draw_icon, void *icon_userdata);
+void bongo_cat_ui_set_icons(BongoCatUIIconDraw draw_icon,
     void *icon_userdata);
-bool bongo_cat_neo_ui_draw_icon(struct nk_command_buffer *canvas, int icon,
+bool bongo_cat_ui_draw_icon(struct nk_command_buffer *canvas, int icon,
     struct nk_rect bounds, struct nk_color color);
-void bongo_cat_neo_ui_fallback_icon(struct nk_command_buffer *canvas,
+void bongo_cat_ui_fallback_icon(struct nk_command_buffer *canvas,
     int icon, struct nk_rect bounds, struct nk_color color);
-float bongo_cat_neo_ui_sidebar_width(float window_width);
-bool bongo_cat_neo_ui_close_hit(float x, float y, float width);
-bool bongo_cat_neo_ui_title_link_hit(float x, float y, float width);
-bool bongo_cat_neo_ui_title_drag_hit(float x, float y, float width);
+float bongo_cat_ui_sidebar_width(float window_width);
+bool bongo_cat_ui_close_hit(float x, float y, float width);
+bool bongo_cat_ui_title_link_hit(float x, float y, float width);
+bool bongo_cat_ui_title_drag_hit(float x, float y, float width);
 
 #endif

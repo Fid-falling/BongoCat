@@ -1,7 +1,7 @@
-#ifndef BONGO_CAT_NEO_CUBISM_MODEL_HPP
-#define BONGO_CAT_NEO_CUBISM_MODEL_HPP
+#ifndef BONGO_CAT_CUBISM_MODEL_HPP
+#define BONGO_CAT_CUBISM_MODEL_HPP
 
-#include "bongo_cat_neo/common.h"
+#include "bongo_cat/common.h"
 
 #include <Model/CubismUserModel.hpp>
 #include <CubismModelSettingJson.hpp>
@@ -12,18 +12,18 @@
 #include <string>
 #include <vector>
 
-namespace bongo_cat_neo {
+namespace bongo_cat {
 
 bool validate_model_setting_json(const std::vector<unsigned char> &json,
-    const char *setting_file, BongoCatNeoError *error);
+    const char *setting_file, BongoCatError *error);
 
 class NativeModel final : public Csm::CubismUserModel {
 public:
     NativeModel();
     ~NativeModel() override;
     bool load(const char *directory, const char *setting_file, bool direct_textures,
-        BongoCatNeoError *error);
-    bool load_textures(BongoCatNeoError *error);
+        BongoCatError *error);
+    bool load_textures(BongoCatError *error);
     void release_render_resources();
     void resize(int width, int height);
     void reshape(int width, int height);
@@ -44,7 +44,7 @@ private:
         std::vector<float> initial_values;
         bool enabled = false;
     };
-    bool load_model(BongoCatNeoError *error);
+    bool load_model(BongoCatError *error);
     void load_expressions();
     void load_effects();
     void load_motions();
@@ -85,6 +85,6 @@ private:
     float opacity_snapshot_ = -1.0f;
 };
 
-} // namespace bongo_cat_neo
+} // namespace bongo_cat
 
 #endif

@@ -1,34 +1,34 @@
 #include "model_import.h"
 #include "model_import_mver_internal.h"
 #include "runtime.h"
-#include "bongo_cat_neo/file.h"
-#include "bongo_cat_neo/path.h"
+#include "bongo_cat/file.h"
+#include "bongo_cat/path.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <yyjson.h>
 
-typedef BongoCatNeoMverKeyNames KeyNames;
+typedef BongoCatMverKeyNames KeyNames;
 
 static bool child_is_dir(const char *root, const char *name) {
-    char path[BONGO_CAT_NEO_PATH_CAP];
-    return bongo_cat_neo_path_join(path, sizeof(path), root, name) && bongo_cat_neo_path_is_dir(path);
+    char path[BONGO_CAT_PATH_CAP];
+    return bongo_cat_path_join(path, sizeof(path), root, name) && bongo_cat_path_is_dir(path);
 }
 
-static bool asset_file(const BongoCatNeoImportCandidate *candidate, const char *group,
+static bool asset_file(const BongoCatImportCandidate *candidate, const char *group,
     const char *name, char *output, size_t capacity) {
-    char directory[BONGO_CAT_NEO_PATH_CAP];
+    char directory[BONGO_CAT_PATH_CAP];
     if (candidate->overrides[0] &&
-        bongo_cat_neo_path_join(directory, sizeof(directory), candidate->overrides, group) &&
-        bongo_cat_neo_path_join(output, capacity, directory, name) &&
-        bongo_cat_neo_path_is_file(output)) return true;
-    return bongo_cat_neo_path_join(directory, sizeof(directory), candidate->assets, group) &&
-        bongo_cat_neo_path_join(output, capacity, directory, name) &&
-        bongo_cat_neo_path_is_file(output);
+        bongo_cat_path_join(directory, sizeof(directory), candidate->overrides, group) &&
+        bongo_cat_path_join(output, capacity, directory, name) &&
+        bongo_cat_path_is_file(output)) return true;
+    return bongo_cat_path_join(directory, sizeof(directory), candidate->assets, group) &&
+        bongo_cat_path_join(output, capacity, directory, name) &&
+        bongo_cat_path_is_file(output);
 }
 
-int bongo_cat_neo_mver_modifier_index(int code) {
+int bongo_cat_mver_modifier_index(int code) {
     return code == 16 ? 0 : code == 17 ? 1 : code == 18 ? 2 : -1;
 }
 
@@ -38,13 +38,13 @@ static void count_modifiers(yyjson_val *matrix, size_t counts[3]) {
         size_t key_index, key_count; yyjson_val *key;
         yyjson_arr_foreach(row, key_index, key_count, key) {
             int index = (yyjson_is_int(key) || yyjson_is_uint(key))
-                ? bongo_cat_neo_mver_modifier_index((int)yyjson_get_int(key)) : -1;
+                ? bongo_cat_mver_modifier_index((int)yyjson_get_int(key)) : -1;
             if (index >= 0) counts[index]++;
         }
     }
 }
 
-KeyNames bongo_cat_neo_mver_device_names(int code, size_t occurrence, size_t total) {
+KeyNames bongo_cat_mver_device_names(int code, size_t occurrence, size_t total) {
     KeyNames names = {0};
     if (code >= 48 && code <= 57) {
         snprintf(names.generated, sizeof(names.generated), "Num%c", (char)code);
@@ -52,12 +52,12 @@ KeyNames bongo_cat_neo_mver_device_names(int code, size_t occurrence, size_t tot
         snprintf(names.generated, sizeof(names.generated), "Key%c", (char)code);
     } else if (code >= 112 && code <= 123) {
         snprintf(names.generated, sizeof(names.generated), "F%d", code - 111);
-    } else if (bongo_cat_neo_mver_modifier_index(code) >= 0) {
+    } else if (bongo_cat_mver_modifier_index(code) >= 0) {
         static const char *const modifiers[][2] = {
             {"ShiftLeft", "ShiftRight"}, {"ControlLeft", "ControlRight"},
             {"Alt", "AltGr"}
         };
-        int index = bongo_cat_neo_mver_modifier_index(code);
+        int index = bongo_cat_mver_modifier_index(code);
         if (total > 1) {
             names.items[0] = modifiers[index][occurrence ? 1 : 0];
             names.count = 1;
@@ -90,7 +90,7 @@ KeyNames bongo_cat_neo_mver_device_names(int code, size_t occurrence, size_t tot
     return names;
 }
 
-KeyNames bongo_cat_neo_mver_gamepad_names(int code) {
+KeyNames bongo_cat_mver_gamepad_names(int code) {
     static const char *map[] = {"South", "East", "West", "North", "LeftTrigger",
         "RightTrigger", "LeftTrigger2", "RightTrigger2", "LeftThumb", "RightThumb",
         "DPadLeft", "DPadRight", "DPadUp", "DPadDown", "Start", "Select"};
@@ -117,15 +117,15 @@ static bool keyboard_index(yyjson_val *matrix, int code, size_t *result) {
     return false;
 }
 
-static bool process_matrix(const BongoCatNeoImportCandidate *candidate, yyjson_val *matrix,
+static bool process_matrix(const BongoCatImportCandidate *candidate, yyjson_val *matrix,
     yyjson_val *before, yyjson_val *after, yyjson_val *keyboard_matrix,
     const char *hand_name, const char *key_group, const char *target,
-    BongoCatNeoError *error) {
+    BongoCatError *error) {
     if (!yyjson_is_arr(matrix)) return false;
-    char resources[BONGO_CAT_NEO_PATH_CAP], output_dir[BONGO_CAT_NEO_PATH_CAP];
-    if (!bongo_cat_neo_path_join(resources, sizeof(resources), target, "resources") ||
-        !bongo_cat_neo_path_join(output_dir, sizeof(output_dir), resources, key_group) ||
-        !bongo_cat_neo_path_create_directory(output_dir)) return false;
+    char resources[BONGO_CAT_PATH_CAP], output_dir[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_path_join(resources, sizeof(resources), target, "resources") ||
+        !bongo_cat_path_join(output_dir, sizeof(output_dir), resources, key_group) ||
+        !bongo_cat_path_create_directory(output_dir)) return false;
     size_t modifier_total[3] = {0}, modifier_seen[3] = {0};
     count_modifiers(before, modifier_seen);
     memcpy(modifier_total, modifier_seen, sizeof(modifier_total));
@@ -133,13 +133,13 @@ static bool process_matrix(const BongoCatNeoImportCandidate *candidate, yyjson_v
     count_modifiers(after, modifier_total);
     size_t index, count; yyjson_val *keys;
     yyjson_arr_foreach(matrix, index, count, keys) {
-        char hand[BONGO_CAT_NEO_PATH_CAP], filename[32];
+        char hand[BONGO_CAT_PATH_CAP], filename[32];
         snprintf(filename, sizeof(filename), "%zu.png", index);
         if (!asset_file(candidate, hand_name, filename, hand, sizeof(hand))) {
             size_t missing_index, missing_count; yyjson_val *missing;
             yyjson_arr_foreach(keys, missing_index, missing_count, missing) {
                 int modifier = (yyjson_is_int(missing) || yyjson_is_uint(missing))
-                    ? bongo_cat_neo_mver_modifier_index((int)yyjson_get_int(missing)) : -1;
+                    ? bongo_cat_mver_modifier_index((int)yyjson_get_int(missing)) : -1;
                 if (modifier >= 0) modifier_seen[modifier]++;
             }
             continue;
@@ -147,12 +147,12 @@ static bool process_matrix(const BongoCatNeoImportCandidate *candidate, yyjson_v
         size_t key_index, key_count; yyjson_val *key;
         yyjson_arr_foreach(keys, key_index, key_count, key) {
             if (!yyjson_is_int(key) && !yyjson_is_uint(key)) {
-                bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
+                bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
                     "Mver input row %zu contains a non-integer key", index);
                 return false;
             }
             int code = (int)yyjson_get_int(key);
-            char keyboard[BONGO_CAT_NEO_PATH_CAP];
+            char keyboard[BONGO_CAT_PATH_CAP];
             size_t keyboard_row;
             const char *keyboard_path = NULL;
             if (keyboard_index(keyboard_matrix, code, &keyboard_row)) {
@@ -160,44 +160,44 @@ static bool process_matrix(const BongoCatNeoImportCandidate *candidate, yyjson_v
                 if (asset_file(candidate, "keyboard", filename, keyboard,
                     sizeof(keyboard))) keyboard_path = keyboard;
             }
-            int modifier = bongo_cat_neo_mver_modifier_index(code);
+            int modifier = bongo_cat_mver_modifier_index(code);
             size_t occurrence = modifier >= 0 ? modifier_seen[modifier]++ : 0;
             KeyNames names = candidate->gamepad_buttons
-                ? bongo_cat_neo_mver_gamepad_names(code) : bongo_cat_neo_mver_device_names(code, occurrence,
+                ? bongo_cat_mver_gamepad_names(code) : bongo_cat_mver_device_names(code, occurrence,
                     modifier >= 0 ? modifier_total[modifier] : 0);
             if (!names.count) {
-                bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
+                bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
                     "Mver input row %zu uses unsupported key code %d", index, code);
                 return false;
             }
-            if (!bongo_cat_neo_mver_emit_pair(hand, keyboard_path, output_dir, names, error)) return false;
+            if (!bongo_cat_mver_emit_pair(hand, keyboard_path, output_dir, names, error)) return false;
         }
     }
     return true;
 }
 
-bool bongo_cat_neo_import_mver_assets(const BongoCatNeoImportCandidate *candidate,
-    const char *target, BongoCatNeoError *error) {
-    if (candidate->format != BONGO_CAT_NEO_IMPORT_MVER &&
-        candidate->format != BONGO_CAT_NEO_IMPORT_MVER_PATCH) return true;
-    const char *left = candidate->mode == BONGO_CAT_NEO_MODE_STANDARD ? "hand" : "lefthand";
+bool bongo_cat_import_mver_assets(const BongoCatImportCandidate *candidate,
+    const char *target, BongoCatError *error) {
+    if (candidate->format != BONGO_CAT_IMPORT_MVER &&
+        candidate->format != BONGO_CAT_IMPORT_MVER_PATCH) return true;
+    const char *left = candidate->mode == BONGO_CAT_MODE_STANDARD ? "hand" : "lefthand";
     if (!child_is_dir(candidate->assets, left)) return false;
-    FILE *file = bongo_cat_neo_file_open(candidate->config, "rb");
+    FILE *file = bongo_cat_file_open(candidate->config, "rb");
     yyjson_doc *document = file ? yyjson_read_fp(file,
         YYJSON_READ_JSON5 | YYJSON_READ_ALLOW_INVALID_UNICODE, NULL, NULL) : NULL;
     if (file) fclose(file);
     yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
     yyjson_val *mode = yyjson_is_obj(root)
-        ? yyjson_obj_get(root, bongo_cat_neo_mode_name(candidate->mode)) : NULL;
+        ? yyjson_obj_get(root, bongo_cat_mode_name(candidate->mode)) : NULL;
     if (!yyjson_is_obj(mode)) {
         yyjson_doc_free(document);
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
             "Cannot parse Mver input configuration: %s", candidate->config);
         return false;
     }
     bool ok = false;
     yyjson_val *keyboard = yyjson_obj_get(mode, "keyboard");
-    if (candidate->mode == BONGO_CAT_NEO_MODE_STANDARD) {
+    if (candidate->mode == BONGO_CAT_MODE_STANDARD) {
         yyjson_val *hand = yyjson_obj_get(mode, "hand");
         if (yyjson_is_arr(hand)) ok = process_matrix(candidate, hand, NULL, NULL,
             keyboard, "hand", "left-keys", target, error);
@@ -211,7 +211,7 @@ bool bongo_cat_neo_import_mver_assets(const BongoCatNeoImportCandidate *candidat
                 "righthand", "right-keys", target, error);
     }
     yyjson_doc_free(document);
-    if (!ok && error && !error->message[0]) bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
+    if (!ok && error && !error->message[0]) bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
         "Cannot convert Mver input configuration: %s", candidate->config);
     return ok;
 }

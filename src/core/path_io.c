@@ -1,4 +1,4 @@
-#include "bongo_cat_neo/path.h"
+#include "bongo_cat/path.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,59 +13,59 @@
 #endif
 
 #ifdef _WIN32
-bool bongo_cat_neo_path_enumerate(const char *path,
-    BongoCatNeoPathVisitor visitor, void *userdata) {
-    char pattern[BONGO_CAT_NEO_PATH_CAP];
+bool bongo_cat_path_enumerate(const char *path,
+    BongoCatPathVisitor visitor, void *userdata) {
+    char pattern[BONGO_CAT_PATH_CAP];
     if (!path || !visitor ||
-        !bongo_cat_neo_path_join(pattern, sizeof(pattern), path, "*")) return false;
-    wchar_t *wide = bongo_cat_neo_windows_wide(pattern);
+        !bongo_cat_path_join(pattern, sizeof(pattern), path, "*")) return false;
+    wchar_t *wide = bongo_cat_windows_wide(pattern);
     WIN32_FIND_DATAW data = {0};
     HANDLE find = wide ? FindFirstFileW(wide, &data) : INVALID_HANDLE_VALUE;
     free(wide);
     if (find == INVALID_HANDLE_VALUE)
-        return GetLastError() == ERROR_FILE_NOT_FOUND && bongo_cat_neo_path_is_dir(path);
+        return GetLastError() == ERROR_FILE_NOT_FOUND && bongo_cat_path_is_dir(path);
     bool ok = true, stopped = false;
     do {
         if (wcscmp(data.cFileName, L".") == 0 || wcscmp(data.cFileName, L"..") == 0)
             continue;
-        char name[BONGO_CAT_NEO_PATH_CAP];
-        if (!bongo_cat_neo_windows_utf8(data.cFileName, name, sizeof(name))) {
+        char name[BONGO_CAT_PATH_CAP];
+        if (!bongo_cat_windows_utf8(data.cFileName, name, sizeof(name))) {
             ok = false; break;
         }
-        BongoCatNeoPathVisit result = visitor(userdata, path, name);
-        if (result == BONGO_CAT_NEO_PATH_FAILURE) { ok = false; break; }
-        if (result == BONGO_CAT_NEO_PATH_SUCCESS) { stopped = true; break; }
+        BongoCatPathVisit result = visitor(userdata, path, name);
+        if (result == BONGO_CAT_PATH_FAILURE) { ok = false; break; }
+        if (result == BONGO_CAT_PATH_SUCCESS) { stopped = true; break; }
     } while (FindNextFileW(find, &data));
     if (!stopped && ok && GetLastError() != ERROR_NO_MORE_FILES) ok = false;
     FindClose(find);
     return ok;
 }
 
-bool bongo_cat_neo_path_copy_file(const char *source, const char *target) {
-    wchar_t *wide_source = bongo_cat_neo_windows_wide(source);
-    wchar_t *wide_target = bongo_cat_neo_windows_wide(target);
+bool bongo_cat_path_copy_file(const char *source, const char *target) {
+    wchar_t *wide_source = bongo_cat_windows_wide(source);
+    wchar_t *wide_target = bongo_cat_windows_wide(target);
     bool ok = wide_source && wide_target && CopyFileW(wide_source, wide_target, FALSE);
     free(wide_source); free(wide_target); return ok;
 }
 
-bool bongo_cat_neo_path_rename(const char *source, const char *target) {
-    wchar_t *wide_source = bongo_cat_neo_windows_wide(source);
-    wchar_t *wide_target = bongo_cat_neo_windows_wide(target);
+bool bongo_cat_path_rename(const char *source, const char *target) {
+    wchar_t *wide_source = bongo_cat_windows_wide(source);
+    wchar_t *wide_target = bongo_cat_windows_wide(target);
     bool ok = wide_source && wide_target && MoveFileExW(wide_source, wide_target,
         MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
     free(wide_source); free(wide_target); return ok;
 }
 
-bool bongo_cat_neo_path_remove(const char *path) {
-    wchar_t *wide = bongo_cat_neo_windows_wide(path);
+bool bongo_cat_path_remove(const char *path) {
+    wchar_t *wide = bongo_cat_windows_wide(path);
     DWORD attributes = wide ? GetFileAttributesW(wide) : INVALID_FILE_ATTRIBUTES;
     bool ok = attributes != INVALID_FILE_ATTRIBUTES &&
         ((attributes & FILE_ATTRIBUTE_DIRECTORY) ? RemoveDirectoryW(wide) : DeleteFileW(wide));
     free(wide); return ok;
 }
 #else
-bool bongo_cat_neo_path_enumerate(const char *path,
-    BongoCatNeoPathVisitor visitor, void *userdata) {
+bool bongo_cat_path_enumerate(const char *path,
+    BongoCatPathVisitor visitor, void *userdata) {
     if (!path || !visitor) return false;
     DIR *directory = opendir(path);
     if (!directory) return false;
@@ -75,15 +75,15 @@ bool bongo_cat_neo_path_enumerate(const char *path,
         struct dirent *entry = readdir(directory);
         if (!entry) { if (errno) ok = false; break; }
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) continue;
-        BongoCatNeoPathVisit result = visitor(userdata, path, entry->d_name);
-        if (result == BONGO_CAT_NEO_PATH_FAILURE) { ok = false; break; }
-        if (result == BONGO_CAT_NEO_PATH_SUCCESS) break;
+        BongoCatPathVisit result = visitor(userdata, path, entry->d_name);
+        if (result == BONGO_CAT_PATH_FAILURE) { ok = false; break; }
+        if (result == BONGO_CAT_PATH_SUCCESS) break;
     }
     if (closedir(directory) != 0) ok = false;
     return ok;
 }
 
-bool bongo_cat_neo_path_copy_file(const char *source, const char *target) {
+bool bongo_cat_path_copy_file(const char *source, const char *target) {
     if (!source || !target || strcmp(source, target) == 0) return false;
     FILE *input = fopen(source, "rb"), *output = input ? fopen(target, "wb") : NULL;
     if (!output) { if (input) fclose(input); return false; }
@@ -96,11 +96,11 @@ bool bongo_cat_neo_path_copy_file(const char *source, const char *target) {
     return ok;
 }
 
-bool bongo_cat_neo_path_rename(const char *source, const char *target) {
+bool bongo_cat_path_rename(const char *source, const char *target) {
     return source && target && rename(source, target) == 0;
 }
 
-bool bongo_cat_neo_path_remove(const char *path) {
+bool bongo_cat_path_remove(const char *path) {
     return path && remove(path) == 0;
 }
 #endif

@@ -1,25 +1,25 @@
 #include "test.h"
-#include "bongo_cat_neo/file.h"
-#include "bongo_cat_neo/model.h"
-#include "bongo_cat_neo/path.h"
+#include "bongo_cat/file.h"
+#include "bongo_cat/model.h"
+#include "bongo_cat/path.h"
 
 #include <string.h>
 #include <yyjson.h>
 
 typedef struct ParameterSet {
-    char ids[128][BONGO_CAT_NEO_ID_CAP];
+    char ids[128][BONGO_CAT_ID_CAP];
     size_t count;
 } ParameterSet;
 
 static yyjson_doc *read_json(const char *path) {
-    FILE *file = bongo_cat_neo_file_open(path, "rb");
+    FILE *file = bongo_cat_file_open(path, "rb");
     yyjson_doc *document = file ? yyjson_read_fp(file, 0, NULL, NULL) : NULL;
     if (file) fclose(file);
     return document;
 }
 
 static bool signature(const char *path, const char *expected, size_t length) {
-    FILE *file = bongo_cat_neo_file_open(path, "rb");
+    FILE *file = bongo_cat_file_open(path, "rb");
     if (!file) return false;
     char actual[8] = {0};
     bool result = length <= sizeof(actual) && fread(actual, 1, length, file) == length &&
@@ -28,14 +28,14 @@ static bool signature(const char *path, const char *expected, size_t length) {
     return result;
 }
 
-static bool reference_path(const BongoCatNeoModelEntry *model, const char *relative,
-    char output[BONGO_CAT_NEO_PATH_CAP]) {
-    return relative && bongo_cat_neo_path_join(output, BONGO_CAT_NEO_PATH_CAP, model->directory, relative);
+static bool reference_path(const BongoCatModelEntry *model, const char *relative,
+    char output[BONGO_CAT_PATH_CAP]) {
+    return relative && bongo_cat_path_join(output, BONGO_CAT_PATH_CAP, model->directory, relative);
 }
 
-static bool add_parameters(const BongoCatNeoModelEntry *model, const char *relative,
+static bool add_parameters(const BongoCatModelEntry *model, const char *relative,
     ParameterSet *parameters) {
-    char path[BONGO_CAT_NEO_PATH_CAP];
+    char path[BONGO_CAT_PATH_CAP];
     if (!reference_path(model, relative, path)) return false;
     yyjson_doc *document = read_json(path);
     if (!document) return false;
@@ -44,7 +44,7 @@ static bool add_parameters(const BongoCatNeoModelEntry *model, const char *relat
     yyjson_arr_foreach(array, index, count, item) {
         const char *id = yyjson_get_str(yyjson_obj_get(item, "Id"));
         if (!id || parameters->count >= 128) { yyjson_doc_free(document); return false; }
-        snprintf(parameters->ids[parameters->count++], BONGO_CAT_NEO_ID_CAP, "%s", id);
+        snprintf(parameters->ids[parameters->count++], BONGO_CAT_ID_CAP, "%s", id);
     }
     yyjson_doc_free(document);
     return parameters->count > 0;
@@ -56,9 +56,9 @@ static bool has_parameter(const ParameterSet *parameters, const char *id) {
     return false;
 }
 
-static bool validate_parameter_file(const BongoCatNeoModelEntry *model,
+static bool validate_parameter_file(const BongoCatModelEntry *model,
     const char *relative, const ParameterSet *parameters, bool motion) {
-    char path[BONGO_CAT_NEO_PATH_CAP];
+    char path[BONGO_CAT_PATH_CAP];
     if (!reference_path(model, relative, path)) return false;
     yyjson_doc *document = read_json(path);
     if (!document) return false;
@@ -77,8 +77,8 @@ static bool validate_parameter_file(const BongoCatNeoModelEntry *model,
     return valid;
 }
 
-static bool validate_model(const BongoCatNeoModelEntry *model) {
-    char setting_path[BONGO_CAT_NEO_PATH_CAP], path[BONGO_CAT_NEO_PATH_CAP];
+static bool validate_model(const BongoCatModelEntry *model) {
+    char setting_path[BONGO_CAT_PATH_CAP], path[BONGO_CAT_PATH_CAP];
     if (!reference_path(model, model->setting_file, setting_path)) return false;
     yyjson_doc *document = read_json(setting_path);
     if (!document) return false;
@@ -121,28 +121,28 @@ static bool validate_model(const BongoCatNeoModelEntry *model) {
 }
 
 void test_models(void) {
-    BongoCatNeoModelCatalog catalog;
-    BongoCatNeoError error = {0};
-    bongo_cat_neo_models_init(&catalog);
-    CHECK(bongo_cat_neo_models_scan(&catalog,
-        BONGO_CAT_NEO_NATIVE_SOURCE_DIR "/resources/assets/models",
-        false, &error) == BONGO_CAT_NEO_OK);
+    BongoCatModelCatalog catalog;
+    BongoCatError error = {0};
+    bongo_cat_models_init(&catalog);
+    CHECK(bongo_cat_models_scan(&catalog,
+        BONGO_CAT_NATIVE_SOURCE_DIR "/resources/assets/models",
+        false, &error) == BONGO_CAT_OK);
     CHECK(catalog.count == 0);
-    bongo_cat_neo_models_init(&catalog);
-    CHECK(bongo_cat_neo_models_scan(&catalog, BONGO_CAT_NEO_NATIVE_SOURCE_DIR "/resources/assets/models",
-        true, &error) == BONGO_CAT_NEO_OK);
+    bongo_cat_models_init(&catalog);
+    CHECK(bongo_cat_models_scan(&catalog, BONGO_CAT_NATIVE_SOURCE_DIR "/resources/assets/models",
+        true, &error) == BONGO_CAT_OK);
     CHECK(catalog.count == 3);
-    const BongoCatNeoModelEntry *standard = bongo_cat_neo_models_find(&catalog, "standard");
-    const BongoCatNeoModelEntry *keyboard = bongo_cat_neo_models_find(&catalog, "keyboard");
-    const BongoCatNeoModelEntry *gamepad = bongo_cat_neo_models_find(&catalog, "gamepad");
-    CHECK(standard && standard->mode == BONGO_CAT_NEO_MODE_STANDARD && validate_model(standard));
-    CHECK(keyboard && keyboard->mode == BONGO_CAT_NEO_MODE_KEYBOARD && validate_model(keyboard));
-    CHECK(gamepad && gamepad->mode == BONGO_CAT_NEO_MODE_GAMEPAD && validate_model(gamepad));
-    BongoCatNeoBehaviorCatalog behaviors;
-    CHECK(bongo_cat_neo_behaviors_load(&behaviors, standard, &error) == BONGO_CAT_NEO_OK);
+    const BongoCatModelEntry *standard = bongo_cat_models_find(&catalog, "standard");
+    const BongoCatModelEntry *keyboard = bongo_cat_models_find(&catalog, "keyboard");
+    const BongoCatModelEntry *gamepad = bongo_cat_models_find(&catalog, "gamepad");
+    CHECK(standard && standard->mode == BONGO_CAT_MODE_STANDARD && validate_model(standard));
+    CHECK(keyboard && keyboard->mode == BONGO_CAT_MODE_KEYBOARD && validate_model(keyboard));
+    CHECK(gamepad && gamepad->mode == BONGO_CAT_MODE_GAMEPAD && validate_model(gamepad));
+    BongoCatBehaviorCatalog behaviors;
+    CHECK(bongo_cat_behaviors_load(&behaviors, standard, &error) == BONGO_CAT_OK);
     CHECK(behaviors.count == 7);
-    CHECK(behaviors.entries[0].kind == BONGO_CAT_NEO_BEHAVIOR_MOTION);
+    CHECK(behaviors.entries[0].kind == BONGO_CAT_BEHAVIOR_MOTION);
     CHECK(strcmp(behaviors.entries[0].group, "CAT_motion") == 0);
     CHECK(strstr(behaviors.entries[0].sound, "live2d_motion1.flac") != NULL);
-    CHECK(behaviors.entries[6].kind == BONGO_CAT_NEO_BEHAVIOR_EXPRESSION);
+    CHECK(behaviors.entries[6].kind == BONGO_CAT_BEHAVIOR_EXPRESSION);
 }

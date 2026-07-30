@@ -16,11 +16,11 @@
 #include <string.h>
 
 typedef struct LinuxX11State {
-    BongoCatNeoPlatform *platform;
+    BongoCatPlatform *platform;
     Display *display;
     Window window;
     SDL_Thread *thread;
-    bool key_down[BONGO_CAT_NEO_INPUT_KEY_STATE_CAP];
+    bool key_down[BONGO_CAT_INPUT_KEY_STATE_CAP];
     atomic_bool running;
     atomic_bool supported;
 } LinuxX11State;
@@ -74,19 +74,19 @@ static const char *key_name(KeySym key, char output[16]) {
     }
 }
 
-static void push(LinuxX11State *state, BongoCatNeoInputKind kind,
+static void push(LinuxX11State *state, BongoCatInputKind kind,
     const char *name, float value) {
     if (!name) return;
-    BongoCatNeoInputEvent input = {.kind = kind, .timestamp_ms = SDL_GetTicks(), .value = value};
+    BongoCatInputEvent input = {.kind = kind, .timestamp_ms = SDL_GetTicks(), .value = value};
     snprintf(input.name, sizeof(input.name), "%s", name);
-    if (bongo_cat_neo_input_push(state->platform->input, &input)) {
+    if (bongo_cat_input_push(state->platform->input, &input)) {
         SDL_Event wake = {0};
         wake.type = state->platform->wake_event_type; SDL_PushEvent(&wake);
     }
 }
 
 static void wake_mouse(LinuxX11State *state, double x, double y) {
-    if (bongo_cat_neo_input_mouse(state->platform->input, x, y)) {
+    if (bongo_cat_input_mouse(state->platform->input, x, y)) {
         SDL_Event wake = {0};
         wake.type = state->platform->wake_event_type;
         SDL_PushEvent(&wake);
@@ -106,16 +106,16 @@ static void raw_event(LinuxX11State *state, Display *display, XIRawEvent *raw) {
     if (raw->evtype == XI_RawKeyPress || raw->evtype == XI_RawKeyRelease) {
         name = key_name(XkbKeycodeToKeysym(display, (KeyCode)raw->detail, 0, 0), buffer);
         bool down = raw->evtype == XI_RawKeyPress;
-        if (bongo_cat_neo_input_edge(state->key_down, raw->detail, down))
-            push(state, down ? BONGO_CAT_NEO_INPUT_KEY_DOWN :
-                BONGO_CAT_NEO_INPUT_KEY_UP, name, down ? 1.0f : 0.0f);
+        if (bongo_cat_input_edge(state->key_down, raw->detail, down))
+            push(state, down ? BONGO_CAT_INPUT_KEY_DOWN :
+                BONGO_CAT_INPUT_KEY_UP, name, down ? 1.0f : 0.0f);
     } else if (raw->evtype == XI_RawButtonPress || raw->evtype == XI_RawButtonRelease) {
         if (raw->detail == 1) name = "Left";
         else if (raw->detail == 2) name = "Middle";
         else if (raw->detail == 3) name = "Right";
         if (name) {
             bool down = raw->evtype == XI_RawButtonPress;
-            push(state, down ? BONGO_CAT_NEO_INPUT_MOUSE_DOWN : BONGO_CAT_NEO_INPUT_MOUSE_UP,
+            push(state, down ? BONGO_CAT_INPUT_MOUSE_DOWN : BONGO_CAT_INPUT_MOUSE_UP,
                 name, down ? 1.0f : 0.0f);
         }
     } else if (raw->evtype == XI_RawMotion) pointer(state, display);
@@ -150,7 +150,7 @@ static int SDLCALL input_thread(void *userdata) {
     XCloseDisplay(display); return 0;
 }
 
-bool bongo_cat_neo_linux_x11_start(BongoCatNeoPlatform *platform, BongoCatNeoError *error) {
+bool bongo_cat_linux_x11_start(BongoCatPlatform *platform, BongoCatError *error) {
     SDL_PropertiesID properties = SDL_GetWindowProperties(platform->window);
     Display *display = SDL_GetPointerProperty(properties,
         SDL_PROP_WINDOW_X11_DISPLAY_POINTER, NULL);
@@ -162,16 +162,16 @@ bool bongo_cat_neo_linux_x11_start(BongoCatNeoPlatform *platform, BongoCatNeoErr
     atomic_init(&state->running, true); atomic_init(&state->supported, false);
     platform->native = state;
     if (!display || !window) return true;
-    state->thread = SDL_CreateThread(input_thread, "bongo-cat-neo-x11-input", state);
+    state->thread = SDL_CreateThread(input_thread, "bongo-cat-x11-input", state);
     if (!state->thread) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM, "Cannot start X11 input listener");
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM, "Cannot start X11 input listener");
         return false;
     }
     for (int i = 0; i < 100 && !atomic_load(&state->supported); ++i) SDL_Delay(10);
     return true;
 }
 
-void bongo_cat_neo_linux_x11_stop(BongoCatNeoPlatform *platform) {
+void bongo_cat_linux_x11_stop(BongoCatPlatform *platform) {
     LinuxX11State *state = platform ? platform->native : NULL;
     if (!state) return;
     atomic_store(&state->running, false);
@@ -179,12 +179,12 @@ void bongo_cat_neo_linux_x11_stop(BongoCatNeoPlatform *platform) {
     free(state); platform->native = NULL;
 }
 
-bool bongo_cat_neo_linux_x11_supported(const BongoCatNeoPlatform *platform) {
+bool bongo_cat_linux_x11_supported(const BongoCatPlatform *platform) {
     const LinuxX11State *state = platform ? platform->native : NULL;
     return state && atomic_load(&state->supported);
 }
 
-void bongo_cat_neo_linux_x11_click_through(BongoCatNeoPlatform *platform, bool enabled) {
+void bongo_cat_linux_x11_click_through(BongoCatPlatform *platform, bool enabled) {
     LinuxX11State *state = platform ? platform->native : NULL;
     if (!state || !state->display || !state->window) return;
     XserverRegion region = enabled ? XFixesCreateRegion(state->display, NULL, 0) : None;
@@ -203,12 +203,12 @@ static void state_message(LinuxX11State *state, const char *name, long action) {
         SubstructureRedirectMask | SubstructureNotifyMask, &event); XFlush(state->display);
 }
 
-void bongo_cat_neo_linux_x11_taskbar(BongoCatNeoPlatform *platform, bool visible) {
+void bongo_cat_linux_x11_taskbar(BongoCatPlatform *platform, bool visible) {
     LinuxX11State *state = platform ? platform->native : NULL;
     if (state && state->display) state_message(state, "_NET_WM_STATE_SKIP_TASKBAR", visible ? 0 : 1);
 }
 
-void bongo_cat_neo_linux_x11_begin_drag(BongoCatNeoPlatform *platform) {
+void bongo_cat_linux_x11_begin_drag(BongoCatPlatform *platform) {
     LinuxX11State *state = platform ? platform->native : NULL;
     if (!state || !state->display || !state->window) return;
     Window root = DefaultRootWindow(state->display), child;

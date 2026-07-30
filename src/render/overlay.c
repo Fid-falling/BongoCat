@@ -1,7 +1,7 @@
-#include "bongo_cat_neo/overlay.h"
-#include "bongo_cat_neo/gl_api.h"
-#include "bongo_cat_neo/image.h"
-#include "bongo_cat_neo/path.h"
+#include "bongo_cat/overlay.h"
+#include "bongo_cat/gl_api.h"
+#include "bongo_cat/image.h"
+#include "bongo_cat/path.h"
 
 #include <SDL3/SDL_opengl.h>
 #include <stdio.h>
@@ -9,13 +9,13 @@
 #include <string.h>
 
 typedef struct TextureSlot {
-    char path[BONGO_CAT_NEO_PATH_CAP];
+    char path[BONGO_CAT_PATH_CAP];
     GLuint texture;
     uint64_t used;
 } TextureSlot;
 
-struct BongoCatNeoOverlay {
-    BongoCatNeoGL gl;
+struct BongoCatOverlay {
+    BongoCatGL gl;
     GLuint program;
     GLint mirror_location;
     GLint image_location;
@@ -32,13 +32,13 @@ struct BongoCatNeoOverlay {
     GLuint left;
     GLuint right;
     GLuint effect;
-    char left_name[BONGO_CAT_NEO_ID_CAP];
-    char right_name[BONGO_CAT_NEO_ID_CAP];
-    char background_path[BONGO_CAT_NEO_PATH_CAP];
-    char left_path[BONGO_CAT_NEO_PATH_CAP];
-    char right_path[BONGO_CAT_NEO_PATH_CAP];
-    char effect_path[BONGO_CAT_NEO_PATH_CAP];
-    char directory[BONGO_CAT_NEO_PATH_CAP];
+    char left_name[BONGO_CAT_ID_CAP];
+    char right_name[BONGO_CAT_ID_CAP];
+    char background_path[BONGO_CAT_PATH_CAP];
+    char left_path[BONGO_CAT_PATH_CAP];
+    char right_path[BONGO_CAT_PATH_CAP];
+    char effect_path[BONGO_CAT_PATH_CAP];
+    char directory[BONGO_CAT_PATH_CAP];
     uint64_t clock;
 };
 
@@ -56,7 +56,7 @@ static const char *fragment_source =
     "vec2 dr=(tex-vec2(.275,.397))/vec2(.070,.160);"
     "bool l=dot(dl,dl)<1.;bool r=dot(dr,dr)<1.;"
     "if((erase_left&&l)||(erase_right&&r))color.rgb=vec3(1);color.rgb*=color.a;}";
-static void clear_textures(BongoCatNeoOverlay *value) {
+static void clear_textures(BongoCatOverlay *value) {
     if (value->background) glDeleteTextures(1, &value->background);
     if (value->composite) glDeleteTextures(1, &value->composite);
     value->background = 0;
@@ -74,13 +74,13 @@ static void clear_textures(BongoCatNeoOverlay *value) {
     value->effect_path[0] = '\0';
 }
 
-BongoCatNeoOverlay *bongo_cat_neo_overlay_create(BongoCatNeoError *error) {
-    BongoCatNeoOverlay *value = calloc(1, sizeof(*value));
-    if (!value || !bongo_cat_neo_gl_load(&value->gl, error)) {
+BongoCatOverlay *bongo_cat_overlay_create(BongoCatError *error) {
+    BongoCatOverlay *value = calloc(1, sizeof(*value));
+    if (!value || !bongo_cat_gl_load(&value->gl, error)) {
         free(value);
         return NULL;
     }
-    value->program = bongo_cat_neo_gl_program(&value->gl, vertex_source, fragment_source, error);
+    value->program = bongo_cat_gl_program(&value->gl, vertex_source, fragment_source, error);
     if (!value->program) { free(value); return NULL; }
     value->mirror_location = value->gl.uniform_location(value->program, "mirror");
     value->image_location = value->gl.uniform_location(value->program, "image");
@@ -100,7 +100,7 @@ BongoCatNeoOverlay *bongo_cat_neo_overlay_create(BongoCatNeoError *error) {
     return value;
 }
 
-void bongo_cat_neo_overlay_destroy(BongoCatNeoOverlay *value) {
+void bongo_cat_overlay_destroy(BongoCatOverlay *value) {
     if (!value) return;
     clear_textures(value);
     if (value->vbo) value->gl.delete_buffers(1, &value->vbo);
@@ -109,28 +109,28 @@ void bongo_cat_neo_overlay_destroy(BongoCatNeoOverlay *value) {
     free(value);
 }
 
-BongoCatNeoResult bongo_cat_neo_overlay_load(BongoCatNeoOverlay *value, const char *directory, BongoCatNeoError *error) {
-    if (!value || !directory) return BONGO_CAT_NEO_ERROR_ARGUMENT;
+BongoCatResult bongo_cat_overlay_load(BongoCatOverlay *value, const char *directory, BongoCatError *error) {
+    if (!value || !directory) return BONGO_CAT_ERROR_ARGUMENT;
     clear_textures(value);
     snprintf(value->directory, sizeof(value->directory), "%s", directory);
-    char path[BONGO_CAT_NEO_PATH_CAP];
+    char path[BONGO_CAT_PATH_CAP];
     /* Without the licensed Cubism runtime there is no model renderer.  Use the
        model's composed preview so the desktop pet remains visually complete;
        Cubism builds keep the background-only layer behind the animated model. */
-#ifdef BONGO_CAT_NEO_HAS_CUBISM
-    bongo_cat_neo_path_join(path, sizeof(path), directory, "resources/background.png");
+#ifdef BONGO_CAT_HAS_CUBISM
+    bongo_cat_path_join(path, sizeof(path), directory, "resources/background.png");
 #else
-    bongo_cat_neo_path_join(path, sizeof(path), directory, "resources/cover.png");
+    bongo_cat_path_join(path, sizeof(path), directory, "resources/cover.png");
     value->composed_cover = true;
     value->clean_paws = true;
 #endif
     snprintf(value->background_path, sizeof(value->background_path), "%s", path);
-    if (bongo_cat_neo_path_is_file(path)) value->background = bongo_cat_neo_image_texture(path, NULL, NULL, error);
-    return BONGO_CAT_NEO_OK;
+    if (bongo_cat_path_is_file(path)) value->background = bongo_cat_image_texture(path, NULL, NULL, error);
+    return BONGO_CAT_OK;
 }
 
-#ifdef BONGO_CAT_NEO_HAS_CUBISM
-static GLuint cached_texture(BongoCatNeoOverlay *value, const char *path) {
+#ifdef BONGO_CAT_HAS_CUBISM
+static GLuint cached_texture(BongoCatOverlay *value, const char *path) {
     value->clock++;
     TextureSlot *oldest = NULL;
     for (size_t i = 0; i < 4; ++i) {
@@ -146,32 +146,32 @@ static GLuint cached_texture(BongoCatNeoOverlay *value, const char *path) {
     }
     if (!oldest) return 0;
     if (oldest->texture) glDeleteTextures(1, &oldest->texture);
-    BongoCatNeoError ignored = {0};
-    oldest->texture = bongo_cat_neo_image_texture(path, NULL, NULL, &ignored);
+    BongoCatError ignored = {0};
+    oldest->texture = bongo_cat_image_texture(path, NULL, NULL, &ignored);
     snprintf(oldest->path, sizeof(oldest->path), "%s", path);
     oldest->used = value->clock;
     return oldest->texture;
 }
 #endif
 
-static bool key_path(BongoCatNeoOverlay *value, const char *group, const char *name,
-    char path[BONGO_CAT_NEO_PATH_CAP]) {
-    char relative[BONGO_CAT_NEO_PATH_CAP];
+static bool key_path(BongoCatOverlay *value, const char *group, const char *name,
+    char path[BONGO_CAT_PATH_CAP]) {
+    char relative[BONGO_CAT_PATH_CAP];
     snprintf(relative, sizeof(relative), "resources/%s/%s.png", group, name);
-    bongo_cat_neo_path_join(path, BONGO_CAT_NEO_PATH_CAP, value->directory, relative);
-    if (bongo_cat_neo_path_is_file(path)) return true;
+    bongo_cat_path_join(path, BONGO_CAT_PATH_CAP, value->directory, relative);
+    if (bongo_cat_path_is_file(path)) return true;
     if (name[0] == 'F' && name[1] >= '0' && name[1] <= '9') {
         snprintf(relative, sizeof(relative), "resources/%s/Fn.png", group);
-        bongo_cat_neo_path_join(path, BONGO_CAT_NEO_PATH_CAP, value->directory, relative);
-        return bongo_cat_neo_path_is_file(path);
+        bongo_cat_path_join(path, BONGO_CAT_PATH_CAP, value->directory, relative);
+        return bongo_cat_path_is_file(path);
     }
     return false;
 }
 
-int bongo_cat_neo_overlay_key(BongoCatNeoOverlay *value, const char *name, bool pressed) {
+int bongo_cat_overlay_key(BongoCatOverlay *value, const char *name, bool pressed) {
     if (!value || !name) return -1;
     bool right;
-    char path[BONGO_CAT_NEO_PATH_CAP];
+    char path[BONGO_CAT_PATH_CAP];
     if (key_path(value, "right-keys", name, path)) right = true;
     else if (key_path(value, "left-keys", name, path)) right = false;
     else return -1;
@@ -179,11 +179,11 @@ int bongo_cat_neo_overlay_key(BongoCatNeoOverlay *value, const char *name, bool 
     GLuint *active = right ? &value->right : &value->left;
     char *active_path = right ? value->right_path : value->left_path;
     if (pressed) {
-        snprintf(active_name, BONGO_CAT_NEO_ID_CAP, "%s", name);
-#ifdef BONGO_CAT_NEO_HAS_CUBISM
+        snprintf(active_name, BONGO_CAT_ID_CAP, "%s", name);
+#ifdef BONGO_CAT_HAS_CUBISM
         *active = cached_texture(value, path);
 #else
-        snprintf(active_path, BONGO_CAT_NEO_PATH_CAP, "%s", path);
+        snprintf(active_path, BONGO_CAT_PATH_CAP, "%s", path);
         *active = 1;
 #endif
     } else if (strcmp(active_name, name) == 0) {
@@ -191,23 +191,23 @@ int bongo_cat_neo_overlay_key(BongoCatNeoOverlay *value, const char *name, bool 
         *active = 0;
         active_path[0] = '\0';
     }
-#ifndef BONGO_CAT_NEO_HAS_CUBISM
+#ifndef BONGO_CAT_HAS_CUBISM
     value->composite_dirty = true;
 #endif
     return right ? 1 : 0;
 }
 
-bool bongo_cat_neo_overlay_hand_active(const BongoCatNeoOverlay *value, bool right) {
+bool bongo_cat_overlay_hand_active(const BongoCatOverlay *value, bool right) {
     return value && (right ? value->right : value->left) != 0;
 }
 
-bool bongo_cat_neo_overlay_effect(BongoCatNeoOverlay *value, const char *path) {
+bool bongo_cat_overlay_effect(BongoCatOverlay *value, const char *path) {
     if (!value) return false;
     value->effect = 0;
     value->effect_path[0] = '\0';
     if (!path || !*path) return true;
-    if (!bongo_cat_neo_path_is_file(path)) return false;
-#ifdef BONGO_CAT_NEO_HAS_CUBISM
+    if (!bongo_cat_path_is_file(path)) return false;
+#ifdef BONGO_CAT_HAS_CUBISM
     value->effect = cached_texture(value, path);
 #else
     value->effect = 1;
@@ -216,7 +216,7 @@ bool bongo_cat_neo_overlay_effect(BongoCatNeoOverlay *value, const char *path) {
     return value->effect != 0;
 }
 
-static void draw(BongoCatNeoOverlay *value, GLuint texture, bool mirror, bool blend) {
+static void draw(BongoCatOverlay *value, GLuint texture, bool mirror, bool blend) {
     if (!value || !texture) return;
     if (blend) {
         glEnable(GL_BLEND);
@@ -237,14 +237,14 @@ static void draw(BongoCatNeoOverlay *value, GLuint texture, bool mirror, bool bl
     value->gl.bind_vertex_array(0);
 }
 
-void bongo_cat_neo_overlay_draw_background(BongoCatNeoOverlay *value, bool mirror) {
+void bongo_cat_overlay_draw_background(BongoCatOverlay *value, bool mirror) {
     if (value) {
-#ifndef BONGO_CAT_NEO_HAS_CUBISM
+#ifndef BONGO_CAT_HAS_CUBISM
         if (value->composite_dirty) {
             value->composite_dirty = false;
             if (value->left || value->right) {
-                BongoCatNeoError ignored = {0};
-                value->composite = bongo_cat_neo_image_composite_texture(value->background_path,
+                BongoCatError ignored = {0};
+                value->composite = bongo_cat_image_composite_texture(value->background_path,
                     value->left_path, value->right_path, value->composite,
                     value->clean_paws && value->left,
                     value->clean_paws && value->right, &ignored);
@@ -257,9 +257,9 @@ void bongo_cat_neo_overlay_draw_background(BongoCatNeoOverlay *value, bool mirro
     }
 }
 
-void bongo_cat_neo_overlay_draw_keys(BongoCatNeoOverlay *value, bool mirror) {
+void bongo_cat_overlay_draw_keys(BongoCatOverlay *value, bool mirror) {
     if (!value) return;
-#ifdef BONGO_CAT_NEO_HAS_CUBISM
+#ifdef BONGO_CAT_HAS_CUBISM
     draw(value, value->left, mirror, true);
     draw(value, value->right, mirror, true);
 #else
@@ -267,9 +267,9 @@ void bongo_cat_neo_overlay_draw_keys(BongoCatNeoOverlay *value, bool mirror) {
 #endif
 }
 
-void bongo_cat_neo_overlay_draw_effect(BongoCatNeoOverlay *value, bool mirror) {
+void bongo_cat_overlay_draw_effect(BongoCatOverlay *value, bool mirror) {
     if (!value) return;
-#ifdef BONGO_CAT_NEO_HAS_CUBISM
+#ifdef BONGO_CAT_HAS_CUBISM
     draw(value, value->effect, mirror, true);
 #else
     (void)mirror;

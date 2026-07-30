@@ -1,6 +1,6 @@
 #include "runtime.h"
-#include "bongo_cat_neo/file.h"
-#include "bongo_cat_neo/path.h"
+#include "bongo_cat/file.h"
+#include "bongo_cat/path.h"
 
 #include <SDL3/SDL_opengl.h>
 #include <stdio.h>
@@ -26,20 +26,20 @@ static FrameStats frame_stats(const unsigned char *pixels,
     return stats;
 }
 
-static void record_frame(BongoCatNeoApp *app, const unsigned char *pixels,
+static void record_frame(BongoCatApp *app, const unsigned char *pixels,
     int width, int height, size_t pitch) {
     if (!app->smoke_frame_series) return;
-    char path[BONGO_CAT_NEO_PATH_CAP];
-    bongo_cat_neo_path_join(path, sizeof(path), app->data_root, "frame-series.csv");
-    bool header = !bongo_cat_neo_path_is_file(path);
-    FILE *file = bongo_cat_neo_file_open(path, "ab");
+    char path[BONGO_CAT_PATH_CAP];
+    bongo_cat_path_join(path, sizeof(path), app->data_root, "frame-series.csv");
+    bool header = !bongo_cat_path_is_file(path);
+    FILE *file = bongo_cat_file_open(path, "ab");
     if (!file) return;
     if (header) fputs("ticks_ns,width,height,visible_pixels,alpha_pixels,"
         "scale_percent,opacity_percent,window_opacity,model_mode,"
         "model_state_consistent,selection_serial,window_config_visible,"
         "window_os_visible\n", file);
     FrameStats stats = frame_stats(pixels, width, height, pitch);
-    bool model_consistent = bongo_cat_neo_live2d_ready(app->live2d) &&
+    bool model_consistent = bongo_cat_live2d_ready(app->live2d) &&
         app->loaded_model[0] &&
         strcmp(app->loaded_model, app->config.current_model) == 0;
     bool os_visible = (SDL_GetWindowFlags(app->window) & SDL_WINDOW_HIDDEN) == 0;
@@ -48,14 +48,14 @@ static void record_frame(BongoCatNeoApp *app, const unsigned char *pixels,
         stats.visible, stats.alpha,
         app->config.window.scale_percent, app->config.window.opacity_percent,
         SDL_GetWindowOpacity(app->window),
-        bongo_cat_neo_mode_name(app->config.current_mode), model_consistent,
+        bongo_cat_mode_name(app->config.current_mode), model_consistent,
         app->model_selection_serial, app->config.window.visible, os_visible);
     fclose(file);
 }
 
-void bongo_cat_neo_frame_audit(BongoCatNeoApp *app, int width, int height) {
+void bongo_cat_frame_audit(BongoCatApp *app, int width, int height) {
     if (!app || !app->smoke || width < 2 || height < 2) return;
-    char path[BONGO_CAT_NEO_PATH_CAP];
+    char path[BONGO_CAT_PATH_CAP];
     if (!app->smoke_frame_audited) {
         app->smoke_frame_audited = true;
         const int points[][2] = {{0, 0}, {width - 1, 0}, {0, height - 1},
@@ -68,8 +68,8 @@ void bongo_cat_neo_frame_audit(BongoCatNeoApp *app, int width, int height) {
             if (pixel[3] < 16) transparent++;
             if (pixel[3] > 239) opaque++;
         }
-        bongo_cat_neo_path_join(path, sizeof(path), app->data_root, "frame-alpha.txt");
-        FILE *file = bongo_cat_neo_file_open(path, "wb");
+        bongo_cat_path_join(path, sizeof(path), app->data_root, "frame-alpha.txt");
+        FILE *file = bongo_cat_file_open(path, "wb");
         if (file) {
             int sample_buffers = 0, sample_count = 0;
             SDL_GL_GetAttribute(SDL_GL_MULTISAMPLEBUFFERS, &sample_buffers);
@@ -100,7 +100,7 @@ void bongo_cat_neo_frame_audit(BongoCatNeoApp *app, int width, int height) {
     }
     SDL_Surface *surface = SDL_CreateSurfaceFrom(width, height,
         SDL_PIXELFORMAT_RGBA32, pixels, (int)pitch);
-    bongo_cat_neo_path_join(path, sizeof(path), app->data_root, "frame.bmp");
+    bongo_cat_path_join(path, sizeof(path), app->data_root, "frame.bmp");
     if (surface) { SDL_SaveBMP(surface, path); SDL_DestroySurface(surface); }
     free(row); free(pixels);
 }

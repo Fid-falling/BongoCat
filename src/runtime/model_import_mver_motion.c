@@ -1,24 +1,24 @@
 #include "model_import_mver_internal.h"
-#include "bongo_cat_neo/file.h"
-#include "bongo_cat_neo/path.h"
+#include "bongo_cat/file.h"
+#include "bongo_cat/path.h"
 
 #include <stdio.h>
 #include <yyjson.h>
 
 static bool add_rows(yyjson_mut_doc *output, yyjson_mut_val *items,
-    yyjson_val *rows, const BongoCatNeoImportCandidate *candidate,
+    yyjson_val *rows, const BongoCatImportCandidate *candidate,
     const char *kind, const char *group, size_t available,
-    BongoCatNeoError *error) {
+    BongoCatError *error) {
     if (!rows) return true;
     if (!yyjson_is_arr(rows)) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
             "Mver %s bindings exceed the matching Live2D manifest entries", kind);
         return false;
     }
     size_t limit = yyjson_arr_size(rows);
     if (limit > available) {
         if (!candidate->portable_compat) {
-            bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
+            bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
                 "Mver %s bindings exceed the matching Live2D manifest entries", kind);
             return false;
         }
@@ -27,9 +27,9 @@ static bool add_rows(yyjson_mut_doc *output, yyjson_mut_val *items,
     size_t index, count; yyjson_val *row;
     yyjson_arr_foreach(rows, index, count, row) {
         if (index >= limit) break;
-        char shortcut[BONGO_CAT_NEO_SHORTCUT_CAP];
-        if (!bongo_cat_neo_mver_chord(candidate, row, shortcut, sizeof(shortcut))) {
-            bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
+        char shortcut[BONGO_CAT_SHORTCUT_CAP];
+        if (!bongo_cat_mver_chord(candidate, row, shortcut, sizeof(shortcut))) {
+            bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
                 "Mver %s binding %zu is not a supported input chord", kind, index);
             return false;
         }
@@ -42,12 +42,12 @@ static bool add_rows(yyjson_mut_doc *output, yyjson_mut_val *items,
     return true;
 }
 
-static yyjson_doc *manifest(const BongoCatNeoImportCandidate *candidate,
+static yyjson_doc *manifest(const BongoCatImportCandidate *candidate,
     yyjson_val **references) {
-    char path[BONGO_CAT_NEO_PATH_CAP];
-    if (!bongo_cat_neo_path_join(path, sizeof(path), candidate->directory,
+    char path[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_path_join(path, sizeof(path), candidate->directory,
         candidate->setting)) return NULL;
-    FILE *file = bongo_cat_neo_file_open(path, "rb");
+    FILE *file = bongo_cat_file_open(path, "rb");
     yyjson_doc *document = file ? yyjson_read_fp(file, 0, NULL, NULL) : NULL;
     if (file) fclose(file);
     *references = document ? yyjson_obj_get(yyjson_doc_get_root(document),
@@ -57,16 +57,16 @@ static yyjson_doc *manifest(const BongoCatNeoImportCandidate *candidate,
 
 static bool add_motion_group(yyjson_mut_doc *output, yyjson_mut_val *items,
     yyjson_val *configured, yyjson_val *motions, const char *group,
-    const BongoCatNeoImportCandidate *candidate, BongoCatNeoError *error) {
+    const BongoCatImportCandidate *candidate, BongoCatError *error) {
     yyjson_val *available = yyjson_obj_get(motions, group);
     size_t count = yyjson_is_arr(available) ? yyjson_arr_size(available) : 0;
     return add_rows(output, items, configured, candidate, "motion", group,
         count, error);
 }
 
-bool bongo_cat_neo_mver_add_behaviors(void *raw_output, void *raw_items,
-    void *raw_mode, const BongoCatNeoImportCandidate *candidate,
-    BongoCatNeoError *error) {
+bool bongo_cat_mver_add_behaviors(void *raw_output, void *raw_items,
+    void *raw_mode, const BongoCatImportCandidate *candidate,
+    BongoCatError *error) {
     yyjson_mut_doc *output = raw_output;
     yyjson_mut_val *items = raw_items;
     yyjson_val *mode = raw_mode, *references = NULL;
@@ -83,7 +83,7 @@ bool bongo_cat_neo_mver_add_behaviors(void *raw_output, void *raw_items,
             "CAT_motion_lock", candidate, error);
     yyjson_doc_free(document);
     if (!ok && error && !error->message[0])
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
             "Cannot map Mver behaviors to the Live2D manifest");
     return ok;
 }

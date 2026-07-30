@@ -1,8 +1,8 @@
 param([string]$Exe = "", [string]$OutputDir = "")
 $ErrorActionPreference = "Stop"
-$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build\BongoCatNeo.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build\BongoCat.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build\theme-import-audit" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
@@ -150,7 +150,7 @@ $results = foreach ($fixture in $fixtures) {
     $layouts = @($models | ForEach-Object { Get-InstalledModelLayout $_ })
     $installed = $models.Count
     $reports = @($layouts | Where-Object {
-        Test-Path (Join-Path $_.Adapter ".bongo-cat-neo-import-report.json")
+        Test-Path (Join-Path $_.Adapter ".bongo-cat-import-report.json")
     }).Count
     $covers = @($layouts | Where-Object {
         Test-Path (Join-Path $_.Adapter "resources\cover.png")
@@ -201,11 +201,11 @@ $results = foreach ($fixture in $fixtures) {
                     $fixture.BackgroundHashes[$mode]
             $mverMatches = $mverMatches -and (Test-Path $coverPath) -and
                 (Get-FileHash $coverPath -Algorithm SHA256).Hash -eq $fixture.CoverHashes[$mode]
-            $metadataPath = Join-Path $model.Adapter ".bongo-cat-neo-mver.json"
+            $metadataPath = Join-Path $model.Adapter ".bongo-cat-mver.json"
             $mverMatches = $mverMatches -and (Test-Path $metadataPath)
             $metadata = if (Test-Path $metadataPath) { Get-Content $metadataPath -Raw |
                 ConvertFrom-Json } else { $null }
-            $reportPath = Join-Path $model.Adapter ".bongo-cat-neo-import-report.json"
+            $reportPath = Join-Path $model.Adapter ".bongo-cat-import-report.json"
             $report = if (Test-Path $reportPath) { Get-Content $reportPath -Raw |
                 ConvertFrom-Json } else { $null }
             $mverMatches = $mverMatches -and $report.schemaVersion -eq 1 -and

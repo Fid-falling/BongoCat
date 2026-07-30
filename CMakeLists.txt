@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.24)
-project(BongoCatNeo VERSION 0.1.0 LANGUAGES C CXX)
+project(BongoCat VERSION 0.1.0 LANGUAGES C CXX)
 include(FetchContent)
 include(CTest)
-option(BONGO_CAT_NEO_FETCH_DEPS "Download pinned open-source dependencies" ON)
-option(BONGO_CAT_NEO_REQUIRE_CUBISM "Fail configuration when Cubism SDK is absent" OFF)
-option(BONGO_CAT_NEO_WARNINGS_AS_ERRORS "Treat native source warnings as errors" OFF)
-set(BONGO_CAT_NEO_CUBISM_SDK "${CMAKE_CURRENT_SOURCE_DIR}/vendor/CubismSdkForNative"
+option(BONGO_CAT_FETCH_DEPS "Download pinned open-source dependencies" ON)
+option(BONGO_CAT_REQUIRE_CUBISM "Fail configuration when Cubism SDK is absent" OFF)
+option(BONGO_CAT_WARNINGS_AS_ERRORS "Treat native source warnings as errors" OFF)
+set(BONGO_CAT_CUBISM_SDK "${CMAKE_CURRENT_SOURCE_DIR}/vendor/CubismSdkForNative"
   CACHE PATH "Path to Cubism SDK for Native")
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -15,48 +15,48 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 include(cmake/ReleaseOptimize.cmake)
 
-add_library(bongo_cat_neo_warnings INTERFACE)
+add_library(bongo_cat_warnings INTERFACE)
 if(MSVC)
-  target_compile_options(bongo_cat_neo_warnings INTERFACE /W4 /permissive- /utf-8)
-  target_compile_options(bongo_cat_neo_warnings INTERFACE
+  target_compile_options(bongo_cat_warnings INTERFACE /W4 /permissive- /utf-8)
+  target_compile_options(bongo_cat_warnings INTERFACE
     $<$<COMPILE_LANGUAGE:C>:/experimental:c11atomics>)
-  if(BONGO_CAT_NEO_WARNINGS_AS_ERRORS)
-    target_compile_options(bongo_cat_neo_warnings INTERFACE /WX)
+  if(BONGO_CAT_WARNINGS_AS_ERRORS)
+    target_compile_options(bongo_cat_warnings INTERFACE /WX)
   endif()
 else()
-  target_compile_options(bongo_cat_neo_warnings INTERFACE -Wall -Wextra)
-  if(BONGO_CAT_NEO_WARNINGS_AS_ERRORS)
-    target_compile_options(bongo_cat_neo_warnings INTERFACE -Werror)
+  target_compile_options(bongo_cat_warnings INTERFACE -Wall -Wextra)
+  if(BONGO_CAT_WARNINGS_AS_ERRORS)
+    target_compile_options(bongo_cat_warnings INTERFACE -Werror)
   endif()
 endif()
 include(cmake/Dependencies.cmake)
 
 find_package(OpenGL REQUIRED)
 
-set(BONGO_CAT_NEO_LIVE2D_SOURCES src/live2d/live2d_stub.c)
-set(BONGO_CAT_NEO_CUBISM_ENABLED OFF)
-set(CUBISM_CORE_HEADER "${BONGO_CAT_NEO_CUBISM_SDK}/Core/include/Live2DCubismCore.h")
+set(BONGO_CAT_LIVE2D_SOURCES src/live2d/live2d_stub.c)
+set(BONGO_CAT_CUBISM_ENABLED OFF)
+set(CUBISM_CORE_HEADER "${BONGO_CAT_CUBISM_SDK}/Core/include/Live2DCubismCore.h")
 if(EXISTS "${CUBISM_CORE_HEADER}")
   if(WIN32 AND NOT MSVC)
-    if(BONGO_CAT_NEO_REQUIRE_CUBISM)
+    if(BONGO_CAT_REQUIRE_CUBISM)
       message(FATAL_ERROR "Cubism Core for Windows requires Visual Studio 2022")
     endif()
     message(WARNING "Cubism SDK found but MinGW is unsupported; using diagnostic backend")
   else()
     include(cmake/Cubism.cmake)
-    set(BONGO_CAT_NEO_LIVE2D_SOURCES
+    set(BONGO_CAT_LIVE2D_SOURCES
       src/live2d/cubism_bridge.cpp
       src/live2d/cubism_model_load.cpp
       src/live2d/cubism_model_update.cpp src/live2d/cubism_model_validate.cpp)
-    set(BONGO_CAT_NEO_CUBISM_ENABLED ON)
+    set(BONGO_CAT_CUBISM_ENABLED ON)
   endif()
-elseif(BONGO_CAT_NEO_REQUIRE_CUBISM)
-  message(FATAL_ERROR "Cubism SDK missing at ${BONGO_CAT_NEO_CUBISM_SDK}")
+elseif(BONGO_CAT_REQUIRE_CUBISM)
+  message(FATAL_ERROR "Cubism SDK missing at ${BONGO_CAT_CUBISM_SDK}")
 else()
   message(WARNING "Cubism SDK missing; building the diagnostic backend")
 endif()
 
-add_library(bongo_cat_neo_core STATIC
+add_library(bongo_cat_core STATIC
   src/core/config_defaults.c src/core/config_io.c
   src/core/config_file.c src/core/config_session_io.c
   src/core/error.c
@@ -68,15 +68,15 @@ add_library(bongo_cat_neo_core STATIC
   src/core/model_catalog.c
   src/core/model_behavior.c
   src/core/path.c src/core/path_io.c src/core/json.c)
-target_sources(bongo_cat_neo_core PRIVATE src/core/shortcut.c)
-target_include_directories(bongo_cat_neo_core PUBLIC include)
-target_link_libraries(bongo_cat_neo_core PUBLIC yyjson PRIVATE bongo_cat_neo_warnings)
+target_sources(bongo_cat_core PRIVATE src/core/shortcut.c)
+target_include_directories(bongo_cat_core PUBLIC include)
+target_link_libraries(bongo_cat_core PUBLIC yyjson PRIVATE bongo_cat_warnings)
 include(cmake/CubismAssets.cmake)
 if(WIN32)
-  target_sources(bongo_cat_neo_core PRIVATE src/core/windows_utf8.c)
+  target_sources(bongo_cat_core PRIVATE src/core/windows_utf8.c)
 endif()
 
-add_library(bongo_cat_neo_runtime STATIC
+add_library(bongo_cat_runtime STATIC
   src/core/app_state.c
   src/media/audio.c
   src/media/image.c src/media/image_resize.c
@@ -124,12 +124,12 @@ add_library(bongo_cat_neo_runtime STATIC
   src/ui/preferences_pages.c
   src/ui/preferences_shortcuts.c src/ui/preferences_shortcut_clear.c src/ui/preferences_smoke.c
   src/ui/preferences_widgets.c src/ui/preferences_controls.c src/ui/preferences_combo.c src/ui/preferences_toggle.c
-  ${BONGO_CAT_NEO_LIVE2D_SOURCES})
-target_include_directories(bongo_cat_neo_runtime PUBLIC include)
-target_include_directories(bongo_cat_neo_runtime SYSTEM PRIVATE
-  ${BONGO_CAT_NEO_STB_INCLUDE_DIR} ${BONGO_CAT_NEO_NUKLEAR_INCLUDE_DIR})
-target_link_libraries(bongo_cat_neo_runtime PRIVATE bongo_cat_neo_warnings)
-target_link_libraries(bongo_cat_neo_runtime PUBLIC bongo_cat_neo_core SDL3::SDL3-static OpenGL::GL ${BONGO_CAT_NEO_MINIAUDIO_TARGET})
+  ${BONGO_CAT_LIVE2D_SOURCES})
+target_include_directories(bongo_cat_runtime PUBLIC include)
+target_include_directories(bongo_cat_runtime SYSTEM PRIVATE
+  ${BONGO_CAT_STB_INCLUDE_DIR} ${BONGO_CAT_NUKLEAR_INCLUDE_DIR})
+target_link_libraries(bongo_cat_runtime PRIVATE bongo_cat_warnings)
+target_link_libraries(bongo_cat_runtime PUBLIC bongo_cat_core SDL3::SDL3-static OpenGL::GL ${BONGO_CAT_MINIAUDIO_TARGET})
 if(MSVC)
   set_source_files_properties(src/media/stb_image_impl.c src/media/image_resize.c src/ui/nuklear_impl.c
     PROPERTIES COMPILE_OPTIONS "/W0")
@@ -137,110 +137,110 @@ else()
   set_source_files_properties(src/media/stb_image_impl.c src/media/image_resize.c src/ui/nuklear_impl.c
     PROPERTIES COMPILE_OPTIONS "-w")
 endif()
-if(BONGO_CAT_NEO_CUBISM_ENABLED)
-  target_link_libraries(bongo_cat_neo_runtime PUBLIC Framework Live2DCubismCore glew_s)
-  target_compile_definitions(bongo_cat_neo_runtime PUBLIC BONGO_CAT_NEO_HAS_CUBISM=1)
+if(BONGO_CAT_CUBISM_ENABLED)
+  target_link_libraries(bongo_cat_runtime PUBLIC Framework Live2DCubismCore glew_s)
+  target_compile_definitions(bongo_cat_runtime PUBLIC BONGO_CAT_HAS_CUBISM=1)
 endif()
-target_compile_definitions(bongo_cat_neo_runtime PRIVATE
-  BONGO_CAT_NEO_DEV_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/resources/assets"
-  BONGO_CAT_NEO_DEV_LOCALE_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/resources/assets/locales")
+target_compile_definitions(bongo_cat_runtime PRIVATE
+  BONGO_CAT_DEV_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/resources/assets"
+  BONGO_CAT_DEV_LOCALE_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/resources/assets/locales")
 
 if(WIN32)
   enable_language(RC)
-  target_sources(bongo_cat_neo_runtime PRIVATE src/platform/windows.c src/platform/windows_startup.c src/platform/windows_borderless.c src/platform/windows_pointer.c)
-  target_sources(bongo_cat_neo_runtime PRIVATE src/platform/windows_assets.c)
-  target_link_libraries(bongo_cat_neo_runtime PRIVATE dwmapi ole32 shell32 user32 windowscodecs)
+  target_sources(bongo_cat_runtime PRIVATE src/platform/windows.c src/platform/windows_startup.c src/platform/windows_borderless.c src/platform/windows_pointer.c)
+  target_sources(bongo_cat_runtime PRIVATE src/platform/windows_assets.c)
+  target_link_libraries(bongo_cat_runtime PRIVATE dwmapi ole32 shell32 user32 windowscodecs)
 elseif(APPLE)
   enable_language(OBJC)
-  target_sources(bongo_cat_neo_runtime PRIVATE src/platform/macos.m src/platform/macos_input.m
+  target_sources(bongo_cat_runtime PRIVATE src/platform/macos.m src/platform/macos_input.m
     src/platform/macos_keys.m src/platform/macos_menu.m)
-  target_link_libraries(bongo_cat_neo_runtime PRIVATE "-framework Cocoa"
+  target_link_libraries(bongo_cat_runtime PRIVATE "-framework Cocoa"
     "-framework ApplicationServices")
 else()
   find_package(X11 REQUIRED)
   if(NOT TARGET X11::Xi OR NOT TARGET X11::Xfixes)
     message(FATAL_ERROR "Linux native build requires XInput2 and Xfixes development packages")
   endif()
-  target_sources(bongo_cat_neo_runtime PRIVATE src/platform/linux.c src/platform/linux_menu.c
+  target_sources(bongo_cat_runtime PRIVATE src/platform/linux.c src/platform/linux_menu.c
     src/platform/linux_x11.c)
-  target_link_libraries(bongo_cat_neo_runtime PRIVATE X11::X11 X11::Xi X11::Xfixes m)
-  target_link_libraries(bongo_cat_neo_core PRIVATE m)
+  target_link_libraries(bongo_cat_runtime PRIVATE X11::X11 X11::Xi X11::Xfixes m)
+  target_link_libraries(bongo_cat_core PRIVATE m)
 endif()
 
-add_executable(bongo_cat_neo src/main.c)
-target_link_libraries(bongo_cat_neo PRIVATE bongo_cat_neo_runtime bongo_cat_neo_warnings)
-set_target_properties(bongo_cat_neo PROPERTIES OUTPUT_NAME "BongoCatNeo")
-bongo_cat_neo_enable_release_ipo(Framework bongo_cat_neo_core bongo_cat_neo_runtime bongo_cat_neo)
+add_executable(bongo_cat src/main.c)
+target_link_libraries(bongo_cat PRIVATE bongo_cat_runtime bongo_cat_warnings)
+set_target_properties(bongo_cat PROPERTIES OUTPUT_NAME "BongoCat")
+bongo_cat_enable_release_ipo(Framework bongo_cat_core bongo_cat_runtime bongo_cat)
 if(APPLE)
   set_source_files_properties(resources/icons/icon.icns PROPERTIES
     MACOSX_PACKAGE_LOCATION Resources)
-  target_sources(bongo_cat_neo PRIVATE resources/icons/icon.icns)
-  set_target_properties(bongo_cat_neo PROPERTIES
+  target_sources(bongo_cat PRIVATE resources/icons/icon.icns)
+  set_target_properties(bongo_cat PROPERTIES
     MACOSX_BUNDLE TRUE
-    MACOSX_BUNDLE_BUNDLE_NAME "Bongo Cat Neo"
-    MACOSX_BUNDLE_GUI_IDENTIFIER com.bongocatneo.desktop
+    MACOSX_BUNDLE_BUNDLE_NAME "BongoCat"
+    MACOSX_BUNDLE_GUI_IDENTIFIER com.bongocat.desktop
     MACOSX_BUNDLE_ICON_FILE icon.icns
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Info.plist.in")
-  add_custom_command(TARGET bongo_cat_neo POST_BUILD
+  add_custom_command(TARGET bongo_cat POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory
-      "$<TARGET_BUNDLE_CONTENT_DIR:bongo_cat_neo>/MacOS/assets"
+      "$<TARGET_BUNDLE_CONTENT_DIR:bongo_cat>/MacOS/assets"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
       "${CMAKE_CURRENT_SOURCE_DIR}/resources/assets"
-      "$<TARGET_BUNDLE_CONTENT_DIR:bongo_cat_neo>/MacOS/assets"
+      "$<TARGET_BUNDLE_CONTENT_DIR:bongo_cat>/MacOS/assets"
     VERBATIM)
 endif()
 
 if(WIN32)
-  target_sources(bongo_cat_neo_runtime PRIVATE src/platform/windows_keys.c)
-  add_executable(bongo_cat_neo_asset_packer src/tools/asset_packer.cpp)
-  target_link_libraries(bongo_cat_neo_asset_packer PRIVATE bongo_cat_neo_warnings)
-  set(BONGO_CAT_NEO_ASSET_STAGE "${CMAKE_CURRENT_BINARY_DIR}/embedded-assets")
-  set(BONGO_CAT_NEO_ASSET_PACK "${CMAKE_CURRENT_BINARY_DIR}/bongo-cat-neo-assets.pak")
-  file(GLOB_RECURSE BONGO_CAT_NEO_ASSET_INPUTS CONFIGURE_DEPENDS
+  target_sources(bongo_cat_runtime PRIVATE src/platform/windows_keys.c)
+  add_executable(bongo_cat_asset_packer src/tools/asset_packer.cpp)
+  target_link_libraries(bongo_cat_asset_packer PRIVATE bongo_cat_warnings)
+  set(BONGO_CAT_ASSET_STAGE "${CMAKE_CURRENT_BINARY_DIR}/embedded-assets")
+  set(BONGO_CAT_ASSET_PACK "${CMAKE_CURRENT_BINARY_DIR}/bongo-cat-assets.pak")
+  file(GLOB_RECURSE BONGO_CAT_ASSET_INPUTS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/assets/*")
-  bongo_cat_neo_configure_embedded_cubism_assets()
-  add_custom_command(OUTPUT "${BONGO_CAT_NEO_ASSET_PACK}"
-    COMMAND ${CMAKE_COMMAND} -E rm -rf "${BONGO_CAT_NEO_ASSET_STAGE}"
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${BONGO_CAT_NEO_ASSET_STAGE}/assets"
+  bongo_cat_configure_embedded_cubism_assets()
+  add_custom_command(OUTPUT "${BONGO_CAT_ASSET_PACK}"
+    COMMAND ${CMAKE_COMMAND} -E rm -rf "${BONGO_CAT_ASSET_STAGE}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${BONGO_CAT_ASSET_STAGE}/assets"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-      "${CMAKE_CURRENT_SOURCE_DIR}/resources/assets" "${BONGO_CAT_NEO_ASSET_STAGE}/assets"
-    ${BONGO_CAT_NEO_ASSET_EXTRA_COMMANDS}
-    COMMAND "$<TARGET_FILE:bongo_cat_neo_asset_packer>"
-      "${BONGO_CAT_NEO_ASSET_STAGE}/assets" "${BONGO_CAT_NEO_ASSET_PACK}"
-    DEPENDS ${BONGO_CAT_NEO_ASSET_INPUTS} bongo_cat_neo_asset_packer
+      "${CMAKE_CURRENT_SOURCE_DIR}/resources/assets" "${BONGO_CAT_ASSET_STAGE}/assets"
+    ${BONGO_CAT_ASSET_EXTRA_COMMANDS}
+    COMMAND "$<TARGET_FILE:bongo_cat_asset_packer>"
+      "${BONGO_CAT_ASSET_STAGE}/assets" "${BONGO_CAT_ASSET_PACK}"
+    DEPENDS ${BONGO_CAT_ASSET_INPUTS} bongo_cat_asset_packer
     VERBATIM)
-  add_custom_target(bongo_cat_neo_asset_pack DEPENDS "${BONGO_CAT_NEO_ASSET_PACK}")
-  file(TO_CMAKE_PATH "${BONGO_CAT_NEO_ASSET_PACK}" BONGO_CAT_NEO_ASSET_PACK_RC)
-  file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/icon.ico" BONGO_CAT_NEO_ICON_RC)
-  set(BONGO_CAT_NEO_WINDOWS_MANIFEST "${CMAKE_CURRENT_SOURCE_DIR}/cmake/windows.manifest")
+  add_custom_target(bongo_cat_asset_pack DEPENDS "${BONGO_CAT_ASSET_PACK}")
+  file(TO_CMAKE_PATH "${BONGO_CAT_ASSET_PACK}" BONGO_CAT_ASSET_PACK_RC)
+  file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/icon.ico" BONGO_CAT_ICON_RC)
+  set(BONGO_CAT_WINDOWS_MANIFEST "${CMAKE_CURRENT_SOURCE_DIR}/cmake/windows.manifest")
   if(MSVC)
-    set(BONGO_CAT_NEO_MANIFEST_RESOURCE "")
-    target_link_options(bongo_cat_neo PRIVATE "/MANIFEST:EMBED"
-      "/MANIFESTINPUT:${BONGO_CAT_NEO_WINDOWS_MANIFEST}")
+    set(BONGO_CAT_MANIFEST_RESOURCE "")
+    target_link_options(bongo_cat PRIVATE "/MANIFEST:EMBED"
+      "/MANIFESTINPUT:${BONGO_CAT_WINDOWS_MANIFEST}")
   else()
-    file(TO_CMAKE_PATH "${BONGO_CAT_NEO_WINDOWS_MANIFEST}" BONGO_CAT_NEO_MANIFEST_RC)
-    set(BONGO_CAT_NEO_MANIFEST_RESOURCE "1 RT_MANIFEST \"${BONGO_CAT_NEO_MANIFEST_RC}\"")
+    file(TO_CMAKE_PATH "${BONGO_CAT_WINDOWS_MANIFEST}" BONGO_CAT_MANIFEST_RC)
+    set(BONGO_CAT_MANIFEST_RESOURCE "1 RT_MANIFEST \"${BONGO_CAT_MANIFEST_RC}\"")
   endif()
   configure_file(cmake/windows_resources.rc.in
     "${CMAKE_CURRENT_BINARY_DIR}/windows_resources.rc" @ONLY)
   set_property(SOURCE "${CMAKE_CURRENT_BINARY_DIR}/windows_resources.rc"
-    APPEND PROPERTY OBJECT_DEPENDS "${BONGO_CAT_NEO_ASSET_PACK}")
-  target_sources(bongo_cat_neo PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/windows_resources.rc")
-  add_dependencies(bongo_cat_neo bongo_cat_neo_asset_pack)
-  set_target_properties(bongo_cat_neo PROPERTIES WIN32_EXECUTABLE TRUE)
+    APPEND PROPERTY OBJECT_DEPENDS "${BONGO_CAT_ASSET_PACK}")
+  target_sources(bongo_cat PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/windows_resources.rc")
+  add_dependencies(bongo_cat bongo_cat_asset_pack)
+  set_target_properties(bongo_cat PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
 if(MSVC)
   set_property(SOURCE src/main.c APPEND PROPERTY COMPILE_OPTIONS "/experimental:c11atomics")
-  get_target_property(BONGO_CAT_NEO_RUNTIME_SOURCES bongo_cat_neo_runtime SOURCES)
-  foreach(BONGO_CAT_NEO_SOURCE IN LISTS BONGO_CAT_NEO_RUNTIME_SOURCES)
-    if(BONGO_CAT_NEO_SOURCE MATCHES "\\.c$")
-      set_property(SOURCE "${BONGO_CAT_NEO_SOURCE}" APPEND PROPERTY
+  get_target_property(BONGO_CAT_RUNTIME_SOURCES bongo_cat_runtime SOURCES)
+  foreach(BONGO_CAT_SOURCE IN LISTS BONGO_CAT_RUNTIME_SOURCES)
+    if(BONGO_CAT_SOURCE MATCHES "\\.c$")
+      set_property(SOURCE "${BONGO_CAT_SOURCE}" APPEND PROPERTY
         COMPILE_OPTIONS "/experimental:c11atomics")
     endif()
   endforeach()
 endif()
 
-bongo_cat_neo_stage_cubism_assets(bongo_cat_neo)
+bongo_cat_stage_cubism_assets(bongo_cat)
 
 add_custom_target(check-lines ALL
   COMMAND ${CMAKE_COMMAND} -DROOT=${CMAKE_CURRENT_SOURCE_DIR}
@@ -248,52 +248,52 @@ add_custom_target(check-lines ALL
   VERBATIM)
 
 if(BUILD_TESTING)
-  add_executable(bongo_cat_neo_core_tests
+  add_executable(bongo_cat_core_tests
     tests/test_main.c tests/test_config.c tests/test_input.c tests/test_models.c
     tests/test_shortcut.c src/platform/windows_keys.c)
-  target_link_libraries(bongo_cat_neo_core_tests PRIVATE bongo_cat_neo_core bongo_cat_neo_warnings)
-  target_compile_definitions(bongo_cat_neo_core_tests PRIVATE
-    BONGO_CAT_NEO_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
-  add_test(NAME core COMMAND bongo_cat_neo_core_tests)
-  add_executable(bongo_cat_neo_i18n_tests tests/test_i18n.c)
-  target_link_libraries(bongo_cat_neo_i18n_tests PRIVATE bongo_cat_neo_core bongo_cat_neo_warnings)
-  target_compile_definitions(bongo_cat_neo_i18n_tests PRIVATE
-    BONGO_CAT_NEO_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
-  add_test(NAME i18n COMMAND bongo_cat_neo_i18n_tests)
-  add_executable(bongo_cat_neo_ui_tests tests/test_nuklear.c src/ui/nuklear_impl.c src/ui/ui_paint_border.c)
-  target_include_directories(bongo_cat_neo_ui_tests SYSTEM PRIVATE ${BONGO_CAT_NEO_NUKLEAR_INCLUDE_DIR})
-  target_link_libraries(bongo_cat_neo_ui_tests PRIVATE bongo_cat_neo_warnings)
-  add_test(NAME ui COMMAND bongo_cat_neo_ui_tests)
-  add_executable(bongo_cat_neo_app_state_tests tests/test_app_state.c src/core/app_state.c)
-  target_link_libraries(bongo_cat_neo_app_state_tests PRIVATE bongo_cat_neo_warnings)
-  target_include_directories(bongo_cat_neo_app_state_tests PRIVATE include)
-  add_test(NAME app-state COMMAND bongo_cat_neo_app_state_tests)
-  add_executable(bongo_cat_neo_mver_import_tests tests/test_mver_import.c)
-  target_include_directories(bongo_cat_neo_mver_import_tests PRIVATE src/runtime)
-  target_link_libraries(bongo_cat_neo_mver_import_tests PRIVATE bongo_cat_neo_runtime)
-  target_compile_definitions(bongo_cat_neo_mver_import_tests PRIVATE BONGO_CAT_NEO_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+  target_link_libraries(bongo_cat_core_tests PRIVATE bongo_cat_core bongo_cat_warnings)
+  target_compile_definitions(bongo_cat_core_tests PRIVATE
+    BONGO_CAT_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+  add_test(NAME core COMMAND bongo_cat_core_tests)
+  add_executable(bongo_cat_i18n_tests tests/test_i18n.c)
+  target_link_libraries(bongo_cat_i18n_tests PRIVATE bongo_cat_core bongo_cat_warnings)
+  target_compile_definitions(bongo_cat_i18n_tests PRIVATE
+    BONGO_CAT_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+  add_test(NAME i18n COMMAND bongo_cat_i18n_tests)
+  add_executable(bongo_cat_ui_tests tests/test_nuklear.c src/ui/nuklear_impl.c src/ui/ui_paint_border.c)
+  target_include_directories(bongo_cat_ui_tests SYSTEM PRIVATE ${BONGO_CAT_NUKLEAR_INCLUDE_DIR})
+  target_link_libraries(bongo_cat_ui_tests PRIVATE bongo_cat_warnings)
+  add_test(NAME ui COMMAND bongo_cat_ui_tests)
+  add_executable(bongo_cat_app_state_tests tests/test_app_state.c src/core/app_state.c)
+  target_link_libraries(bongo_cat_app_state_tests PRIVATE bongo_cat_warnings)
+  target_include_directories(bongo_cat_app_state_tests PRIVATE include)
+  add_test(NAME app-state COMMAND bongo_cat_app_state_tests)
+  add_executable(bongo_cat_mver_import_tests tests/test_mver_import.c)
+  target_include_directories(bongo_cat_mver_import_tests PRIVATE src/runtime)
+  target_link_libraries(bongo_cat_mver_import_tests PRIVATE bongo_cat_runtime)
+  target_compile_definitions(bongo_cat_mver_import_tests PRIVATE BONGO_CAT_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   if(MSVC)
     set_property(SOURCE tests/test_mver_import.c APPEND PROPERTY COMPILE_OPTIONS "/experimental:c11atomics")
   endif()
-  add_test(NAME model-import-unit COMMAND bongo_cat_neo_mver_import_tests)
+  add_test(NAME model-import-unit COMMAND bongo_cat_mver_import_tests)
   if(WIN32)
     add_test(NAME model-import-formats
       COMMAND powershell.exe -NoProfile -ExecutionPolicy Bypass
         -File ${CMAKE_CURRENT_SOURCE_DIR}/cmake/ThemeImportAudit.ps1
-        -Exe $<TARGET_FILE:bongo_cat_neo>
+        -Exe $<TARGET_FILE:bongo_cat>
         -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/model-import-format-test)
     set_tests_properties(model-import-formats PROPERTIES TIMEOUT 300 RUN_SERIAL TRUE)
     add_test(NAME model-import-real-samples
       COMMAND powershell.exe -NoProfile -ExecutionPolicy Bypass
         -File ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RealModelImportAudit.ps1
-        -Exe $<TARGET_FILE:bongo_cat_neo>
+        -Exe $<TARGET_FILE:bongo_cat>
         -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/real-model-import-test)
     set_tests_properties(model-import-real-samples PROPERTIES TIMEOUT 300 RUN_SERIAL TRUE)
     include(cmake/StartupReliability.cmake)
   endif()
   if(UNIX AND NOT APPLE)
-    target_link_libraries(bongo_cat_neo_ui_tests PRIVATE m)
-    target_link_libraries(bongo_cat_neo_app_state_tests PRIVATE m)
+    target_link_libraries(bongo_cat_ui_tests PRIVATE m)
+    target_link_libraries(bongo_cat_app_state_tests PRIVATE m)
   endif()
 endif()
 include(cmake/Packaging.cmake)

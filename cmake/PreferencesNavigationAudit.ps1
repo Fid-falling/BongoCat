@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build-final\Release\BongoCatNeo.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build-final\Release\BongoCat.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build-final\preferences-navigation" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
@@ -16,7 +16,7 @@ Add-Type -AssemblyName System.Drawing
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
-public static class BongoCatNeoNavigationNative {
+public static class BongoCatNavigationNative {
     public delegate bool EnumProc(IntPtr handle, IntPtr data);
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc proc, IntPtr data);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr handle);
@@ -37,21 +37,21 @@ public static class BongoCatNeoNavigationNative {
     public struct Point { public int X, Y; }
 }
 '@
-[void][BongoCatNeoNavigationNative]::SetProcessDPIAware()
+[void][BongoCatNavigationNative]::SetProcessDPIAware()
 
 function Wait-Preferences([int]$ProcessId) {
     $deadline = [DateTime]::UtcNow.AddSeconds(30)
     do {
         $found = [Collections.Generic.List[object]]::new()
-        [BongoCatNeoNavigationNative]::EnumWindows({
+        [BongoCatNavigationNative]::EnumWindows({
             param($handle, $unused)
             [uint32]$owner = 0
-            [void][BongoCatNeoNavigationNative]::GetWindowThreadProcessId(
+            [void][BongoCatNavigationNative]::GetWindowThreadProcessId(
                 $handle, [ref]$owner)
-            $rect = [BongoCatNeoNavigationNative+Rect]::new()
+            $rect = [BongoCatNavigationNative+Rect]::new()
             if ($owner -eq $ProcessId -and
-                [BongoCatNeoNavigationNative]::IsWindowVisible($handle) -and
-                [BongoCatNeoNavigationNative]::GetClientRect($handle, [ref]$rect) -and
+                [BongoCatNavigationNative]::IsWindowVisible($handle) -and
+                [BongoCatNavigationNative]::GetClientRect($handle, [ref]$rect) -and
                 $rect.Right -ge 700) { $found.Add($handle) }
             return $true
         }, [IntPtr]::Zero) | Out-Null
@@ -62,43 +62,43 @@ function Wait-Preferences([int]$ProcessId) {
 }
 
 function Move-Client([IntPtr]$Window, [int]$X, [int]$Y) {
-    $point = [BongoCatNeoNavigationNative+Point]::new()
+    $point = [BongoCatNavigationNative+Point]::new()
     $point.X = $X; $point.Y = $Y
-    [void][BongoCatNeoNavigationNative]::ClientToScreen($Window, [ref]$point)
-    [void][BongoCatNeoNavigationNative]::SetCursorPos($point.X, $point.Y)
+    [void][BongoCatNavigationNative]::ClientToScreen($Window, [ref]$point)
+    [void][BongoCatNavigationNative]::SetCursorPos($point.X, $point.Y)
 }
 
 function Click-Client([IntPtr]$Window, [int]$X, [int]$Y) {
     Move-Client $Window $X $Y
     Start-Sleep -Milliseconds 30
-    $point = [BongoCatNeoNavigationNative+Point]::new()
+    $point = [BongoCatNavigationNative+Point]::new()
     $point.X = $X; $point.Y = $Y
-    [void][BongoCatNeoNavigationNative]::ClientToScreen($Window, [ref]$point)
-    $clip = [BongoCatNeoNavigationNative+Rect]::new()
+    [void][BongoCatNavigationNative]::ClientToScreen($Window, [ref]$point)
+    $clip = [BongoCatNavigationNative+Rect]::new()
     $clip.Left = $point.X; $clip.Top = $point.Y
     $clip.Right = $point.X + 1; $clip.Bottom = $point.Y + 1
     $packed = [IntPtr](($X -band 0xffff) -bor (($Y -band 0xffff) -shl 16))
-    [void][BongoCatNeoNavigationNative]::ClipCursorRect([ref]$clip)
+    [void][BongoCatNavigationNative]::ClipCursorRect([ref]$clip)
     try {
-        [void][BongoCatNeoNavigationNative]::SendMessageW(
+        [void][BongoCatNavigationNative]::SendMessageW(
             $Window, 0x0200, [UIntPtr]::Zero, $packed)
-        [void][BongoCatNeoNavigationNative]::SendMessageW(
+        [void][BongoCatNavigationNative]::SendMessageW(
             $Window, 0x0201, [UIntPtr]::new(1), $packed)
         Start-Sleep -Milliseconds 5
         Move-Client $Window $X $Y
-        [void][BongoCatNeoNavigationNative]::SendMessageW(
+        [void][BongoCatNavigationNative]::SendMessageW(
             $Window, 0x0202, [UIntPtr]::Zero, $packed)
-    } finally { [void][BongoCatNeoNavigationNative]::ReleaseCursor([IntPtr]::Zero) }
+    } finally { [void][BongoCatNavigationNative]::ReleaseCursor([IntPtr]::Zero) }
 }
 
 function Read-Pixel([IntPtr]$Window, [int]$X, [int]$Y) {
-    $point = [BongoCatNeoNavigationNative+Point]::new()
+    $point = [BongoCatNavigationNative+Point]::new()
     $point.X = $X; $point.Y = $Y
-    [void][BongoCatNeoNavigationNative]::ClientToScreen($Window, [ref]$point)
+    [void][BongoCatNavigationNative]::ClientToScreen($Window, [ref]$point)
     $desktop = [IntPtr]::Zero
-    $dc = [BongoCatNeoNavigationNative]::GetDC($desktop)
-    try { return [BongoCatNeoNavigationNative]::GetPixel($dc, $point.X, $point.Y) }
-    finally { [void][BongoCatNeoNavigationNative]::ReleaseDC($desktop, $dc) }
+    $dc = [BongoCatNavigationNative]::GetDC($desktop)
+    try { return [BongoCatNavigationNative]::GetPixel($dc, $point.X, $point.Y) }
+    finally { [void][BongoCatNavigationNative]::ReleaseDC($desktop, $dc) }
 }
 
 function Test-Pink([uint32]$Color) {
@@ -109,10 +109,10 @@ function Test-Pink([uint32]$Color) {
 }
 
 function Save-Client([IntPtr]$Window, [string]$Name) {
-    $rect = [BongoCatNeoNavigationNative+Rect]::new()
-    [void][BongoCatNeoNavigationNative]::GetClientRect($Window, [ref]$rect)
-    $point = [BongoCatNeoNavigationNative+Point]::new()
-    [void][BongoCatNeoNavigationNative]::ClientToScreen($Window, [ref]$point)
+    $rect = [BongoCatNavigationNative+Rect]::new()
+    [void][BongoCatNavigationNative]::GetClientRect($Window, [ref]$rect)
+    $point = [BongoCatNavigationNative+Point]::new()
+    [void][BongoCatNavigationNative]::ClientToScreen($Window, [ref]$point)
     $bitmap = [Drawing.Bitmap]::new($rect.Right, $rect.Bottom)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
     $graphics.CopyFromScreen($point.X, $point.Y, 0, 0, $bitmap.Size)
@@ -126,24 +126,24 @@ function Measure-Transition([IntPtr]$Window, [int]$Y) {
     Start-Sleep -Milliseconds 30
     $before = Read-Pixel $Window 120 $Y
     $watch = [Diagnostics.Stopwatch]::StartNew()
-    $point = [BongoCatNeoNavigationNative+Point]::new()
+    $point = [BongoCatNavigationNative+Point]::new()
     $point.X = 82; $point.Y = $Y
-    [void][BongoCatNeoNavigationNative]::ClientToScreen($Window, [ref]$point)
-    $clip = [BongoCatNeoNavigationNative+Rect]::new()
+    [void][BongoCatNavigationNative]::ClientToScreen($Window, [ref]$point)
+    $clip = [BongoCatNavigationNative+Rect]::new()
     $clip.Left = $point.X; $clip.Top = $point.Y
     $clip.Right = $point.X + 1; $clip.Bottom = $point.Y + 1
     $packed = [IntPtr]((82 -band 0xffff) -bor (($Y -band 0xffff) -shl 16))
-    [void][BongoCatNeoNavigationNative]::ClipCursorRect([ref]$clip)
+    [void][BongoCatNavigationNative]::ClipCursorRect([ref]$clip)
     try {
-        [void][BongoCatNeoNavigationNative]::SendMessageW(
+        [void][BongoCatNavigationNative]::SendMessageW(
             $Window, 0x0200, [UIntPtr]::Zero, $packed)
-        [void][BongoCatNeoNavigationNative]::SendMessageW(
+        [void][BongoCatNavigationNative]::SendMessageW(
             $Window, 0x0201, [UIntPtr]::new(1), $packed)
         Start-Sleep -Milliseconds 5
         Move-Client $Window 82 $Y
-        [void][BongoCatNeoNavigationNative]::SendMessageW(
+        [void][BongoCatNavigationNative]::SendMessageW(
             $Window, 0x0202, [UIntPtr]::Zero, $packed)
-    } finally { [void][BongoCatNeoNavigationNative]::ReleaseCursor([IntPtr]::Zero) }
+    } finally { [void][BongoCatNavigationNative]::ReleaseCursor([IntPtr]::Zero) }
     $changes = [Collections.Generic.List[double]]::new()
     $last = $before
     while ($watch.ElapsedMilliseconds -lt 360) {
@@ -178,8 +178,8 @@ function Measure-Frames([string]$Path, [int]$Start) {
         MaxMs=$(if ($stats.Count) { $stats.Maximum } else { 999.0 }) }
 }
 
-$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
-$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "preferences-navigation-audit-$PID"
+$env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_TEST_INSTANCE_ID = "preferences-navigation-audit-$PID"
 $arguments = @("--ci-preferences", "--ci-frame-series", "--ci-preference-page=0",
     "--ci-language=zh-CN", "--ci-theme=light", "--ci-input-audit", "--ci-exit-ms=15000",
     "--data-root=$data")
@@ -187,9 +187,9 @@ $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
     -WorkingDirectory (Split-Path $Exe) -PassThru
 try {
     $window = Wait-Preferences $process.Id
-    [void][BongoCatNeoNavigationNative]::SetWindowPos($window,
+    [void][BongoCatNavigationNative]::SetWindowPos($window,
         [IntPtr](-1), 40, 40, 0, 0, 0x0041)
-    [void][BongoCatNeoNavigationNative]::SetForegroundWindow($window)
+    [void][BongoCatNavigationNative]::SetForegroundWindow($window)
     Start-Sleep -Milliseconds 500
     $centers = @(207, 283, 359, 435, 511)
     $navigation = foreach ($page in @(4, 3, 2, 1, 0)) {

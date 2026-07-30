@@ -1,4 +1,4 @@
-name: Bongo Cat Neo CI
+name: BongoCat CI
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: bongo-cat-neo-ci-${{ github.workflow }}-${{ github.ref }}
+  group: bongo-cat-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -60,7 +60,7 @@ jobs:
         run: |
           cmake -S . -B build-quality -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DBONGO_CAT_NEO_WARNINGS_AS_ERRORS=ON
+            -DBONGO_CAT_WARNINGS_AS_ERRORS=ON
 
       - name: Register GCC diagnostics
         run: echo "::add-matcher::$GITHUB_WORKSPACE/.github/gcc-problem-matcher.json"
@@ -102,14 +102,14 @@ jobs:
         shell: pwsh
         run: |
           cmake -S . -B build -A x64 `
-            -DBONGO_CAT_NEO_WARNINGS_AS_ERRORS=ON
+            -DBONGO_CAT_WARNINGS_AS_ERRORS=ON
 
       - name: Configure Unix release
         if: runner.os != 'Windows'
         run: |
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DBONGO_CAT_NEO_WARNINGS_AS_ERRORS=ON
+            -DBONGO_CAT_WARNINGS_AS_ERRORS=ON
 
       - name: Register GCC diagnostics
         if: runner.os == 'Linux'
@@ -139,8 +139,8 @@ jobs:
         id: package
         shell: pwsh
         run: |
-          $name = (Get-Content build/bongo-cat-neo-package-name.txt -Raw).Trim()
-          if ($name -notmatch '^BongoCatNeo-\d+\.\d+\.\d+-(windows|linux|macos)-(x64|x86|arm64|universal)$') {
+          $name = (Get-Content build/bongo-cat-package-name.txt -Raw).Trim()
+          if ($name -notmatch '^BongoCat-\d+\.\d+\.\d+-(windows|linux|macos)-(x64|x86|arm64|universal)$') {
             throw "Unexpected release package name: $name"
           }
           "name=$name" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8

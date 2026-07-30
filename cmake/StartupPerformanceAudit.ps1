@@ -61,10 +61,10 @@ function Measure-FirstFrame([string]$Name) {
     }
 }
 
-$priorAllow = $env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES
-$priorId = $env:BONGO_CAT_NEO_TEST_INSTANCE_ID
-$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
-$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "startup-performance-$PID"
+$priorAllow = $env:BONGO_CAT_ALLOW_TEST_INSTANCES
+$priorId = $env:BONGO_CAT_TEST_INSTANCE_ID
+$env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_TEST_INSTANCE_ID = "startup-performance-$PID"
 try {
     $cold = Measure-FirstFrame "cold"
     $warm = [Collections.Generic.List[double]]::new()
@@ -72,8 +72,8 @@ try {
         $warm.Add((Measure-FirstFrame ("warm-{0}" -f $_)))
     }
 } finally {
-    $env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = $priorAllow
-    $env:BONGO_CAT_NEO_TEST_INSTANCE_ID = $priorId
+    $env:BONGO_CAT_ALLOW_TEST_INSTANCES = $priorAllow
+    $env:BONGO_CAT_TEST_INSTANCE_ID = $priorId
 }
 
 $sorted = @($warm | Sort-Object)

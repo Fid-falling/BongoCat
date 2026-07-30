@@ -3,29 +3,29 @@
 #include "preferences_overlay.h"
 #include "ui_backend.h"
 #include "ui_icons.h"
-#include "bongo_cat_neo/i18n.h"
-#include "bongo_cat_neo/preferences.h"
+#include "bongo_cat/i18n.h"
+#include "bongo_cat/preferences.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <string.h>
 
 typedef struct RemoveDialog {
-    BongoCatNeoApp *app;
-    char model_id[BONGO_CAT_NEO_ID_CAP];
+    BongoCatApp *app;
+    char model_id[BONGO_CAT_ID_CAP];
     uint64_t opened_ns;
     uint64_t closing_ns;
 } RemoveDialog;
 
 static RemoveDialog remove_dialog;
 
-static const char *tr(BongoCatNeoApp *app, const char *key,
+static const char *tr(BongoCatApp *app, const char *key,
     const char *fallback) {
-    return bongo_cat_neo_i18n_get(app->i18n, key, fallback);
+    return bongo_cat_i18n_get(app->i18n, key, fallback);
 }
 
 static struct nk_color alpha(struct nk_color color, float amount) {
-    return bongo_cat_neo_preferences_overlay_alpha(color, amount);
+    return bongo_cat_preferences_overlay_alpha(color, amount);
 }
 
 static void text(struct nk_command_buffer *canvas, struct nk_rect bounds,
@@ -48,11 +48,11 @@ static bool hit(struct nk_context *context, struct nk_rect bounds, bool enabled)
         nk_input_is_mouse_click_in_rect(&context->input, NK_BUTTON_LEFT, bounds);
 }
 
-bool bongo_cat_neo_preferences_remove_dialog_active(const BongoCatNeoApp *app) {
+bool bongo_cat_preferences_remove_dialog_active(const BongoCatApp *app) {
     return app && remove_dialog.app == app && remove_dialog.model_id[0];
 }
 
-void bongo_cat_neo_preferences_remove_dialog_open(BongoCatNeoApp *app,
+void bongo_cat_preferences_remove_dialog_open(BongoCatApp *app,
     const char *id) {
     if (!app || !id || !id[0]) return;
     remove_dialog.app = app;
@@ -62,21 +62,21 @@ void bongo_cat_neo_preferences_remove_dialog_open(BongoCatNeoApp *app,
     if (app->preferences) app->preferences->render_dirty = true;
 }
 
-void bongo_cat_neo_preferences_remove_dialog_close(BongoCatNeoApp *app) {
-    if (!bongo_cat_neo_preferences_remove_dialog_active(app) ||
+void bongo_cat_preferences_remove_dialog_close(BongoCatApp *app) {
+    if (!bongo_cat_preferences_remove_dialog_active(app) ||
         remove_dialog.closing_ns) return;
     remove_dialog.closing_ns = SDL_GetTicksNS();
     if (app->preferences) app->preferences->render_dirty = true;
 }
 
-void bongo_cat_neo_preferences_remove_dialog_clear(const BongoCatNeoApp *app) {
+void bongo_cat_preferences_remove_dialog_clear(const BongoCatApp *app) {
     if (!app || remove_dialog.app == app)
         memset(&remove_dialog, 0, sizeof(remove_dialog));
 }
 
-static bool button(BongoCatNeoApp *app, struct nk_context *context,
+static bool button(BongoCatApp *app, struct nk_context *context,
     struct nk_command_buffer *canvas, struct nk_rect bounds, const char *label,
-    bool danger, BongoCatNeoUIPalette p, float opacity, bool enabled) {
+    bool danger, BongoCatUIPalette p, float opacity, bool enabled) {
     bool hover = enabled && nk_input_is_mouse_hovering_rect(&context->input, bounds);
     struct nk_color background = danger ?
         (hover ? p.danger : p.danger_background) : (hover ? p.hover : p.field);
@@ -87,53 +87,53 @@ static bool button(BongoCatNeoApp *app, struct nk_context *context,
         (hover ? p.accent : p.border_subtle), opacity));
     centered(canvas, bounds, label, app->preferences->ui.caption_font,
         alpha(foreground, opacity));
-    if (hover) bongo_cat_neo_ui_cursor_hover_rect(context, bounds,
-        BONGO_CAT_NEO_UI_CURSOR_POINTER);
+    if (hover) bongo_cat_ui_cursor_hover_rect(context, bounds,
+        BONGO_CAT_UI_CURSOR_POINTER);
     return hit(context, bounds, enabled);
 }
 
-static bool close_button(BongoCatNeoApp *app, struct nk_context *context,
+static bool close_button(BongoCatApp *app, struct nk_context *context,
     struct nk_command_buffer *canvas, struct nk_rect panel,
-    BongoCatNeoUIPalette p, float opacity, bool enabled) {
+    BongoCatUIPalette p, float opacity, bool enabled) {
     struct nk_rect bounds = nk_rect(panel.x + panel.w - 52,
         panel.y + 17, 32, 32);
     bool hover = enabled && nk_input_is_mouse_hovering_rect(&context->input, bounds);
     nk_fill_rect(canvas, bounds, 8, alpha(hover ? p.hover_pink : p.field, opacity));
-    bongo_cat_neo_preferences_icon_draw(app->preferences, canvas,
-        BONGO_CAT_NEO_UI_ICON_CLOSE, nk_rect(bounds.x + 7,
+    bongo_cat_preferences_icon_draw(app->preferences, canvas,
+        BONGO_CAT_UI_ICON_CLOSE, nk_rect(bounds.x + 7,
         bounds.y + 7, 18, 18), alpha(hover ? p.pink : p.muted, opacity));
-    if (hover) bongo_cat_neo_ui_cursor_hover_rect(context, bounds,
-        BONGO_CAT_NEO_UI_CURSOR_POINTER);
+    if (hover) bongo_cat_ui_cursor_hover_rect(context, bounds,
+        BONGO_CAT_UI_CURSOR_POINTER);
     return hit(context, bounds, enabled);
 }
 
-static void remove_model(BongoCatNeoApp *app) {
-    BongoCatNeoError error = {0};
-    if (bongo_cat_neo_app_remove_model(app, remove_dialog.model_id,
-        &error) != BONGO_CAT_NEO_OK) {
-        bongo_cat_neo_preferences_notice_show(app, error.message, true);
+static void remove_model(BongoCatApp *app) {
+    BongoCatError error = {0};
+    if (bongo_cat_app_remove_model(app, remove_dialog.model_id,
+        &error) != BONGO_CAT_OK) {
+        bongo_cat_preferences_notice_show(app, error.message, true);
     } else {
-        bongo_cat_neo_preferences_notice_show(app, tr(app,
+        bongo_cat_preferences_notice_show(app, tr(app,
             "pages.preference.model.hints.deleteSuccess",
             "Deleted successfully"), false);
     }
-    bongo_cat_neo_preferences_remove_dialog_close(app);
+    bongo_cat_preferences_remove_dialog_close(app);
 }
 
-void bongo_cat_neo_preferences_remove_dialog_draw(BongoCatNeoApp *app,
+void bongo_cat_preferences_remove_dialog_draw(BongoCatApp *app,
     struct nk_context *context) {
-    if (!bongo_cat_neo_preferences_remove_dialog_active(app)) return;
-    bongo_cat_neo_ui_cursor_reset(context);
+    if (!bongo_cat_preferences_remove_dialog_active(app)) return;
+    bongo_cat_ui_cursor_reset(context);
     struct nk_rect region = nk_window_get_content_region(context);
     float width = NK_MIN(420.0f, region.w - 48.0f), height = 202.0f;
-    BongoCatNeoOverlayFrame frame = bongo_cat_neo_preferences_overlay_frame(
+    BongoCatOverlayFrame frame = bongo_cat_preferences_overlay_frame(
         region, width, height, remove_dialog.opened_ns, remove_dialog.closing_ns);
     if (frame.finished) {
-        bongo_cat_neo_preferences_remove_dialog_clear(app);
+        bongo_cat_preferences_remove_dialog_clear(app);
         return;
     }
-    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
-    bongo_cat_neo_preferences_overlay_draw(context, region, &frame, p);
+    BongoCatUIPalette p = bongo_cat_ui_palette(bongo_cat_ui_dark(context));
+    bongo_cat_preferences_overlay_draw(context, region, &frame, p);
     bool closing = remove_dialog.closing_ns != 0;
     float opacity = closing ? frame.visibility : 1.0f;
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
@@ -162,6 +162,6 @@ void bongo_cat_neo_preferences_remove_dialog_draw(BongoCatNeoApp *app,
         p, opacity, enabled)) remove_model(app);
     bool outside = hit(context, region, enabled) &&
         !nk_input_is_mouse_hovering_rect(&context->input, frame.panel);
-    if (close || outside) bongo_cat_neo_preferences_remove_dialog_close(app);
+    if (close || outside) bongo_cat_preferences_remove_dialog_close(app);
     if (frame.visibility < 1.0f || closing) app->preferences->render_dirty = true;
 }

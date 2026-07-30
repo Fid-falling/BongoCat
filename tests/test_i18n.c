@@ -1,11 +1,11 @@
-#include "bongo_cat_neo/i18n.h"
+#include "bongo_cat/i18n.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <yyjson.h>
 
 static yyjson_doc *load(const char *root, const char *name) {
-    char path[BONGO_CAT_NEO_PATH_CAP];
+    char path[BONGO_CAT_PATH_CAP];
     snprintf(path, sizeof(path), "%s/%s.json", root, name);
     return yyjson_read_file(path, 0, NULL, NULL);
 }
@@ -21,7 +21,7 @@ static bool same_shape(yyjson_val *reference, yyjson_val *candidate,
     yyjson_obj_foreach(reference, index, count, key, value) {
         const char *name = yyjson_get_str(key);
         yyjson_val *next = yyjson_obj_get(candidate, name);
-        char child[BONGO_CAT_NEO_PATH_CAP];
+        char child[BONGO_CAT_PATH_CAP];
         snprintf(child, sizeof(child), "%s%s%s", path, path[0] ? "." : "", name);
         if (!same_shape(value, next, child)) return false;
     }
@@ -71,45 +71,45 @@ static bool covers_value(const uint32_t *ranges, yyjson_val *value) {
 }
 
 int main(void) {
-    char root[BONGO_CAT_NEO_PATH_CAP];
-    snprintf(root, sizeof(root), "%s/resources/assets/locales", BONGO_CAT_NEO_NATIVE_SOURCE_DIR);
+    char root[BONGO_CAT_PATH_CAP];
+    snprintf(root, sizeof(root), "%s/resources/assets/locales", BONGO_CAT_NATIVE_SOURCE_DIR);
     yyjson_doc *reference = load(root, "en-US");
     if (!reference) return 1;
     const uint32_t expected[] = {'A', 0x4e2d, 0x8a2d, 0x00ea, 0x1ebf};
-    for (int language = 0; language <= BONGO_CAT_NEO_LANG_VI_VN; ++language) {
-        const char *name = bongo_cat_neo_language_name((BongoCatNeoLanguage)language);
+    for (int language = 0; language <= BONGO_CAT_LANG_VI_VN; ++language) {
+        const char *name = bongo_cat_language_name((BongoCatLanguage)language);
         yyjson_doc *document = load(root, name);
         if (!document || !same_shape(yyjson_doc_get_root(reference),
             yyjson_doc_get_root(document), "")) return 2;
-        BongoCatNeoError error = {0};
-        BongoCatNeoI18n *i18n = bongo_cat_neo_i18n_create(root, (BongoCatNeoLanguage)language, &error);
+        BongoCatError error = {0};
+        BongoCatI18n *i18n = bongo_cat_i18n_create(root, (BongoCatLanguage)language, &error);
         uint32_t ranges[2048];
-        if (!i18n || bongo_cat_neo_i18n_glyph_ranges(i18n, ranges, 2048) < 3 ||
+        if (!i18n || bongo_cat_i18n_glyph_ranges(i18n, ranges, 2048) < 3 ||
             ranges[0] != 0x20 || !includes(ranges, expected[language]) ||
             !covers_value(ranges, yyjson_doc_get_root(document))) {
             fprintf(stderr, "Missing U+%04X for %s\n", expected[language], name);
             return 3;
         }
-        bongo_cat_neo_i18n_destroy(i18n);
+        bongo_cat_i18n_destroy(i18n);
         yyjson_doc_free(document);
     }
-    BongoCatNeoError error = {0};
-    BongoCatNeoI18n *all = bongo_cat_neo_i18n_create(root,
-        BONGO_CAT_NEO_LANG_EN_US, &error);
+    BongoCatError error = {0};
+    BongoCatI18n *all = bongo_cat_i18n_create(root,
+        BONGO_CAT_LANG_EN_US, &error);
     uint32_t all_ranges[2048];
     const uint32_t menu_points[] = {0x7b80, 0x9ad4, 0x00ea, 0x1ebf, 0x1ec7};
-    if (!all || bongo_cat_neo_i18n_all_glyph_ranges(all, all_ranges, 2048) < 3)
+    if (!all || bongo_cat_i18n_all_glyph_ranges(all, all_ranges, 2048) < 3)
         return 4;
     for (size_t i = 0; i < sizeof(menu_points) / sizeof(menu_points[0]); ++i)
         if (!includes(all_ranges, menu_points[i])) return 5;
-    for (int language = 0; language <= BONGO_CAT_NEO_LANG_VI_VN; ++language) {
+    for (int language = 0; language <= BONGO_CAT_LANG_VI_VN; ++language) {
         yyjson_doc *document = load(root,
-            bongo_cat_neo_language_name((BongoCatNeoLanguage)language));
+            bongo_cat_language_name((BongoCatLanguage)language));
         if (!document || !covers_value(all_ranges, yyjson_doc_get_root(document)))
             return 6;
         yyjson_doc_free(document);
     }
-    bongo_cat_neo_i18n_destroy(all);
+    bongo_cat_i18n_destroy(all);
     yyjson_doc_free(reference);
     puts("i18n smoke passed");
     return 0;

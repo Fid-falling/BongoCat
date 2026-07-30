@@ -3,7 +3,7 @@
 #include <cstring>
 #include <yyjson.h>
 
-namespace bongo_cat_neo {
+namespace bongo_cat {
 namespace {
 
 bool safe_path_value(yyjson_val *value) {
@@ -119,9 +119,9 @@ bool valid_references(yyjson_val *value) {
 } // namespace
 
 bool validate_model_setting_json(const std::vector<unsigned char> &json,
-    const char *setting_file, BongoCatNeoError *error) {
+    const char *setting_file, BongoCatError *error) {
     if (json.empty() || json.size() > 4 * 1024 * 1024) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
             "Model setting is empty or too large: %s", setting_file ? setting_file : "");
         return false;
     }
@@ -138,10 +138,10 @@ bool validate_model_setting_json(const std::vector<unsigned char> &json,
         valid_layout(yyjson_obj_get(root, "Layout"));
     if (document) yyjson_doc_free(document);
     if (valid) return true;
-    bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
+    bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
         "Invalid model setting JSON: %s (%s)", setting_file ? setting_file : "",
         parse_error.msg ? parse_error.msg : "unsupported model3 schema");
     return false;
 }
 
-} // namespace bongo_cat_neo
+} // namespace bongo_cat

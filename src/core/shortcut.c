@@ -1,14 +1,14 @@
-#include "bongo_cat_neo/shortcut.h"
+#include "bongo_cat/shortcut.h"
 
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 
-void bongo_cat_neo_shortcut_init(BongoCatNeoShortcutState *state) {
+void bongo_cat_shortcut_init(BongoCatShortcutState *state) {
     if (state) memset(state, 0, sizeof(*state));
 }
 
-static bool modifier(BongoCatNeoShortcutState *state, const char *name, bool down) {
+static bool modifier(BongoCatShortcutState *state, const char *name, bool down) {
     uint8_t value = down ? 1 : 0;
     if (strcmp(name, "ControlLeft") == 0) { state->control = (state->control & 2) | value; return true; }
     if (strcmp(name, "ControlRight") == 0) { state->control = (state->control & 1) | (value << 1); return true; }
@@ -20,10 +20,10 @@ static bool modifier(BongoCatNeoShortcutState *state, const char *name, bool dow
     return false;
 }
 
-bool bongo_cat_neo_shortcut_update(BongoCatNeoShortcutState *state, const BongoCatNeoInputEvent *event) {
-    if (!state || !event || (event->kind != BONGO_CAT_NEO_INPUT_KEY_DOWN &&
-        event->kind != BONGO_CAT_NEO_INPUT_KEY_UP)) return false;
-    bool down = event->kind == BONGO_CAT_NEO_INPUT_KEY_DOWN;
+bool bongo_cat_shortcut_update(BongoCatShortcutState *state, const BongoCatInputEvent *event) {
+    if (!state || !event || (event->kind != BONGO_CAT_INPUT_KEY_DOWN &&
+        event->kind != BONGO_CAT_INPUT_KEY_UP)) return false;
+    bool down = event->kind == BONGO_CAT_INPUT_KEY_DOWN;
     if (modifier(state, event->name, down)) return false;
     if (!down) {
         if (strcmp(state->pressed, event->name) == 0) state->pressed[0] = '\0';
@@ -72,14 +72,14 @@ static bool modifier_token(const char *token, size_t length, bool *control,
     return true;
 }
 
-bool bongo_cat_neo_shortcut_matches(const BongoCatNeoShortcutState *state,
-    const BongoCatNeoInputEvent *event, const char *shortcut) {
+bool bongo_cat_shortcut_matches(const BongoCatShortcutState *state,
+    const BongoCatInputEvent *event, const char *shortcut) {
     if (!state || !event || !shortcut || !*shortcut)
         return false;
-    if (event->kind == BONGO_CAT_NEO_INPUT_GAMEPAD_BUTTON)
+    if (event->kind == BONGO_CAT_INPUT_GAMEPAD_BUTTON)
         return event->value > 0.5f && strncmp(shortcut, "Gamepad:", 8) == 0 &&
             equal_ci(shortcut + 8, event->name);
-    if (event->kind != BONGO_CAT_NEO_INPUT_KEY_DOWN) return false;
+    if (event->kind != BONGO_CAT_INPUT_KEY_DOWN) return false;
     bool control = false, shift = false, alt = false, meta = false;
     const char *primary = NULL;
     size_t primary_length = 0;
@@ -101,13 +101,13 @@ bool bongo_cat_neo_shortcut_matches(const BongoCatNeoShortcutState *state,
     return equal_ci(expected, canonical_key(event->name, key));
 }
 
-bool bongo_cat_neo_shortcut_release_matches(const BongoCatNeoInputEvent *event,
+bool bongo_cat_shortcut_release_matches(const BongoCatInputEvent *event,
     const char *shortcut) {
     if (!event || !shortcut || !*shortcut) return false;
-    if (event->kind == BONGO_CAT_NEO_INPUT_GAMEPAD_BUTTON)
+    if (event->kind == BONGO_CAT_INPUT_GAMEPAD_BUTTON)
         return event->value <= 0.5f && strncmp(shortcut, "Gamepad:", 8) == 0 &&
             equal_ci(shortcut + 8, event->name);
-    if (event->kind != BONGO_CAT_NEO_INPUT_KEY_UP) return false;
+    if (event->kind != BONGO_CAT_INPUT_KEY_UP) return false;
     const char *primary = strrchr(shortcut, '+');
     primary = primary ? primary + 1 : shortcut;
     char key[16];

@@ -1,13 +1,13 @@
 #include "model_import.h"
 #include "runtime.h"
-#include "bongo_cat_neo/json.h"
-#include "bongo_cat_neo/path.h"
+#include "bongo_cat/json.h"
+#include "bongo_cat/path.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <yyjson.h>
 
-#define MVER_METADATA ".bongo-cat-neo-mver.json"
+#define MVER_METADATA ".bongo-cat-mver.json"
 
 static bool same_family(const char *left, const char *right) {
     bool left_effect = left && (strcmp(left, "effect") == 0 ||
@@ -31,7 +31,7 @@ static int sequential_index(yyjson_val *bindings, size_t index, const char *kind
     return result;
 }
 
-static bool shortcut_present(const BongoCatNeoApp *app, const char *id) {
+static bool shortcut_present(const BongoCatApp *app, const char *id) {
     for (size_t i = 0; i < app->config.behavior_shortcut_count; ++i)
         if (strcmp(app->config.behavior_shortcuts[i].id, id) == 0) return true;
     return false;
@@ -58,11 +58,11 @@ static bool behavior_id(char *id, size_t capacity, const char *model_id,
     return true;
 }
 
-void bongo_cat_neo_import_apply_metadata(BongoCatNeoApp *app, const char *model_id,
+void bongo_cat_import_apply_metadata(BongoCatApp *app, const char *model_id,
     const char *directory) {
-    char path[BONGO_CAT_NEO_PATH_CAP];
-    if (!bongo_cat_neo_path_join(path, sizeof(path), directory, MVER_METADATA)) return;
-    yyjson_doc *document = bongo_cat_neo_json_read_file(path, 0, NULL);
+    char path[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_path_join(path, sizeof(path), directory, MVER_METADATA)) return;
+    yyjson_doc *document = bongo_cat_json_read_file(path, 0, NULL);
     yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
     yyjson_val *bindings = yyjson_obj_get(root, "bindings");
     if (!yyjson_is_obj(root) || yyjson_get_int(yyjson_obj_get(root, "version")) != 1 ||
@@ -72,12 +72,12 @@ void bongo_cat_neo_import_apply_metadata(BongoCatNeoApp *app, const char *model_
     }
     size_t index, count; yyjson_val *item;
     yyjson_arr_foreach(bindings, index, count, item) {
-        char id[BONGO_CAT_NEO_PATH_CAP];
+        char id[BONGO_CAT_PATH_CAP];
         const char *shortcut = yyjson_get_str(yyjson_obj_get(item, "shortcut"));
         if (!shortcut || !behavior_id(id, sizeof(id), model_id, bindings, index, item) ||
             shortcut_present(app, id)) continue;
-        if (app->config.behavior_shortcut_count >= BONGO_CAT_NEO_BEHAVIOR_CAP) break;
-        BongoCatNeoBehaviorShortcut *value =
+        if (app->config.behavior_shortcut_count >= BONGO_CAT_BEHAVIOR_CAP) break;
+        BongoCatBehaviorShortcut *value =
             &app->config.behavior_shortcuts[app->config.behavior_shortcut_count++];
         snprintf(value->id, sizeof(value->id), "%s", id);
         snprintf(value->shortcut, sizeof(value->shortcut), "%s", shortcut);

@@ -1,20 +1,20 @@
-#ifndef BONGO_CAT_NEO_PREFERENCES_MODEL_COVER_H
-#define BONGO_CAT_NEO_PREFERENCES_MODEL_COVER_H
+#ifndef BONGO_CAT_PREFERENCES_MODEL_COVER_H
+#define BONGO_CAT_PREFERENCES_MODEL_COVER_H
 
-#include "bongo_cat_neo/model.h"
+#include "bongo_cat/model.h"
 
-typedef struct BongoCatNeoApp BongoCatNeoApp;
+typedef struct BongoCatApp BongoCatApp;
 
-typedef struct BongoCatNeoModelCover {
+typedef struct BongoCatModelCover {
     unsigned int texture;
     int width;
     int height;
-} BongoCatNeoModelCover;
+} BongoCatModelCover;
 
-void bongo_cat_neo_preferences_model_covers_begin(void);
-const BongoCatNeoModelCover *bongo_cat_neo_preferences_model_cover(
-    BongoCatNeoApp *app, const BongoCatNeoModelEntry *entry,
+void bongo_cat_preferences_model_covers_begin(void);
+const BongoCatModelCover *bongo_cat_preferences_model_cover(
+    BongoCatApp *app, const BongoCatModelEntry *entry,
     int pixel_width, int pixel_height);
-void bongo_cat_neo_preferences_model_covers_prune(BongoCatNeoApp *app);
+void bongo_cat_preferences_model_covers_prune(BongoCatApp *app);
 
 #endif

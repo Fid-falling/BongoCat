@@ -3,7 +3,7 @@
 #ifdef _WIN32
 #include <stdio.h>
 
-const char *bongo_cat_neo_windows_key_name(const KBDLLHOOKSTRUCT *key, char output[16]) {
+const char *bongo_cat_windows_key_name(const KBDLLHOOKSTRUCT *key, char output[16]) {
     DWORD code = key->vkCode;
     if (code >= 'A' && code <= 'Z') {
         snprintf(output, 16, "Key%c", (char)code);

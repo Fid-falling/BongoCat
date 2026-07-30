@@ -1,9 +1,9 @@
-#include "bongo_cat_neo/common.h"
+#include "bongo_cat/common.h"
 
 #include <stdarg.h>
 #include <stdio.h>
 
-void bongo_cat_neo_error_set(BongoCatNeoError *error, BongoCatNeoResult code, const char *format, ...) {
+void bongo_cat_error_set(BongoCatError *error, BongoCatResult code, const char *format, ...) {
     if (!error) return;
     error->code = code;
     if (!format) {

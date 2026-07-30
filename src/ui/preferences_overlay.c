@@ -6,13 +6,13 @@
 
 enum { OVERLAY_OPEN_MS = 200, OVERLAY_CLOSE_MS = 180 };
 
-struct nk_color bongo_cat_neo_preferences_overlay_alpha(
+struct nk_color bongo_cat_preferences_overlay_alpha(
     struct nk_color color, float visibility) {
     color.a = (nk_byte)(color.a * NK_CLAMP(0.0f, visibility, 1.0f) + .5f);
     return color;
 }
 
-BongoCatNeoOverlayFrame bongo_cat_neo_preferences_overlay_frame(
+BongoCatOverlayFrame bongo_cat_preferences_overlay_frame(
     struct nk_rect region, float width, float height, uint64_t opened_ns,
     uint64_t closing_ns) {
     uint64_t now = SDL_GetTicksNS();
@@ -22,18 +22,18 @@ BongoCatNeoOverlayFrame bongo_cat_neo_preferences_overlay_frame(
         float progress = (float)(now - closing_ns) /
             (OVERLAY_CLOSE_MS * 1000000.0f);
         finished = progress >= 1.0f;
-        close = bongo_cat_neo_ui_ease(BONGO_CAT_NEO_UI_EASE_STANDARD,
+        close = bongo_cat_ui_ease(BONGO_CAT_UI_EASE_STANDARD,
             NK_CLAMP(0.0f, progress, 1.0f));
         visibility = 1.0f - close;
     } else if (opened_ns) {
         float progress = (float)(now - opened_ns) /
             (OVERLAY_OPEN_MS * 1000000.0f);
-        visibility = bongo_cat_neo_ui_ease(BONGO_CAT_NEO_UI_EASE_STANDARD,
+        visibility = bongo_cat_ui_ease(BONGO_CAT_UI_EASE_STANDARD,
             NK_CLAMP(0.0f, progress, 1.0f));
     }
     float scale = 1.0f - .015f * close;
     float panel_width = width * scale, panel_height = height * scale;
-    BongoCatNeoOverlayFrame frame = {
+    BongoCatOverlayFrame frame = {
         .panel = nk_rect(region.x + (region.w - panel_width) * .5f,
             region.y + (region.h - panel_height) * .5f + 6.0f * close,
             panel_width, panel_height),
@@ -41,13 +41,13 @@ BongoCatNeoOverlayFrame bongo_cat_neo_preferences_overlay_frame(
     return frame;
 }
 
-void bongo_cat_neo_preferences_overlay_draw(struct nk_context *context,
-    struct nk_rect region, const BongoCatNeoOverlayFrame *frame,
-    BongoCatNeoUIPalette palette) {
+void bongo_cat_preferences_overlay_draw(struct nk_context *context,
+    struct nk_rect region, const BongoCatOverlayFrame *frame,
+    BongoCatUIPalette palette) {
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     nk_fill_rect(canvas, region, 0, nk_rgba(0, 0, 0,
         (nk_byte)(115.0f * frame->visibility + .5f)));
-    if (palette.effects) bongo_cat_neo_ui_paint_shadow(context, frame->panel,
+    if (palette.effects) bongo_cat_ui_paint_shadow(context, frame->panel,
         18, 0, 20, 50, 0, nk_rgba(0, 0, 0,
         (nk_byte)(77.0f * frame->visibility + .5f)));
 }

@@ -1,7 +1,7 @@
 #include "model_import_mver_internal.h"
-#include "bongo_cat_neo/file.h"
-#include "bongo_cat_neo/image.h"
-#include "bongo_cat_neo/path.h"
+#include "bongo_cat/file.h"
+#include "bongo_cat/image.h"
+#include "bongo_cat/path.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
@@ -18,11 +18,11 @@ static void write_png(void *context, void *data, int size) {
 }
 
 static bool compose(const char *base_path, const char *hand_path,
-    const char *target, BongoCatNeoError *error) {
-    BongoCatNeoImage base, hand;
-    if (bongo_cat_neo_image_load(base_path, &base, error) != BONGO_CAT_NEO_OK) return false;
-    if (bongo_cat_neo_image_load(hand_path, &hand, error) != BONGO_CAT_NEO_OK) {
-        bongo_cat_neo_image_free(&base); return false;
+    const char *target, BongoCatError *error) {
+    BongoCatImage base, hand;
+    if (bongo_cat_image_load(base_path, &base, error) != BONGO_CAT_OK) return false;
+    if (bongo_cat_image_load(hand_path, &hand, error) != BONGO_CAT_OK) {
+        bongo_cat_image_free(&base); return false;
     }
     int width = SDL_max(base.width, hand.width), height = SDL_max(base.height, hand.height);
     size_t bytes = (size_t)width * (size_t)height * 4;
@@ -45,41 +45,41 @@ static bool compose(const char *base_path, const char *hand_path,
         }
         dst[3] = (unsigned char)((output_alpha + 127) / 255);
     }
-    FILE *file = pixels ? bongo_cat_neo_file_open(target, "wb") : NULL;
+    FILE *file = pixels ? bongo_cat_file_open(target, "wb") : NULL;
     PngWriter writer = {file, file != NULL};
     bool ok = file && stbi_write_png_to_func(write_png, &writer, width, height, 4,
         pixels, width * 4) && writer.ok;
     if (file && fclose(file) != 0) ok = false;
-    free(pixels); bongo_cat_neo_image_free(&hand); bongo_cat_neo_image_free(&base);
-    if (!ok) bongo_cat_neo_error_set(error, allocated ? BONGO_CAT_NEO_ERROR_IO : BONGO_CAT_NEO_ERROR_MEMORY,
+    free(pixels); bongo_cat_image_free(&hand); bongo_cat_image_free(&base);
+    if (!ok) bongo_cat_error_set(error, allocated ? BONGO_CAT_ERROR_IO : BONGO_CAT_ERROR_MEMORY,
         "Cannot compose Mver input image: %s", target);
     return ok;
 }
 
-bool bongo_cat_neo_mver_emit_pair(const char *hand, const char *keyboard,
-    const char *directory, BongoCatNeoMverKeyNames names, BongoCatNeoError *error) {
+bool bongo_cat_mver_emit_pair(const char *hand, const char *keyboard,
+    const char *directory, BongoCatMverKeyNames names, BongoCatError *error) {
     if (!names.count) return true;
-    char first_name[32], first[BONGO_CAT_NEO_PATH_CAP];
+    char first_name[32], first[BONGO_CAT_PATH_CAP];
     const char *first_item = names.items[0] ? names.items[0] : names.generated;
     snprintf(first_name, sizeof(first_name), "%s.png", first_item);
-    if (!bongo_cat_neo_path_join(first, sizeof(first), directory, first_name)) return false;
+    if (!bongo_cat_path_join(first, sizeof(first), directory, first_name)) return false;
     bool ok;
     if (keyboard) ok = compose(keyboard, hand, first, error);
     else {
-        BongoCatNeoImage image;
-        ok = bongo_cat_neo_image_load(hand, &image, error) == BONGO_CAT_NEO_OK;
-        if (ok) { bongo_cat_neo_image_free(&image);
-            ok = bongo_cat_neo_path_copy_file(hand, first); }
+        BongoCatImage image;
+        ok = bongo_cat_image_load(hand, &image, error) == BONGO_CAT_OK;
+        if (ok) { bongo_cat_image_free(&image);
+            ok = bongo_cat_path_copy_file(hand, first); }
     }
     if (!ok && error && !error->message[0])
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO,
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
             "Cannot copy Mver input image: %s", hand);
     for (size_t i = 1; ok && i < names.count; ++i) {
-        char filename[32], target[BONGO_CAT_NEO_PATH_CAP];
+        char filename[32], target[BONGO_CAT_PATH_CAP];
         const char *item = names.items[i] ? names.items[i] : names.generated;
         snprintf(filename, sizeof(filename), "%s.png", item);
-        ok = bongo_cat_neo_path_join(target, sizeof(target), directory, filename) &&
-            bongo_cat_neo_path_copy_file(first, target);
+        ok = bongo_cat_path_join(target, sizeof(target), directory, filename) &&
+            bongo_cat_path_copy_file(first, target);
     }
     return ok;
 }

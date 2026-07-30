@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build-final\Release\BongoCatNeo.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build-final\Release\BongoCat.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build-final\slider-drag" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
@@ -15,7 +15,7 @@ New-Item -ItemType Directory -Force -Path $data | Out-Null
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
-public static class BongoCatNeoSliderNative {
+public static class BongoCatSliderNative {
     public delegate bool EnumProc(IntPtr handle, IntPtr data);
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L,T,R,B; }
     [StructLayout(LayoutKind.Sequential)] public struct Point { public int X,Y; }
@@ -32,21 +32,21 @@ public static class BongoCatNeoSliderNative {
     [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
 }
 '@
-[void][BongoCatNeoSliderNative]::SetProcessDPIAware()
+[void][BongoCatSliderNative]::SetProcessDPIAware()
 
 function Wait-Preferences([int]$ProcessId) {
     $deadline = [DateTime]::UtcNow.AddSeconds(20)
     do {
         $found = [Collections.Generic.List[IntPtr]]::new()
-        [BongoCatNeoSliderNative]::EnumWindows({
+        [BongoCatSliderNative]::EnumWindows({
             param($handle, $unused)
             [uint32]$owner = 0
-            [void][BongoCatNeoSliderNative]::GetWindowThreadProcessId(
+            [void][BongoCatSliderNative]::GetWindowThreadProcessId(
                 $handle, [ref]$owner)
-            $rect = [BongoCatNeoSliderNative+Rect]::new()
+            $rect = [BongoCatSliderNative+Rect]::new()
             if ($owner -eq $ProcessId -and
-                [BongoCatNeoSliderNative]::IsWindowVisible($handle) -and
-                [BongoCatNeoSliderNative]::GetClientRect($handle, [ref]$rect) -and
+                [BongoCatSliderNative]::IsWindowVisible($handle) -and
+                [BongoCatSliderNative]::GetClientRect($handle, [ref]$rect) -and
                 $rect.R -ge 700 -and $rect.B -ge 550) { $found.Add($handle) }
             return $true
         }, [IntPtr]::Zero) | Out-Null
@@ -57,22 +57,22 @@ function Wait-Preferences([int]$ProcessId) {
 }
 
 function Get-ScreenPoint([IntPtr]$Window, [double]$X, [double]$Y) {
-    $rect = [BongoCatNeoSliderNative+Rect]::new()
-    [void][BongoCatNeoSliderNative]::GetClientRect($Window, [ref]$rect)
-    $point = [BongoCatNeoSliderNative+Point]::new()
+    $rect = [BongoCatSliderNative+Rect]::new()
+    [void][BongoCatSliderNative]::GetClientRect($Window, [ref]$rect)
+    $point = [BongoCatSliderNative+Point]::new()
     $point.X = [int][Math]::Round($X * $rect.R / 900.0)
     $point.Y = [int][Math]::Round($Y * $rect.B / 680.0)
-    [void][BongoCatNeoSliderNative]::ClientToScreen($Window, [ref]$point)
+    [void][BongoCatSliderNative]::ClientToScreen($Window, [ref]$point)
     return $point
 }
 
-function Move-To([BongoCatNeoSliderNative+Point]$Point) {
-    [void][BongoCatNeoSliderNative]::SetCursorPos($Point.X, $Point.Y)
+function Move-To([BongoCatSliderNative+Point]$Point) {
+    [void][BongoCatSliderNative]::SetCursorPos($Point.X, $Point.Y)
     Start-Sleep -Milliseconds 120
 }
 
-$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
-$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "preferences-slider-drag-audit-$PID"
+$env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_TEST_INSTANCE_ID = "preferences-slider-drag-audit-$PID"
 $arguments = @("--ci-preferences", "--ci-preference-page=0",
     "--ci-language=zh-CN", "--ci-theme=light", "--ci-exit-ms=15000",
     "--data-root=$data")
@@ -80,23 +80,23 @@ $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
     -WorkingDirectory (Split-Path $Exe) -PassThru
 try {
     $window = Wait-Preferences $process.Id
-    [void][BongoCatNeoSliderNative]::SetWindowPos($window,
+    [void][BongoCatSliderNative]::SetWindowPos($window,
         [IntPtr](-1), 40, 40, 0, 0, 0x0041)
-    [void][BongoCatNeoSliderNative]::SetForegroundWindow($window)
+    [void][BongoCatSliderNative]::SetForegroundWindow($window)
     Start-Sleep -Milliseconds 500
     $start = Get-ScreenPoint $window 700 388
     $below = Get-ScreenPoint $window 700 500
     $outside = Get-ScreenPoint $window 930 500
     Move-To $start
-    [BongoCatNeoSliderNative]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
+    [BongoCatSliderNative]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 180
     Move-To $below
     Move-To $outside
-    [BongoCatNeoSliderNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
+    [BongoCatSliderNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 180
     Move-To (Get-ScreenPoint $window 620 388)
     Start-Sleep -Milliseconds 450
-    [void][BongoCatNeoSliderNative]::PostMessageW(
+    [void][BongoCatSliderNative]::PostMessageW(
         $window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
     $sessionPath = Join-Path $data "session.json"
     for ($i = 0; $i -lt 60 -and -not (Test-Path $sessionPath); $i++) {
@@ -112,7 +112,7 @@ try {
     [pscustomobject]$result | Format-List
     if (-not $passed) { exit 1 }
 } finally {
-    [BongoCatNeoSliderNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
+    [BongoCatSliderNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
     if ($process -and -not $process.HasExited) {
         $process.Kill(); $process.WaitForExit()
     }

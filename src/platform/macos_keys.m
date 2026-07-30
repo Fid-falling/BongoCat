@@ -4,7 +4,7 @@
 
 typedef struct MacKeyName { CGKeyCode code; const char *name; } MacKeyName;
 
-const char *bongo_cat_neo_macos_key_name(CGKeyCode code, char output[16]) {
+const char *bongo_cat_macos_key_name(CGKeyCode code, char output[16]) {
     if (code == 105) return "PrintScreen";
     if (code == 107) return "ScrollLock";
     if (code == 113) return "Pause";

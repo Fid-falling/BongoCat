@@ -1,19 +1,19 @@
-set(BONGO_CAT_NEO_STB_INCLUDE_DIR "" CACHE PATH
+set(BONGO_CAT_STB_INCLUDE_DIR "" CACHE PATH
   "Directory containing stb_image.h and stb_image_write.h")
-set(BONGO_CAT_NEO_MINIAUDIO_INCLUDE_DIR "" CACHE PATH
+set(BONGO_CAT_MINIAUDIO_INCLUDE_DIR "" CACHE PATH
   "Directory containing miniaudio.h (used when no miniaudio CMake package exists)")
-set(BONGO_CAT_NEO_NUKLEAR_INCLUDE_DIR "" CACHE PATH
+set(BONGO_CAT_NUKLEAR_INCLUDE_DIR "" CACHE PATH
   "Directory containing nuklear.h")
 
-function(bongo_cat_neo_require_dependency_header variable header guidance)
+function(bongo_cat_require_dependency_header variable header guidance)
   if(NOT EXISTS "${${variable}}/${header}")
     message(FATAL_ERROR
-      "BONGO_CAT_NEO_FETCH_DEPS=OFF requires ${header}. ${guidance} "
+      "BONGO_CAT_FETCH_DEPS=OFF requires ${header}. ${guidance} "
       "or set -D${variable}=<directory containing ${header}>.")
   endif()
 endfunction()
 
-if(BONGO_CAT_NEO_FETCH_DEPS)
+if(BONGO_CAT_FETCH_DEPS)
   set(SDL_SHARED OFF CACHE BOOL "" FORCE)
   set(SDL_STATIC ON CACHE BOOL "" FORCE)
   set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
@@ -22,7 +22,7 @@ if(BONGO_CAT_NEO_FETCH_DEPS)
   set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
   set(SDL_RENDER OFF CACHE BOOL "" FORCE)
   set(SDL_GPU OFF CACHE BOOL "" FORCE)
-  # bongo_cat_neo creates desktop OpenGL contexts and does not use SDL's alternate
+  # bongo_cat creates desktop OpenGL contexts and does not use SDL's alternate
   # graphics or software video backends. Keep the platform video driver and
   # dummy fallback enabled for diagnostics, while omitting unused APIs.
   set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
@@ -57,10 +57,10 @@ if(BONGO_CAT_NEO_FETCH_DEPS)
   FetchContent_Declare(nuklear URL https://github.com/Immediate-Mode-UI/Nuklear/archive/8109cfbabe04f8705408c5d8ab1a6cd48649ccda.tar.gz
     URL_HASH SHA256=23e5e1b12e897f1d568eb703aa313b7224c9b75e1118764ceba477d13b8e39f4)
   FetchContent_MakeAvailable(SDL3 yyjson stb miniaudio nuklear)
-  set(BONGO_CAT_NEO_STB_INCLUDE_DIR "${stb_SOURCE_DIR}")
-  set(BONGO_CAT_NEO_MINIAUDIO_INCLUDE_DIR "${miniaudio_SOURCE_DIR}")
-  set(BONGO_CAT_NEO_NUKLEAR_INCLUDE_DIR "${nuklear_SOURCE_DIR}")
-  set(BONGO_CAT_NEO_MINIAUDIO_TARGET miniaudio)
+  set(BONGO_CAT_STB_INCLUDE_DIR "${stb_SOURCE_DIR}")
+  set(BONGO_CAT_MINIAUDIO_INCLUDE_DIR "${miniaudio_SOURCE_DIR}")
+  set(BONGO_CAT_NUKLEAR_INCLUDE_DIR "${nuklear_SOURCE_DIR}")
+  set(BONGO_CAT_MINIAUDIO_TARGET miniaudio)
 else()
   find_package(SDL3 CONFIG REQUIRED COMPONENTS SDL3-static)
   find_package(yyjson CONFIG REQUIRED)
@@ -72,35 +72,35 @@ else()
       "The yyjson package was found but provides neither yyjson nor yyjson::yyjson")
   endif()
 
-  if(NOT BONGO_CAT_NEO_STB_INCLUDE_DIR)
-    find_path(BONGO_CAT_NEO_STB_INCLUDE_DIR NAMES stb_image.h PATH_SUFFIXES stb)
+  if(NOT BONGO_CAT_STB_INCLUDE_DIR)
+    find_path(BONGO_CAT_STB_INCLUDE_DIR NAMES stb_image.h PATH_SUFFIXES stb)
   endif()
-  bongo_cat_neo_require_dependency_header(BONGO_CAT_NEO_STB_INCLUDE_DIR stb_image.h
+  bongo_cat_require_dependency_header(BONGO_CAT_STB_INCLUDE_DIR stb_image.h
     "Install the stb development headers")
-  bongo_cat_neo_require_dependency_header(BONGO_CAT_NEO_STB_INCLUDE_DIR stb_image_write.h
+  bongo_cat_require_dependency_header(BONGO_CAT_STB_INCLUDE_DIR stb_image_write.h
     "Install the complete stb development headers")
 
-  if(NOT BONGO_CAT_NEO_NUKLEAR_INCLUDE_DIR)
-    find_path(BONGO_CAT_NEO_NUKLEAR_INCLUDE_DIR NAMES nuklear.h)
+  if(NOT BONGO_CAT_NUKLEAR_INCLUDE_DIR)
+    find_path(BONGO_CAT_NUKLEAR_INCLUDE_DIR NAMES nuklear.h)
   endif()
-  bongo_cat_neo_require_dependency_header(BONGO_CAT_NEO_NUKLEAR_INCLUDE_DIR nuklear.h
+  bongo_cat_require_dependency_header(BONGO_CAT_NUKLEAR_INCLUDE_DIR nuklear.h
     "Install the Nuklear development header")
 
-  if(NOT BONGO_CAT_NEO_MINIAUDIO_INCLUDE_DIR)
+  if(NOT BONGO_CAT_MINIAUDIO_INCLUDE_DIR)
     find_package(miniaudio CONFIG QUIET)
   endif()
   if(TARGET miniaudio)
-    set(BONGO_CAT_NEO_MINIAUDIO_TARGET miniaudio)
+    set(BONGO_CAT_MINIAUDIO_TARGET miniaudio)
   elseif(TARGET miniaudio::miniaudio)
-    set(BONGO_CAT_NEO_MINIAUDIO_TARGET miniaudio::miniaudio)
+    set(BONGO_CAT_MINIAUDIO_TARGET miniaudio::miniaudio)
   elseif(TARGET unofficial::miniaudio::miniaudio)
-    set(BONGO_CAT_NEO_MINIAUDIO_TARGET unofficial::miniaudio::miniaudio)
+    set(BONGO_CAT_MINIAUDIO_TARGET unofficial::miniaudio::miniaudio)
   else()
-    if(NOT BONGO_CAT_NEO_MINIAUDIO_INCLUDE_DIR)
-      find_path(BONGO_CAT_NEO_MINIAUDIO_INCLUDE_DIR NAMES miniaudio.h
+    if(NOT BONGO_CAT_MINIAUDIO_INCLUDE_DIR)
+      find_path(BONGO_CAT_MINIAUDIO_INCLUDE_DIR NAMES miniaudio.h
         PATH_SUFFIXES miniaudio)
     endif()
-    bongo_cat_neo_require_dependency_header(BONGO_CAT_NEO_MINIAUDIO_INCLUDE_DIR miniaudio.h
+    bongo_cat_require_dependency_header(BONGO_CAT_MINIAUDIO_INCLUDE_DIR miniaudio.h
       "Install miniaudio headers or a miniaudio CMake package")
 
     set(miniaudio_impl "${CMAKE_CURRENT_BINARY_DIR}/generated/miniaudio_impl.c")
@@ -108,11 +108,11 @@ else()
 #define MINIAUDIO_IMPLEMENTATION
 #include <miniaudio.h>
 ]=] @ONLY)
-    add_library(bongo_cat_neo_miniaudio_system STATIC "${miniaudio_impl}")
-    target_include_directories(bongo_cat_neo_miniaudio_system SYSTEM PUBLIC
-      "${BONGO_CAT_NEO_MINIAUDIO_INCLUDE_DIR}")
-    target_compile_definitions(bongo_cat_neo_miniaudio_system PRIVATE
+    add_library(bongo_cat_miniaudio_system STATIC "${miniaudio_impl}")
+    target_include_directories(bongo_cat_miniaudio_system SYSTEM PUBLIC
+      "${BONGO_CAT_MINIAUDIO_INCLUDE_DIR}")
+    target_compile_definitions(bongo_cat_miniaudio_system PRIVATE
       MA_NO_ENCODING MA_NO_GENERATION)
-    set(BONGO_CAT_NEO_MINIAUDIO_TARGET bongo_cat_neo_miniaudio_system)
+    set(BONGO_CAT_MINIAUDIO_TARGET bongo_cat_miniaudio_system)
   endif()
 endif()

@@ -1,15 +1,15 @@
-#include "bongo_cat_neo/gl_api.h"
+#include "bongo_cat/gl_api.h"
 
 #include <SDL3/SDL.h>
 #include <string.h>
 
 #define LOAD(member, type, name) do { \
     gl->member = (type)SDL_GL_GetProcAddress(name); \
-    if (!gl->member) { bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM, \
+    if (!gl->member) { bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM, \
         "Missing OpenGL function: %s", name); return false; } \
 } while (0)
 
-bool bongo_cat_neo_gl_load(BongoCatNeoGL *gl, BongoCatNeoError *error) {
+bool bongo_cat_gl_load(BongoCatGL *gl, BongoCatError *error) {
     if (!gl) return false;
     memset(gl, 0, sizeof(*gl));
     LOAD(create_shader, PFNGLCREATESHADERPROC, "glCreateShader");
@@ -43,7 +43,7 @@ bool bongo_cat_neo_gl_load(BongoCatNeoGL *gl, BongoCatNeoError *error) {
     return true;
 }
 
-static GLuint compile(BongoCatNeoGL *gl, GLenum type, const char *source, BongoCatNeoError *error) {
+static GLuint compile(BongoCatGL *gl, GLenum type, const char *source, BongoCatError *error) {
     GLuint shader = gl->create_shader(type);
     gl->shader_source(shader, 1, &source, NULL);
     gl->compile_shader(shader);
@@ -52,13 +52,13 @@ static GLuint compile(BongoCatNeoGL *gl, GLenum type, const char *source, BongoC
     if (ok) return shader;
     char message[512];
     gl->get_shader_log(shader, sizeof(message), NULL, message);
-    bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM, "Shader compilation failed: %s", message);
+    bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM, "Shader compilation failed: %s", message);
     gl->delete_shader(shader);
     return 0;
 }
 
-unsigned int bongo_cat_neo_gl_program(BongoCatNeoGL *gl, const char *vertex, const char *fragment,
-    BongoCatNeoError *error) {
+unsigned int bongo_cat_gl_program(BongoCatGL *gl, const char *vertex, const char *fragment,
+    BongoCatError *error) {
     GLuint vs = compile(gl, GL_VERTEX_SHADER, vertex, error);
     GLuint fs = compile(gl, GL_FRAGMENT_SHADER, fragment, error);
     if (!vs || !fs) return 0;
@@ -73,7 +73,7 @@ unsigned int bongo_cat_neo_gl_program(BongoCatNeoGL *gl, const char *vertex, con
     if (ok) return program;
     char message[512];
     gl->get_program_log(program, sizeof(message), NULL, message);
-    bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM, "Shader link failed: %s", message);
+    bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM, "Shader link failed: %s", message);
     gl->delete_program(program);
     return 0;
 }

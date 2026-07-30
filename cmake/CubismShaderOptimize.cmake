@@ -1,4 +1,4 @@
-function(bongo_cat_neo_replace_cubism_text variable needle replacement label)
+function(bongo_cat_replace_cubism_text variable needle replacement label)
   string(FIND "${${variable}}" "${needle}" position)
   if(position EQUAL -1)
     message(FATAL_ERROR "Cubism 5 r.5 shader patch mismatch: ${label}")
@@ -7,7 +7,7 @@ function(bongo_cat_neo_replace_cubism_text variable needle replacement label)
   set(${variable} "${updated}" PARENT_SCOPE)
 endfunction()
 
-function(bongo_cat_neo_remove_cubism_section variable anchor start_marker end_marker label)
+function(bongo_cat_remove_cubism_section variable anchor start_marker end_marker label)
   set(text "${${variable}}")
   string(FIND "${text}" "${anchor}" anchor_position)
   if(anchor_position EQUAL -1)
@@ -29,7 +29,7 @@ function(bongo_cat_neo_remove_cubism_section variable anchor start_marker end_ma
   set(${variable} "${prefix}${suffix}" PARENT_SCOPE)
 endfunction()
 
-function(bongo_cat_neo_optimize_cubism_shaders target)
+function(bongo_cat_optimize_cubism_shaders target)
   set(shader_dir "${CUBISM_FRAMEWORK_PATH}/src/Rendering/OpenGL")
   set(source_path "${shader_dir}/CubismShader_OpenGLES2.cpp")
   set(output_dir "${CMAKE_CURRENT_BINARY_DIR}/generated/cubism")
@@ -37,7 +37,7 @@ function(bongo_cat_neo_optimize_cubism_shaders target)
   file(READ "${source_path}" source)
   string(REPLACE "\r\n" "\n" source "${source}")
   # Match Pixi's Live2D texture defaults and avoid an unnecessary mip chain.
-  bongo_cat_neo_replace_cubism_text(source
+  bongo_cat_replace_cubism_text(source
     "GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR"
     "GL_TEXTURE_MIN_FILTER, GL_LINEAR" "linear model texture sampling")
 
@@ -48,14 +48,14 @@ _shaderSets[ShaderNames_MultMaskedInvertedPremultipliedAlpha]->ShaderProgram = _
   set(compile_end [=[#endif
 
     // Copy]=])
-  bongo_cat_neo_remove_cubism_section(source "${compile_anchor}" "${block_start}"
+  bongo_cat_remove_cubism_section(source "${compile_anchor}" "${block_start}"
     "${compile_end}" "eager blend compilation")
 
   set(setup_anchor [=[SetShaderSet(*_shaderSets[ShaderNames_MultMaskedInvertedPremultipliedAlpha], MaskType_MaskedInvertedPremultipliedAlpha);]=])
   set(setup_end [=[}
 
 void CubismShader_OpenGLES2::SetupShaderProgramForDrawable]=])
-  bongo_cat_neo_remove_cubism_section(source "${setup_anchor}" "${block_start}"
+  bongo_cat_remove_cubism_section(source "${setup_anchor}" "${block_start}"
     "${setup_end}" "eager blend setup")
 
   set(lazy_body [=[
@@ -93,7 +93,7 @@ void CubismShader_OpenGLES2::SetupShaderProgramForDrawable]=])
     const csmInt32 shaderNameBegin = GetShaderNamesBegin(blendMode);
     CubismShaderSet* shaderSet = _shaderSets[shaderNameBegin + offset];]=])
   set(drawable_lazy "${drawable_prefix}${lazy_body}")
-  bongo_cat_neo_replace_cubism_text(source "${drawable_setup}" "${drawable_lazy}"
+  bongo_cat_replace_cubism_text(source "${drawable_setup}" "${drawable_lazy}"
     "drawable lazy shader call")
 
   set(offscreen_setup [=[    const csmInt32 shaderNameBegin = GetShaderNamesBegin(model.GetOffscreenBlendModeType(offscreenIndex));
@@ -102,7 +102,7 @@ void CubismShader_OpenGLES2::SetupShaderProgramForDrawable]=])
     const csmInt32 shaderNameBegin = GetShaderNamesBegin(blendMode);
     CubismShaderSet* shaderSet = _shaderSets[shaderNameBegin + offset];]=])
   set(offscreen_lazy "${offscreen_prefix}${lazy_body}")
-  bongo_cat_neo_replace_cubism_text(source "${offscreen_setup}" "${offscreen_lazy}"
+  bongo_cat_replace_cubism_text(source "${offscreen_setup}" "${offscreen_lazy}"
     "offscreen lazy shader call")
 
   file(MAKE_DIRECTORY "${output_dir}")

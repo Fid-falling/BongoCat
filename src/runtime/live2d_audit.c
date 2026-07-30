@@ -1,119 +1,119 @@
 #include "runtime.h"
-#include "bongo_cat_neo/file.h"
-#include "bongo_cat_neo/path.h"
+#include "bongo_cat/file.h"
+#include "bongo_cat/path.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static void input(BongoCatNeoApp *app, BongoCatNeoInputKind kind, const char *name, float value) {
-    BongoCatNeoInputEvent event = {.kind = kind, .value = value};
+static void input(BongoCatApp *app, BongoCatInputKind kind, const char *name, float value) {
+    BongoCatInputEvent event = {.kind = kind, .value = value};
     snprintf(event.name, sizeof(event.name), "%s", name);
-    bongo_cat_neo_app_shortcuts(app, &event);
-    bongo_cat_neo_app_apply_input(app, &event);
+    bongo_cat_app_shortcuts(app, &event);
+    bongo_cat_app_apply_input(app, &event);
 }
 
-static bool motion(BongoCatNeoApp *app, const char *scenario) {
+static bool motion(BongoCatApp *app, const char *scenario) {
     if (strcmp(scenario, "motion-0") == 0)
-        return bongo_cat_neo_live2d_start_motion(app->live2d, "CAT_motion", 0);
+        return bongo_cat_live2d_start_motion(app->live2d, "CAT_motion", 0);
     if (strcmp(scenario, "motion-1") == 0)
-        return bongo_cat_neo_live2d_start_motion(app->live2d, "CAT_motion", 1);
+        return bongo_cat_live2d_start_motion(app->live2d, "CAT_motion", 1);
     if (strncmp(scenario, "expression-", 11) == 0)
-        return bongo_cat_neo_live2d_set_expression(app->live2d, atoi(scenario + 11));
+        return bongo_cat_live2d_set_expression(app->live2d, atoi(scenario + 11));
     return true;
 }
 
-static bool pointer(BongoCatNeoApp *app, bool mirror) {
+static bool pointer(BongoCatApp *app, bool mirror) {
     SDL_Rect bounds;
     SDL_DisplayID display = SDL_GetPrimaryDisplay();
     if (!display || !SDL_GetDisplayBounds(display, &bounds)) return false;
     app->config.model.mouse_mirror = mirror;
-    bongo_cat_neo_app_apply_mouse_position(app, bounds.x + bounds.w * 0.9,
+    bongo_cat_app_apply_mouse_position(app, bounds.x + bounds.w * 0.9,
         bounds.y + bounds.h * 0.1, 1.0f / 60.0f);
     // Dragging is intentionally smoothed by Cubism's TargetPoint. Advance
     // enough frames to observe the settled direction, as a real render loop
     // does, rather than asserting on its first acceleration step.
     for (int frame = 0; frame < 90; ++frame)
-        bongo_cat_neo_live2d_update(app->live2d, 1.0f / 60.0f);
+        bongo_cat_live2d_update(app->live2d, 1.0f / 60.0f);
     return true;
 }
 
-static bool apply(BongoCatNeoApp *app, const char *scenario) {
+static bool apply(BongoCatApp *app, const char *scenario) {
     if (strncmp(scenario, "switch:", 7) == 0)
-        return bongo_cat_neo_app_select_model(app, scenario + 7);
+        return bongo_cat_app_select_model(app, scenario + 7);
     if (strcmp(scenario, "mirror") == 0) app->config.model.mirror = true;
     else if (strcmp(scenario, "mouse-move") == 0) return pointer(app, false);
     else if (strcmp(scenario, "mouse-move-mirror") == 0) return pointer(app, true);
     else if (strcmp(scenario, "key-left") == 0)
-        input(app, BONGO_CAT_NEO_INPUT_KEY_DOWN, "KeyA", 1.0f);
+        input(app, BONGO_CAT_INPUT_KEY_DOWN, "KeyA", 1.0f);
     else if (strcmp(scenario, "key-tab-left") == 0)
-        input(app, BONGO_CAT_NEO_INPUT_KEY_DOWN, "Tab", 1.0f);
+        input(app, BONGO_CAT_INPUT_KEY_DOWN, "Tab", 1.0f);
     else if (strcmp(scenario, "key-right") == 0)
-        input(app, BONGO_CAT_NEO_INPUT_KEY_DOWN, "RightArrow", 1.0f);
+        input(app, BONGO_CAT_INPUT_KEY_DOWN, "RightArrow", 1.0f);
     else if (strcmp(scenario, "key-left-release") == 0) {
-        input(app, BONGO_CAT_NEO_INPUT_KEY_DOWN, "KeyA", 1.0f);
-        input(app, BONGO_CAT_NEO_INPUT_KEY_UP, "KeyA", 0.0f);
+        input(app, BONGO_CAT_INPUT_KEY_DOWN, "KeyA", 1.0f);
+        input(app, BONGO_CAT_INPUT_KEY_UP, "KeyA", 0.0f);
     } else if (strcmp(scenario, "keys-both-release") == 0) {
-        input(app, BONGO_CAT_NEO_INPUT_KEY_DOWN, "KeyA", 1.0f);
-        input(app, BONGO_CAT_NEO_INPUT_KEY_DOWN, "RightArrow", 1.0f);
-        input(app, BONGO_CAT_NEO_INPUT_KEY_UP, "KeyA", 0.0f);
-        input(app, BONGO_CAT_NEO_INPUT_KEY_UP, "RightArrow", 0.0f);
+        input(app, BONGO_CAT_INPUT_KEY_DOWN, "KeyA", 1.0f);
+        input(app, BONGO_CAT_INPUT_KEY_DOWN, "RightArrow", 1.0f);
+        input(app, BONGO_CAT_INPUT_KEY_UP, "KeyA", 0.0f);
+        input(app, BONGO_CAT_INPUT_KEY_UP, "RightArrow", 0.0f);
     } else if (strcmp(scenario, "key-stress") == 0) {
         for (int i = 0; i < 250; ++i) {
-            input(app, BONGO_CAT_NEO_INPUT_KEY_DOWN, "KeyA", 1.0f);
-            input(app, BONGO_CAT_NEO_INPUT_KEY_DOWN, "RightArrow", 1.0f);
-            input(app, BONGO_CAT_NEO_INPUT_KEY_UP, "KeyA", 0.0f);
-            input(app, BONGO_CAT_NEO_INPUT_KEY_UP, "RightArrow", 0.0f);
+            input(app, BONGO_CAT_INPUT_KEY_DOWN, "KeyA", 1.0f);
+            input(app, BONGO_CAT_INPUT_KEY_DOWN, "RightArrow", 1.0f);
+            input(app, BONGO_CAT_INPUT_KEY_UP, "KeyA", 0.0f);
+            input(app, BONGO_CAT_INPUT_KEY_UP, "RightArrow", 0.0f);
         }
     }
     else if (strcmp(scenario, "keys-both") == 0) {
-        input(app, BONGO_CAT_NEO_INPUT_KEY_DOWN, "KeyA", 1.0f);
-        input(app, BONGO_CAT_NEO_INPUT_KEY_DOWN, "RightArrow", 1.0f);
+        input(app, BONGO_CAT_INPUT_KEY_DOWN, "KeyA", 1.0f);
+        input(app, BONGO_CAT_INPUT_KEY_DOWN, "RightArrow", 1.0f);
     } else if (strcmp(scenario, "mouse-left") == 0)
-        input(app, BONGO_CAT_NEO_INPUT_MOUSE_DOWN, "Left", 1.0f);
+        input(app, BONGO_CAT_INPUT_MOUSE_DOWN, "Left", 1.0f);
     else if (strcmp(scenario, "mouse-right") == 0)
-        input(app, BONGO_CAT_NEO_INPUT_MOUSE_DOWN, "Right", 1.0f);
+        input(app, BONGO_CAT_INPUT_MOUSE_DOWN, "Right", 1.0f);
     else if (strcmp(scenario, "gamepad-buttons") == 0) {
-        input(app, BONGO_CAT_NEO_INPUT_GAMEPAD_BUTTON, "DPadLeft", 1.0f);
-        input(app, BONGO_CAT_NEO_INPUT_GAMEPAD_BUTTON, "South", 1.0f);
+        input(app, BONGO_CAT_INPUT_GAMEPAD_BUTTON, "DPadLeft", 1.0f);
+        input(app, BONGO_CAT_INPUT_GAMEPAD_BUTTON, "South", 1.0f);
     } else if (strcmp(scenario, "gamepad-sticks") == 0) {
-        input(app, BONGO_CAT_NEO_INPUT_GAMEPAD_AXIS, "LeftStickX", .75f);
-        input(app, BONGO_CAT_NEO_INPUT_GAMEPAD_AXIS, "LeftStickY", -.5f);
-        input(app, BONGO_CAT_NEO_INPUT_GAMEPAD_AXIS, "RightStickX", -.65f);
-        input(app, BONGO_CAT_NEO_INPUT_GAMEPAD_AXIS, "RightStickY", .5f);
-        input(app, BONGO_CAT_NEO_INPUT_GAMEPAD_BUTTON, "LeftThumb", 1.0f);
-        input(app, BONGO_CAT_NEO_INPUT_GAMEPAD_BUTTON, "RightThumb", 1.0f);
+        input(app, BONGO_CAT_INPUT_GAMEPAD_AXIS, "LeftStickX", .75f);
+        input(app, BONGO_CAT_INPUT_GAMEPAD_AXIS, "LeftStickY", -.5f);
+        input(app, BONGO_CAT_INPUT_GAMEPAD_AXIS, "RightStickX", -.65f);
+        input(app, BONGO_CAT_INPUT_GAMEPAD_AXIS, "RightStickY", .5f);
+        input(app, BONGO_CAT_INPUT_GAMEPAD_BUTTON, "LeftThumb", 1.0f);
+        input(app, BONGO_CAT_INPUT_GAMEPAD_BUTTON, "RightThumb", 1.0f);
     } else return motion(app, scenario);
     app->dirty = true;
     return true;
 }
 
-static void parameter(FILE *file, BongoCatNeoApp *app, const char *id) {
-    BongoCatNeoParameterRange range;
-    if (bongo_cat_neo_live2d_parameter(app->live2d, id, &range))
+static void parameter(FILE *file, BongoCatApp *app, const char *id) {
+    BongoCatParameterRange range;
+    if (bongo_cat_live2d_parameter(app->live2d, id, &range))
         fprintf(file, "parameter.%s=%.4f [%.4f,%.4f]\n", id,
             range.value, range.minimum, range.maximum);
     else fprintf(file, "parameter.%s=unavailable\n", id);
 }
 
-static bool value(BongoCatNeoApp *app, const char *id, float *output) {
-    BongoCatNeoParameterRange range;
-    if (!bongo_cat_neo_live2d_parameter(app->live2d, id, &range)) return false;
+static bool value(BongoCatApp *app, const char *id, float *output) {
+    BongoCatParameterRange range;
+    if (!bongo_cat_live2d_parameter(app->live2d, id, &range)) return false;
     if (output) *output = range.value;
     return true;
 }
 
-static bool active(BongoCatNeoApp *app, const char *id) {
+static bool active(BongoCatApp *app, const char *id) {
     float current = 0.0f;
     return value(app, id, &current) && current > 0.5f;
 }
 
-static bool signed_value(BongoCatNeoApp *app, const char *id, bool positive) {
+static bool signed_value(BongoCatApp *app, const char *id, bool positive) {
     float current = 0.0f;
     return value(app, id, &current) && (positive ? current > 0.05f : current < -0.05f);
 }
 
-static bool assertions(BongoCatNeoApp *app, const char *scenario, bool operation) {
+static bool assertions(BongoCatApp *app, const char *scenario, bool operation) {
     if (!operation) return false;
     if (strncmp(scenario, "switch:", 7) == 0)
         return strcmp(app->config.current_model, scenario + 7) == 0;
@@ -151,22 +151,22 @@ static bool assertions(BongoCatNeoApp *app, const char *scenario, bool operation
     return false;
 }
 
-void bongo_cat_neo_live2d_audit_run(BongoCatNeoApp *app) {
+void bongo_cat_live2d_audit_run(BongoCatApp *app) {
     if (!app || !app->smoke_live2d_scenario[0]) return;
     uint64_t started = SDL_GetTicksNS();
     bool result = apply(app, app->smoke_live2d_scenario);
     double duration_ms = (SDL_GetTicksNS() - started) / 1000000.0;
-    char path[BONGO_CAT_NEO_PATH_CAP];
-    if (!bongo_cat_neo_path_join(path, sizeof(path), app->data_root, "live2d-audit.txt")) return;
-    FILE *file = bongo_cat_neo_file_open(path, "wb");
+    char path[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_path_join(path, sizeof(path), app->data_root, "live2d-audit.txt")) return;
+    FILE *file = bongo_cat_file_open(path, "wb");
     if (!file) return;
     bool verified = assertions(app, app->smoke_live2d_scenario, result);
     fprintf(file, "scenario=%s\nmodel=%s\nmode=%s\noperation=%s\nassertions=%s\n"
         "duration_ms=%.3f\n",
         app->smoke_live2d_scenario, app->config.current_model,
-        bongo_cat_neo_mode_name(app->config.current_mode), result ? "accepted" : "rejected",
+        bongo_cat_mode_name(app->config.current_mode), result ? "accepted" : "rejected",
         verified ? "passed" : "failed", duration_ms);
-#ifdef BONGO_CAT_NEO_HAS_CUBISM
+#ifdef BONGO_CAT_HAS_CUBISM
     fputs("renderer=cubism-native\n", file);
     if (!verified) app->exit_code = 1;
 #else

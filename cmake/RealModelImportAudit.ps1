@@ -1,12 +1,12 @@
 param(
     [Parameter(Mandatory=$true)][string]$Exe,
     [string]$OutputDir = "",
-    [string]$TauriSource = $env:BONGO_CAT_NEO_TAURI_SOURCE,
-    [string]$MverSource = $env:BONGO_CAT_NEO_MVER_SOURCE,
+    [string]$TauriSource = $env:BONGO_CAT_TAURI_SOURCE,
+    [string]$MverSource = $env:BONGO_CAT_MVER_SOURCE,
     [string[]]$PatchSources = @()
 )
 $ErrorActionPreference = "Stop"
-$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
 $scriptRoot = Split-Path $MyInvocation.MyCommand.Path -Parent
 . (Join-Path $scriptRoot "ThemeImportLayout.ps1")
 $Exe = [IO.Path]::GetFullPath($Exe)
@@ -16,8 +16,8 @@ if (-not $OutputDir) {
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
 Remove-Item -LiteralPath $OutputDir -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
-if (-not $PatchSources.Count -and $env:BONGO_CAT_NEO_MVER_PATCH_SOURCES) {
-    $PatchSources = @($env:BONGO_CAT_NEO_MVER_PATCH_SOURCES -split ';' |
+if (-not $PatchSources.Count -and $env:BONGO_CAT_MVER_PATCH_SOURCES) {
+    $PatchSources = @($env:BONGO_CAT_MVER_PATCH_SOURCES -split ';' |
         Where-Object { $_ })
 }
 
@@ -49,11 +49,11 @@ $results = foreach ($case in $cases) {
         -Directory -ErrorAction SilentlyContinue | Where-Object Name -NotLike ".*") } else { @() }
     $layouts = @($models | ForEach-Object { Get-InstalledModelLayout $_ })
     $reports = @($layouts | Where-Object {
-        Test-Path (Join-Path $_.Adapter ".bongo-cat-neo-import-report.json")
+        Test-Path (Join-Path $_.Adapter ".bongo-cat-import-report.json")
     }).Count
     $reportCapabilities = $reports -eq $layouts.Count
     foreach ($layout in $layouts) {
-        $reportPath = Join-Path $layout.Adapter ".bongo-cat-neo-import-report.json"
+        $reportPath = Join-Path $layout.Adapter ".bongo-cat-import-report.json"
         if (-not (Test-Path -LiteralPath $reportPath)) {
             $reportCapabilities = $false
             continue

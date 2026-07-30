@@ -7,44 +7,44 @@
 #include "ui_animation.h"
 #include "ui_paint.h"
 #include "ui_icons.h"
-#include "bongo_cat_neo/i18n.h"
-#include "bongo_cat_neo/preferences.h"
+#include "bongo_cat/i18n.h"
+#include "bongo_cat/preferences.h"
 
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 
-static const char *tr(BongoCatNeoApp *app, const char *key,
+static const char *tr(BongoCatApp *app, const char *key,
     const char *fallback) {
-    return bongo_cat_neo_i18n_get(app->i18n, key, fallback);
+    return bongo_cat_i18n_get(app->i18n, key, fallback);
 }
 
-void bongo_cat_neo_preferences_import_path(BongoCatNeoApp *app,
+void bongo_cat_preferences_import_path(BongoCatApp *app,
     SDL_Window *window, const char *path) {
     (void)window;
     if (!app || !path || !path[0]) return;
-    BongoCatNeoError error = {0};
-    BongoCatNeoResult result = bongo_cat_neo_app_import_model(app, path, &error);
-    const char *message = result == BONGO_CAT_NEO_OK ? tr(app,
+    BongoCatError error = {0};
+    BongoCatResult result = bongo_cat_app_import_model(app, path, &error);
+    const char *message = result == BONGO_CAT_OK ? tr(app,
         "pages.preference.model.hints.importSuccess", "Model imported") :
         error.message;
     if (app->smoke) {
-        if (result != BONGO_CAT_NEO_OK) app->exit_code = 1;
-    } else bongo_cat_neo_preferences_notice_show(app, message,
-        result != BONGO_CAT_NEO_OK);
-    bongo_cat_neo_preferences_invalidate(app->preferences);
-    bongo_cat_neo_preferences_render(app->preferences);
+        if (result != BONGO_CAT_OK) app->exit_code = 1;
+    } else bongo_cat_preferences_notice_show(app, message,
+        result != BONGO_CAT_OK);
+    bongo_cat_preferences_invalidate(app->preferences);
+    bongo_cat_preferences_render(app->preferences);
 }
 
-static const char *mode_label(BongoCatNeoApp *app, BongoCatNeoModelMode mode) {
-    if (mode == BONGO_CAT_NEO_MODE_KEYBOARD)
+static const char *mode_label(BongoCatApp *app, BongoCatModelMode mode) {
+    if (mode == BONGO_CAT_MODE_KEYBOARD)
         return tr(app, "native.modeKeyboard", "Keyboard");
-    if (mode == BONGO_CAT_NEO_MODE_GAMEPAD)
+    if (mode == BONGO_CAT_MODE_GAMEPAD)
         return tr(app, "native.modeGamepad", "Gamepad");
     return tr(app, "native.modeStandard", "Standard");
 }
 
-static const char *model_name(const BongoCatNeoModelEntry *entry) {
+static const char *model_name(const BongoCatModelEntry *entry) {
     if (!strcmp(entry->id, "standard")) return "Standard";
     if (!strcmp(entry->id, "keyboard")) return "Keyboard";
     if (!strcmp(entry->id, "gamepad")) return "Gamepad";
@@ -66,25 +66,25 @@ static struct nk_rect outline_bounds(struct nk_rect bounds, float thickness) {
         NK_MAX(1.0f, bounds.h - thickness));
 }
 
-static bool import_card(BongoCatNeoPreferences *value,
+static bool import_card(BongoCatPreferences *value,
     struct nk_context *context) {
     struct nk_rect bounds;
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return false;
     bounds.y += 5.0f; bounds.h += 1.0f;
-    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
+    BongoCatUIPalette p = bongo_cat_ui_palette(bongo_cat_ui_dark(context));
     bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
-    float lift = bongo_cat_neo_ui_animate_eased(context, "model-import-hover",
-        hover ? 1.0f : 0.0f, 250.0f, BONGO_CAT_NEO_UI_EASE_STANDARD);
+    float lift = bongo_cat_ui_animate_eased(context, "model-import-hover",
+        hover ? 1.0f : 0.0f, 250.0f, BONGO_CAT_UI_EASE_STANDARD);
     bounds.y -= 2.0f * lift;
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
-    if (hover && p.effects) bongo_cat_neo_ui_paint_shadow(context, bounds, 14,
+    if (hover && p.effects) bongo_cat_ui_paint_shadow(context, bounds, 14,
         0, 8, 24, 0, nk_rgba(p.pink.r, p.pink.g, p.pink.b, 89));
     nk_fill_rect(canvas, bounds, 14, hover ? p.hover_pink : p.hover);
-    bongo_cat_neo_ui_paint_dashed_rounded(context, bounds, 14, 2, 5, 5,
+    bongo_cat_ui_paint_dashed_rounded(context, bounds, 14, 2, 5, 5,
         hover ? p.pink : p.accent);
     float cx = bounds.x + bounds.w * .5f, cy = bounds.y + 94;
-    bongo_cat_neo_preferences_icon_draw(value, canvas,
-        BONGO_CAT_NEO_UI_ICON_UPLOAD, nk_rect(cx - 20, cy - 20, 40, 40), p.pink);
+    bongo_cat_preferences_icon_draw(value, canvas,
+        BONGO_CAT_UI_ICON_UPLOAD, nk_rect(cx - 20, cy - 20, 40, 40), p.pink);
     const char *label = tr(value->app,
         "pages.preference.model.hints.clickOrDragToImport", "Import model directory");
     float width = value->ui.caption_font->width(value->ui.caption_font->userdata,
@@ -92,50 +92,50 @@ static bool import_card(BongoCatNeoPreferences *value,
     text(context, canvas, nk_rect(cx - width * .5f, cy + 30,
         NK_MIN(width + 1, bounds.w - 20), 24), label, p.accent,
         value->ui.caption_font);
-    if (hover) bongo_cat_neo_ui_cursor_hover_rect(context, bounds,
-        BONGO_CAT_NEO_UI_CURSOR_POINTER);
+    if (hover) bongo_cat_ui_cursor_hover_rect(context, bounds,
+        BONGO_CAT_UI_CURSOR_POINTER);
     return hover && nk_input_is_mouse_click_in_rect(&context->input,
         NK_BUTTON_LEFT, bounds);
 }
 
-static void action_icon(BongoCatNeoPreferences *value,
+static void action_icon(BongoCatPreferences *value,
     struct nk_command_buffer *canvas, struct nk_rect r, int icon,
     struct nk_color color) {
-    bongo_cat_neo_preferences_icon_draw(value, canvas, icon,
+    bongo_cat_preferences_icon_draw(value, canvas, icon,
         nk_rect(r.x + (r.w - 18) * .5f, r.y + (r.h - 18) * .5f, 18, 18), color);
 }
 
-static void select_model(BongoCatNeoPreferences *value,
-    const BongoCatNeoModelEntry *entry) {
-    BongoCatNeoError error = {0};
-    if (bongo_cat_neo_app_select_model_with_error(value->app, entry->id, &error)) {
-        bongo_cat_neo_preferences_invalidate(value);
+static void select_model(BongoCatPreferences *value,
+    const BongoCatModelEntry *entry) {
+    BongoCatError error = {0};
+    if (bongo_cat_app_select_model_with_error(value->app, entry->id, &error)) {
+        bongo_cat_preferences_invalidate(value);
         return;
     }
     const char *message = tr(value->app, "native.modelLoadFailed",
         "Unable to display this model");
-    bongo_cat_neo_preferences_notice_show(value->app, message, true);
-    bongo_cat_neo_preferences_invalidate(value);
+    bongo_cat_preferences_notice_show(value->app, message, true);
+    bongo_cat_preferences_invalidate(value);
 }
 
-static void model_card(BongoCatNeoPreferences *value, struct nk_context *context,
-    BongoCatNeoModelEntry *entry) {
-    BongoCatNeoApp *app = value->app;
+static void model_card(BongoCatPreferences *value, struct nk_context *context,
+    BongoCatModelEntry *entry) {
+    BongoCatApp *app = value->app;
     bool selected = !strcmp(entry->id, app->config.current_model);
     struct nk_rect bounds;
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return;
     bounds.y += 5.0f; bounds.h += 1.0f;
-    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
+    BongoCatUIPalette p = bongo_cat_ui_palette(bongo_cat_ui_dark(context));
     bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
-    char animation_id[BONGO_CAT_NEO_ID_CAP + 24];
+    char animation_id[BONGO_CAT_ID_CAP + 24];
     snprintf(animation_id, sizeof(animation_id), "model-hover-%s", entry->id);
-    float lift = bongo_cat_neo_ui_animate_eased(context, animation_id,
-        hover ? 1.0f : 0.0f, 250.0f, BONGO_CAT_NEO_UI_EASE_SWIFT);
+    float lift = bongo_cat_ui_animate_eased(context, animation_id,
+        hover ? 1.0f : 0.0f, 250.0f, BONGO_CAT_UI_EASE_SWIFT);
     bounds.y -= 3.0f * lift;
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
-    if (selected && p.effects) bongo_cat_neo_ui_paint_shadow(context, bounds,
+    if (selected && p.effects) bongo_cat_ui_paint_shadow(context, bounds,
         14, 0, 8, 20, 0, nk_rgba(p.pink.r, p.pink.g, p.pink.b, 89));
-    else if (hover && p.effects) bongo_cat_neo_ui_paint_shadow(context, bounds,
+    else if (hover && p.effects) bongo_cat_ui_paint_shadow(context, bounds,
         14, 0, 10, 28, 0, nk_rgba(p.accent.r, p.accent.g, p.accent.b, 46));
     nk_fill_rect(canvas, bounds, 14, p.surface);
     float preview_height = NK_MIN(128.0f, bounds.w * 354.0f / 612.0f);
@@ -147,7 +147,7 @@ static void model_card(BongoCatNeoPreferences *value, struct nk_context *context
     SDL_GetWindowSizeInPixels(value->window, &pixel_width, &pixel_height);
     float scale_x = logical_width > 0 ? (float)pixel_width / logical_width : 1;
     float scale_y = logical_height > 0 ? (float)pixel_height / logical_height : 1;
-    const BongoCatNeoModelCover *cover = bongo_cat_neo_preferences_model_cover(
+    const BongoCatModelCover *cover = bongo_cat_preferences_model_cover(
         app, entry, NK_MAX(1, (int)lroundf(preview.w * scale_x)),
         NK_MAX(1, (int)lroundf(preview.h * scale_y)));
     if (cover) {
@@ -182,36 +182,36 @@ static void model_card(BongoCatNeoPreferences *value, struct nk_context *context
     if (first_hover) nk_fill_rect(canvas, first, 0, p.hover_pink);
     if (second_hover) nk_fill_rect(canvas, second, 0, p.hover_pink);
     if (third_hover) nk_fill_rect(canvas, third, 0, p.hover_pink);
-    action_icon(value, canvas, first, selected ? BONGO_CAT_NEO_UI_ICON_SMILE :
-        BONGO_CAT_NEO_UI_ICON_CHECK,
+    action_icon(value, canvas, first, selected ? BONGO_CAT_UI_ICON_SMILE :
+        BONGO_CAT_UI_ICON_CHECK,
         first_hover ? p.pink : p.muted);
-    action_icon(value, canvas, second, BONGO_CAT_NEO_UI_ICON_FOLDER,
+    action_icon(value, canvas, second, BONGO_CAT_UI_ICON_FOLDER,
         second_hover ? p.pink : p.muted);
     if (deletable) {
         nk_stroke_line(canvas, third.x, third.y + 10, third.x,
             third.y + third.h - 10, 1, p.border_subtle);
-        action_icon(value, canvas, third, BONGO_CAT_NEO_UI_ICON_TRASH,
+        action_icon(value, canvas, third, BONGO_CAT_UI_ICON_TRASH,
             third_hover ? p.danger : p.muted);
     }
     float outline_width = selected ? 2.0f : 1.0f;
     struct nk_rect outline = outline_bounds(bounds, outline_width);
     struct nk_color outline_color = selected ? p.pink :
-        bongo_cat_neo_ui_color_mix(p.border_subtle, p.accent, lift);
+        bongo_cat_ui_color_mix(p.border_subtle, p.accent, lift);
     nk_stroke_rect(canvas, outline, 14.0f - outline_width * .5f,
         outline_width, outline_color);
     if (first_hover || second_hover || third_hover || hover)
-        bongo_cat_neo_ui_cursor_hover_rect(context, bounds,
-            BONGO_CAT_NEO_UI_CURSOR_POINTER);
+        bongo_cat_ui_cursor_hover_rect(context, bounds,
+            BONGO_CAT_UI_CURSOR_POINTER);
     if (first_hover && nk_input_is_mouse_click_in_rect(&context->input,
         NK_BUTTON_LEFT, first)) {
         if (selected && app->config.model.behavior)
-            bongo_cat_neo_preferences_behavior_dialog_open(value);
+            bongo_cat_preferences_behavior_dialog_open(value);
         else select_model(value, entry);
     } else if (second_hover && nk_input_is_mouse_click_in_rect(&context->input,
         NK_BUTTON_LEFT, second)) select_model(value, entry);
     else if (third_hover && nk_input_is_mouse_click_in_rect(&context->input,
         NK_BUTTON_LEFT, third))
-        bongo_cat_neo_preferences_remove_dialog_open(app, entry->id);
+        bongo_cat_preferences_remove_dialog_open(app, entry->id);
     else if (hover && nk_input_is_mouse_click_in_rect(&context->input,
         NK_BUTTON_LEFT, bounds)) select_model(value, entry);
 }
@@ -221,7 +221,7 @@ static bool is_builtin(const char *id) {
         !strcmp(id, "gamepad");
 }
 
-static void draw_named(BongoCatNeoPreferences *value, struct nk_context *context,
+static void draw_named(BongoCatPreferences *value, struct nk_context *context,
     const char *id) {
     for (size_t i = 0; i < value->app->models.count; ++i)
         if (!strcmp(value->app->models.entries[i].id, id)) {
@@ -229,11 +229,11 @@ static void draw_named(BongoCatNeoPreferences *value, struct nk_context *context
         }
 }
 
-void bongo_cat_neo_preferences_page_model(BongoCatNeoPreferences *value,
+void bongo_cat_preferences_page_model(BongoCatPreferences *value,
     struct nk_context *context) {
-    BongoCatNeoApp *app = value->app;
-    bongo_cat_neo_preferences_model_covers_begin();
-    bongo_cat_neo_pref_section(context,
+    BongoCatApp *app = value->app;
+    bongo_cat_preferences_model_covers_begin();
+    bongo_cat_pref_section(context,
         tr(app, "pages.preference.model.title", "Installed models"));
     float width = nk_window_get_content_region(context).w;
     int columns = width >= 780 ? 4 : width >= 620 ? 3 : width >= 400 ? 2 : 1;
@@ -241,7 +241,7 @@ void bongo_cat_neo_preferences_page_model(BongoCatNeoPreferences *value,
     context->style.window.spacing = nk_vec2(14, 17);
     nk_layout_row_dynamic(context, 222, columns);
     if (import_card(value, context))
-        bongo_cat_neo_preferences_request_model_import(app->preferences);
+        bongo_cat_preferences_request_model_import(app->preferences);
     draw_named(value, context, "standard");
     draw_named(value, context, "keyboard");
     draw_named(value, context, "gamepad");
@@ -249,5 +249,5 @@ void bongo_cat_neo_preferences_page_model(BongoCatNeoPreferences *value,
         if (!is_builtin(app->models.entries[i].id))
             model_card(value, context, &app->models.entries[i]);
     context->style.window.spacing = old_spacing;
-    bongo_cat_neo_preferences_model_covers_prune(app);
+    bongo_cat_preferences_model_covers_prune(app);
 }

@@ -1,6 +1,6 @@
 #include "ui_catime.h"
 
-void bongo_cat_neo_ui_fallback_icon(struct nk_command_buffer *canvas,
+void bongo_cat_ui_fallback_icon(struct nk_command_buffer *canvas,
     int index, struct nk_rect bounds, struct nk_color color) {
     float x = bounds.x + bounds.w * .5f, y = bounds.y + 17;
     if (index == 0) {

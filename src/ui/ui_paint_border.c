@@ -58,7 +58,7 @@ static void sample(float x, float y, float width, float height, float radius,
         by - NK_CLAMP(ty, y, by);
 }
 
-void bongo_cat_neo_ui_raster_dashed_rounded(unsigned char *pixels,
+void bongo_cat_ui_raster_dashed_rounded(unsigned char *pixels,
     int width, int height, float radius, float thickness, float dash,
     float gap, struct nk_color color) {
     float period = NK_MAX(1.0f, dash + gap);

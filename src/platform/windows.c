@@ -1,4 +1,4 @@
-#include "bongo_cat_neo/platform.h"
+#include "bongo_cat/platform.h"
 #include "windows_borderless.h"
 #include "windows_keys.h"
 #include "windows_startup.h"
@@ -13,14 +13,14 @@
 #include <string.h>
 #include <windows.h>
 typedef struct WindowsState {
-    BongoCatNeoPlatform *platform;
+    BongoCatPlatform *platform;
     SRWLOCK platform_lock;
     HANDLE thread;
     HANDLE ready;
     DWORD thread_id;
     HHOOK keyboard;
     HHOOK mouse;
-    bool key_down[BONGO_CAT_NEO_INPUT_KEY_STATE_CAP];
+    bool key_down[BONGO_CAT_INPUT_KEY_STATE_CAP];
     bool hooks_ready;
 } WindowsState;
 
@@ -32,22 +32,22 @@ static void wake_main_thread(void) {
     wake.type = state->platform->wake_event_type;
     SDL_PushEvent(&wake);
 }
-static HWND native_window(BongoCatNeoPlatform *platform) {
+static HWND native_window(BongoCatPlatform *platform) {
     return (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(platform->window),
         SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
 }
-static void push_event(BongoCatNeoInputKind kind, const char *name, float value) {
+static void push_event(BongoCatInputKind kind, const char *name, float value) {
     WindowsState *state = global_state;
     if (!state || !name) return;
     AcquireSRWLockShared(&state->platform_lock);
-    BongoCatNeoPlatform *platform = state->platform;
+    BongoCatPlatform *platform = state->platform;
     if (!platform) { ReleaseSRWLockShared(&state->platform_lock); return; }
-    BongoCatNeoInputEvent event = {0};
+    BongoCatInputEvent event = {0};
     event.kind = kind;
     event.timestamp_ms = GetTickCount64();
     event.value = value;
     snprintf(event.name, sizeof(event.name), "%s", name);
-    if (bongo_cat_neo_input_push(platform->input, &event))
+    if (bongo_cat_input_push(platform->input, &event))
         wake_main_thread();
     ReleaseSRWLockShared(&state->platform_lock);
 }
@@ -58,11 +58,11 @@ static LRESULT CALLBACK keyboard_hook(int code, WPARAM message, LPARAM data) {
         bool down = message == WM_KEYDOWN || message == WM_SYSKEYDOWN;
         bool up = message == WM_KEYUP || message == WM_SYSKEYUP;
         char buffer[16];
-        const char *name = bongo_cat_neo_windows_key_name(key, buffer);
-        if (state && name && (down || up) && bongo_cat_neo_input_edge(
+        const char *name = bongo_cat_windows_key_name(key, buffer);
+        if (state && name && (down || up) && bongo_cat_input_edge(
             state->key_down, key->vkCode, down))
-            push_event(down ? BONGO_CAT_NEO_INPUT_KEY_DOWN :
-                BONGO_CAT_NEO_INPUT_KEY_UP, name, down ? 1.0f : 0.0f);
+            push_event(down ? BONGO_CAT_INPUT_KEY_DOWN :
+                BONGO_CAT_INPUT_KEY_UP, name, down ? 1.0f : 0.0f);
     }
     return CallNextHookEx(NULL, code, message, data);
 }
@@ -84,15 +84,15 @@ static LRESULT CALLBACK mouse_hook(int code, WPARAM message, LPARAM data) {
         if (message == WM_MOUSEMOVE) {
             WindowsState *state = global_state;
             AcquireSRWLockShared(&state->platform_lock);
-            BongoCatNeoPlatform *platform = state->platform;
-            if (platform && bongo_cat_neo_input_mouse(platform->input,
+            BongoCatPlatform *platform = state->platform;
+            if (platform && bongo_cat_input_mouse(platform->input,
                 mouse->pt.x, mouse->pt.y)) wake_main_thread();
             ReleaseSRWLockShared(&state->platform_lock);
         } else {
             const char *name = mouse_button(message, mouse->mouseData);
             bool down = message == WM_LBUTTONDOWN || message == WM_RBUTTONDOWN ||
                 message == WM_MBUTTONDOWN || message == WM_XBUTTONDOWN;
-            if (name) push_event(down ? BONGO_CAT_NEO_INPUT_MOUSE_DOWN : BONGO_CAT_NEO_INPUT_MOUSE_UP,
+            if (name) push_event(down ? BONGO_CAT_INPUT_MOUSE_DOWN : BONGO_CAT_INPUT_MOUSE_UP,
                 name, down ? 1.0f : 0.0f);
         }
     }
@@ -118,26 +118,26 @@ static DWORD WINAPI hook_thread(void *context) {
     return 0;
 }
 
-BongoCatNeoResult bongo_cat_neo_platform_init(BongoCatNeoPlatform *platform, SDL_Window *window,
-    BongoCatNeoInputState *input, BongoCatNeoError *error) {
-    if (!platform || !window || !input) return BONGO_CAT_NEO_ERROR_ARGUMENT;
+BongoCatResult bongo_cat_platform_init(BongoCatPlatform *platform, SDL_Window *window,
+    BongoCatInputState *input, BongoCatError *error) {
+    if (!platform || !window || !input) return BONGO_CAT_ERROR_ARGUMENT;
     memset(platform, 0, sizeof(*platform));
     platform->window = window;
     platform->input = input;
     platform->wake_event_type = SDL_RegisterEvents(1);
     if (platform->wake_event_type == (Uint32)-1) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM,
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM,
             "Cannot reserve the Windows input wake event");
-        return BONGO_CAT_NEO_ERROR_PLATFORM;
+        return BONGO_CAT_ERROR_PLATFORM;
     }
     WindowsState *state = calloc(1, sizeof(*state));
     if (!state) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_MEMORY,
-            "Cannot allocate Windows input state"); return BONGO_CAT_NEO_ERROR_MEMORY;
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_MEMORY,
+            "Cannot allocate Windows input state"); return BONGO_CAT_ERROR_MEMORY;
     }
     InitializeSRWLock(&state->platform_lock);
     state->platform = platform;
-    bool test_failure = SDL_getenv("BONGO_CAT_NEO_TEST_HOOK_FAILURE") != NULL;
+    bool test_failure = SDL_getenv("BONGO_CAT_TEST_HOOK_FAILURE") != NULL;
     state->ready = test_failure ? NULL : CreateEventW(NULL, TRUE, FALSE, NULL);
     state->thread = state->ready
         ? CreateThread(NULL, 0, hook_thread, state, 0, &state->thread_id) : NULL;
@@ -148,8 +148,8 @@ BongoCatNeoResult bongo_cat_neo_platform_init(BongoCatNeoPlatform *platform, SDL
             "Global input hooks are unavailable; the window will continue without global input");
     }
     HWND hwnd = native_window(platform);
-    SetWindowTextW(hwnd, bongo_cat_neo_windows_instance_title());
-    bongo_cat_neo_windows_borderless_install(hwnd);
+    SetWindowTextW(hwnd, bongo_cat_windows_instance_title());
+    bongo_cat_windows_borderless_install(hwnd);
     if (!SDL_SetWindowResizable(window, true)) {
         SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
             "Borderless resize is unavailable: %s", SDL_GetError());
@@ -160,13 +160,13 @@ BongoCatNeoResult bongo_cat_neo_platform_init(BongoCatNeoPlatform *platform, SDL
     }
     SetWindowPos(hwnd, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE |
         SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
-    return BONGO_CAT_NEO_OK;
+    return BONGO_CAT_OK;
 }
-void bongo_cat_neo_platform_shutdown(BongoCatNeoPlatform *platform) {
+void bongo_cat_platform_shutdown(BongoCatPlatform *platform) {
     WindowsState *state = platform ? platform->native : NULL;
     if (!state) return;
     HWND window = native_window(platform);
-    if (window) bongo_cat_neo_windows_borderless_uninstall(window);
+    if (window) bongo_cat_windows_borderless_uninstall(window);
     AcquireSRWLockExclusive(&state->platform_lock);
     state->platform = NULL;
     ReleaseSRWLockExclusive(&state->platform_lock);
@@ -181,20 +181,20 @@ void bongo_cat_neo_platform_shutdown(BongoCatNeoPlatform *platform) {
     free(state);
     platform->native = NULL;
 }
-void bongo_cat_neo_platform_set_always_on_top(BongoCatNeoPlatform *platform, bool enabled) {
+void bongo_cat_platform_set_always_on_top(BongoCatPlatform *platform, bool enabled) {
     if (!platform || !platform->window) return;
     if (SDL_SetWindowAlwaysOnTop(platform->window, enabled)) return;
     HWND window = native_window(platform);
     if (window) SetWindowPos(window, enabled ? HWND_TOPMOST : HWND_NOTOPMOST,
         0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 }
-void bongo_cat_neo_platform_begin_drag(BongoCatNeoPlatform *platform) {
+void bongo_cat_platform_begin_drag(BongoCatPlatform *platform) {
     HWND hwnd = native_window(platform);
     ReleaseCapture();
     SendMessageW(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
 }
 
-bool bongo_cat_neo_platform_dynamic_hit_supported(void) { return true; }
+bool bongo_cat_platform_dynamic_hit_supported(void) { return true; }
 
 static wchar_t *wide(const char *text) {
     if (!text) return NULL;
@@ -210,28 +210,28 @@ static void menu_text(HMENU menu, UINT flags, UINT_PTR id, const char *text) {
     free(label);
 }
 
-BongoCatNeoMenuAction bongo_cat_neo_platform_context_menu(BongoCatNeoPlatform *platform,
-    const BongoCatNeoMenuLabels *labels) {
-    if (!platform || !labels) return BONGO_CAT_NEO_MENU_NONE;
+BongoCatMenuAction bongo_cat_platform_context_menu(BongoCatPlatform *platform,
+    const BongoCatMenuLabels *labels) {
+    if (!platform || !labels) return BONGO_CAT_MENU_NONE;
     HMENU menu = CreatePopupMenu(), sizes = CreatePopupMenu(), opacity = CreatePopupMenu();
     HMENU models = CreatePopupMenu();
     HMENU motions = labels->motion_count ? CreatePopupMenu() : NULL;
     HMENU expressions = labels->expression_count ? CreatePopupMenu() : NULL;
     if (!menu || !sizes || !opacity || !models ||
         (labels->motion_count && !motions) || (labels->expression_count && !expressions))
-        return BONGO_CAT_NEO_MENU_NONE;
-    menu_text(menu, MF_STRING, BONGO_CAT_NEO_MENU_PREFERENCES, labels->preferences);
-    menu_text(menu, MF_STRING, BONGO_CAT_NEO_MENU_HIDE, labels->hide);
+        return BONGO_CAT_MENU_NONE;
+    menu_text(menu, MF_STRING, BONGO_CAT_MENU_PREFERENCES, labels->preferences);
+    menu_text(menu, MF_STRING, BONGO_CAT_MENU_HIDE, labels->hide);
     AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
     menu_text(menu, MF_STRING | (labels->pass_through_checked ? MF_CHECKED : 0),
-        BONGO_CAT_NEO_MENU_PASS_THROUGH, labels->pass_through);
+        BONGO_CAT_MENU_PASS_THROUGH, labels->pass_through);
     menu_text(menu, MF_STRING | (labels->always_on_top_checked ? MF_CHECKED : 0),
-        BONGO_CAT_NEO_MENU_ALWAYS_ON_TOP, labels->always_on_top);
+        BONGO_CAT_MENU_ALWAYS_ON_TOP, labels->always_on_top);
     for (int i = 0; i < 16; ++i) {
         int scale = 50 + i * 10;
         wchar_t label[16]; swprintf(label, 16, L"%d%%", scale);
         UINT flags = MF_STRING | (SDL_fabsf(labels->scale_percent - scale) < .5f ? MF_CHECKED : 0);
-        AppendMenuW(sizes, flags, BONGO_CAT_NEO_MENU_SCALE_50 + i, label);
+        AppendMenuW(sizes, flags, BONGO_CAT_MENU_SCALE_50 + i, label);
     }
     menu_text(sizes, MF_STRING | MF_DISABLED | MF_GRAYED, 0,
         labels->wheel_size_hint);
@@ -239,19 +239,19 @@ BongoCatNeoMenuAction bongo_cat_neo_platform_context_menu(BongoCatNeoPlatform *p
     for (int i = 0; i < 10; ++i) {
         wchar_t label[16]; swprintf(label, 16, L"%d%%", opacities[i]);
         UINT flags = MF_STRING | (SDL_fabsf(labels->opacity_percent - opacities[i]) < .5f ? MF_CHECKED : 0);
-        AppendMenuW(opacity, flags, BONGO_CAT_NEO_MENU_OPACITY_10 + i, label);
+        AppendMenuW(opacity, flags, BONGO_CAT_MENU_OPACITY_10 + i, label);
     }
     menu_text(opacity, MF_STRING | MF_DISABLED | MF_GRAYED, 0,
         labels->wheel_opacity_hint);
     for (size_t i = 0; i < labels->motion_count; ++i)
-        menu_text(motions, MF_STRING, BONGO_CAT_NEO_MENU_MOTION_FIRST + i,
+        menu_text(motions, MF_STRING, BONGO_CAT_MENU_MOTION_FIRST + i,
             labels->motion_names[i]);
     for (size_t i = 0; i < labels->expression_count; ++i)
-        menu_text(expressions, MF_STRING, BONGO_CAT_NEO_MENU_EXPRESSION_FIRST + i,
+        menu_text(expressions, MF_STRING, BONGO_CAT_MENU_EXPRESSION_FIRST + i,
             labels->expression_names[i]);
     for (size_t i = 0; i < labels->model_count; ++i)
         menu_text(models, MF_STRING | (i == labels->current_model ? MF_CHECKED : 0),
-            BONGO_CAT_NEO_MENU_MODEL_FIRST + i, labels->model_names[i]);
+            BONGO_CAT_MENU_MODEL_FIRST + i, labels->model_names[i]);
     wchar_t *size_label = wide(labels->window_size), *opacity_label = wide(labels->opacity);
     wchar_t *model_label = wide(labels->model), *motion_label = wide(labels->motion);
     wchar_t *expression_label = wide(labels->expression);
@@ -266,19 +266,19 @@ BongoCatNeoMenuAction bongo_cat_neo_platform_context_menu(BongoCatNeoPlatform *p
     free(size_label); free(opacity_label); free(model_label); free(motion_label);
     free(expression_label);
     AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
-    menu_text(menu, MF_STRING, BONGO_CAT_NEO_MENU_EXIT, labels->exit);
+    menu_text(menu, MF_STRING, BONGO_CAT_MENU_EXIT, labels->exit);
     POINT point; GetCursorPos(&point);
     HWND window = native_window(platform);
     SetForegroundWindow(window);
-    bongo_cat_neo_ui_native_menu_prepare(platform->window, labels->dark_theme);
-    bongo_cat_neo_windows_menu_preview(window, labels->preview,
+    bongo_cat_ui_native_menu_prepare(platform->window, labels->dark_theme);
+    bongo_cat_windows_menu_preview(window, labels->preview,
         labels->preview_tick, labels->preview_userdata);
     UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON,
         point.x, point.y, 0, window, NULL);
-    bongo_cat_neo_windows_menu_preview(NULL, NULL, NULL, NULL);
-    if (labels->restore) labels->restore(labels->preview_userdata, (BongoCatNeoMenuAction)command);
+    bongo_cat_windows_menu_preview(NULL, NULL, NULL, NULL);
+    if (labels->restore) labels->restore(labels->preview_userdata, (BongoCatMenuAction)command);
     DestroyMenu(menu);
-    return (BongoCatNeoMenuAction)command;
+    return (BongoCatMenuAction)command;
 }
 
 #endif

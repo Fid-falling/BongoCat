@@ -1,6 +1,6 @@
 #include "preferences_state.h"
 
-static void send_key(BongoCatNeoPreferences *value, Uint32 type, bool down) {
+static void send_key(BongoCatPreferences *value, Uint32 type, bool down) {
     SDL_Event event = {0};
     event.type = type;
     event.key.windowID = SDL_GetWindowID(value->window);
@@ -8,10 +8,10 @@ static void send_key(BongoCatNeoPreferences *value, Uint32 type, bool down) {
     event.key.scancode = SDL_SCANCODE_B;
     event.key.key = SDLK_B;
     event.key.mod = SDL_KMOD_CTRL | SDL_KMOD_SHIFT;
-    bongo_cat_neo_preferences_event(value, &event);
+    bongo_cat_preferences_event(value, &event);
 }
 
-void bongo_cat_neo_preferences_shortcut_smoke(BongoCatNeoPreferences *value) {
+void bongo_cat_preferences_shortcut_smoke(BongoCatPreferences *value) {
     if (!value || !value->window || !value->app->smoke_preference_shortcut ||
         !value->shortcut_recording) return;
     value->app->smoke_preference_shortcut = false;

@@ -1,5 +1,5 @@
 #include "ui_font_atlas.h"
-#include "bongo_cat_neo/file.h"
+#include "bongo_cat/file.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,7 +17,7 @@ typedef struct UIFontSource {
 } UIFontSource;
 
 static bool source_load(UIFontSource *source, const char *path) {
-    source->file = bongo_cat_neo_file_open(path, "rb");
+    source->file = bongo_cat_file_open(path, "rb");
     if (!source->file || fseek(source->file, 0, SEEK_END) != 0) return false;
     long size = ftell(source->file);
     if (size <= 0 || fseek(source->file, 0, SEEK_SET) != 0) return false;
@@ -147,7 +147,7 @@ static bool font_has_ranges(const struct nk_font *font, const nk_rune *ranges) {
     return true;
 }
 
-static bool upload_atlas(BongoCatNeoUIBackend *ui) {
+static bool upload_atlas(BongoCatUIBackend *ui) {
     int width = 0, height = 0;
     const void *pixels = nk_font_atlas_bake(&ui->atlas, &width, &height,
         NK_FONT_ATLAS_ALPHA8);
@@ -170,7 +170,7 @@ static bool upload_atlas(BongoCatNeoUIBackend *ui) {
     return ui->font_texture != 0;
 }
 
-bool bongo_cat_neo_ui_font_atlas_create(BongoCatNeoUIBackend *ui,
+bool bongo_cat_ui_font_atlas_create(BongoCatUIBackend *ui,
     const char *body_path, const char *body_fallback_path,
     const char *heading_path, const char *heading_fallback_path,
     const nk_rune *glyph_ranges) {
@@ -236,7 +236,7 @@ bool bongo_cat_neo_ui_font_atlas_create(BongoCatNeoUIBackend *ui,
     return uploaded;
 }
 
-void bongo_cat_neo_ui_font_atlas_destroy(BongoCatNeoUIBackend *ui) {
+void bongo_cat_ui_font_atlas_destroy(BongoCatUIBackend *ui) {
     if (!ui) return;
     nk_font_atlas_clear(&ui->atlas);
     free(ui->cjk_glyph_ranges); free(ui->latin_glyph_ranges);

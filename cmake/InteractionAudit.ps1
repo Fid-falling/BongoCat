@@ -1,13 +1,13 @@
 param(
     [string]$Exe = "",
-    [string]$DataRoot = "$env:APPDATA\bongo_cat_neo\bongo_cat_neo",
+    [string]$DataRoot = "$env:APPDATA\bongo_cat\bongo_cat",
     [string]$Model = "model-32027d288-standard-1",
     [string]$OutputDir = ""
 )
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build-cubism\Release\BongoCatNeo.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build-cubism\Release\BongoCat.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build-cubism\interaction-audit" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $DataRoot = [IO.Path]::GetFullPath($DataRoot)
@@ -21,7 +21,7 @@ Add-Type -AssemblyName System.Drawing
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
-public static class BongoCatNeoInteractionNative {
+public static class BongoCatInteractionNative {
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L,T,R,B; }
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out Rect r);
     [DllImport("user32.dll", EntryPoint="GetWindowLongPtrW")]
@@ -40,14 +40,14 @@ function Wait-Window([Diagnostics.Process]$Process) {
         }
         Start-Sleep -Milliseconds 40
     }
-    throw "Bongo Cat Neo window was not created"
+    throw "BongoCat window was not created"
 }
 
 function Wait-Frame {
     for ($index = 0; $index -lt 100 -and -not (Test-Path $frame); $index++) {
         Start-Sleep -Milliseconds 30
     }
-    if (-not (Test-Path $frame)) { throw "bongo_cat_neo frame audit was not created" }
+    if (-not (Test-Path $frame)) { throw "bongo_cat frame audit was not created" }
 }
 
 function Copy-Frame([string]$Destination) {
@@ -69,10 +69,10 @@ function Copy-Frame([string]$Destination) {
 }
 
 function Send-Alt1 {
-    [BongoCatNeoInteractionNative]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero)
-    [BongoCatNeoInteractionNative]::keybd_event(0x31, 0, 0, [UIntPtr]::Zero)
-    [BongoCatNeoInteractionNative]::keybd_event(0x31, 0, 2, [UIntPtr]::Zero)
-    [BongoCatNeoInteractionNative]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)
+    [BongoCatInteractionNative]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero)
+    [BongoCatInteractionNative]::keybd_event(0x31, 0, 0, [UIntPtr]::Zero)
+    [BongoCatInteractionNative]::keybd_event(0x31, 0, 2, [UIntPtr]::Zero)
+    [BongoCatInteractionNative]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)
 }
 
 function Measure-FrameDifference([string]$First, [string]$Second) {
@@ -178,26 +178,26 @@ function Measure-WatermarkInkFast([string]$Path) {
 }
 
 function Test-ClickThrough([IntPtr]$Window, [int]$X, [int]$Y) {
-    [void][BongoCatNeoInteractionNative]::SetCursorPos($X, $Y)
+    [void][BongoCatInteractionNative]::SetCursorPos($X, $Y)
     Start-Sleep -Milliseconds 350
-    $style = [BongoCatNeoInteractionNative]::GetWindowLongPtr($Window, -20).ToInt64()
+    $style = [BongoCatInteractionNative]::GetWindowLongPtr($Window, -20).ToInt64()
     return ($style -band 0x20) -ne 0
 }
 
-$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
-$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "interaction-audit-$PID"
+$env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_TEST_INSTANCE_ID = "interaction-audit-$PID"
 Remove-Item $frame -Force -ErrorAction SilentlyContinue
 Remove-Item $inputAudit -Force -ErrorAction SilentlyContinue
 $settings = Join-Path $DataRoot "preferences.json"
-Set-Content -LiteralPath $settings -Value '{"format":"bongo-cat-neo/preferences","version":1,"model":{"ignoreMouse":true}}' -NoNewline
+Set-Content -LiteralPath $settings -Value '{"format":"bongo-cat/preferences","version":1,"model":{"ignoreMouse":true}}' -NoNewline
 $arguments = @("--ci-smoke", "--ci-input-audit", "--ci-exit-ms=14000",
     "--ci-model=$Model", "--data-root=$DataRoot")
 $process = Start-Process $Exe -ArgumentList $arguments -WorkingDirectory `
     (Split-Path $Exe) -PassThru
 try {
     $window = Wait-Window $process
-    $rect = [BongoCatNeoInteractionNative+Rect]::new()
-    [void][BongoCatNeoInteractionNative]::GetWindowRect($window, [ref]$rect)
+    $rect = [BongoCatInteractionNative+Rect]::new()
+    [void][BongoCatInteractionNative]::GetWindowRect($window, [ref]$rect)
     Wait-Frame; Start-Sleep -Milliseconds 250
     $baseline = Join-Path $OutputDir "toggle-0.bmp"; Copy-Frame $baseline
     $points = Find-AlphaPoints $baseline

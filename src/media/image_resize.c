@@ -1,7 +1,7 @@
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include <stb_image_resize2.h>
 
-#include "bongo_cat_neo/image.h"
+#include "bongo_cat/image.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
@@ -33,7 +33,7 @@ static void apply_rounding(unsigned char *pixels, int width, int height,
 }
 
 static GLuint upload(const unsigned char *pixels, int width, int height,
-    BongoCatNeoError *error) {
+    BongoCatError *error) {
     while (glGetError() != GL_NO_ERROR) {}
     GLuint texture = 0;
     glGenTextures(1, &texture);
@@ -49,19 +49,19 @@ static GLuint upload(const unsigned char *pixels, int width, int height,
     GLenum status = glGetError();
     if (status == GL_NO_ERROR) return texture;
     if (texture) glDeleteTextures(1, &texture);
-    bongo_cat_neo_error_set(error, status == GL_OUT_OF_MEMORY
-        ? BONGO_CAT_NEO_ERROR_MEMORY : BONGO_CAT_NEO_ERROR_PLATFORM,
+    bongo_cat_error_set(error, status == GL_OUT_OF_MEMORY
+        ? BONGO_CAT_ERROR_MEMORY : BONGO_CAT_ERROR_PLATFORM,
         "OpenGL resampled texture upload failed (0x%x)", (unsigned)status);
     return 0;
 }
 
-unsigned int bongo_cat_neo_image_texture_resampled(const char *path,
+unsigned int bongo_cat_image_texture_resampled(const char *path,
     int max_width, int max_height, float rounding, int *width, int *height,
-    BongoCatNeoError *error) {
+    BongoCatError *error) {
     if (!path || max_width < 1 || max_height < 1)
         return 0;
-    BongoCatNeoImage source;
-    if (bongo_cat_neo_image_load(path, &source, error) != BONGO_CAT_NEO_OK)
+    BongoCatImage source;
+    if (bongo_cat_image_load(path, &source, error) != BONGO_CAT_OK)
         return 0;
     float scale = SDL_min((float)max_width / source.width,
         (float)max_height / source.height);
@@ -73,12 +73,12 @@ unsigned int bongo_cat_neo_image_texture_resampled(const char *path,
         source.width, source.height, source.width * 4, pixels,
         target_width, target_height, target_width * 4, STBIR_RGBA)) {
         free(pixels);
-        bongo_cat_neo_image_free(&source);
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_MEMORY,
+        bongo_cat_image_free(&source);
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_MEMORY,
             "Cannot resize image: %s", path);
         return 0;
     }
-    bongo_cat_neo_image_free(&source);
+    bongo_cat_image_free(&source);
     apply_rounding(pixels, target_width, target_height,
         rounding * SDL_min((float)target_width / max_width,
             (float)target_height / max_height));

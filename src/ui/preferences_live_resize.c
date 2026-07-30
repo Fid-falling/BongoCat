@@ -7,28 +7,28 @@
 #include <windows.h>
 #include <SDL3/SDL_properties.h>
 
-static const wchar_t original_property[] = L"BongoCatNeo.PreferenceResizeProc";
-static const wchar_t value_property[] = L"BongoCatNeo.PreferenceResizeValue";
+static const wchar_t original_property[] = L"BongoCat.PreferenceResizeProc";
+static const wchar_t value_property[] = L"BongoCat.PreferenceResizeValue";
 
-static HWND native_window(BongoCatNeoPreferences *value) {
+static HWND native_window(BongoCatPreferences *value) {
     return value && value->window ? (HWND)SDL_GetPointerProperty(
         SDL_GetWindowProperties(value->window),
         SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL) : NULL;
 }
 
-static void render_live(BongoCatNeoPreferences *value) {
+static void render_live(BongoCatPreferences *value) {
     if (!value || !value->window || value->live_resize_rendering) return;
     value->live_resize_rendering = true;
-    if (!value->input_active) bongo_cat_neo_preferences_input_begin(value);
+    if (!value->input_active) bongo_cat_preferences_input_begin(value);
     value->render_dirty = true;
-    bongo_cat_neo_preferences_render(value);
+    bongo_cat_preferences_render(value);
     value->live_resize_rendering = false;
 }
 
 static LRESULT CALLBACK live_resize_proc(HWND window, UINT message,
     WPARAM wparam, LPARAM lparam) {
     WNDPROC original = (WNDPROC)GetPropW(window, original_property);
-    BongoCatNeoPreferences *value = (BongoCatNeoPreferences *)GetPropW(
+    BongoCatPreferences *value = (BongoCatPreferences *)GetPropW(
         window, value_property);
     if (value && message == WM_ENTERSIZEMOVE)
         value->live_resize_active = true;
@@ -43,7 +43,7 @@ static LRESULT CALLBACK live_resize_proc(HWND window, UINT message,
     return result;
 }
 
-void bongo_cat_neo_preferences_live_resize_install(BongoCatNeoPreferences *value) {
+void bongo_cat_preferences_live_resize_install(BongoCatPreferences *value) {
     HWND window = native_window(value);
     if (!window || GetPropW(window, original_property)) return;
     WNDPROC original = (WNDPROC)GetWindowLongPtrW(window, GWLP_WNDPROC);
@@ -58,7 +58,7 @@ void bongo_cat_neo_preferences_live_resize_install(BongoCatNeoPreferences *value
     }
 }
 
-void bongo_cat_neo_preferences_live_resize_uninstall(BongoCatNeoPreferences *value) {
+void bongo_cat_preferences_live_resize_uninstall(BongoCatPreferences *value) {
     if (!value) return;
     HWND window = native_window(value);
     WNDPROC original = window ? (WNDPROC)GetPropW(window, original_property) : NULL;
@@ -71,10 +71,10 @@ void bongo_cat_neo_preferences_live_resize_uninstall(BongoCatNeoPreferences *val
     value->live_resize_rendering = false;
 }
 #else
-void bongo_cat_neo_preferences_live_resize_install(BongoCatNeoPreferences *value) {
+void bongo_cat_preferences_live_resize_install(BongoCatPreferences *value) {
     (void)value;
 }
-void bongo_cat_neo_preferences_live_resize_uninstall(BongoCatNeoPreferences *value) {
+void bongo_cat_preferences_live_resize_uninstall(BongoCatPreferences *value) {
     (void)value;
 }
 #endif

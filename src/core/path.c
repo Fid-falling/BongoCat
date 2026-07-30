@@ -1,4 +1,4 @@
-#include "bongo_cat_neo/path.h"
+#include "bongo_cat/path.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -13,7 +13,7 @@
 #include <errno.h>
 #endif
 
-bool bongo_cat_neo_path_join(char *out, size_t cap, const char *left, const char *right) {
+bool bongo_cat_path_join(char *out, size_t cap, const char *left, const char *right) {
     if (!out || !cap || !left || !right) return false;
     size_t len = strlen(left);
     char sep = '/';
@@ -22,7 +22,7 @@ bool bongo_cat_neo_path_join(char *out, size_t cap, const char *left, const char
     return count >= 0 && (size_t)count < cap;
 }
 
-const char *bongo_cat_neo_path_name(const char *path) {
+const char *bongo_cat_path_name(const char *path) {
     if (!path) return "";
     const char *slash = strrchr(path, '/');
     const char *backslash = strrchr(path, '\\');
@@ -32,7 +32,7 @@ const char *bongo_cat_neo_path_name(const char *path) {
 
 static bool path_type(const char *path, bool directory) {
 #ifdef _WIN32
-    wchar_t *wide = bongo_cat_neo_windows_wide(path);
+    wchar_t *wide = bongo_cat_windows_wide(path);
     DWORD attributes = wide ? GetFileAttributesW(wide) : INVALID_FILE_ATTRIBUTES;
     free(wide);
     return attributes != INVALID_FILE_ATTRIBUTES &&
@@ -45,14 +45,14 @@ static bool path_type(const char *path, bool directory) {
 #endif
 }
 
-bool bongo_cat_neo_path_is_file(const char *path) { return path_type(path, false); }
-bool bongo_cat_neo_path_is_dir(const char *path) { return path_type(path, true); }
+bool bongo_cat_path_is_file(const char *path) { return path_type(path, false); }
+bool bongo_cat_path_is_dir(const char *path) { return path_type(path, true); }
 
-bool bongo_cat_neo_path_file_info(const char *path, uint64_t *size,
+bool bongo_cat_path_file_info(const char *path, uint64_t *size,
     uint64_t *modified) {
     if (!path || (!size && !modified)) return false;
 #ifdef _WIN32
-    wchar_t *wide = bongo_cat_neo_windows_wide(path);
+    wchar_t *wide = bongo_cat_windows_wide(path);
     WIN32_FILE_ATTRIBUTE_DATA info = {0};
     bool found = wide && GetFileAttributesExW(wide, GetFileExInfoStandard, &info) &&
         (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
@@ -70,8 +70,8 @@ bool bongo_cat_neo_path_file_info(const char *path, uint64_t *size,
     return true;
 }
 
-bool bongo_cat_neo_path_file_size(const char *path, uint64_t *size) {
-    return bongo_cat_neo_path_file_info(path, size, NULL);
+bool bongo_cat_path_file_size(const char *path, uint64_t *size) {
+    return bongo_cat_path_file_info(path, size, NULL);
 }
 
 #ifdef _WIN32
@@ -83,8 +83,8 @@ static bool create_one(const wchar_t *path) {
         (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 }
 
-bool bongo_cat_neo_path_create_directory(const char *path) {
-    wchar_t *wide = bongo_cat_neo_windows_wide(path);
+bool bongo_cat_path_create_directory(const char *path) {
+    wchar_t *wide = bongo_cat_windows_wide(path);
     if (!wide || !wide[0]) { free(wide); return false; }
     bool extended_unc = wcsncmp(wide, L"\\\\?\\UNC\\", 8) == 0;
     bool normal_unc = wide[0] == L'\\' && wide[1] == L'\\' && wide[2] != L'?';
@@ -104,20 +104,20 @@ bool bongo_cat_neo_path_create_directory(const char *path) {
     free(wide); return ok;
 }
 #else
-bool bongo_cat_neo_path_create_directory(const char *path) {
+bool bongo_cat_path_create_directory(const char *path) {
     if (!path || !path[0]) return false;
-    char copy[BONGO_CAT_NEO_PATH_CAP];
+    char copy[BONGO_CAT_PATH_CAP];
     int length = snprintf(copy, sizeof(copy), "%s", path);
     if (length < 0 || (size_t)length >= sizeof(copy)) return false;
     for (char *cursor = copy + 1; *cursor; ++cursor) {
         if (*cursor != '/') continue;
         *cursor = '\0';
         if (mkdir(copy, 0700) != 0 &&
-            (errno != EEXIST || !bongo_cat_neo_path_is_dir(copy))) return false;
+            (errno != EEXIST || !bongo_cat_path_is_dir(copy))) return false;
         *cursor = '/';
     }
     return mkdir(copy, 0700) == 0 ||
-        (errno == EEXIST && bongo_cat_neo_path_is_dir(copy));
+        (errno == EEXIST && bongo_cat_path_is_dir(copy));
 }
 #endif
 
@@ -126,20 +126,20 @@ static bool ends_with(const char *text, const char *suffix) {
     return a >= b && strcmp(text + a - b, suffix) == 0;
 }
 
-bool bongo_cat_neo_path_find_suffix(const char *dir, const char *suffix, char *name, size_t cap) {
+bool bongo_cat_path_find_suffix(const char *dir, const char *suffix, char *name, size_t cap) {
 #ifdef _WIN32
-    char pattern[BONGO_CAT_NEO_PATH_CAP];
-    if (!bongo_cat_neo_path_join(pattern, sizeof(pattern), dir, "*")) return false;
-    wchar_t *wide = bongo_cat_neo_windows_wide(pattern);
+    char pattern[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_path_join(pattern, sizeof(pattern), dir, "*")) return false;
+    wchar_t *wide = bongo_cat_windows_wide(pattern);
     WIN32_FIND_DATAW data = {0};
     HANDLE find = wide ? FindFirstFileW(wide, &data) : INVALID_HANDLE_VALUE;
     free(wide);
     if (find == INVALID_HANDLE_VALUE) return false;
     bool found = false;
     do {
-        char filename[BONGO_CAT_NEO_PATH_CAP];
+        char filename[BONGO_CAT_PATH_CAP];
         if (!(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) &&
-            bongo_cat_neo_windows_utf8(data.cFileName, filename, sizeof(filename)) &&
+            bongo_cat_windows_utf8(data.cFileName, filename, sizeof(filename)) &&
             ends_with(filename, suffix)) {
             snprintf(name, cap, "%s", filename);
             found = true;
@@ -165,21 +165,21 @@ bool bongo_cat_neo_path_find_suffix(const char *dir, const char *suffix, char *n
 #endif
 }
 
-int bongo_cat_neo_path_find_unique_suffix(const char *dir, const char *suffix,
+int bongo_cat_path_find_unique_suffix(const char *dir, const char *suffix,
     char *name, size_t cap) {
 #ifdef _WIN32
-    char pattern[BONGO_CAT_NEO_PATH_CAP];
-    if (!bongo_cat_neo_path_join(pattern, sizeof(pattern), dir, "*")) return 0;
-    wchar_t *wide = bongo_cat_neo_windows_wide(pattern);
+    char pattern[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_path_join(pattern, sizeof(pattern), dir, "*")) return 0;
+    wchar_t *wide = bongo_cat_windows_wide(pattern);
     WIN32_FIND_DATAW data = {0};
     HANDLE find = wide ? FindFirstFileW(wide, &data) : INVALID_HANDLE_VALUE;
     free(wide);
     if (find == INVALID_HANDLE_VALUE) return 0;
     int count = 0;
     do {
-        char filename[BONGO_CAT_NEO_PATH_CAP];
+        char filename[BONGO_CAT_PATH_CAP];
         if (!(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) &&
-            bongo_cat_neo_windows_utf8(data.cFileName, filename, sizeof(filename)) &&
+            bongo_cat_windows_utf8(data.cFileName, filename, sizeof(filename)) &&
             ends_with(filename, suffix)) {
             if (++count == 1) snprintf(name, cap, "%s", filename);
         }
@@ -191,9 +191,9 @@ int bongo_cat_neo_path_find_unique_suffix(const char *dir, const char *suffix,
     if (!handle) return 0;
     int count = 0; struct dirent *entry;
     while ((entry = readdir(handle))) if (ends_with(entry->d_name, suffix)) {
-        char path[BONGO_CAT_NEO_PATH_CAP];
-        if (!bongo_cat_neo_path_join(path, sizeof(path), dir, entry->d_name) ||
-            !bongo_cat_neo_path_is_file(path)) continue;
+        char path[BONGO_CAT_PATH_CAP];
+        if (!bongo_cat_path_join(path, sizeof(path), dir, entry->d_name) ||
+            !bongo_cat_path_is_file(path)) continue;
         if (++count == 1) snprintf(name, cap, "%s", entry->d_name);
     }
     closedir(handle);

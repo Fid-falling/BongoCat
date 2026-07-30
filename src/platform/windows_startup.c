@@ -1,4 +1,4 @@
-#include "bongo_cat_neo/platform.h"
+#include "bongo_cat/platform.h"
 #include "windows_startup.h"
 
 #ifdef _WIN32
@@ -9,9 +9,9 @@
 
 static HANDLE instance_mutex;
 static HANDLE instance_wake_event;
-static wchar_t instance_title[96] = BONGO_CAT_NEO_NAME_W;
-static wchar_t instance_mutex_name[128] = L"Local\\BongoCatNeo.SingleInstance";
-static wchar_t instance_wake_name[128] = L"Local\\BongoCatNeo.WakeInstance";
+static wchar_t instance_title[96] = BONGO_CAT_NAME_W;
+static wchar_t instance_mutex_name[128] = L"Local\\BongoCat.SingleInstance";
+static wchar_t instance_wake_name[128] = L"Local\\BongoCat.WakeInstance";
 static bool identity_ready;
 
 static bool safe_identity(const char *value) {
@@ -24,19 +24,19 @@ static bool safe_identity(const char *value) {
 static void initialize_identity(void) {
     if (identity_ready) return;
     identity_ready = true;
-    const char *value = SDL_getenv_unsafe("BONGO_CAT_NEO_TEST_INSTANCE_ID");
+    const char *value = SDL_getenv_unsafe("BONGO_CAT_TEST_INSTANCE_ID");
     if (!safe_identity(value)) return;
     swprintf(instance_title, sizeof(instance_title) / sizeof(instance_title[0]),
-        L"%ls [%hs]", BONGO_CAT_NEO_NAME_W, value);
+        L"%ls [%hs]", BONGO_CAT_NAME_W, value);
     swprintf(instance_mutex_name,
         sizeof(instance_mutex_name) / sizeof(instance_mutex_name[0]),
-        L"Local\\BongoCatNeo.SingleInstance.%hs", value);
+        L"Local\\BongoCat.SingleInstance.%hs", value);
     swprintf(instance_wake_name,
         sizeof(instance_wake_name) / sizeof(instance_wake_name[0]),
-        L"Local\\BongoCatNeo.WakeInstance.%hs", value);
+        L"Local\\BongoCat.WakeInstance.%hs", value);
 }
 
-const wchar_t *bongo_cat_neo_windows_instance_title(void) {
+const wchar_t *bongo_cat_windows_instance_title(void) {
     initialize_identity(); return instance_title;
 }
 
@@ -63,9 +63,9 @@ static void wake_existing_instance(void) {
     }
 }
 
-bool bongo_cat_neo_platform_single_instance_begin(void) {
+bool bongo_cat_platform_single_instance_begin(void) {
     initialize_identity();
-    if (SDL_getenv_unsafe("BONGO_CAT_NEO_ALLOW_TEST_INSTANCES")) return true;
+    if (SDL_getenv_unsafe("BONGO_CAT_ALLOW_TEST_INSTANCES")) return true;
     instance_mutex = CreateMutexW(NULL, FALSE, instance_mutex_name);
     if (!instance_mutex) return true;
     if (GetLastError() != ERROR_ALREADY_EXISTS) {
@@ -82,48 +82,48 @@ bool bongo_cat_neo_platform_single_instance_begin(void) {
     return false;
 }
 
-bool bongo_cat_neo_platform_single_instance_take_wake(void) {
+bool bongo_cat_platform_single_instance_take_wake(void) {
     return instance_wake_event &&
         WaitForSingleObject(instance_wake_event, 0) == WAIT_OBJECT_0;
 }
 
-void bongo_cat_neo_platform_single_instance_end(void) {
+void bongo_cat_platform_single_instance_end(void) {
     if (instance_wake_event) CloseHandle(instance_wake_event);
     instance_wake_event = NULL;
     if (instance_mutex) CloseHandle(instance_mutex);
     instance_mutex = NULL;
 }
 
-BongoCatNeoResult bongo_cat_neo_platform_set_autostart(bool enabled,
-    BongoCatNeoError *error) {
+BongoCatResult bongo_cat_platform_set_autostart(bool enabled,
+    BongoCatError *error) {
     HKEY key;
     LONG result = RegCreateKeyExW(HKEY_CURRENT_USER,
         L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, NULL, 0,
         KEY_SET_VALUE, NULL, &key, NULL);
     if (result != ERROR_SUCCESS) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM,
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM,
             "Cannot open autostart registry key");
-        return BONGO_CAT_NEO_ERROR_PLATFORM;
+        return BONGO_CAT_ERROR_PLATFORM;
     }
     if (enabled) {
-        wchar_t executable[BONGO_CAT_NEO_PATH_CAP];
-        DWORD length = GetModuleFileNameW(NULL, executable, BONGO_CAT_NEO_PATH_CAP);
-        if (!length || length >= BONGO_CAT_NEO_PATH_CAP) {
-            RegCloseKey(key); bongo_cat_neo_error_set(error,
-                BONGO_CAT_NEO_ERROR_PLATFORM, "Cannot determine executable path");
-            return BONGO_CAT_NEO_ERROR_PLATFORM;
+        wchar_t executable[BONGO_CAT_PATH_CAP];
+        DWORD length = GetModuleFileNameW(NULL, executable, BONGO_CAT_PATH_CAP);
+        if (!length || length >= BONGO_CAT_PATH_CAP) {
+            RegCloseKey(key); bongo_cat_error_set(error,
+                BONGO_CAT_ERROR_PLATFORM, "Cannot determine executable path");
+            return BONGO_CAT_ERROR_PLATFORM;
         }
-        wchar_t command[BONGO_CAT_NEO_PATH_CAP + 20];
-        swprintf(command, BONGO_CAT_NEO_PATH_CAP + 20, L"\"%ls\" --autostart", executable);
-        result = RegSetValueExW(key, BONGO_CAT_NEO_NAME_W, 0, REG_SZ,
+        wchar_t command[BONGO_CAT_PATH_CAP + 20];
+        swprintf(command, BONGO_CAT_PATH_CAP + 20, L"\"%ls\" --autostart", executable);
+        result = RegSetValueExW(key, BONGO_CAT_NAME_W, 0, REG_SZ,
             (const BYTE *)command, (DWORD)((wcslen(command) + 1) * sizeof(wchar_t)));
-    } else result = RegDeleteValueW(key, BONGO_CAT_NEO_NAME_W);
+    } else result = RegDeleteValueW(key, BONGO_CAT_NAME_W);
     RegCloseKey(key);
     if (result != ERROR_SUCCESS && result != ERROR_FILE_NOT_FOUND) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM,
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM,
             "Cannot update autostart setting");
-        return BONGO_CAT_NEO_ERROR_PLATFORM;
+        return BONGO_CAT_ERROR_PLATFORM;
     }
-    return BONGO_CAT_NEO_OK;
+    return BONGO_CAT_OK;
 }
 #endif

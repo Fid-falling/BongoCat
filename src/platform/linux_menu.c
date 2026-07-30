@@ -10,19 +10,19 @@
 
 typedef struct LinuxMenuRow {
     const char *label;
-    BongoCatNeoMenuAction action;
+    BongoCatMenuAction action;
 } LinuxMenuRow;
 
-#define LINUX_MENU_HINT ((BongoCatNeoMenuAction)-4)
-#define LINUX_MENU_MOTIONS ((BongoCatNeoMenuAction)-5)
-#define LINUX_MENU_EXPRESSIONS ((BongoCatNeoMenuAction)-6)
+#define LINUX_MENU_HINT ((BongoCatMenuAction)-4)
+#define LINUX_MENU_MOTIONS ((BongoCatMenuAction)-5)
+#define LINUX_MENU_EXPRESSIONS ((BongoCatMenuAction)-6)
 
 typedef struct LinuxMenuPalette {
     unsigned long surface, field, border, text, muted, accent;
 } LinuxMenuPalette;
 
-static BongoCatNeoMenuAction finish(const BongoCatNeoMenuLabels *labels,
-    BongoCatNeoMenuAction action) {
+static BongoCatMenuAction finish(const BongoCatMenuLabels *labels,
+    BongoCatMenuAction action) {
     if (labels->restore) labels->restore(labels->preview_userdata, action);
     return action;
 }
@@ -70,7 +70,7 @@ static void draw_menu(Display *display, Window window, GC gc,
 }
 
 static int popup_rows(Display *display, Window owner, const LinuxMenuRow *rows,
-    int count, const BongoCatNeoMenuLabels *labels) {
+    int count, const BongoCatMenuLabels *labels) {
     if (!display || !rows || count < 1) return -1;
     Window root; int root_x, root_y, win_x, win_y; unsigned mask;
     XQueryPointer(display, DefaultRootWindow(display), &root, &owner,
@@ -113,13 +113,13 @@ static int popup_rows(Display *display, Window owner, const LinuxMenuRow *rows,
                 rows[next].action != LINUX_MENU_HINT ? next : -1;
             if (next != hover && labels->preview)
                 labels->preview(labels->preview_userdata, next >= 0 ?
-                    rows[next].action : BONGO_CAT_NEO_MENU_NONE);
+                    rows[next].action : BONGO_CAT_MENU_NONE);
             hover = next;
             draw_menu(display, menu, gc, rows, count, hover, &colors);
         } else if (event.type == LeaveNotify) {
             hover = -1;
             if (labels->preview) labels->preview(labels->preview_userdata,
-                BONGO_CAT_NEO_MENU_NONE);
+                BONGO_CAT_MENU_NONE);
             draw_menu(display, menu, gc, rows, count, hover, &colors);
         } else if (event.type == ButtonPress) {
             int next = event.xbutton.y >= 8 ? (event.xbutton.y - 8) / 34 : -1;
@@ -131,28 +131,28 @@ static int popup_rows(Display *display, Window owner, const LinuxMenuRow *rows,
     XUngrabPointer(display, CurrentTime); XUngrabKeyboard(display, CurrentTime);
     XFreeGC(display, gc);
     XDestroyWindow(display, menu); XFlush(display);
-    return selected >= 0 ? rows[selected].action : BONGO_CAT_NEO_MENU_NONE;
+    return selected >= 0 ? rows[selected].action : BONGO_CAT_MENU_NONE;
 }
 
-BongoCatNeoMenuAction bongo_cat_neo_linux_context_menu(BongoCatNeoPlatform *platform,
-    const BongoCatNeoMenuLabels *labels) {
-    if (!platform || !labels) return BONGO_CAT_NEO_MENU_NONE;
+BongoCatMenuAction bongo_cat_linux_context_menu(BongoCatPlatform *platform,
+    const BongoCatMenuLabels *labels) {
+    if (!platform || !labels) return BONGO_CAT_MENU_NONE;
     SDL_PropertiesID properties = SDL_GetWindowProperties(platform->window);
     Display *display = SDL_GetPointerProperty(properties,
         SDL_PROP_WINDOW_X11_DISPLAY_POINTER, NULL);
     Window owner = (Window)SDL_GetNumberProperty(properties,
         SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
-    if (!display || !owner) return finish(labels, BONGO_CAT_NEO_MENU_NONE);
-    char pass[BONGO_CAT_NEO_ID_CAP], top[BONGO_CAT_NEO_ID_CAP];
+    if (!display || !owner) return finish(labels, BONGO_CAT_MENU_NONE);
+    char pass[BONGO_CAT_ID_CAP], top[BONGO_CAT_ID_CAP];
     snprintf(pass, sizeof(pass), "%s%s", labels->pass_through_checked ? "[x] " : "",
         labels->pass_through);
     snprintf(top, sizeof(top), "%s%s", labels->always_on_top_checked ? "[x] " : "",
         labels->always_on_top);
     LinuxMenuRow main_rows[10]; int main_count = 0;
-    main_rows[main_count++] = (LinuxMenuRow){labels->preferences, BONGO_CAT_NEO_MENU_PREFERENCES};
-    main_rows[main_count++] = (LinuxMenuRow){labels->hide, BONGO_CAT_NEO_MENU_HIDE};
-    main_rows[main_count++] = (LinuxMenuRow){pass, BONGO_CAT_NEO_MENU_PASS_THROUGH};
-    main_rows[main_count++] = (LinuxMenuRow){top, BONGO_CAT_NEO_MENU_ALWAYS_ON_TOP};
+    main_rows[main_count++] = (LinuxMenuRow){labels->preferences, BONGO_CAT_MENU_PREFERENCES};
+    main_rows[main_count++] = (LinuxMenuRow){labels->hide, BONGO_CAT_MENU_HIDE};
+    main_rows[main_count++] = (LinuxMenuRow){pass, BONGO_CAT_MENU_PASS_THROUGH};
+    main_rows[main_count++] = (LinuxMenuRow){top, BONGO_CAT_MENU_ALWAYS_ON_TOP};
     main_rows[main_count++] = (LinuxMenuRow){labels->window_size, -1};
     main_rows[main_count++] = (LinuxMenuRow){labels->opacity, -2};
     if (labels->motion_count) main_rows[main_count++] =
@@ -160,40 +160,40 @@ BongoCatNeoMenuAction bongo_cat_neo_linux_context_menu(BongoCatNeoPlatform *plat
     if (labels->expression_count) main_rows[main_count++] =
         (LinuxMenuRow){labels->expression, LINUX_MENU_EXPRESSIONS};
     main_rows[main_count++] = (LinuxMenuRow){labels->model, -3};
-    main_rows[main_count++] = (LinuxMenuRow){labels->exit, BONGO_CAT_NEO_MENU_EXIT};
-    BongoCatNeoMenuAction action = popup_rows(display, owner, main_rows,
+    main_rows[main_count++] = (LinuxMenuRow){labels->exit, BONGO_CAT_MENU_EXIT};
+    BongoCatMenuAction action = popup_rows(display, owner, main_rows,
         main_count, labels);
-    if (action == (BongoCatNeoMenuAction)-1) {
+    if (action == (BongoCatMenuAction)-1) {
         const int values[] = {50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200};
         LinuxMenuRow rows[17]; char text[16][16];
         for (int i = 0; i < 16; ++i) { snprintf(text[i], sizeof(text[i]), "%d%%", values[i]);
-            rows[i] = (LinuxMenuRow){text[i], BONGO_CAT_NEO_MENU_SCALE_50 + i}; }
+            rows[i] = (LinuxMenuRow){text[i], BONGO_CAT_MENU_SCALE_50 + i}; }
         rows[16] = (LinuxMenuRow){labels->wheel_size_hint, LINUX_MENU_HINT};
         action = popup_rows(display, owner, rows, 17, labels);
-    } else if (action == (BongoCatNeoMenuAction)-2) {
+    } else if (action == (BongoCatMenuAction)-2) {
         const int values[] = {10,20,30,40,50,60,70,80,90,100};
         LinuxMenuRow rows[11]; char text[10][16];
         for (int i = 0; i < 10; ++i) { snprintf(text[i], sizeof(text[i]), "%d%%", values[i]);
-            rows[i] = (LinuxMenuRow){text[i], BONGO_CAT_NEO_MENU_OPACITY_10 + i}; }
+            rows[i] = (LinuxMenuRow){text[i], BONGO_CAT_MENU_OPACITY_10 + i}; }
         rows[10] = (LinuxMenuRow){labels->wheel_opacity_hint, LINUX_MENU_HINT};
         action = popup_rows(display, owner, rows, 11, labels);
-    } else if (action == (BongoCatNeoMenuAction)-3 && labels->model_count) {
-        LinuxMenuRow rows[BONGO_CAT_NEO_MODEL_CAP];
+    } else if (action == (BongoCatMenuAction)-3 && labels->model_count) {
+        LinuxMenuRow rows[BONGO_CAT_MODEL_CAP];
         for (size_t i = 0; i < labels->model_count; ++i)
             rows[i] = (LinuxMenuRow){labels->model_names[i],
-                BONGO_CAT_NEO_MENU_MODEL_FIRST + (int)i};
+                BONGO_CAT_MENU_MODEL_FIRST + (int)i};
         action = popup_rows(display, owner, rows, (int)labels->model_count, labels);
     } else if (action == LINUX_MENU_MOTIONS) {
-        LinuxMenuRow rows[BONGO_CAT_NEO_BEHAVIOR_CAP];
+        LinuxMenuRow rows[BONGO_CAT_BEHAVIOR_CAP];
         for (size_t i = 0; i < labels->motion_count; ++i)
             rows[i] = (LinuxMenuRow){labels->motion_names[i],
-                BONGO_CAT_NEO_MENU_MOTION_FIRST + (int)i};
+                BONGO_CAT_MENU_MOTION_FIRST + (int)i};
         action = popup_rows(display, owner, rows, (int)labels->motion_count, labels);
     } else if (action == LINUX_MENU_EXPRESSIONS) {
-        LinuxMenuRow rows[BONGO_CAT_NEO_BEHAVIOR_CAP];
+        LinuxMenuRow rows[BONGO_CAT_BEHAVIOR_CAP];
         for (size_t i = 0; i < labels->expression_count; ++i)
             rows[i] = (LinuxMenuRow){labels->expression_names[i],
-                BONGO_CAT_NEO_MENU_EXPRESSION_FIRST + (int)i};
+                BONGO_CAT_MENU_EXPRESSION_FIRST + (int)i};
         action = popup_rows(display, owner, rows, (int)labels->expression_count, labels);
     }
     return finish(labels, action);

@@ -1,7 +1,7 @@
 function Send-MenuHighlight([IntPtr]$Owner, [IntPtr]$Menu, [int]$Position) {
-    [uint32]$id = [BongoCatNeoMenuNative]::GetMenuItemID($Menu, $Position)
+    [uint32]$id = [BongoCatMenuNative]::GetMenuItemID($Menu, $Position)
     if ($id -eq [uint32]::MaxValue) { return $false }
-    [void][BongoCatNeoMenuNative]::SendMessageW(
+    [void][BongoCatMenuNative]::SendMessageW(
         $Owner, 0x011F, [IntPtr]::new([int64]$id), $Menu)
     return $true
 }

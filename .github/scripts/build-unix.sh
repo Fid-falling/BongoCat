@@ -2,7 +2,7 @@
 
 set -uo pipefail
 
-log="${RUNNER_TEMP:-.}/bongo-cat-neo-native-build.log"
+log="${RUNNER_TEMP:-.}/bongo-cat-native-build.log"
 set +e
 "$@" 2>&1 | tee "$log"
 status=${PIPESTATUS[0]}

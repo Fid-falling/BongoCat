@@ -1,7 +1,7 @@
 #include "model_import.h"
 #include "runtime.h"
-#include "bongo_cat_neo/file.h"
-#include "bongo_cat_neo/path.h"
+#include "bongo_cat/file.h"
+#include "bongo_cat/path.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,16 +24,16 @@ static bool safe_reference(const char *value) {
 }
 
 static bool referenced_file(const char *root, const char *relative) {
-    char path[BONGO_CAT_NEO_PATH_CAP];
+    char path[BONGO_CAT_PATH_CAP];
     return safe_reference(relative) &&
-        bongo_cat_neo_path_join(path, sizeof(path), root, relative) && bongo_cat_neo_path_is_file(path);
+        bongo_cat_path_join(path, sizeof(path), root, relative) && bongo_cat_path_is_file(path);
 }
 
 static bool referenced_texture(const char *root, const char *relative) {
-    char path[BONGO_CAT_NEO_PATH_CAP];
+    char path[BONGO_CAT_PATH_CAP];
     if (!safe_reference(relative) ||
-        !bongo_cat_neo_path_join(path, sizeof(path), root, relative)) return false;
-    FILE *file = bongo_cat_neo_file_open(path, "rb");
+        !bongo_cat_path_join(path, sizeof(path), root, relative)) return false;
+    FILE *file = bongo_cat_file_open(path, "rb");
     int width = 0, height = 0, channels = 0;
     bool valid = file && stbi_info_from_file(file, &width, &height, &channels) &&
         width > 0 && height > 0 && channels > 0;
@@ -71,11 +71,11 @@ static bool behavior_references(const char *root, yyjson_val *refs) {
     return true;
 }
 
-bool bongo_cat_neo_import_manifest_valid(const char *root, const char *setting,
-    BongoCatNeoError *error) {
-    char path[BONGO_CAT_NEO_PATH_CAP];
-    if (!bongo_cat_neo_path_join(path, sizeof(path), root, setting)) return false;
-    FILE *file = bongo_cat_neo_file_open(path, "rb");
+bool bongo_cat_import_manifest_valid(const char *root, const char *setting,
+    BongoCatError *error) {
+    char path[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_path_join(path, sizeof(path), root, setting)) return false;
+    FILE *file = bongo_cat_file_open(path, "rb");
     yyjson_doc *document = file ? yyjson_read_fp(file, 0, NULL, NULL) : NULL;
     if (file) fclose(file);
     yyjson_val *manifest = document ? yyjson_doc_get_root(document) : NULL;
@@ -93,7 +93,7 @@ bool bongo_cat_neo_import_manifest_valid(const char *root, const char *setting,
         optional_reference(root, refs, "Pose") &&
         optional_reference(root, refs, "DisplayInfo") && behavior_references(root, refs);
     yyjson_doc_free(document);
-    if (!valid && error) bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
+    if (!valid && error) bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
         "Model manifest or referenced assets are invalid: %s", path);
     return valid;
 }
@@ -109,19 +109,19 @@ static bool path_parent(const char *path, char *parent, size_t capacity) {
     return true;
 }
 
-static BongoCatNeoModelMode import_mode(const char *path) {
+static BongoCatModelMode import_mode(const char *path) {
     const char *cursor = path;
-    BongoCatNeoModelMode mode = BONGO_CAT_NEO_MODE_STANDARD;
+    BongoCatModelMode mode = BONGO_CAT_MODE_STANDARD;
     while (cursor && *cursor) {
         while (*cursor == '/' || *cursor == '\\') cursor++;
         const char *end = strpbrk(cursor, "/\\");
         size_t length = end ? (size_t)(end - cursor) : strlen(cursor);
         if (length == 8 && SDL_strncasecmp(cursor, "keyboard", length) == 0)
-            mode = BONGO_CAT_NEO_MODE_KEYBOARD;
+            mode = BONGO_CAT_MODE_KEYBOARD;
         else if (length == 7 && SDL_strncasecmp(cursor, "gamepad", length) == 0)
-            mode = BONGO_CAT_NEO_MODE_GAMEPAD;
+            mode = BONGO_CAT_MODE_GAMEPAD;
         else if (length == 8 && SDL_strncasecmp(cursor, "standard", length) == 0)
-            mode = BONGO_CAT_NEO_MODE_STANDARD;
+            mode = BONGO_CAT_MODE_STANDARD;
         if (!end) break;
         cursor = end + 1;
     }
@@ -132,9 +132,9 @@ static bool has_preview_assets(const char *directory) {
     const char *names[] = {"resources", "cover.png", "cat.png", "bg.png",
         "mousebg.png", "tabletbg.png"};
     for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {
-        char path[BONGO_CAT_NEO_PATH_CAP];
-        if (!bongo_cat_neo_path_join(path, sizeof(path), directory, names[i])) continue;
-        if (bongo_cat_neo_path_is_file(path) || bongo_cat_neo_path_is_dir(path)) return true;
+        char path[BONGO_CAT_PATH_CAP];
+        if (!bongo_cat_path_join(path, sizeof(path), directory, names[i])) continue;
+        if (bongo_cat_path_is_file(path) || bongo_cat_path_is_dir(path)) return true;
     }
     return false;
 }
@@ -142,9 +142,9 @@ static bool has_preview_assets(const char *directory) {
 static bool has_cover_asset(const char *directory) {
     const char *names[] = {"resources/cover.png", "cover.png", "cat.png", "bg.png"};
     for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {
-        char path[BONGO_CAT_NEO_PATH_CAP];
-        if (bongo_cat_neo_path_join(path, sizeof(path), directory, names[i]) &&
-            bongo_cat_neo_path_is_file(path)) return true;
+        char path[BONGO_CAT_PATH_CAP];
+        if (bongo_cat_path_join(path, sizeof(path), directory, names[i]) &&
+            bongo_cat_path_is_file(path)) return true;
     }
     return false;
 }
@@ -153,29 +153,29 @@ static bool has_background_asset(const char *directory) {
     const char *names[] = {"resources/background.png", "background.png",
         "bg.png", "mousebg.png", "tabletbg.png"};
     for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {
-        char path[BONGO_CAT_NEO_PATH_CAP];
-        if (bongo_cat_neo_path_join(path, sizeof(path), directory, names[i]) &&
-            bongo_cat_neo_path_is_file(path)) return true;
+        char path[BONGO_CAT_PATH_CAP];
+        if (bongo_cat_path_join(path, sizeof(path), directory, names[i]) &&
+            bongo_cat_path_is_file(path)) return true;
     }
     return false;
 }
 
-static bool add_candidate(BongoCatNeoImportDiscovery *discovery, const char *directory,
+static bool add_candidate(BongoCatImportDiscovery *discovery, const char *directory,
     const char *setting) {
-    if (discovery->count >= BONGO_CAT_NEO_IMPORT_CANDIDATE_CAP) return false;
+    if (discovery->count >= BONGO_CAT_IMPORT_CANDIDATE_CAP) return false;
     for (size_t i = 0; i < discovery->count; ++i)
         if (strcmp(discovery->candidates[i].directory, directory) == 0) {
             if (strcmp(discovery->candidates[i].setting, setting) == 0) return true;
             discovery->ambiguous = true;
             return false;
         }
-    BongoCatNeoImportCandidate *candidate = &discovery->candidates[discovery->count++];
+    BongoCatImportCandidate *candidate = &discovery->candidates[discovery->count++];
     snprintf(candidate->directory, sizeof(candidate->directory), "%s", directory);
     snprintf(candidate->setting, sizeof(candidate->setting), "%s", setting);
     snprintf(candidate->assets, sizeof(candidate->assets), "%s", directory);
     snprintf(candidate->package_root, sizeof(candidate->package_root), "%s", directory);
-    candidate->format = BONGO_CAT_NEO_IMPORT_TAURI;
-    char parent[BONGO_CAT_NEO_PATH_CAP];
+    candidate->format = BONGO_CAT_IMPORT_TAURI;
+    char parent[BONGO_CAT_PATH_CAP];
     if ((!has_cover_asset(directory) || !has_background_asset(directory)) &&
         path_parent(directory, parent, sizeof(parent)) && has_preview_assets(parent))
         snprintf(candidate->assets, sizeof(candidate->assets), "%s", parent);
@@ -188,56 +188,56 @@ static bool suffix(const char *name, const char *ending) {
     return a >= b && strcmp(name + a - b, ending) == 0;
 }
 
-static BongoCatNeoPathVisit discover_item(void *userdata,
+static BongoCatPathVisit discover_item(void *userdata,
     const char *dirname, const char *name) {
-    BongoCatNeoImportDiscovery *discovery = userdata;
-    char path[BONGO_CAT_NEO_PATH_CAP];
-    if (!bongo_cat_neo_path_join(path, sizeof(path), dirname, name))
-        return BONGO_CAT_NEO_PATH_FAILURE;
-    if (bongo_cat_neo_path_is_file(path) && suffix(name, ".model3.json")) {
-        if (bongo_cat_neo_import_manifest_valid(dirname, name, NULL) &&
-            !add_candidate(discovery, dirname, name)) return BONGO_CAT_NEO_PATH_FAILURE;
-        return BONGO_CAT_NEO_PATH_CONTINUE;
+    BongoCatImportDiscovery *discovery = userdata;
+    char path[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_path_join(path, sizeof(path), dirname, name))
+        return BONGO_CAT_PATH_FAILURE;
+    if (bongo_cat_path_is_file(path) && suffix(name, ".model3.json")) {
+        if (bongo_cat_import_manifest_valid(dirname, name, NULL) &&
+            !add_candidate(discovery, dirname, name)) return BONGO_CAT_PATH_FAILURE;
+        return BONGO_CAT_PATH_CONTINUE;
     }
-    if (!bongo_cat_neo_path_is_dir(path) || discovery->depth >= 8 || name[0] == '.')
-        return BONGO_CAT_NEO_PATH_CONTINUE;
+    if (!bongo_cat_path_is_dir(path) || discovery->depth >= 8 || name[0] == '.')
+        return BONGO_CAT_PATH_CONTINUE;
     discovery->depth++;
-    bool ok = bongo_cat_neo_path_enumerate(path, discover_item, discovery);
+    bool ok = bongo_cat_path_enumerate(path, discover_item, discovery);
     discovery->depth--;
-    return ok ? BONGO_CAT_NEO_PATH_CONTINUE : BONGO_CAT_NEO_PATH_FAILURE;
+    return ok ? BONGO_CAT_PATH_CONTINUE : BONGO_CAT_PATH_FAILURE;
 }
 
-static int rank(const BongoCatNeoImportCandidate *candidate) {
-    return candidate->mode == BONGO_CAT_NEO_MODE_STANDARD ? 0 :
-        candidate->mode == BONGO_CAT_NEO_MODE_KEYBOARD ? 1 : 2;
+static int rank(const BongoCatImportCandidate *candidate) {
+    return candidate->mode == BONGO_CAT_MODE_STANDARD ? 0 :
+        candidate->mode == BONGO_CAT_MODE_KEYBOARD ? 1 : 2;
 }
 
 static int compare_candidates(const void *left, const void *right) {
-    const BongoCatNeoImportCandidate *a = left, *b = right;
+    const BongoCatImportCandidate *a = left, *b = right;
     int difference = rank(a) - rank(b);
     return difference ? difference : strcmp(a->directory, b->directory);
 }
 
-bool bongo_cat_neo_import_discover(const char *source, BongoCatNeoImportDiscovery *discovery,
-    BongoCatNeoError *error) {
+bool bongo_cat_import_discover(const char *source, BongoCatImportDiscovery *discovery,
+    BongoCatError *error) {
     memset(discovery, 0, sizeof(*discovery));
-    int mver = bongo_cat_neo_import_mver_discover(source, discovery, error);
+    int mver = bongo_cat_import_mver_discover(source, discovery, error);
     if (mver != 0) return mver > 0;
-    int patch = bongo_cat_neo_import_mver_patch_discover(source, discovery, error);
+    int patch = bongo_cat_import_mver_patch_discover(source, discovery, error);
     if (patch != 0) return patch > 0;
-    if (!bongo_cat_neo_path_enumerate(source, discover_item, discovery)) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
+    if (!bongo_cat_path_enumerate(source, discover_item, discovery)) {
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
             discovery->ambiguous ? "A model directory contains multiple model3 manifests" :
             "Cannot scan model directory or it contains too many models");
         return false;
     }
     if (!discovery->count) {
-        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
             "Selected directory contains no valid Live2D model3 JSON");
         return false;
     }
     for (size_t i = 0; i < discovery->count; ++i)
-        if (discovery->candidates[i].format == BONGO_CAT_NEO_IMPORT_TAURI)
+        if (discovery->candidates[i].format == BONGO_CAT_IMPORT_TAURI)
             snprintf(discovery->candidates[i].package_root,
                 sizeof(discovery->candidates[i].package_root), "%s", source);
     qsort(discovery->candidates, discovery->count,

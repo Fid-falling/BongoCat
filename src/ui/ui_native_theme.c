@@ -65,7 +65,7 @@ static void initialize(void) {
     load_ordinal(theme, 136, &flush_menu_themes, sizeof(flush_menu_themes));
 }
 
-void bongo_cat_neo_ui_native_menu_prepare(SDL_Window *window, bool dark) {
+void bongo_cat_ui_native_menu_prepare(SDL_Window *window, bool dark) {
     initialize();
     HWND handle = native_window(window);
     bool contrast = high_contrast();
@@ -78,7 +78,7 @@ void bongo_cat_neo_ui_native_menu_prepare(SDL_Window *window, bool dark) {
     if (handle && allow_dark_window) allow_dark_window(handle, !contrast);
 }
 
-void bongo_cat_neo_ui_native_theme_apply(SDL_Window *window, bool dark) {
+void bongo_cat_ui_native_theme_apply(SDL_Window *window, bool dark) {
     HWND handle = native_window(window);
     if (!handle) return;
     initialize();
@@ -91,14 +91,14 @@ void bongo_cat_neo_ui_native_theme_apply(SDL_Window *window, bool dark) {
     DwmSetWindowAttribute(handle, 33, &corner, sizeof(corner));
     if (set_window_theme) set_window_theme(handle,
         enabled ? L"DarkMode_Explorer" : NULL, NULL);
-    bongo_cat_neo_ui_native_menu_prepare(window, dark);
+    bongo_cat_ui_native_menu_prepare(window, dark);
 }
 #else
-void bongo_cat_neo_ui_native_theme_apply(SDL_Window *window, bool dark) {
+void bongo_cat_ui_native_theme_apply(SDL_Window *window, bool dark) {
     (void)window; (void)dark;
 }
 
-void bongo_cat_neo_ui_native_menu_prepare(SDL_Window *window, bool dark) {
+void bongo_cat_ui_native_menu_prepare(SDL_Window *window, bool dark) {
     (void)window; (void)dark;
 }
 #endif

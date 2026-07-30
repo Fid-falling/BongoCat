@@ -46,9 +46,9 @@ if (-not (Get-Command Get-FileHash -ErrorAction SilentlyContinue)) {
 }
 
 function Get-InstalledModelLayout([IO.DirectoryInfo]$Model) {
-    $descriptorPath = Join-Path $Model.FullName ".bongo-cat-neo-package.json"
+    $descriptorPath = Join-Path $Model.FullName ".bongo-cat-package.json"
     if (-not (Test-Path -LiteralPath $descriptorPath)) {
-        $modePath = Join-Path $Model.FullName ".bongo-cat-neo-mode"
+        $modePath = Join-Path $Model.FullName ".bongo-cat-mode"
         $mode = if (Test-Path -LiteralPath $modePath) {
             (Get-Content -LiteralPath $modePath -Raw).Trim()
         } else { "" }

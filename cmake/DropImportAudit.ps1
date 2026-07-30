@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build\BongoCatNeo.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build\BongoCat.exe" }
 if (-not $ModelDirectory) {
     $ModelDirectory = Join-Path $root "resources\assets\models\standard"
 }
@@ -21,7 +21,7 @@ Add-Type @'
 using System;
 using System.Text;
 using System.Runtime.InteropServices;
-public static class BongoCatNeoDropNative {
+public static class BongoCatDropNative {
     public delegate bool EnumProc(IntPtr handle, IntPtr data);
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L,T,R,B; }
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc proc, IntPtr data);
@@ -58,12 +58,12 @@ public static class BongoCatNeoDropNative {
 '@
 
 function Save-Window([IntPtr]$Handle, [string]$Path) {
-    $rect = [BongoCatNeoDropNative+Rect]::new()
-    if (-not [BongoCatNeoDropNative]::GetWindowRect($Handle, [ref]$rect)) { return $null }
-    [void][BongoCatNeoDropNative]::ShowWindow($Handle, 9)
-    [void][BongoCatNeoDropNative]::SetWindowPos(
+    $rect = [BongoCatDropNative+Rect]::new()
+    if (-not [BongoCatDropNative]::GetWindowRect($Handle, [ref]$rect)) { return $null }
+    [void][BongoCatDropNative]::ShowWindow($Handle, 9)
+    [void][BongoCatDropNative]::SetWindowPos(
         $Handle, [IntPtr](-1), 0, 0, 0, 0, 0x43)
-    [void][BongoCatNeoDropNative]::SetForegroundWindow($Handle)
+    [void][BongoCatDropNative]::SetForegroundWindow($Handle)
     Start-Sleep -Milliseconds 500
     $bitmap = [Drawing.Bitmap]::new($rect.R-$rect.L, $rect.B-$rect.T)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
@@ -78,23 +78,23 @@ function Save-Window([IntPtr]$Handle, [string]$Path) {
     }}
     $bitmap.Save($Path, [Drawing.Imaging.ImageFormat]::Png)
     $bitmap.Dispose()
-    [void][BongoCatNeoDropNative]::SetWindowPos(
+    [void][BongoCatDropNative]::SetWindowPos(
         $Handle, [IntPtr](-2), 0, 0, 0, 0, 0x03)
     return [pscustomobject]@{ Colors=$colors.Count; DarkPixels=$dark }
 }
 
 function Get-AppWindows([int]$Id) {
     $items = [Collections.Generic.List[object]]::new()
-    [BongoCatNeoDropNative]::EnumWindows({
+    [BongoCatDropNative]::EnumWindows({
         param($handle, $data)
         [uint32]$owner = 0
-        [void][BongoCatNeoDropNative]::GetWindowThreadProcessId($handle, [ref]$owner)
-        if ($owner -eq $Id -and [BongoCatNeoDropNative]::IsWindowVisible($handle)) {
-            $rect = [BongoCatNeoDropNative+Rect]::new()
-            if ([BongoCatNeoDropNative]::GetWindowRect($handle, [ref]$rect)) {
+        [void][BongoCatDropNative]::GetWindowThreadProcessId($handle, [ref]$owner)
+        if ($owner -eq $Id -and [BongoCatDropNative]::IsWindowVisible($handle)) {
+            $rect = [BongoCatDropNative+Rect]::new()
+            if ([BongoCatDropNative]::GetWindowRect($handle, [ref]$rect)) {
                 $items.Add([pscustomobject]@{
                     Handle=$handle; Area=($rect.R-$rect.L)*($rect.B-$rect.T)
-                    Class=[BongoCatNeoDropNative]::ClassName($handle)
+                    Class=[BongoCatDropNative]::ClassName($handle)
                 })
             }
         }
@@ -103,8 +103,8 @@ function Get-AppWindows([int]$Id) {
     return $items
 }
 
-$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
-$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "drop-import-audit-$PID"
+$env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_TEST_INSTANCE_ID = "drop-import-audit-$PID"
 Start-Sleep -Milliseconds $(if ($NativePrompt) { 1500 } else { 350 })
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 $dataRoot = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
@@ -118,7 +118,7 @@ do {
     if ($windows.Count -lt 2) { Start-Sleep -Milliseconds 100 }
 } until ($windows.Count -ge 2 -or [DateTime]::UtcNow -ge $windowDeadline)
 $target = ($windows | Sort-Object Area -Descending | Select-Object -First 1).Handle
-$posted = $target -and [BongoCatNeoDropNative]::Drop($target, $ModelDirectory)
+$posted = $target -and [BongoCatDropNative]::Drop($target, $ModelDirectory)
 $deadline = [DateTime]::UtcNow.AddSeconds(5)
 do {
     Start-Sleep -Milliseconds 100
@@ -134,7 +134,7 @@ if ($NativePrompt) {
         if ($dialogs.Count) {
             $sawDialog = $true
             foreach ($dialog in $dialogs) {
-                [void][BongoCatNeoDropNative]::PostMessageW(
+                [void][BongoCatDropNative]::PostMessageW(
                     $dialog.Handle, 0x111, [IntPtr]1, [IntPtr]::Zero)
             }
         }

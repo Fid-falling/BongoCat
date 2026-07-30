@@ -46,7 +46,7 @@ const expression = String.raw`(async () => {
       };
     })
   ]));
-  const common = [".neo-surface", ".side-nav", ".brand-logo-wrap", ".menu-item",
+  const common = [".bongocat-surface", ".side-nav", ".brand-logo-wrap", ".menu-item",
     ".content-header", ".page-scroll", ".section-title"];
   const pages = {};
   document.querySelector('[data-page="2"]').click();

@@ -12,9 +12,9 @@ static bool append(char *output, size_t capacity, const char *value) {
 }
 
 static const char *shortcut_key(int code, char generated[16]) {
-    BongoCatNeoMverKeyNames names = bongo_cat_neo_mver_device_names(code, 0, 1);
+    BongoCatMverKeyNames names = bongo_cat_mver_device_names(code, 0, 1);
     const char *name = names.items[0] ? names.items[0] : names.generated;
-    if (!name || !*name || bongo_cat_neo_mver_modifier_index(code) >= 0) return NULL;
+    if (!name || !*name || bongo_cat_mver_modifier_index(code) >= 0) return NULL;
     if (strncmp(name, "Key", 3) == 0 || strncmp(name, "Num", 3) == 0) {
         generated[0] = name[3]; generated[1] = '\0'; return generated;
     }
@@ -34,14 +34,14 @@ static bool keyboard_chord(yyjson_val *row, char *output, size_t capacity) {
     yyjson_arr_foreach(row, index, count, key) {
         if (!yyjson_is_int(key) && !yyjson_is_uint(key)) return false;
         int code = (int)yyjson_get_int(key);
-        int modifier = bongo_cat_neo_mver_modifier_index(code);
+        int modifier = bongo_cat_mver_modifier_index(code);
         if (modifier >= 0) { modifiers[modifier] = true; continue; }
         char generated[16]; const char *name = shortcut_key(code, generated);
         if (!name || primary) return false;
         primary = append(output, capacity, name);
     }
     if (!primary) return false;
-    char key_name[BONGO_CAT_NEO_SHORTCUT_CAP];
+    char key_name[BONGO_CAT_SHORTCUT_CAP];
     snprintf(key_name, sizeof(key_name), "%s", output); output[0] = '\0';
     return (!modifiers[1] || append(output, capacity, "Control+")) &&
         (!modifiers[0] || append(output, capacity, "Shift+")) &&
@@ -53,13 +53,13 @@ static bool gamepad_chord(yyjson_val *row, char *output, size_t capacity) {
     if (!yyjson_is_arr(row) || yyjson_arr_size(row) != 1) return false;
     yyjson_val *key = yyjson_arr_get_first(row);
     if (!yyjson_is_int(key) && !yyjson_is_uint(key)) return false;
-    BongoCatNeoMverKeyNames names = bongo_cat_neo_mver_gamepad_names(
+    BongoCatMverKeyNames names = bongo_cat_mver_gamepad_names(
         (int)yyjson_get_int(key));
     return names.count && names.items[0] &&
         snprintf(output, capacity, "Gamepad:%s", names.items[0]) > 0;
 }
 
-bool bongo_cat_neo_mver_chord(const BongoCatNeoImportCandidate *candidate,
+bool bongo_cat_mver_chord(const BongoCatImportCandidate *candidate,
     void *raw, char *output, size_t capacity) {
     yyjson_val *row = raw;
     yyjson_val *only = yyjson_is_arr(row) && yyjson_arr_size(row) == 1

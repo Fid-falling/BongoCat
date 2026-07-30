@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build-cubism\Release\BongoCatNeo.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build-cubism\Release\BongoCat.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build-cubism\preferences-interaction" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
@@ -21,7 +21,7 @@ Add-Type -AssemblyName System.Drawing
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
-public static class BongoCatNeoPreferencesNative {
+public static class BongoCatPreferencesNative {
     public delegate bool EnumProc(IntPtr handle, IntPtr data);
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L,T,R,B; }
     [StructLayout(LayoutKind.Sequential)] public struct Point { public int X,Y; }
@@ -44,17 +44,17 @@ public static class BongoCatNeoPreferencesNative {
     [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
 }
 '@
-[void][BongoCatNeoPreferencesNative]::SetProcessDPIAware()
+[void][BongoCatPreferencesNative]::SetProcessDPIAware()
 
 function Get-AppWindows([int]$ProcessId) {
     $windows = [Collections.Generic.List[object]]::new()
-    [BongoCatNeoPreferencesNative]::EnumWindows({
+    [BongoCatPreferencesNative]::EnumWindows({
         param($handle, $unused)
         [uint32]$owner = 0
-        [void][BongoCatNeoPreferencesNative]::GetWindowThreadProcessId($handle, [ref]$owner)
-        if ($owner -eq $ProcessId -and [BongoCatNeoPreferencesNative]::IsWindowVisible($handle)) {
-            $rect = [BongoCatNeoPreferencesNative+Rect]::new()
-            if ([BongoCatNeoPreferencesNative]::GetWindowRect($handle, [ref]$rect)) {
+        [void][BongoCatPreferencesNative]::GetWindowThreadProcessId($handle, [ref]$owner)
+        if ($owner -eq $ProcessId -and [BongoCatPreferencesNative]::IsWindowVisible($handle)) {
+            $rect = [BongoCatPreferencesNative+Rect]::new()
+            if ([BongoCatPreferencesNative]::GetWindowRect($handle, [ref]$rect)) {
                     $width = $rect.R - $rect.L; $height = $rect.B - $rect.T
                     $area = $width * $height
                     if ($area -gt 400) { $windows.Add([pscustomobject]@{
@@ -82,75 +82,75 @@ function Wait-Preferences([int]$ProcessId) {
 }
 
 function Get-ClientPoint([IntPtr]$Window, [double]$X, [double]$Y) {
-    $client = [BongoCatNeoPreferencesNative+Rect]::new()
-    [void][BongoCatNeoPreferencesNative]::GetClientRect($Window, [ref]$client)
-    $point = [BongoCatNeoPreferencesNative+Point]::new()
+    $client = [BongoCatPreferencesNative+Rect]::new()
+    [void][BongoCatPreferencesNative]::GetClientRect($Window, [ref]$client)
+    $point = [BongoCatPreferencesNative+Point]::new()
     $clientX = [int][Math]::Round($X * ($client.R - $client.L) / 900.0)
     $clientY = [int][Math]::Round($Y * ($client.B - $client.T) / 680.0)
     $point.X = $clientX; $point.Y = $clientY
-    [void][BongoCatNeoPreferencesNative]::ClientToScreen($Window, [ref]$point)
+    [void][BongoCatPreferencesNative]::ClientToScreen($Window, [ref]$point)
     return [pscustomobject]@{ X=$point.X; Y=$point.Y; ClientX=$clientX; ClientY=$clientY }
 }
 
 function Focus-Window([IntPtr]$Window, [double]$X, [double]$Y) {
     $point = Get-ClientPoint $Window $X $Y
-    [void][BongoCatNeoPreferencesNative]::SetForegroundWindow($Window)
-    [void][BongoCatNeoPreferencesNative]::SetCursorPos($point.X, $point.Y)
+    [void][BongoCatPreferencesNative]::SetForegroundWindow($Window)
+    [void][BongoCatPreferencesNative]::SetCursorPos($point.X, $point.Y)
     Start-Sleep -Milliseconds 300
 }
 
 function Invoke-PhysicalClick([IntPtr]$Window, [double]$X, [double]$Y) {
     $point = Get-ClientPoint $Window $X $Y
-    [void][BongoCatNeoPreferencesNative]::SetForegroundWindow($Window)
-    [void][BongoCatNeoPreferencesNative]::SetCursorPos($point.X, $point.Y)
+    [void][BongoCatPreferencesNative]::SetForegroundWindow($Window)
+    [void][BongoCatPreferencesNative]::SetCursorPos($point.X, $point.Y)
     Start-Sleep -Milliseconds 80
-    $clip = [BongoCatNeoPreferencesNative+Rect]::new()
+    $clip = [BongoCatPreferencesNative+Rect]::new()
     $clip.L = $point.X; $clip.T = $point.Y
     $clip.R = $point.X + 1; $clip.B = $point.Y + 1
     $packed = [IntPtr](($point.ClientX -band 0xffff) -bor
         (($point.ClientY -band 0xffff) -shl 16))
-    [void][BongoCatNeoPreferencesNative]::ClipCursorRect([ref]$clip)
+    [void][BongoCatPreferencesNative]::ClipCursorRect([ref]$clip)
     try {
-        [void][BongoCatNeoPreferencesNative]::SendMessageW(
+        [void][BongoCatPreferencesNative]::SendMessageW(
             $Window, 0x0200, [IntPtr]::Zero, $packed)
-        [void][BongoCatNeoPreferencesNative]::SendMessageW(
+        [void][BongoCatPreferencesNative]::SendMessageW(
             $Window, 0x0201, [IntPtr]1, $packed)
         Start-Sleep -Milliseconds 50
-        [void][BongoCatNeoPreferencesNative]::SetCursorPos($point.X, $point.Y)
-        [void][BongoCatNeoPreferencesNative]::SendMessageW(
+        [void][BongoCatPreferencesNative]::SetCursorPos($point.X, $point.Y)
+        [void][BongoCatPreferencesNative]::SendMessageW(
             $Window, 0x0202, [IntPtr]::Zero, $packed)
-    } finally { [void][BongoCatNeoPreferencesNative]::ReleaseCursor([IntPtr]::Zero) }
+    } finally { [void][BongoCatPreferencesNative]::ReleaseCursor([IntPtr]::Zero) }
     Start-Sleep -Milliseconds 300
 }
 
 function Invoke-Wheel([IntPtr]$Window, [double]$X, [double]$Y) {
     $point = Get-ClientPoint $Window $X $Y
-    [void][BongoCatNeoPreferencesNative]::SetForegroundWindow($Window)
-    [void][BongoCatNeoPreferencesNative]::SetCursorPos($point.X, $point.Y)
+    [void][BongoCatPreferencesNative]::SetForegroundWindow($Window)
+    [void][BongoCatPreferencesNative]::SetCursorPos($point.X, $point.Y)
     Start-Sleep -Milliseconds 50
     $position = [IntPtr]([long](($point.Y -band 0xFFFF) -shl 16) -bor
         [long]($point.X -band 0xFFFF))
     $wheel = [IntPtr]([long][uint32]4287102976)
-    [void][BongoCatNeoPreferencesNative]::PostMessageW($Window, 0x020A, $wheel, $position)
+    [void][BongoCatPreferencesNative]::PostMessageW($Window, 0x020A, $wheel, $position)
     Start-Sleep -Milliseconds 80
-    [void][BongoCatNeoPreferencesNative]::PostMessageW($Window, 0x020A, $wheel, $position)
+    [void][BongoCatPreferencesNative]::PostMessageW($Window, 0x020A, $wheel, $position)
     Start-Sleep -Milliseconds 300
 }
 
 function Save-Window([IntPtr]$Window, [string]$Name) {
-    [void][BongoCatNeoPreferencesNative]::ShowWindow($Window, 9)
-    [void][BongoCatNeoPreferencesNative]::SetWindowPos(
+    [void][BongoCatPreferencesNative]::ShowWindow($Window, 9)
+    [void][BongoCatPreferencesNative]::SetWindowPos(
         $Window, [IntPtr](-1), 20, 20, 0, 0, 0x0041)
-    [void][BongoCatNeoPreferencesNative]::SetForegroundWindow($Window)
+    [void][BongoCatPreferencesNative]::SetForegroundWindow($Window)
     Start-Sleep -Milliseconds 180
-    $rect = [BongoCatNeoPreferencesNative+Rect]::new()
-    [void][BongoCatNeoPreferencesNative]::GetWindowRect($Window, [ref]$rect)
+    $rect = [BongoCatPreferencesNative+Rect]::new()
+    [void][BongoCatPreferencesNative]::GetWindowRect($Window, [ref]$rect)
     $bitmap = [Drawing.Bitmap]::new($rect.R - $rect.L, $rect.B - $rect.T)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
     $printed = $false
     for ($attempt = 0; $attempt -lt 3; $attempt++) {
         $dc = $graphics.GetHdc()
-        try { $printed = [BongoCatNeoPreferencesNative]::PrintWindow($Window, $dc, 2) }
+        try { $printed = [BongoCatPreferencesNative]::PrintWindow($Window, $dc, 2) }
         finally { $graphics.ReleaseHdc($dc) }
         $capture = Measure-Capture $bitmap
         if ($printed -and $capture.Colors.Count -ge 16 -and
@@ -182,8 +182,8 @@ function Measure-Difference([string]$First, [string]$Second) {
     } finally { $a.Dispose(); $b.Dispose() }
 }
 
-$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
-$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "preferences-interaction-audit-$PID"
+$env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_TEST_INSTANCE_ID = "preferences-interaction-audit-$PID"
 $arguments = @("--ci-preferences", "--ci-preference-page=0", "--ci-language=zh-CN",
     "--ci-theme=light", "--ci-input-audit", "--ci-preference-shortcut",
     "--preferences=$configPath", "--data-root=$dataRoot")
@@ -208,9 +208,9 @@ try {
     }
     Invoke-Wheel $window 450 540
     Focus-Window $window 450 520
-    [BongoCatNeoPreferencesNative]::keybd_event(0x22, 0, 0, [UIntPtr]::Zero)
+    [BongoCatPreferencesNative]::keybd_event(0x22, 0, 0, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 80
-    [BongoCatNeoPreferencesNative]::keybd_event(0x22, 0, 2, [UIntPtr]::Zero)
+    [BongoCatPreferencesNative]::keybd_event(0x22, 0, 2, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 250
     $scrolled = Save-Window $window "03-scrolled.png"
     Invoke-Wheel $window 450 540
@@ -237,7 +237,7 @@ try {
 
     Invoke-PhysicalClick $window 82 495
     $about = Save-Window $window "08-about.png"
-    [void][BongoCatNeoPreferencesNative]::PostMessageW($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
+    [void][BongoCatPreferencesNative]::PostMessageW($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
     for ($i = 0; $i -lt 50 -and -not (Test-Path $configPath); $i++) {
         Start-Sleep -Milliseconds 50
     }
@@ -251,9 +251,9 @@ try {
         LanguageDifference = Measure-Difference $general $language
         EditDifference = Measure-Difference $shortcuts $edited
         DebouncePersisted = $debouncePersisted
-        PreferencesFormatValid = $config.format -eq "bongo-cat-neo/preferences" -and
+        PreferencesFormatValid = $config.format -eq "bongo-cat/preferences" -and
             $config.version -eq 1
-        SessionFormatValid = $session.format -eq "bongo-cat-neo/session" -and
+        SessionFormatValid = $session.format -eq "bongo-cat/session" -and
             $session.version -eq 1
         LanguagePersisted = $config.app.language -eq "zh-TW"
         TogglePersisted = $config.window.passThrough -eq $true

@@ -1,59 +1,59 @@
 #include "runtime.h"
-#include "bongo_cat_neo/audio.h"
-#include "bongo_cat_neo/overlay.h"
-#include "bongo_cat_neo/preferences.h"
-#include "bongo_cat_neo/shortcut.h"
+#include "bongo_cat/audio.h"
+#include "bongo_cat/overlay.h"
+#include "bongo_cat/preferences.h"
+#include "bongo_cat/shortcut.h"
 
 #include <stdio.h>
 #include <string.h>
 
-static void visible(BongoCatNeoApp *app) {
-    bongo_cat_neo_window_set_visible(app, !app->config.window.visible);
+static void visible(BongoCatApp *app) {
+    bongo_cat_window_set_visible(app, !app->config.window.visible);
 }
 
-bool bongo_cat_neo_app_run_behavior(BongoCatNeoApp *app,
-    const BongoCatNeoBehaviorEntry *behavior) {
+bool bongo_cat_app_run_behavior(BongoCatApp *app,
+    const BongoCatBehaviorEntry *behavior) {
     if (!app || !behavior || !app->config.model.behavior) return false;
-    if (behavior->kind == BONGO_CAT_NEO_BEHAVIOR_EFFECT) {
-        if (!bongo_cat_neo_overlay_effect(app->overlay, behavior->effect)) return false;
-    } else if (behavior->kind == BONGO_CAT_NEO_BEHAVIOR_SOUND) {
+    if (behavior->kind == BONGO_CAT_BEHAVIOR_EFFECT) {
+        if (!bongo_cat_overlay_effect(app->overlay, behavior->effect)) return false;
+    } else if (behavior->kind == BONGO_CAT_BEHAVIOR_SOUND) {
         if (!behavior->sound[0]) {
-            bongo_cat_neo_audio_stop(app->audio);
+            bongo_cat_audio_stop(app->audio);
             return true;
         }
-        BongoCatNeoError error = {0};
-        bongo_cat_neo_audio_play(app->audio, behavior->sound, &error);
-    } else if (behavior->kind == BONGO_CAT_NEO_BEHAVIOR_MOTION) {
-        bool started = bongo_cat_neo_live2d_start_motion(app->live2d,
+        BongoCatError error = {0};
+        bongo_cat_audio_play(app->audio, behavior->sound, &error);
+    } else if (behavior->kind == BONGO_CAT_BEHAVIOR_MOTION) {
+        bool started = bongo_cat_live2d_start_motion(app->live2d,
             behavior->group, behavior->index);
         if (!started) return false;
         if (behavior->sound[0]) {
-            BongoCatNeoError error = {0};
-            bongo_cat_neo_audio_play(app->audio, behavior->sound, &error);
+            BongoCatError error = {0};
+            bongo_cat_audio_play(app->audio, behavior->sound, &error);
         }
-    } else if (!bongo_cat_neo_live2d_set_expression(app->live2d, behavior->index)) return false;
+    } else if (!bongo_cat_live2d_set_expression(app->live2d, behavior->index)) return false;
     app->dirty = true;
     return true;
 }
 
-static bool behavior_shortcut(BongoCatNeoApp *app, const BongoCatNeoInputEvent *event) {
+static bool behavior_shortcut(BongoCatApp *app, const BongoCatInputEvent *event) {
     bool handled = false;
     for (size_t i = 0; i < app->config.behavior_shortcut_count; ++i) {
-        BongoCatNeoBehaviorShortcut *shortcut = &app->config.behavior_shortcuts[i];
+        BongoCatBehaviorShortcut *shortcut = &app->config.behavior_shortcuts[i];
         for (size_t j = 0; j < app->behaviors.count; ++j) {
-            BongoCatNeoBehaviorEntry *behavior = &app->behaviors.entries[j];
+            BongoCatBehaviorEntry *behavior = &app->behaviors.entries[j];
             if (strcmp(shortcut->id, behavior->id) != 0) continue;
             if (behavior->momentary &&
-                bongo_cat_neo_shortcut_release_matches(event, shortcut->shortcut)) {
-                if (behavior->kind == BONGO_CAT_NEO_BEHAVIOR_EFFECT)
-                    handled = bongo_cat_neo_overlay_effect(app->overlay, NULL) || handled;
-                else if (behavior->kind == BONGO_CAT_NEO_BEHAVIOR_SOUND) {
-                    bongo_cat_neo_audio_stop(app->audio);
+                bongo_cat_shortcut_release_matches(event, shortcut->shortcut)) {
+                if (behavior->kind == BONGO_CAT_BEHAVIOR_EFFECT)
+                    handled = bongo_cat_overlay_effect(app->overlay, NULL) || handled;
+                else if (behavior->kind == BONGO_CAT_BEHAVIOR_SOUND) {
+                    bongo_cat_audio_stop(app->audio);
                     handled = true;
                 }
-            } else if (bongo_cat_neo_shortcut_matches(&app->shortcut_state,
+            } else if (bongo_cat_shortcut_matches(&app->shortcut_state,
                 event, shortcut->shortcut)) handled =
-                    bongo_cat_neo_app_run_behavior(app, behavior) || handled;
+                    bongo_cat_app_run_behavior(app, behavior) || handled;
         }
     }
     if (handled) return true;
@@ -61,61 +61,61 @@ static bool behavior_shortcut(BongoCatNeoApp *app, const BongoCatNeoInputEvent *
     for (size_t i = 0; i < limit; ++i) {
         char alias[8];
         snprintf(alias, sizeof(alias), "Alt+%c", i == 9 ? '0' : (char)('1' + i));
-        if (bongo_cat_neo_shortcut_matches(&app->shortcut_state, event, alias))
-            return bongo_cat_neo_app_run_behavior(app, &app->behaviors.entries[i]);
+        if (bongo_cat_shortcut_matches(&app->shortcut_state, event, alias))
+            return bongo_cat_app_run_behavior(app, &app->behaviors.entries[i]);
     }
     return false;
 }
 
-void bongo_cat_neo_app_shortcuts(BongoCatNeoApp *app, const BongoCatNeoInputEvent *event) {
+void bongo_cat_app_shortcuts(BongoCatApp *app, const BongoCatInputEvent *event) {
     if (!app) return;
-    if (event->kind == BONGO_CAT_NEO_INPUT_GAMEPAD_BUTTON) {
+    if (event->kind == BONGO_CAT_INPUT_GAMEPAD_BUTTON) {
         if (app->config.model.behavior) behavior_shortcut(app, event);
         return;
     }
-    bool primary = bongo_cat_neo_shortcut_update(&app->shortcut_state, event);
+    bool primary = bongo_cat_shortcut_update(&app->shortcut_state, event);
     if (!primary) {
         if (app->config.model.behavior) behavior_shortcut(app, event);
         return;
     }
-    BongoCatNeoShortcutOptions *shortcuts = &app->config.shortcuts;
-    if (bongo_cat_neo_shortcut_matches(&app->shortcut_state, event, shortcuts->visible_cat)) {
+    BongoCatShortcutOptions *shortcuts = &app->config.shortcuts;
+    if (bongo_cat_shortcut_matches(&app->shortcut_state, event, shortcuts->visible_cat)) {
         visible(app);
-    } else if (bongo_cat_neo_shortcut_matches(&app->shortcut_state, event,
+    } else if (bongo_cat_shortcut_matches(&app->shortcut_state, event,
         shortcuts->visible_preferences)) {
-        bongo_cat_neo_preferences_visible(app->preferences) ?
-            bongo_cat_neo_preferences_close(app->preferences) : bongo_cat_neo_preferences_show(app->preferences);
-    } else if (bongo_cat_neo_shortcut_matches(&app->shortcut_state, event, shortcuts->mirror)) {
+        bongo_cat_preferences_visible(app->preferences) ?
+            bongo_cat_preferences_close(app->preferences) : bongo_cat_preferences_show(app->preferences);
+    } else if (bongo_cat_shortcut_matches(&app->shortcut_state, event, shortcuts->mirror)) {
         app->config.model.mirror = !app->config.model.mirror;
         app->dirty = true;
-        bongo_cat_neo_preferences_invalidate(app->preferences);
-    } else if (bongo_cat_neo_shortcut_matches(&app->shortcut_state, event, shortcuts->pass_through)) {
+        bongo_cat_preferences_invalidate(app->preferences);
+    } else if (bongo_cat_shortcut_matches(&app->shortcut_state, event, shortcuts->pass_through)) {
         app->config.window.pass_through = !app->config.window.pass_through;
-        bongo_cat_neo_window_mark_hit_dirty(app);
-        bongo_cat_neo_window_sync_click_through(app);
-        bongo_cat_neo_preferences_invalidate(app->preferences);
-    } else if (bongo_cat_neo_shortcut_matches(&app->shortcut_state, event,
+        bongo_cat_window_mark_hit_dirty(app);
+        bongo_cat_window_sync_click_through(app);
+        bongo_cat_preferences_invalidate(app->preferences);
+    } else if (bongo_cat_shortcut_matches(&app->shortcut_state, event,
         shortcuts->always_on_top)) {
         app->config.window.always_on_top = !app->config.window.always_on_top;
-        bongo_cat_neo_platform_set_always_on_top(&app->platform, app->config.window.always_on_top);
-        bongo_cat_neo_preferences_invalidate(app->preferences);
+        bongo_cat_platform_set_always_on_top(&app->platform, app->config.window.always_on_top);
+        bongo_cat_preferences_invalidate(app->preferences);
     } else if (app->config.model.behavior) behavior_shortcut(app, event);
 }
 
-static void test_key(BongoCatNeoApp *app, BongoCatNeoInputKind kind, const char *name) {
-    BongoCatNeoInputEvent event = {.kind = kind};
+static void test_key(BongoCatApp *app, BongoCatInputKind kind, const char *name) {
+    BongoCatInputEvent event = {.kind = kind};
     snprintf(event.name, sizeof(event.name), "%s", name);
-    bongo_cat_neo_app_shortcuts(app, &event);
+    bongo_cat_app_shortcuts(app, &event);
 }
 
-static void test_press(BongoCatNeoApp *app, const char *name) {
-    test_key(app, BONGO_CAT_NEO_INPUT_KEY_DOWN, name);
-    test_key(app, BONGO_CAT_NEO_INPUT_KEY_UP, name);
+static void test_press(BongoCatApp *app, const char *name) {
+    test_key(app, BONGO_CAT_INPUT_KEY_DOWN, name);
+    test_key(app, BONGO_CAT_INPUT_KEY_UP, name);
 }
 
-bool bongo_cat_neo_app_shortcuts_self_test(BongoCatNeoApp *app) {
+bool bongo_cat_app_shortcuts_self_test(BongoCatApp *app) {
     if (!app || !app->preferences) return false;
-    BongoCatNeoShortcutOptions *keys = &app->config.shortcuts;
+    BongoCatShortcutOptions *keys = &app->config.shortcuts;
     snprintf(keys->visible_cat, sizeof(keys->visible_cat), "Control+B");
     snprintf(keys->visible_preferences, sizeof(keys->visible_preferences), "Control+Comma");
     snprintf(keys->mirror, sizeof(keys->mirror), "Control+M");
@@ -125,16 +125,16 @@ bool bongo_cat_neo_app_shortcuts_self_test(BongoCatNeoApp *app) {
     app->config.model.mirror = false;
     app->config.window.pass_through = false;
     app->config.window.always_on_top = false;
-    test_key(app, BONGO_CAT_NEO_INPUT_KEY_DOWN, "ControlLeft");
+    test_key(app, BONGO_CAT_INPUT_KEY_DOWN, "ControlLeft");
     test_press(app, "KeyB");
     test_press(app, "KeyM");
     test_press(app, "KeyP");
     test_press(app, "KeyT");
     test_press(app, "Comma");
-    test_key(app, BONGO_CAT_NEO_INPUT_KEY_UP, "ControlLeft");
+    test_key(app, BONGO_CAT_INPUT_KEY_UP, "ControlLeft");
     bool result = !app->config.window.visible && app->config.model.mirror &&
         app->config.window.pass_through && app->config.window.always_on_top &&
-        bongo_cat_neo_preferences_visible(app->preferences);
-    bongo_cat_neo_preferences_close(app->preferences);
+        bongo_cat_preferences_visible(app->preferences);
+    bongo_cat_preferences_close(app->preferences);
     return result;
 }

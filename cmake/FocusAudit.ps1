@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build-cubism\Release\BongoCatNeo.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build-cubism\Release\BongoCat.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build-cubism\focus-audit" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
@@ -19,7 +19,7 @@ New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
-public static class BongoCatNeoFocusNative {
+public static class BongoCatFocusNative {
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L,T,R,B; }
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr handle);
     [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
@@ -30,8 +30,8 @@ public static class BongoCatNeoFocusNative {
 }
 '@
 
-$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
-$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "focus-audit-$PID"
+$env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_TEST_INSTANCE_ID = "focus-audit-$PID"
 $arguments = @("--ci-smoke", "--ci-input-audit", "--ci-exit-ms=$DurationMilliseconds",
     "--ci-model=$Model", "--data-root=$data")
 $process = Start-Process -FilePath $Exe -ArgumentList $arguments -WorkingDirectory `
@@ -40,7 +40,7 @@ try {
     for ($index = 0; $index -lt 120 -and -not (Test-Path $frame); ++$index) {
         Start-Sleep -Milliseconds 25
     }
-    if (-not (Test-Path $frame)) { throw "bongo_cat_neo frame audit was not created" }
+    if (-not (Test-Path $frame)) { throw "bongo_cat frame audit was not created" }
     $process.Refresh()
     $catWindow = $process.MainWindowHandle
     if ($catWindow -eq [IntPtr]::Zero) { throw "Bongo Cat window was not found" }
@@ -52,27 +52,27 @@ try {
         Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero } |
         Select-Object -First 1
     if ($explorerWindow) {
-        [void][BongoCatNeoFocusNative]::SetForegroundWindow($explorerWindow.MainWindowHandle)
+        [void][BongoCatFocusNative]::SetForegroundWindow($explorerWindow.MainWindowHandle)
         Start-Sleep -Milliseconds 200
     }
-    $inactiveBeforeDrag = [BongoCatNeoFocusNative]::GetForegroundWindow() -ne $catWindow
-    $before = [BongoCatNeoFocusNative+Rect]::new()
-    if (-not [BongoCatNeoFocusNative]::GetWindowRect($catWindow, [ref]$before)) {
+    $inactiveBeforeDrag = [BongoCatFocusNative]::GetForegroundWindow() -ne $catWindow
+    $before = [BongoCatFocusNative+Rect]::new()
+    if (-not [BongoCatFocusNative]::GetWindowRect($catWindow, [ref]$before)) {
         throw "Bongo Cat bounds were not available"
     }
     $startX = [int](($before.L + $before.R) / 2)
     $startY = [int](($before.T + $before.B) / 2)
-    [void][BongoCatNeoFocusNative]::SetCursorPos($startX, $startY)
-    [BongoCatNeoFocusNative]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)
+    [void][BongoCatFocusNative]::SetCursorPos($startX, $startY)
+    [BongoCatFocusNative]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)
     for ($step = 1; $step -le 5; $step++) {
-        [void][BongoCatNeoFocusNative]::SetCursorPos($startX + 14 * $step,
+        [void][BongoCatFocusNative]::SetCursorPos($startX + 14 * $step,
             $startY + 8 * $step)
         Start-Sleep -Milliseconds 35
     }
-    [BongoCatNeoFocusNative]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
+    [BongoCatFocusNative]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 250
-    $after = [BongoCatNeoFocusNative+Rect]::new()
-    [void][BongoCatNeoFocusNative]::GetWindowRect($catWindow, [ref]$after)
+    $after = [BongoCatFocusNative+Rect]::new()
+    [void][BongoCatFocusNative]::GetWindowRect($catWindow, [ref]$after)
     $dragDeltaX = $after.L - $before.L
     $dragDeltaY = $after.T - $before.T
     $movedOnFirstPress = [Math]::Abs($dragDeltaX) -ge 20 -or

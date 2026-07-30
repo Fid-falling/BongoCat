@@ -14,7 +14,7 @@ typedef struct AnimationSlot {
     float duration_ms;
     uint64_t start_ns;
     uint64_t last_ns;
-    BongoCatNeoUIEasing easing;
+    BongoCatUIEasing easing;
     bool used;
 } AnimationSlot;
 
@@ -65,15 +65,15 @@ static float bezier(float progress, float x1, float y1, float x2, float y2) {
     return cubic(y1, y2, parameter);
 }
 
-float bongo_cat_neo_ui_ease(BongoCatNeoUIEasing easing, float progress) {
+float bongo_cat_ui_ease(BongoCatUIEasing easing, float progress) {
     progress = NK_CLAMP(0.0f, progress, 1.0f);
     switch (easing) {
-    case BONGO_CAT_NEO_UI_EASE_LINEAR: return progress;
-    case BONGO_CAT_NEO_UI_EASE_STANDARD:
+    case BONGO_CAT_UI_EASE_LINEAR: return progress;
+    case BONGO_CAT_UI_EASE_STANDARD:
         return bezier(progress, .25f, .1f, .25f, 1.0f);
-    case BONGO_CAT_NEO_UI_EASE_SWIFT:
+    case BONGO_CAT_UI_EASE_SWIFT:
         return bezier(progress, .16f, 1.0f, .3f, 1.0f);
-    case BONGO_CAT_NEO_UI_EASE_SPRING:
+    case BONGO_CAT_UI_EASE_SPRING:
         return bezier(progress, .34f, 1.56f, .64f, 1.0f);
     default: {
         float remaining = 1.0f - progress;
@@ -82,8 +82,8 @@ float bongo_cat_neo_ui_ease(BongoCatNeoUIEasing easing, float progress) {
     }
 }
 
-float bongo_cat_neo_ui_animate_eased(struct nk_context *context,
-    const char *id, float target, float duration_ms, BongoCatNeoUIEasing easing) {
+float bongo_cat_ui_animate_eased(struct nk_context *context,
+    const char *id, float target, float duration_ms, BongoCatUIEasing easing) {
     AnimationSlot *slot = slot_for(context, id, target);
     if (!slot) return target;
     uint64_t now = SDL_GetTicksNS();
@@ -99,20 +99,20 @@ float bongo_cat_neo_ui_animate_eased(struct nk_context *context,
     float elapsed_ms = (float)(now - slot->start_ns) / 1000000.0f;
     float progress = slot->duration_ms > 0 ? elapsed_ms / slot->duration_ms : 1.0f;
     progress = NK_CLAMP(0.0f, progress, 1.0f);
-    float eased = bongo_cat_neo_ui_ease(easing, progress);
+    float eased = bongo_cat_ui_ease(easing, progress);
     slot->current = slot->start + (slot->target - slot->start) * eased;
     if (progress >= 1.0f || fabsf(slot->current - target) < .001f)
         slot->current = target;
     return slot->current;
 }
 
-float bongo_cat_neo_ui_animate(struct nk_context *context, const char *id,
+float bongo_cat_ui_animate(struct nk_context *context, const char *id,
     float target, float duration_ms) {
-    return bongo_cat_neo_ui_animate_eased(context, id, target, duration_ms,
-        BONGO_CAT_NEO_UI_EASE_OUT_CUBIC);
+    return bongo_cat_ui_animate_eased(context, id, target, duration_ms,
+        BONGO_CAT_UI_EASE_OUT_CUBIC);
 }
 
-bool bongo_cat_neo_ui_animations_active(const struct nk_context *context) {
+bool bongo_cat_ui_animations_active(const struct nk_context *context) {
     uint64_t now = SDL_GetTicksNS();
     for (size_t i = 0; i < sizeof(slots) / sizeof(slots[0]); ++i) {
         AnimationSlot *slot = &slots[i];
@@ -127,7 +127,7 @@ bool bongo_cat_neo_ui_animations_active(const struct nk_context *context) {
     return false;
 }
 
-void bongo_cat_neo_ui_animations_reset(const struct nk_context *context) {
+void bongo_cat_ui_animations_reset(const struct nk_context *context) {
     for (size_t i = 0; i < sizeof(slots) / sizeof(slots[0]); ++i)
         if (slots[i].used && slots[i].context == context)
             memset(&slots[i], 0, sizeof(slots[i]));

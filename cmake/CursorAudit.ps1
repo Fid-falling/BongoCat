@@ -9,7 +9,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build-cubism\Release\BongoCatNeo.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build-cubism\Release\BongoCat.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build-cubism\cursor-audit" }
 if (-not $ImportPath) { $ImportPath = Join-Path $root "build-cubism\import-fixture-plain" }
 $Exe = [IO.Path]::GetFullPath($Exe)
@@ -21,7 +21,7 @@ Add-Type -AssemblyName System.Drawing
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
-public static class BongoCatNeoCursorNative {
+public static class BongoCatCursorNative {
     public delegate bool EnumProc(IntPtr handle, IntPtr data);
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L,T,R,B; }
     [StructLayout(LayoutKind.Sequential)] public struct Point { public int X,Y; }
@@ -45,17 +45,17 @@ public static class BongoCatNeoCursorNative {
     [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
 }
 '@
-[void][BongoCatNeoCursorNative]::SetProcessDPIAware()
+[void][BongoCatCursorNative]::SetProcessDPIAware()
 
 function Get-AppWindows([int]$ProcessId) {
     $windows = [Collections.Generic.List[object]]::new()
-    [BongoCatNeoCursorNative]::EnumWindows({
+    [BongoCatCursorNative]::EnumWindows({
         param($handle, $unused)
         [uint32]$owner = 0
-        [void][BongoCatNeoCursorNative]::GetWindowThreadProcessId($handle, [ref]$owner)
-        if ($owner -eq $ProcessId -and [BongoCatNeoCursorNative]::IsWindowVisible($handle)) {
-            $rect = [BongoCatNeoCursorNative+Rect]::new()
-            if ([BongoCatNeoCursorNative]::GetWindowRect($handle, [ref]$rect)) {
+        [void][BongoCatCursorNative]::GetWindowThreadProcessId($handle, [ref]$owner)
+        if ($owner -eq $ProcessId -and [BongoCatCursorNative]::IsWindowVisible($handle)) {
+            $rect = [BongoCatCursorNative+Rect]::new()
+            if ([BongoCatCursorNative]::GetWindowRect($handle, [ref]$rect)) {
                 $area = ($rect.R - $rect.L) * ($rect.B - $rect.T)
                 $width = $rect.R - $rect.L; $height = $rect.B - $rect.T
                 if ($area -gt 400 -and $width -ge 700 -and $height -ge 550) {
@@ -82,73 +82,73 @@ function Wait-Preferences([int]$ProcessId) {
 }
 
 function Get-ClientPoint([IntPtr]$Window, [double]$X, [double]$Y) {
-    $client = [BongoCatNeoCursorNative+Rect]::new()
-    [void][BongoCatNeoCursorNative]::GetClientRect($Window, [ref]$client)
-    $point = [BongoCatNeoCursorNative+Point]::new()
+    $client = [BongoCatCursorNative+Rect]::new()
+    [void][BongoCatCursorNative]::GetClientRect($Window, [ref]$client)
+    $point = [BongoCatCursorNative+Point]::new()
     $point.X = [int][Math]::Round($X * ($client.R - $client.L) / 900.0)
     $point.Y = [int][Math]::Round($Y * ($client.B - $client.T) / 680.0)
-    [void][BongoCatNeoCursorNative]::ClientToScreen($Window, [ref]$point)
+    [void][BongoCatCursorNative]::ClientToScreen($Window, [ref]$point)
     return $point
 }
 
 function Invoke-Click([IntPtr]$Window, [double]$X, [double]$Y) {
     $point = Get-ClientPoint $Window $X $Y
-    [void][BongoCatNeoCursorNative]::SetForegroundWindow($Window)
-    [void][BongoCatNeoCursorNative]::SetCursorPos($point.X, $point.Y)
+    [void][BongoCatCursorNative]::SetForegroundWindow($Window)
+    [void][BongoCatCursorNative]::SetCursorPos($point.X, $point.Y)
     Start-Sleep -Milliseconds 250
-    [BongoCatNeoCursorNative]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
+    [BongoCatCursorNative]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 80
-    [BongoCatNeoCursorNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
+    [BongoCatCursorNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 300
 }
 
 function Invoke-Wheel([IntPtr]$Window, [double]$X, [double]$Y, [int]$Delta) {
     $point = Get-ClientPoint $Window $X $Y
-    [void][BongoCatNeoCursorNative]::SetForegroundWindow($Window)
-    [void][BongoCatNeoCursorNative]::SetCursorPos($point.X, $point.Y)
+    [void][BongoCatCursorNative]::SetForegroundWindow($Window)
+    [void][BongoCatCursorNative]::SetCursorPos($point.X, $point.Y)
     Start-Sleep -Milliseconds 120
-    [BongoCatNeoCursorNative]::mouse_event(0x0800, 0, 0, $Delta, [UIntPtr]::Zero)
+    [BongoCatCursorNative]::mouse_event(0x0800, 0, 0, $Delta, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 450
 }
 
 function Test-Cursor([IntPtr]$Window, [string]$Name, [double]$X,
     [double]$Y, [int]$SystemId) {
     $point = Get-ClientPoint $Window $X $Y
-    $client = [BongoCatNeoCursorNative+Rect]::new()
-    [void][BongoCatNeoCursorNative]::GetClientRect($Window, [ref]$client)
+    $client = [BongoCatCursorNative+Rect]::new()
+    [void][BongoCatCursorNative]::GetClientRect($Window, [ref]$client)
     $clientX = [int][Math]::Round($X * ($client.R - $client.L) / 900.0)
     $clientY = [int][Math]::Round($Y * ($client.B - $client.T) / 680.0)
     $position = [IntPtr]([long](($clientY -band 0xFFFF) -shl 16) -bor
         [long]($clientX -band 0xFFFF))
-    $expected = [BongoCatNeoCursorNative]::LoadCursor([IntPtr]::Zero, [IntPtr]$SystemId)
+    $expected = [BongoCatCursorNative]::LoadCursor([IntPtr]::Zero, [IntPtr]$SystemId)
     $info = $null
     for ($attempt = 0; $attempt -lt 4; $attempt++) {
-        [void][BongoCatNeoCursorNative]::SetForegroundWindow($Window)
-        [void][BongoCatNeoCursorNative]::SetCursorPos($point.X +
+        [void][BongoCatCursorNative]::SetForegroundWindow($Window)
+        [void][BongoCatCursorNative]::SetCursorPos($point.X +
             $(if ($attempt % 2) { 1 } else { -1 }), $point.Y)
         Start-Sleep -Milliseconds 45
-        [void][BongoCatNeoCursorNative]::SetCursorPos($point.X, $point.Y)
-        [void][BongoCatNeoCursorNative]::PostMessageW(
+        [void][BongoCatCursorNative]::SetCursorPos($point.X, $point.Y)
+        [void][BongoCatCursorNative]::PostMessageW(
             $Window, 0x0200, [IntPtr]::Zero, $position)
         Start-Sleep -Milliseconds 250
-        $info = [BongoCatNeoCursorNative+CursorInfo]::new()
+        $info = [BongoCatCursorNative+CursorInfo]::new()
         $info.Size = [Runtime.InteropServices.Marshal]::SizeOf($info)
-        [void][BongoCatNeoCursorNative]::GetCursorInfo([ref]$info)
+        [void][BongoCatCursorNative]::GetCursorInfo([ref]$info)
         if ($info.Cursor -eq $expected) { break }
     }
-    $arrow = [BongoCatNeoCursorNative]::LoadCursor([IntPtr]::Zero, [IntPtr]32512)
-    $text = [BongoCatNeoCursorNative]::LoadCursor([IntPtr]::Zero, [IntPtr]32513)
-    $hand = [BongoCatNeoCursorNative]::LoadCursor([IntPtr]::Zero, [IntPtr]32649)
+    $arrow = [BongoCatCursorNative]::LoadCursor([IntPtr]::Zero, [IntPtr]32512)
+    $text = [BongoCatCursorNative]::LoadCursor([IntPtr]::Zero, [IntPtr]32513)
+    $hand = [BongoCatCursorNative]::LoadCursor([IntPtr]::Zero, [IntPtr]32649)
     $actual = if ($info.Cursor -eq $hand) { "hand" } elseif ($info.Cursor -eq $text) {
         "text" } elseif ($info.Cursor -eq $arrow) { "arrow" } else { "other" }
     return [pscustomobject]@{ Name=$Name; Actual=$actual; Passed=$info.Cursor -eq $expected }
 }
 
 function Save-Window([IntPtr]$Window, [string]$Name) {
-    [void][BongoCatNeoCursorNative]::SetForegroundWindow($Window)
+    [void][BongoCatCursorNative]::SetForegroundWindow($Window)
     Start-Sleep -Milliseconds 300
-    $rect = [BongoCatNeoCursorNative+Rect]::new()
-    [void][BongoCatNeoCursorNative]::GetWindowRect($Window, [ref]$rect)
+    $rect = [BongoCatCursorNative+Rect]::new()
+    [void][BongoCatCursorNative]::GetWindowRect($Window, [ref]$rect)
     $bitmap = [Drawing.Bitmap]::new($rect.R - $rect.L, $rect.B - $rect.T)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
     $graphics.CopyFromScreen($rect.L, $rect.T, 0, 0, $bitmap.Size)
@@ -160,7 +160,7 @@ function Save-Window([IntPtr]$Window, [string]$Name) {
 function Start-AuditPage([int]$Page, [bool]$Import) {
     # Move away from transient selection/translation overlays before opening the
     # next window; otherwise a topmost helper can intercept the first hover.
-    [void][BongoCatNeoCursorNative]::SetCursorPos(2, 2)
+    [void][BongoCatCursorNative]::SetCursorPos(2, 2)
     Start-Sleep -Milliseconds 400
     $dataRoot = Join-Path $OutputDir "data-page$Page"
     Remove-Item -LiteralPath $dataRoot -Recurse -Force -ErrorAction SilentlyContinue
@@ -173,13 +173,13 @@ function Start-AuditPage([int]$Page, [bool]$Import) {
     $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
         -WorkingDirectory (Split-Path $Exe) -PassThru
     $window = Wait-Preferences $process.Id
-    [void][BongoCatNeoCursorNative]::SetForegroundWindow($window)
+    [void][BongoCatCursorNative]::SetForegroundWindow($window)
     Start-Sleep -Milliseconds 800
     return [pscustomobject]@{ Process=$process; Window=$window }
 }
 
-$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
-$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "cursor-audit-$PID"
+$env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_TEST_INSTANCE_ID = "cursor-audit-$PID"
 $results = [Collections.Generic.List[object]]::new()
 $hand = 32649; $text = 32513; $arrow = 32512
 

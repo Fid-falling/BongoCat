@@ -1,7 +1,7 @@
 param([string]$Exe = "", [string]$OutputDir = "")
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build\BongoCatNeo.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build\BongoCat.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build\overlay-audit" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)

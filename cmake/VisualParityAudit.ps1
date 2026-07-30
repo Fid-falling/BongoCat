@@ -11,14 +11,14 @@ param(
 
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Drawing
-if (-not ("BongoCatNeo.VisualParity" -as [type])) {
+if (-not ("BongoCat.VisualParity" -as [type])) {
 Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @'
 using System;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 
-namespace BongoCatNeo {
+namespace BongoCat {
 public sealed class VisualParityResult {
     public int X { get; set; }
     public int Y { get; set; }
@@ -118,7 +118,7 @@ $actualPath = [IO.Path]::GetFullPath($Actual)
 if (-not [IO.File]::Exists($referencePath)) { throw "Missing reference: $referencePath" }
 if (-not [IO.File]::Exists($actualPath)) { throw "Missing actual: $actualPath" }
 $resolvedDiff = if ($DiffPath) { [IO.Path]::GetFullPath($DiffPath) } else { "" }
-$result = [BongoCatNeo.VisualParity]::Compare($referencePath, $actualPath,
+$result = [BongoCat.VisualParity]::Compare($referencePath, $actualPath,
     $resolvedDiff, $X, $Y, $Width, $Height)
 if ($JsonPath) {
     $result | ConvertTo-Json | Set-Content -Encoding utf8 ([IO.Path]::GetFullPath($JsonPath))

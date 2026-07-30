@@ -1,6 +1,6 @@
-# Bongo Cat Neo
+# BongoCat
 
-`Bongo Cat Neo` is a small native desktop overlay for Live2D models. It keeps a
+`BongoCat` is a small native desktop overlay for Live2D models. It keeps a
 borderless, transparent window on the desktop and maps keyboard, mouse, and
 gamepad input to the model.
 
@@ -20,7 +20,7 @@ particular operating system or device.
 Without Cubism, CMake selects a diagnostic backend. The application still
 starts, opens its preferences, processes input, and runs the native tests, but
 it cannot draw or animate a real Live2D model. Configure with
-`-DBONGO_CAT_NEO_REQUIRE_CUBISM=ON` when a missing SDK should be a configuration error
+`-DBONGO_CAT_REQUIRE_CUBISM=ON` when a missing SDK should be a configuration error
 instead of a diagnostic build.
 
 ## Features
@@ -36,7 +36,7 @@ instead of a diagnostic build.
   either as `config.json` + `img/` directly or as an intact child directory.
   Model containers with nested full packages and image-only variants (for
   example `A-*` plus `Z-*` directories) are also discovered. The source stays
-  read-only and Neo caches only generated adapter files.
+  read-only and BongoCat caches only generated adapter files.
 - Keyboard and mouse input, pointer tracking, gamepad buttons and axes,
   mirroring, automatic key release, and configurable shortcuts.
 - Transparent borderless window, click-through, always-on-top, hover hiding,
@@ -80,7 +80,7 @@ possible.
 ## Source Tree
 
 ```text
-include/bongo_cat_neo/       public C interfaces and data structures
+include/bongo_cat/       public C interfaces and data structures
 src/core/             config, paths, input state, catalogs, hashes
 src/runtime/          application lifecycle, model import, and UI flow
 src/render/           OpenGL helpers and overlays
@@ -97,7 +97,7 @@ docs/                 audit evidence and parity notes
 
 The build uses SDL3 for the window and event loop, desktop OpenGL for drawing,
 yyjson for JSON, stb for image loading, miniaudio for motion audio, and
-Nuklear for the preferences UI. With `BONGO_CAT_NEO_FETCH_DEPS=ON` (the default), CMake
+Nuklear for the preferences UI. With `BONGO_CAT_FETCH_DEPS=ON` (the default), CMake
 fetches pinned revisions of those open-source dependencies and verifies their
 SHA-256 values. Set it to `OFF` to use installed packages and headers instead.
 
@@ -121,13 +121,13 @@ Use Visual Studio 2022 or the matching Build Tools (v143, Windows 10/11 SDK):
 
 ```powershell
 cmake -S . -B build-cubism -G "Visual Studio 17 2022" -A x64 `
-  -DBONGO_CAT_NEO_REQUIRE_CUBISM=ON `
-  -DBONGO_CAT_NEO_WARNINGS_AS_ERRORS=ON
+  -DBONGO_CAT_REQUIRE_CUBISM=ON `
+  -DBONGO_CAT_WARNINGS_AS_ERRORS=ON
 cmake --build build-cubism --config Release --parallel 2
 ctest --test-dir build-cubism -C Release --output-on-failure
 ```
 
-The executable is `build-cubism/Release/BongoCatNeo.exe`.
+The executable is `build-cubism/Release/BongoCat.exe`.
 
 Build the versioned release archive and SHA-256 file with:
 
@@ -136,8 +136,8 @@ cmake --build build-cubism --config Release --target package
 ```
 
 Release archives use the conventional product-version-platform-architecture
-format, for example `BongoCatNeo-0.1.0-windows-x64.zip`. The executable inside
-keeps the stable `BongoCatNeo.exe` name so upgrades do not break shortcuts.
+format, for example `BongoCat-0.1.0-windows-x64.zip`. The executable inside
+keeps the stable `BongoCat.exe` name so upgrades do not break shortcuts.
 
 ### Diagnostic or Unix build
 
@@ -153,14 +153,14 @@ development packages. macOS uses its Cocoa and ApplicationServices frameworks.
 To use system dependencies rather than CMake's pinned downloads:
 
 ```powershell
-cmake -S . -B build -G Ninja -DBONGO_CAT_NEO_FETCH_DEPS=OFF
+cmake -S . -B build -G Ninja -DBONGO_CAT_FETCH_DEPS=OFF
 ```
 
 When fetching is disabled, CMake needs SDL3-static and yyjson package
 configurations plus `stb_image.h`, `stb_image_write.h`, `miniaudio.h`, and
 `nuklear.h`. Their include roots can be set with
-`BONGO_CAT_NEO_STB_INCLUDE_DIR`, `BONGO_CAT_NEO_MINIAUDIO_INCLUDE_DIR`, and
-`BONGO_CAT_NEO_NUKLEAR_INCLUDE_DIR`.
+`BONGO_CAT_STB_INCLUDE_DIR`, `BONGO_CAT_MINIAUDIO_INCLUDE_DIR`, and
+`BONGO_CAT_NUKLEAR_INCLUDE_DIR`.
 
 ### Install tree
 
@@ -177,13 +177,13 @@ imported models are kept in the per-user data directory.
 The default data directory comes from SDL's preference path and contains
 `preferences.json`, `session.json`, `custom-models/`, and the generated `portable-mver/` adapter
 cache. A Bongo-Cat-Mver package can be used without importing by placing its
-`config.json` and `img/` beside `BongoCatNeo`, or by placing the intact package
+`config.json` and `img/` beside `BongoCat`, or by placing the intact package
 directory there. A collection such as `露西亚-誓焰版` may be placed as one
 folder; its full package and nested image patches are discovered together.
 Tests and portable launches may override both paths:
 
 ```text
-BongoCatNeo --data-root=C:\path\to\data --preferences=C:\path\to\preferences.json --session=C:\path\to\session.json
+BongoCat --data-root=C:\path\to\data --preferences=C:\path\to\preferences.json --session=C:\path\to\session.json
 ```
 
 Arguments beginning with `--ci-` are test instrumentation. They select a model,
@@ -209,9 +209,9 @@ The Windows audit scripts exercise window styles, preferences, input hooks,
 model import, frame output, and hidden-window behavior. For example:
 
 ```powershell
-& .\cmake\VisualAudit.ps1 -Exe .\build-cubism\Release\BongoCatNeo.exe `
+& .\cmake\VisualAudit.ps1 -Exe .\build-cubism\Release\BongoCat.exe `
   -OutputDir .\build-cubism\visual-audit -SkipMain
-& .\cmake\SoakAudit.ps1 -Exe .\build-cubism\Release\BongoCatNeo.exe `
+& .\cmake\SoakAudit.ps1 -Exe .\build-cubism\Release\BongoCat.exe `
   -OutputDir .\build-cubism\soak-audit -Mode hidden -DurationSeconds 60
 ```
 

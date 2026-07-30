@@ -6,7 +6,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build-final\Release\BongoCatNeo.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build-final\Release\BongoCat.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build-final\model-selection" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
@@ -21,7 +21,7 @@ Add-Type -AssemblyName System.Drawing
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
-public static class BongoCatNeoModelSelectionNative {
+public static class BongoCatModelSelectionNative {
     public delegate bool EnumProc(IntPtr handle, IntPtr data);
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L,T,R,B; }
     [StructLayout(LayoutKind.Sequential)] public struct Point { public int X,Y; }
@@ -42,21 +42,21 @@ public static class BongoCatNeoModelSelectionNative {
     [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
 }
 '@
-[void][BongoCatNeoModelSelectionNative]::SetProcessDPIAware()
+[void][BongoCatModelSelectionNative]::SetProcessDPIAware()
 
 function Wait-Preferences([int]$ProcessId) {
     $deadline = [DateTime]::UtcNow.AddSeconds(20)
     do {
         $found = [Collections.Generic.List[IntPtr]]::new()
-        [BongoCatNeoModelSelectionNative]::EnumWindows({
+        [BongoCatModelSelectionNative]::EnumWindows({
             param($handle, $unused)
             [uint32]$owner = 0
-            [void][BongoCatNeoModelSelectionNative]::GetWindowThreadProcessId(
+            [void][BongoCatModelSelectionNative]::GetWindowThreadProcessId(
                 $handle, [ref]$owner)
-            $rect = [BongoCatNeoModelSelectionNative+Rect]::new()
+            $rect = [BongoCatModelSelectionNative+Rect]::new()
             if ($owner -eq $ProcessId -and
-                [BongoCatNeoModelSelectionNative]::IsWindowVisible($handle) -and
-                [BongoCatNeoModelSelectionNative]::GetClientRect($handle, [ref]$rect) -and
+                [BongoCatModelSelectionNative]::IsWindowVisible($handle) -and
+                [BongoCatModelSelectionNative]::GetClientRect($handle, [ref]$rect) -and
                 $rect.R -ge 700 -and $rect.B -ge 550) { $found.Add($handle) }
             return $true
         }, [IntPtr]::Zero) | Out-Null
@@ -67,47 +67,47 @@ function Wait-Preferences([int]$ProcessId) {
 }
 
 function Get-ClientPoint([IntPtr]$Window, [double]$X, [double]$Y) {
-    $client = [BongoCatNeoModelSelectionNative+Rect]::new()
-    [void][BongoCatNeoModelSelectionNative]::GetClientRect($Window, [ref]$client)
-    $point = [BongoCatNeoModelSelectionNative+Point]::new()
+    $client = [BongoCatModelSelectionNative+Rect]::new()
+    [void][BongoCatModelSelectionNative]::GetClientRect($Window, [ref]$client)
+    $point = [BongoCatModelSelectionNative+Point]::new()
     $clientX = [int][Math]::Round($X * ($client.R - $client.L) / 900.0)
     $clientY = [int][Math]::Round($Y * ($client.B - $client.T) / 680.0)
     $point.X = $clientX; $point.Y = $clientY
-    [void][BongoCatNeoModelSelectionNative]::ClientToScreen($Window, [ref]$point)
+    [void][BongoCatModelSelectionNative]::ClientToScreen($Window, [ref]$point)
     return [pscustomobject]@{ X=$point.X; Y=$point.Y; ClientX=$clientX; ClientY=$clientY }
 }
 
 function Invoke-PhysicalClick([IntPtr]$Window, [double]$X, [double]$Y) {
     $point = Get-ClientPoint $Window $X $Y
-    [void][BongoCatNeoModelSelectionNative]::SetForegroundWindow($Window)
-    [void][BongoCatNeoModelSelectionNative]::SetCursorPos($point.X, $point.Y)
+    [void][BongoCatModelSelectionNative]::SetForegroundWindow($Window)
+    [void][BongoCatModelSelectionNative]::SetCursorPos($point.X, $point.Y)
     Start-Sleep -Milliseconds 120
-    $clip = [BongoCatNeoModelSelectionNative+Rect]::new()
+    $clip = [BongoCatModelSelectionNative+Rect]::new()
     $clip.L = $point.X; $clip.T = $point.Y
     $clip.R = $point.X + 1; $clip.B = $point.Y + 1
     $packed = [IntPtr](($point.ClientX -band 0xffff) -bor
         (($point.ClientY -band 0xffff) -shl 16))
-    [void][BongoCatNeoModelSelectionNative]::ClipCursorRect([ref]$clip)
+    [void][BongoCatModelSelectionNative]::ClipCursorRect([ref]$clip)
     try {
-        [void][BongoCatNeoModelSelectionNative]::SendMessageW(
+        [void][BongoCatModelSelectionNative]::SendMessageW(
             $Window, 0x0200, [IntPtr]::Zero, $packed)
-        [void][BongoCatNeoModelSelectionNative]::SendMessageW(
+        [void][BongoCatModelSelectionNative]::SendMessageW(
             $Window, 0x0201, [IntPtr]1, $packed)
         Start-Sleep -Milliseconds 50
-        [void][BongoCatNeoModelSelectionNative]::SetCursorPos($point.X, $point.Y)
-        [void][BongoCatNeoModelSelectionNative]::SendMessageW(
+        [void][BongoCatModelSelectionNative]::SetCursorPos($point.X, $point.Y)
+        [void][BongoCatModelSelectionNative]::SendMessageW(
             $Window, 0x0202, [IntPtr]::Zero, $packed)
     } finally {
-        [void][BongoCatNeoModelSelectionNative]::ReleaseCursor([IntPtr]::Zero)
+        [void][BongoCatModelSelectionNative]::ReleaseCursor([IntPtr]::Zero)
     }
     Start-Sleep -Milliseconds 350
 }
 
 function Save-Client([IntPtr]$Window, [string]$Name) {
-    $rect = [BongoCatNeoModelSelectionNative+Rect]::new()
-    [void][BongoCatNeoModelSelectionNative]::GetClientRect($Window, [ref]$rect)
-    $origin = [BongoCatNeoModelSelectionNative+Point]::new()
-    [void][BongoCatNeoModelSelectionNative]::ClientToScreen($Window, [ref]$origin)
+    $rect = [BongoCatModelSelectionNative+Rect]::new()
+    [void][BongoCatModelSelectionNative]::GetClientRect($Window, [ref]$rect)
+    $origin = [BongoCatModelSelectionNative+Point]::new()
+    [void][BongoCatModelSelectionNative]::ClientToScreen($Window, [ref]$origin)
     $bitmap = [Drawing.Bitmap]::new($rect.R, $rect.B)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
     $graphics.CopyFromScreen($origin.X, $origin.Y, 0, 0, $bitmap.Size)
@@ -139,8 +139,8 @@ function Measure-NewFrames([int]$Before) {
     }
 }
 
-$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
-$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "model-selection-audit-$PID"
+$env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_TEST_INSTANCE_ID = "model-selection-audit-$PID"
 $arguments = @("--ci-smoke", "--ci-preferences", "--ci-preference-page=2",
     "--ci-language=zh-CN", "--ci-theme=light", "--ci-frame-series",
     "--ci-freeze-model", "--ci-input-audit", "--ci-ignore-global-input",
@@ -149,10 +149,10 @@ $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
     -WorkingDirectory (Split-Path $Exe) -PassThru
 try {
     $window = Wait-Preferences $process.Id
-    [void][BongoCatNeoModelSelectionNative]::ShowWindow($window, 9)
-    [void][BongoCatNeoModelSelectionNative]::SetWindowPos($window,
+    [void][BongoCatModelSelectionNative]::ShowWindow($window, 9)
+    [void][BongoCatModelSelectionNative]::SetWindowPos($window,
         [IntPtr](-1), 40, 40, 900, 680, 0x0040)
-    [void][BongoCatNeoModelSelectionNative]::SetForegroundWindow($window)
+    [void][BongoCatModelSelectionNative]::SetForegroundWindow($window)
     Start-Sleep -Milliseconds 900
     Save-Client $window "before.png"
     $before = Get-FrameCount

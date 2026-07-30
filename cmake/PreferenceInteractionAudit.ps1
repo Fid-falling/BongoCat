@@ -6,18 +6,18 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build-final\Release\BongoCatNeo.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build-final\Release\BongoCat.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build\preference-interactions" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
-$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
-$env:BONGO_CAT_NEO_TEST_INSTANCE_ID = "preference-interaction-audit-$PID"
+$env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_TEST_INSTANCE_ID = "preference-interaction-audit-$PID"
 Add-Type -AssemblyName System.Drawing
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
-public static class BongoCatNeoPreferenceAuditNative {
+public static class BongoCatPreferenceAuditNative {
     public delegate bool EnumProc(IntPtr handle, IntPtr data);
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc proc, IntPtr data);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr handle);
@@ -33,19 +33,19 @@ public static class BongoCatNeoPreferenceAuditNative {
     public struct Rect { public int Left, Top, Right, Bottom; }
 }
 '@
-[void][BongoCatNeoPreferenceAuditNative]::SetProcessDPIAware()
+[void][BongoCatPreferenceAuditNative]::SetProcessDPIAware()
 
 function Get-AppWindows([int]$ProcessId) {
     $windows = [Collections.Generic.List[object]]::new()
-    [BongoCatNeoPreferenceAuditNative]::EnumWindows({
+    [BongoCatPreferenceAuditNative]::EnumWindows({
         param($handle, $data)
         [uint32]$owner = 0
-        [void][BongoCatNeoPreferenceAuditNative]::GetWindowThreadProcessId(
+        [void][BongoCatPreferenceAuditNative]::GetWindowThreadProcessId(
             $handle, [ref]$owner)
         if ($owner -eq $ProcessId -and
-            [BongoCatNeoPreferenceAuditNative]::IsWindowVisible($handle)) {
-            $rect = [BongoCatNeoPreferenceAuditNative+Rect]::new()
-            if ([BongoCatNeoPreferenceAuditNative]::GetWindowRect($handle, [ref]$rect)) {
+            [BongoCatPreferenceAuditNative]::IsWindowVisible($handle)) {
+            $rect = [BongoCatPreferenceAuditNative+Rect]::new()
+            if ([BongoCatPreferenceAuditNative]::GetWindowRect($handle, [ref]$rect)) {
                 $width = $rect.Right - $rect.Left
                 $height = $rect.Bottom - $rect.Top
                 $windows.Add([pscustomobject]@{ Handle=$handle; Width=$width;
@@ -64,8 +64,8 @@ function Wait-Preferences([Diagnostics.Process]$Process) {
         $raw_handle = $live.MainWindowHandle
         if ($null -ne $raw_handle -and $raw_handle -ne 0) {
             [IntPtr]$handle = $raw_handle
-            $rect = [BongoCatNeoPreferenceAuditNative+Rect]::new()
-            if ([BongoCatNeoPreferenceAuditNative]::GetWindowRect(
+            $rect = [BongoCatPreferenceAuditNative+Rect]::new()
+            if ([BongoCatPreferenceAuditNative]::GetWindowRect(
                 $handle, [ref]$rect) -and $rect.Right - $rect.Left -gt 700) {
                 return [pscustomobject]@{ Handle=$handle;
                     Width=$rect.Right-$rect.Left; Height=$rect.Bottom-$rect.Top }
@@ -77,36 +77,36 @@ function Wait-Preferences([Diagnostics.Process]$Process) {
 }
 
 function Get-Rect([object]$Window) {
-    $rect = [BongoCatNeoPreferenceAuditNative+Rect]::new()
-    [void][BongoCatNeoPreferenceAuditNative]::GetWindowRect(
+    $rect = [BongoCatPreferenceAuditNative+Rect]::new()
+    [void][BongoCatPreferenceAuditNative]::GetWindowRect(
         $Window.Handle, [ref]$rect)
     return $rect
 }
 
 function Click-At([object]$Window, [int]$X, [int]$Y) {
     $rect = Get-Rect $Window
-    [void][BongoCatNeoPreferenceAuditNative]::SetForegroundWindow($Window.Handle)
-    [void][BongoCatNeoPreferenceAuditNative]::SetCursorPos(
+    [void][BongoCatPreferenceAuditNative]::SetForegroundWindow($Window.Handle)
+    [void][BongoCatPreferenceAuditNative]::SetCursorPos(
         $rect.Left + $X, $rect.Top + $Y)
-    [BongoCatNeoPreferenceAuditNative]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
+    [BongoCatPreferenceAuditNative]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 60
-    [BongoCatNeoPreferenceAuditNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
+    [BongoCatPreferenceAuditNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 450
 }
 
 function Press-Key([byte]$VirtualKey) {
-    [BongoCatNeoPreferenceAuditNative]::keybd_event(
+    [BongoCatPreferenceAuditNative]::keybd_event(
         $VirtualKey, 0, 0, [UIntPtr]::Zero)
-    [BongoCatNeoPreferenceAuditNative]::keybd_event(
+    [BongoCatPreferenceAuditNative]::keybd_event(
         $VirtualKey, 0, 2, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 350
 }
 
 function Press-Shortcut([byte]$Modifier, [byte]$VirtualKey) {
-    [BongoCatNeoPreferenceAuditNative]::keybd_event(
+    [BongoCatPreferenceAuditNative]::keybd_event(
         $Modifier, 0, 0, [UIntPtr]::Zero)
     Press-Key $VirtualKey
-    [BongoCatNeoPreferenceAuditNative]::keybd_event(
+    [BongoCatPreferenceAuditNative]::keybd_event(
         $Modifier, 0, 2, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 350
 }
@@ -117,7 +117,7 @@ function Save-Window([object]$Window, [string]$Name) {
         $rect.Bottom - $rect.Top)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
     $dc = $graphics.GetHdc()
-    try { $printed = [BongoCatNeoPreferenceAuditNative]::PrintWindow(
+    try { $printed = [BongoCatPreferenceAuditNative]::PrintWindow(
         $Window.Handle, $dc, 2) } finally { $graphics.ReleaseHdc($dc) }
     if (-not $printed) { throw "PrintWindow failed for $Name" }
     $path = Join-Path $OutputDir "$Name.png"
@@ -135,7 +135,7 @@ function Start-Page([int]$Page, [string]$ImportPath = "") {
     $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
         -WorkingDirectory (Split-Path $Exe) -PassThru
     $window = Wait-Preferences $process
-    [void][BongoCatNeoPreferenceAuditNative]::SetWindowPos($window.Handle,
+    [void][BongoCatPreferenceAuditNative]::SetWindowPos($window.Handle,
         [IntPtr](-1), 40, 40, 0, 0, 0x0041)
     Start-Sleep -Milliseconds 400
     return [pscustomobject]@{ Process=$process; Window=$window }

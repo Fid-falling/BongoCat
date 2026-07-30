@@ -7,7 +7,7 @@ A diagnostic drawing never counts as a Live2D visual pass.
 
 ## Current evidence
 
-- Windows Cubism Release build: `build-cubism/Release/BongoCatNeo.exe` - PASS.
+- Windows Cubism Release build: `build-cubism/Release/BongoCat.exe` - PASS.
 - Native tests: `ctest --test-dir build-cubism -C Release` - PASS, 7/7.
 - Source policy: `check-lines` - PASS, every checked file is at most 300 lines.
 - Preferences matrix: `build-cubism/visual-audit-preferences/audit.csv` - PASS, 50/50.
@@ -15,7 +15,7 @@ A diagnostic drawing never counts as a Live2D visual pass.
 - Pointer/mouse-mirror matrix: `build-cubism/visual-audit-mouse/audit.csv` - PASS, 5/5.
 - Visible Cubism working set: 57.32 MiB - PASS, below 100 MiB.
 - Standalone smoke: 22 embedded shaders, `renderer=cubism-native`, GL error 0.
-- Desktop binary SHA-256 matches `build-cubism/Release/BongoCatNeo.exe` - PASS.
+- Desktop binary SHA-256 matches `build-cubism/Release/BongoCat.exe` - PASS.
 - Cubism Native SDK under `vendor/CubismSdkForNative` - PASS, SDK 5 r.5.
 - Tauri-parity pointer mapping and frame-rate-independent damping - PASS.
 

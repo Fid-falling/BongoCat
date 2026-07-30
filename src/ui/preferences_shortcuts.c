@@ -1,35 +1,35 @@
 #include "preferences_state.h"
 #include "preferences_widgets.h"
-#include "bongo_cat_neo/i18n.h"
-#include "bongo_cat_neo/shortcut.h"
+#include "bongo_cat/i18n.h"
+#include "bongo_cat/shortcut.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <string.h>
 
-static const char *tr(const BongoCatNeoPreferences *value, const char *key,
+static const char *tr(const BongoCatPreferences *value, const char *key,
     const char *fallback) {
-    return bongo_cat_neo_i18n_get(value->app->i18n, key, fallback);
+    return bongo_cat_i18n_get(value->app->i18n, key, fallback);
 }
 
-bool bongo_cat_neo_preferences_shortcut_active(const BongoCatNeoPreferences *value,
+bool bongo_cat_preferences_shortcut_active(const BongoCatPreferences *value,
     const char *id) {
     return value && value->shortcut_recording && value->shortcut_id[0] && id &&
         strcmp(value->shortcut_id, id) == 0;
 }
 
-static void finish(BongoCatNeoPreferences *value) {
+static void finish(BongoCatPreferences *value) {
     value->shortcut_recording = false;
     value->shortcut_id[0] = '\0';
     value->shortcut_target = NULL;
     value->shortcut_capacity = 0;
     value->shortcut_key = SDLK_UNKNOWN;
     value->shortcut_suppress_until_ns = SDL_GetTicksNS() + 250000000ULL;
-    bongo_cat_neo_shortcut_init(&value->app->shortcut_state);
+    bongo_cat_shortcut_init(&value->app->shortcut_state);
     value->render_dirty = true;
 }
 
-void bongo_cat_neo_preferences_shortcut_cancel(BongoCatNeoPreferences *value) {
+void bongo_cat_preferences_shortcut_cancel(BongoCatPreferences *value) {
     if (!value || !value->shortcut_recording) return;
     if (value->shortcut_target && value->shortcut_capacity > 0)
         snprintf(value->shortcut_target, (size_t)value->shortcut_capacity, "%s",
@@ -37,18 +37,18 @@ void bongo_cat_neo_preferences_shortcut_cancel(BongoCatNeoPreferences *value) {
     finish(value);
 }
 
-void bongo_cat_neo_preferences_shortcut_begin(BongoCatNeoPreferences *value,
+void bongo_cat_preferences_shortcut_begin(BongoCatPreferences *value,
     const char *id, char *target, int capacity) {
     if (!value || !id || !target || capacity < 1) return;
-    if (bongo_cat_neo_preferences_shortcut_active(value, id)) return;
-    bongo_cat_neo_preferences_shortcut_cancel(value);
+    if (bongo_cat_preferences_shortcut_active(value, id)) return;
+    bongo_cat_preferences_shortcut_cancel(value);
     snprintf(value->shortcut_id, sizeof(value->shortcut_id), "%s", id);
     value->shortcut_target = target;
     value->shortcut_capacity = capacity;
     snprintf(value->shortcut_original, sizeof(value->shortcut_original), "%s", target);
     value->shortcut_key = SDLK_UNKNOWN;
     value->shortcut_recording = true;
-    bongo_cat_neo_shortcut_init(&value->app->shortcut_state);
+    bongo_cat_shortcut_init(&value->app->shortcut_state);
     value->render_dirty = true;
 }
 
@@ -102,7 +102,7 @@ static void append(char *output, size_t capacity, const char *token) {
     snprintf(output + length, capacity - length, "%s%s", length ? "+" : "", token);
 }
 
-static bool capture_key(BongoCatNeoPreferences *value,
+static bool capture_key(BongoCatPreferences *value,
     const SDL_KeyboardEvent *event) {
     if (event->repeat) return true;
     if (!event->down) {
@@ -111,7 +111,7 @@ static bool capture_key(BongoCatNeoPreferences *value,
         return true;
     }
     if (event->key == SDLK_ESCAPE) {
-        bongo_cat_neo_preferences_shortcut_cancel(value); return true;
+        bongo_cat_preferences_shortcut_cancel(value); return true;
     }
     if (event->key == SDLK_BACKSPACE || event->key == SDLK_DELETE) {
         value->shortcut_target[0] = '\0'; value->shortcut_key = event->key;
@@ -120,7 +120,7 @@ static bool capture_key(BongoCatNeoPreferences *value,
     if (modifier_key(event->key)) return true;
     char primary[24]; const char *key = primary_name(event->key, primary);
     if (!key) return true;
-    char shortcut[BONGO_CAT_NEO_SHORTCUT_CAP] = {0};
+    char shortcut[BONGO_CAT_SHORTCUT_CAP] = {0};
     if (event->mod & SDL_KMOD_CTRL) append(shortcut, sizeof(shortcut), "Control");
     if (event->mod & SDL_KMOD_SHIFT) append(shortcut, sizeof(shortcut), "Shift");
     if (event->mod & SDL_KMOD_ALT) append(shortcut, sizeof(shortcut), "Alt");
@@ -132,28 +132,28 @@ static bool capture_key(BongoCatNeoPreferences *value,
     return true;
 }
 
-bool bongo_cat_neo_preferences_shortcut_event(BongoCatNeoPreferences *value,
+bool bongo_cat_preferences_shortcut_event(BongoCatPreferences *value,
     const SDL_Event *event) {
     if (!value || !event || !value->shortcut_recording) return false;
     if (event->type == SDL_EVENT_KEY_DOWN || event->type == SDL_EVENT_KEY_UP)
         return capture_key(value, &event->key);
     if (event->type == SDL_EVENT_WINDOW_FOCUS_LOST) {
-        bongo_cat_neo_preferences_shortcut_cancel(value); return false;
+        bongo_cat_preferences_shortcut_cancel(value); return false;
     }
     return false;
 }
 
-bool bongo_cat_neo_preferences_shortcuts_blocked(
-    const BongoCatNeoPreferences *value) {
+bool bongo_cat_preferences_shortcuts_blocked(
+    const BongoCatPreferences *value) {
     return value && (value->shortcut_recording ||
         SDL_GetTicksNS() < value->shortcut_suppress_until_ns);
 }
 
-static void shortcut_row(BongoCatNeoPreferences *value, struct nk_context *context,
+static void shortcut_row(BongoCatPreferences *value, struct nk_context *context,
     const char *id, const char *label_key, const char *label_fallback,
     char *target, int capacity) {
-    bool active = bongo_cat_neo_preferences_shortcut_active(value, id);
-    int action = bongo_cat_neo_pref_edit(context, id,
+    bool active = bongo_cat_preferences_shortcut_active(value, id);
+    int action = bongo_cat_pref_edit(context, id,
         tr(value, label_key, label_fallback), "",
         target, active, tr(value, "components.shortcut.hints.clickRecordShortcut",
         "Click to record shortcut"), tr(value,
@@ -161,16 +161,16 @@ static void shortcut_row(BongoCatNeoPreferences *value, struct nk_context *conte
     if (action < 0) {
         target[0] = '\0'; value->render_dirty = true;
     } else if (action > 0) {
-        bongo_cat_neo_preferences_shortcut_begin(value, id, target, capacity);
+        bongo_cat_preferences_shortcut_begin(value, id, target, capacity);
     }
 }
 
-void bongo_cat_neo_preferences_page_shortcuts(BongoCatNeoPreferences *value,
+void bongo_cat_preferences_page_shortcuts(BongoCatPreferences *value,
     struct nk_context *context) {
-    BongoCatNeoShortcutOptions *keys = &value->app->config.shortcuts;
-    bongo_cat_neo_pref_section(context, tr(value,
+    BongoCatShortcutOptions *keys = &value->app->config.shortcuts;
+    bongo_cat_pref_section(context, tr(value,
         "pages.preference.shortcut.title", "Shortcuts"));
-    bool zh = value->app->config.app.language == BONGO_CAT_NEO_LANG_ZH_CN;
+    bool zh = value->app->config.app.language == BONGO_CAT_LANG_ZH_CN;
     shortcut_row(value, context, "shortcut-cat", zh ? "native.shortcut.toggleCat" :
         "pages.preference.shortcut.labels.toggleCat", "Toggle Cat",
         keys->visible_cat, sizeof(keys->visible_cat));

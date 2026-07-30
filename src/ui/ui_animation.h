@@ -1,23 +1,23 @@
-#ifndef BONGO_CAT_NEO_UI_ANIMATION_H
-#define BONGO_CAT_NEO_UI_ANIMATION_H
+#ifndef BONGO_CAT_UI_ANIMATION_H
+#define BONGO_CAT_UI_ANIMATION_H
 
 #include "nuklear_config.h"
 #include <stdbool.h>
 
-typedef enum BongoCatNeoUIEasing {
-    BONGO_CAT_NEO_UI_EASE_LINEAR,
-    BONGO_CAT_NEO_UI_EASE_OUT_CUBIC,
-    BONGO_CAT_NEO_UI_EASE_STANDARD,
-    BONGO_CAT_NEO_UI_EASE_SWIFT,
-    BONGO_CAT_NEO_UI_EASE_SPRING
-} BongoCatNeoUIEasing;
+typedef enum BongoCatUIEasing {
+    BONGO_CAT_UI_EASE_LINEAR,
+    BONGO_CAT_UI_EASE_OUT_CUBIC,
+    BONGO_CAT_UI_EASE_STANDARD,
+    BONGO_CAT_UI_EASE_SWIFT,
+    BONGO_CAT_UI_EASE_SPRING
+} BongoCatUIEasing;
 
-float bongo_cat_neo_ui_ease(BongoCatNeoUIEasing easing, float progress);
-float bongo_cat_neo_ui_animate_eased(struct nk_context *context,
-    const char *id, float target, float duration_ms, BongoCatNeoUIEasing easing);
-float bongo_cat_neo_ui_animate(struct nk_context *context, const char *id,
+float bongo_cat_ui_ease(BongoCatUIEasing easing, float progress);
+float bongo_cat_ui_animate_eased(struct nk_context *context,
+    const char *id, float target, float duration_ms, BongoCatUIEasing easing);
+float bongo_cat_ui_animate(struct nk_context *context, const char *id,
     float target, float duration_ms);
-bool bongo_cat_neo_ui_animations_active(const struct nk_context *context);
-void bongo_cat_neo_ui_animations_reset(const struct nk_context *context);
+bool bongo_cat_ui_animations_active(const struct nk_context *context);
+void bongo_cat_ui_animations_reset(const struct nk_context *context);
 
 #endif

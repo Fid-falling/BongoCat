@@ -1,19 +1,19 @@
 #include "ui_font.h"
-#include "bongo_cat_neo/file.h"
-#include "bongo_cat_neo/path.h"
+#include "bongo_cat/file.h"
+#include "bongo_cat/path.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 static bool readable(const char *path) {
-    FILE *file = bongo_cat_neo_file_open(path, "rb");
+    FILE *file = bongo_cat_file_open(path, "rb");
     if (!file) return false;
     fclose(file);
     return true;
 }
 
-const char *bongo_cat_neo_ui_system_font(char *path, size_t capacity, bool multilingual) {
+const char *bongo_cat_ui_system_font(char *path, size_t capacity, bool multilingual) {
 #ifdef _WIN32
     const char *windows = SDL_getenv("WINDIR");
     if (!windows) windows = SDL_getenv("SystemRoot");
@@ -22,7 +22,7 @@ const char *bongo_cat_neo_ui_system_font(char *path, size_t capacity, bool multi
         const char *latin[] = {"Fonts/segoeui.ttf", "Fonts/msyhl.ttc"};
         const char **candidates = multilingual ? multi : latin;
         for (size_t i = 0; i < 2; ++i) {
-            bongo_cat_neo_path_join(path, capacity, windows, candidates[i]);
+            bongo_cat_path_join(path, capacity, windows, candidates[i]);
             if (readable(path)) return path;
         }
     }
@@ -48,7 +48,7 @@ const char *bongo_cat_neo_ui_system_font(char *path, size_t capacity, bool multi
     return NULL;
 }
 
-const char *bongo_cat_neo_ui_system_heading_font(char *path, size_t capacity,
+const char *bongo_cat_ui_system_heading_font(char *path, size_t capacity,
     bool multilingual) {
 #ifdef _WIN32
     const char *windows = SDL_getenv("WINDIR");
@@ -58,7 +58,7 @@ const char *bongo_cat_neo_ui_system_heading_font(char *path, size_t capacity,
         const char *latin[] = {"Fonts/seguisb.ttf", "Fonts/segoeui.ttf"};
         const char **candidates = multilingual ? multi : latin;
         for (size_t i = 0; i < 2; ++i) {
-            bongo_cat_neo_path_join(path, capacity, windows, candidates[i]);
+            bongo_cat_path_join(path, capacity, windows, candidates[i]);
             if (readable(path)) return path;
         }
     }

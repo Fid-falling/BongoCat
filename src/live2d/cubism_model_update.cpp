@@ -11,7 +11,7 @@
 #include <cstdlib>
 #include <cstring>
 
-namespace bongo_cat_neo {
+namespace bongo_cat {
 
 void NativeModel::resize(int width, int height) {
     if (width <= 0 || height <= 0) return;
@@ -189,4 +189,4 @@ bool NativeModel::set_expression(int index) {
     return true;
 }
 
-} // namespace bongo_cat_neo
+} // namespace bongo_cat

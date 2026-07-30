@@ -8,7 +8,7 @@ composition, preferences parity and interaction, tray/context menus, focus and
 dragging, configuration persistence, resource use, source policy and standalone
 delivery. The audited release executable is:
 
-- `build-final/Release/BongoCatNeo.exe`
+- `build-final/Release/BongoCat.exe`
 - Size: 5,456,384 bytes
 - SHA-256: `F924800D504356AD30034E975A2B9610DE489A109C2A39739E99756BC0B79037`
 

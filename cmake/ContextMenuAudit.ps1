@@ -8,9 +8,9 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$env:BONGO_CAT_NEO_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build\BongoCatNeo.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build\BongoCat.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build\context-menu-audit" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
@@ -20,7 +20,7 @@ Add-Type @'
 using System;
 using System.Text;
 using System.Runtime.InteropServices;
-public static class BongoCatNeoMenuNative {
+public static class BongoCatMenuNative {
     public delegate bool EnumProc(IntPtr handle, IntPtr data);
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L,T,R,B; }
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc proc, IntPtr data);
@@ -52,15 +52,15 @@ Add-Type -AssemblyName System.Drawing
 
 function Get-Windows([int]$ProcessId) {
     $rows = [Collections.Generic.List[object]]::new()
-    [BongoCatNeoMenuNative]::EnumWindows({
+    [BongoCatMenuNative]::EnumWindows({
         param($handle, $data)
         [uint32]$owner = 0
-        [void][BongoCatNeoMenuNative]::GetWindowThreadProcessId($handle, [ref]$owner)
-        if ($owner -eq $ProcessId -and [BongoCatNeoMenuNative]::IsWindowVisible($handle)) {
-            $rect = [BongoCatNeoMenuNative+Rect]::new()
+        [void][BongoCatMenuNative]::GetWindowThreadProcessId($handle, [ref]$owner)
+        if ($owner -eq $ProcessId -and [BongoCatMenuNative]::IsWindowVisible($handle)) {
+            $rect = [BongoCatMenuNative+Rect]::new()
             $class = [Text.StringBuilder]::new(64)
-            [void][BongoCatNeoMenuNative]::GetClassNameW($handle, $class, 64)
-            if ([BongoCatNeoMenuNative]::GetWindowRect($handle, [ref]$rect)) {
+            [void][BongoCatMenuNative]::GetClassNameW($handle, $class, 64)
+            if ([BongoCatMenuNative]::GetWindowRect($handle, [ref]$rect)) {
                 $rows.Add([pscustomobject]@{Handle=$handle; Class=$class.ToString();
                     Rect=$rect; Area=($rect.R-$rect.L)*($rect.B-$rect.T)})
             }
@@ -73,21 +73,21 @@ function Get-Windows([int]$ProcessId) {
 function Get-MenuWindow([string]$ExpectedFirstLabel, [int]$ProcessId) {
     $after = [IntPtr]::Zero
     while ($true) {
-        $handle = [BongoCatNeoMenuNative]::FindWindowExW(
+        $handle = [BongoCatMenuNative]::FindWindowExW(
             [IntPtr]::Zero, $after, "#32768", $null)
         if ($handle -eq [IntPtr]::Zero) { break }
         $after = $handle
-        if (-not [BongoCatNeoMenuNative]::IsWindowVisible($handle)) { continue }
+        if (-not [BongoCatMenuNative]::IsWindowVisible($handle)) { continue }
         [uint32]$ownerProcess = 0
-        [void][BongoCatNeoMenuNative]::GetWindowThreadProcessId(
+        [void][BongoCatMenuNative]::GetWindowThreadProcessId(
             $handle, [ref]$ownerProcess)
         if ($ownerProcess -ne $ProcessId) { continue }
-        $menu = [BongoCatNeoMenuNative]::SendMessageW($handle, 0x01E1,
+        $menu = [BongoCatMenuNative]::SendMessageW($handle, 0x01E1,
             [IntPtr]::Zero, [IntPtr]::Zero)
         if ($menu -eq [IntPtr]::Zero -or
-            [BongoCatNeoMenuNative]::GetMenuItemCount($menu) -lt 8) { continue }
+            [BongoCatMenuNative]::GetMenuItemCount($menu) -lt 8) { continue }
         $text = [Text.StringBuilder]::new(128)
-        [void][BongoCatNeoMenuNative]::GetMenuStringW($menu, 0, $text, 128, 0x400)
+        [void][BongoCatMenuNative]::GetMenuStringW($menu, 0, $text, 128, 0x400)
         if ($text.ToString() -eq $ExpectedFirstLabel) {
             return $handle
         }
@@ -98,10 +98,10 @@ function Get-MenuWindow([string]$ExpectedFirstLabel, [int]$ProcessId) {
 function Get-MenuLabels([IntPtr]$Menu) {
     $labels = [Collections.Generic.List[string]]::new()
     if ($Menu -eq [IntPtr]::Zero) { return $labels }
-    $count = [BongoCatNeoMenuNative]::GetMenuItemCount($Menu)
+    $count = [BongoCatMenuNative]::GetMenuItemCount($Menu)
     for ($index = 0; $index -lt $count; $index++) {
         $text = [Text.StringBuilder]::new(128)
-        [void][BongoCatNeoMenuNative]::GetMenuStringW($Menu, $index, $text, 128, 0x400)
+        [void][BongoCatMenuNative]::GetMenuStringW($Menu, $index, $text, 128, 0x400)
         if ($text.Length) { $labels.Add($text.ToString()) }
     }
     return $labels
@@ -152,7 +152,7 @@ if (-not $BehaviorDisabled) {
 $data = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
 New-Item -ItemType Directory -Force -Path $data | Out-Null
 if ($BehaviorDisabled) {
-    $settings = @{format="bongo-cat-neo/preferences"; version=1;
+    $settings = @{format="bongo-cat/preferences"; version=1;
         model=@{behavior=$false}} | ConvertTo-Json -Depth 4
     [IO.File]::WriteAllText((Join-Path $data "preferences.json"), $settings,
         [Text.UTF8Encoding]::new($false))
@@ -166,28 +166,28 @@ do {
     $menuHandle = Get-MenuWindow $expected[0] $process.Id
 } while ($menuHandle -eq [IntPtr]::Zero -and [DateTime]::UtcNow -lt $deadline)
 if ($menuHandle -ne [IntPtr]::Zero) {
-    $menuRect = [BongoCatNeoMenuNative+Rect]::new()
-    [void][BongoCatNeoMenuNative]::GetWindowRect($menuHandle, [ref]$menuRect)
+    $menuRect = [BongoCatMenuNative+Rect]::new()
+    [void][BongoCatMenuNative]::GetWindowRect($menuHandle, [ref]$menuRect)
     $bitmap = [Drawing.Bitmap]::new($menuRect.R - $menuRect.L, $menuRect.B - $menuRect.T)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
     $graphics.CopyFromScreen($menuRect.L, $menuRect.T, 0, 0, $bitmap.Size)
     $bitmap.Save((Join-Path $OutputDir "context-menu.png"), [Drawing.Imaging.ImageFormat]::Png)
     $graphics.Dispose(); $bitmap.Dispose()
-    $nativeMenu = [BongoCatNeoMenuNative]::SendMessageW($menuHandle, 0x01E1,
+    $nativeMenu = [BongoCatMenuNative]::SendMessageW($menuHandle, 0x01E1,
         [IntPtr]::Zero, [IntPtr]::Zero)
     $labels = Get-MenuLabels $nativeMenu
     # Top-level positions include separators: size=5 and opacity=6.
-    $sizeMenu = [BongoCatNeoMenuNative]::GetSubMenu($nativeMenu, 5)
-    $opacityMenu = [BongoCatNeoMenuNative]::GetSubMenu($nativeMenu, 6)
+    $sizeMenu = [BongoCatMenuNative]::GetSubMenu($nativeMenu, 5)
+    $opacityMenu = [BongoCatMenuNative]::GetSubMenu($nativeMenu, 6)
     $sizeLabels = Get-MenuLabels $sizeMenu
     $opacityLabels = Get-MenuLabels $opacityMenu
     if (-not $BehaviorDisabled) {
-        $motionMenu = [BongoCatNeoMenuNative]::GetSubMenu($nativeMenu, 7)
-        $expressionMenu = [BongoCatNeoMenuNative]::GetSubMenu($nativeMenu, 8)
+        $motionMenu = [BongoCatMenuNative]::GetSubMenu($nativeMenu, 7)
+        $expressionMenu = [BongoCatMenuNative]::GetSubMenu($nativeMenu, 8)
         $motionLabels = Get-MenuLabels $motionMenu
         $expressionLabels = Get-MenuLabels $expressionMenu
     }
-    $owner = [BongoCatNeoMenuNative]::GetWindow($menuHandle, 4)
+    $owner = [BongoCatMenuNative]::GetWindow($menuHandle, 4)
     $previewOwner = @(Get-Windows $process.Id | Where-Object Class -ne "#32768" |
         Sort-Object Area -Descending | Select-Object -First 1).Handle
     if ($PreviewBehaviors -and -not $BehaviorDisabled) {
@@ -235,21 +235,21 @@ if ($menuHandle -ne [IntPtr]::Zero) {
             (Get-FileHash $motionAdvancedFrame).Hash -ne
                 (Get-FileHash $expressionFrame).Hash
     }
-    $itemRect = [BongoCatNeoMenuNative+Rect]::new()
-    $itemKnown = [BongoCatNeoMenuNative]::GetMenuItemRect(
+    $itemRect = [BongoCatMenuNative+Rect]::new()
+    $itemKnown = [BongoCatMenuNative]::GetMenuItemRect(
         $owner, $nativeMenu, 0, [ref]$itemRect)
     if (-not $itemKnown -or $itemRect.L -lt $menuRect.L -or
         $itemRect.R -gt $menuRect.R -or $itemRect.T -lt $menuRect.T -or
         $itemRect.B -gt $menuRect.B) {
-        $itemRect = [BongoCatNeoMenuNative+Rect]::new()
+        $itemRect = [BongoCatMenuNative+Rect]::new()
         $itemRect.L = $menuRect.L; $itemRect.R = $menuRect.R
         $itemRect.T = $menuRect.T + 8; $itemRect.B = $menuRect.T + 30
     }
-    [void][BongoCatNeoMenuNative]::SetCursorPos(
+    [void][BongoCatMenuNative]::SetCursorPos(
         [int](($itemRect.L + $itemRect.R) / 2),
         [int](($itemRect.T + $itemRect.B) / 2))
-    [BongoCatNeoMenuNative]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
-    [BongoCatNeoMenuNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
+    [BongoCatMenuNative]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
+    [BongoCatMenuNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
 }
 $windowDeadline = [DateTime]::UtcNow.AddMilliseconds(2500)
 do {

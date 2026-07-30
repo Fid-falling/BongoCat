@@ -1,9 +1,9 @@
 #include "config_internal.h"
-#include "bongo_cat_neo/path.h"
+#include "bongo_cat/path.h"
 
 #include <stdio.h>
 
-#define SESSION_FORMAT "bongo-cat-neo/session"
+#define SESSION_FORMAT "bongo-cat/session"
 
 static bool get_bool(yyjson_val *obj, const char *key, bool fallback) {
     yyjson_val *value = yyjson_obj_get(obj, key);
@@ -18,13 +18,13 @@ static float get_float(yyjson_val *obj, const char *key, float fallback) {
     return yyjson_is_num(value) ? (float)yyjson_get_num(value) : fallback;
 }
 
-BongoCatNeoResult bongo_cat_neo_session_load(const char *path,
-    BongoCatNeoConfig *config, BongoCatNeoError *error) {
-    if (!path || !config) return BONGO_CAT_NEO_ERROR_ARGUMENT;
-    if (!bongo_cat_neo_path_is_file(path)) return BONGO_CAT_NEO_OK;
-    yyjson_doc *document = bongo_cat_neo_config_read_document(path, SESSION_FORMAT, error);
-    if (!document) return BONGO_CAT_NEO_ERROR_FORMAT;
-    BongoCatNeoConfig loaded = *config;
+BongoCatResult bongo_cat_session_load(const char *path,
+    BongoCatConfig *config, BongoCatError *error) {
+    if (!path || !config) return BONGO_CAT_ERROR_ARGUMENT;
+    if (!bongo_cat_path_is_file(path)) return BONGO_CAT_OK;
+    yyjson_doc *document = bongo_cat_config_read_document(path, SESSION_FORMAT, error);
+    if (!document) return BONGO_CAT_ERROR_FORMAT;
+    BongoCatConfig loaded = *config;
     yyjson_val *root = yyjson_doc_get_root(document);
     yyjson_val *window = yyjson_obj_get(root, "window");
     if (yyjson_is_obj(window)) {
@@ -40,16 +40,16 @@ BongoCatNeoResult bongo_cat_neo_session_load(const char *path,
     if (yyjson_is_str(model)) snprintf(loaded.current_model,
         sizeof(loaded.current_model), "%s", yyjson_get_str(model));
     yyjson_doc_free(document);
-    bongo_cat_neo_config_validate(&loaded);
+    bongo_cat_config_validate(&loaded);
     *config = loaded;
-    return BONGO_CAT_NEO_OK;
+    return BONGO_CAT_OK;
 }
 
-BongoCatNeoResult bongo_cat_neo_session_save(const char *path,
-    const BongoCatNeoConfig *config, BongoCatNeoError *error) {
-    if (!path || !config) return BONGO_CAT_NEO_ERROR_ARGUMENT;
+BongoCatResult bongo_cat_session_save(const char *path,
+    const BongoCatConfig *config, BongoCatError *error) {
+    if (!path || !config) return BONGO_CAT_ERROR_ARGUMENT;
     yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
-    if (!doc) return BONGO_CAT_NEO_ERROR_MEMORY;
+    if (!doc) return BONGO_CAT_ERROR_MEMORY;
     yyjson_mut_val *root = yyjson_mut_obj(doc); yyjson_mut_doc_set_root(doc, root);
     yyjson_mut_obj_add_strcpy(doc, root, "format", SESSION_FORMAT);
     yyjson_mut_obj_add_int(doc, root, "version", 1);
@@ -62,7 +62,7 @@ BongoCatNeoResult bongo_cat_neo_session_save(const char *path,
     yyjson_mut_obj_add_int(doc, window, "width", config->window.width);
     yyjson_mut_obj_add_int(doc, window, "height", config->window.height);
     yyjson_mut_obj_add_strcpy(doc, root, "currentModel", config->current_model);
-    BongoCatNeoResult result = bongo_cat_neo_config_write_document(path, doc,
+    BongoCatResult result = bongo_cat_config_write_document(path, doc,
         "session file", error);
     yyjson_mut_doc_free(doc);
     return result;

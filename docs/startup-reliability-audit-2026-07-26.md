@@ -7,7 +7,7 @@ with emphasis on double-click startup, damaged-data recovery, first-frame
 validity, preferences behavior, transparent rendering, resource stability and
 portable paths. The audited binary is:
 
-- `build-final/Release/BongoCatNeo.exe`
+- `build-final/Release/BongoCat.exe`
 - Source baseline before this final audit set: `378fd43`
 - SHA-256: `F924800D504356AD30034E975A2B9610DE489A109C2A39739E99756BC0B79037`
 - Size: 5,456,384 bytes
@@ -145,5 +145,5 @@ for every release candidate.
 - `ctest --test-dir build-final -C Release --output-on-failure`
 - `ctest --test-dir build-mingw-final -C Release --output-on-failure`
 - `cmake -DROOT=. -P cmake/CheckLines.cmake`
-- `powershell -NoProfile -ExecutionPolicy Bypass -File cmake/StartupPerformanceAudit.ps1 -Exe build-final/Release/BongoCatNeo.exe -OutputDir build-final/startup-performance-current`
-- `powershell -NoProfile -ExecutionPolicy Bypass -File cmake/VisualAudit.ps1 -Exe build-final/Release/BongoCatNeo.exe -OutputDir build-final/visual-audit-current -PreferencesMatrix`
+- `powershell -NoProfile -ExecutionPolicy Bypass -File cmake/StartupPerformanceAudit.ps1 -Exe build-final/Release/BongoCat.exe -OutputDir build-final/startup-performance-current`
+- `powershell -NoProfile -ExecutionPolicy Bypass -File cmake/VisualAudit.ps1 -Exe build-final/Release/BongoCat.exe -OutputDir build-final/visual-audit-current -PreferencesMatrix`

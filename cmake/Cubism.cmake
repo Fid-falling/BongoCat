@@ -1,6 +1,6 @@
-set(CUBISM_CORE_PATH "${BONGO_CAT_NEO_CUBISM_SDK}/Core")
-set(CUBISM_FRAMEWORK_PATH "${BONGO_CAT_NEO_CUBISM_SDK}/Framework")
-set(CUBISM_GLEW_PATH "${BONGO_CAT_NEO_CUBISM_SDK}/Samples/OpenGL/thirdParty/glew")
+set(CUBISM_CORE_PATH "${BONGO_CAT_CUBISM_SDK}/Core")
+set(CUBISM_FRAMEWORK_PATH "${BONGO_CAT_CUBISM_SDK}/Framework")
+set(CUBISM_GLEW_PATH "${BONGO_CAT_CUBISM_SDK}/Samples/OpenGL/thirdParty/glew")
 
 # GLEW 2.2.0 still declares compatibility with pre-3.5 CMake. CMake 4 removes
 # that compatibility unless the parent project supplies an explicit floor.
@@ -43,7 +43,7 @@ add_subdirectory("${CUBISM_GLEW_PATH}/build/cmake" "${CMAKE_BINARY_DIR}/cubism-g
 set(FRAMEWORK_SOURCE OpenGL)
 add_subdirectory("${CUBISM_FRAMEWORK_PATH}" "${CMAKE_BINARY_DIR}/cubism-framework")
 include(cmake/CubismShaderOptimize.cmake)
-bongo_cat_neo_optimize_cubism_shaders(Framework)
+bongo_cat_optimize_cubism_shaders(Framework)
 
 if(WIN32)
   target_compile_definitions(Framework PUBLIC CSM_TARGET_WIN_GL)
