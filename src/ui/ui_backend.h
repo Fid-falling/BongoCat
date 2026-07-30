@@ -14,6 +14,8 @@ typedef enum BongoCatUICursor {
 
 typedef struct BongoCatUIBackend {
     SDL_Window *window;
+    float layout_scale;
+    float raster_scale;
     BongoCatGL gl;
     struct nk_context context;
     struct nk_font_atlas atlas;
@@ -26,6 +28,8 @@ typedef struct BongoCatUIBackend {
     GLuint vbo;
     GLuint ebo;
     GLuint font_texture;
+    int font_atlas_width;
+    int font_atlas_height;
     const struct nk_user_font *caption_font;
     const struct nk_user_font *body_font;
     const struct nk_user_font *label_font;
@@ -60,7 +64,8 @@ typedef struct BongoCatUIBackend {
 bool bongo_cat_ui_init(BongoCatUIBackend *ui, SDL_Window *window,
     const char *body_font_path, const char *body_fallback_path,
     const char *heading_font_path, const char *heading_fallback_path,
-    const nk_rune *glyph_ranges, BongoCatError *error);
+    const nk_rune *glyph_ranges, float layout_scale, float raster_scale,
+    BongoCatError *error);
 void bongo_cat_ui_destroy(BongoCatUIBackend *ui);
 void bongo_cat_ui_input_begin(BongoCatUIBackend *ui);
 void bongo_cat_ui_input_end(BongoCatUIBackend *ui);
@@ -69,6 +74,11 @@ void bongo_cat_ui_render(BongoCatUIBackend *ui);
 bool bongo_cat_ui_frame_valid(const BongoCatUIBackend *ui);
 BongoCatUIBackend *bongo_cat_ui_backend_for_context(
     const struct nk_context *context);
+float bongo_cat_ui_display_layout_scale(SDL_DisplayID display);
+void bongo_cat_ui_query_window_scale(SDL_Window *window,
+    float *layout_scale, float *raster_scale);
+void bongo_cat_ui_logical_size(const BongoCatUIBackend *ui,
+    float *width, float *height);
 const struct nk_user_font *bongo_cat_ui_caption_font(
     const struct nk_context *context);
 const struct nk_user_font *bongo_cat_ui_body_font(

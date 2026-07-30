@@ -17,14 +17,18 @@ typedef struct ModelCoverSlot {
 static ModelCoverSlot cover_cache[BONGO_CAT_MODEL_CAP];
 static uint64_t cover_generation;
 
-void bongo_cat_preferences_model_cache_clear(BongoCatApp *app) {
-    bongo_cat_preferences_remove_dialog_clear(app);
+void bongo_cat_preferences_model_cover_cache_clear(BongoCatApp *app) {
     for (size_t i = 0; i < BONGO_CAT_MODEL_CAP; ++i) {
         ModelCoverSlot *slot = &cover_cache[i];
         if ((!app || slot->app == app) && slot->image.texture)
             glDeleteTextures(1, &slot->image.texture);
         if (!app || slot->app == app) memset(slot, 0, sizeof(*slot));
     }
+}
+
+void bongo_cat_preferences_model_cache_clear(BongoCatApp *app) {
+    bongo_cat_preferences_remove_dialog_clear(app);
+    bongo_cat_preferences_model_cover_cache_clear(app);
 }
 
 void bongo_cat_preferences_model_covers_begin(void) {

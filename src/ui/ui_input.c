@@ -61,6 +61,7 @@ static void text_event(BongoCatUIBackend *ui, const char *text) {
 bool bongo_cat_ui_event(BongoCatUIBackend *ui, const SDL_Event *event) {
     if (!ui || !event) return false;
     struct nk_context *context = &ui->context;
+    float scale = ui->layout_scale > 0.0f ? ui->layout_scale : 1.0f;
     switch (event->type) {
     case SDL_EVENT_KEY_DOWN: case SDL_EVENT_KEY_UP:
         key_event(ui, &event->key);
@@ -69,13 +70,15 @@ bool bongo_cat_ui_event(BongoCatUIBackend *ui, const SDL_Event *event) {
         text_event(ui, event->text.text);
         return true;
     case SDL_EVENT_MOUSE_MOTION:
-        nk_input_motion(context, (int)event->motion.x, (int)event->motion.y);
+        nk_input_motion(context, (int)(event->motion.x / scale),
+            (int)(event->motion.y / scale));
         return true;
     case SDL_EVENT_MOUSE_BUTTON_DOWN: case SDL_EVENT_MOUSE_BUTTON_UP: {
         bool down = event->button.down;
         enum nk_buttons button = event->button.button == SDL_BUTTON_LEFT ? NK_BUTTON_LEFT :
             event->button.button == SDL_BUTTON_MIDDLE ? NK_BUTTON_MIDDLE : NK_BUTTON_RIGHT;
-        nk_input_button(context, button, (int)event->button.x, (int)event->button.y, down);
+        nk_input_button(context, button, (int)(event->button.x / scale),
+            (int)(event->button.y / scale), down);
         return true;
     }
     case SDL_EVENT_MOUSE_WHEEL:

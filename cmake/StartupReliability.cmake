@@ -45,3 +45,10 @@ add_test(NAME preferences-interaction COMMAND powershell.exe -NoProfile
   -Exe $<TARGET_FILE:bongo_cat>
   -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/preferences-interaction-test)
 set_tests_properties(preferences-interaction PROPERTIES TIMEOUT 45 RUN_SERIAL TRUE)
+
+add_test(NAME preferences-dpi COMMAND powershell.exe -NoProfile
+  -ExecutionPolicy Bypass -File
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/DpiAudit.ps1
+  -Exe $<TARGET_FILE:bongo_cat>
+  -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/preferences-dpi-test)
+set_tests_properties(preferences-dpi PROPERTIES TIMEOUT 300 RUN_SERIAL TRUE)

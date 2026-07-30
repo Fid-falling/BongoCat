@@ -38,6 +38,7 @@ public static class BongoCatNavigationNative {
 }
 '@
 [void][BongoCatNavigationNative]::SetProcessDPIAware()
+$script:UiScale = 1.0
 
 function Wait-Preferences([int]$ProcessId) {
     $deadline = [DateTime]::UtcNow.AddSeconds(30)
@@ -62,6 +63,8 @@ function Wait-Preferences([int]$ProcessId) {
 }
 
 function Move-Client([IntPtr]$Window, [int]$X, [int]$Y) {
+    $X = [int][Math]::Round($X * $script:UiScale)
+    $Y = [int][Math]::Round($Y * $script:UiScale)
     $point = [BongoCatNavigationNative+Point]::new()
     $point.X = $X; $point.Y = $Y
     [void][BongoCatNavigationNative]::ClientToScreen($Window, [ref]$point)
@@ -71,6 +74,8 @@ function Move-Client([IntPtr]$Window, [int]$X, [int]$Y) {
 function Click-Client([IntPtr]$Window, [int]$X, [int]$Y) {
     Move-Client $Window $X $Y
     Start-Sleep -Milliseconds 30
+    $X = [int][Math]::Round($X * $script:UiScale)
+    $Y = [int][Math]::Round($Y * $script:UiScale)
     $point = [BongoCatNavigationNative+Point]::new()
     $point.X = $X; $point.Y = $Y
     [void][BongoCatNavigationNative]::ClientToScreen($Window, [ref]$point)
@@ -92,6 +97,8 @@ function Click-Client([IntPtr]$Window, [int]$X, [int]$Y) {
 }
 
 function Read-Pixel([IntPtr]$Window, [int]$X, [int]$Y) {
+    $X = [int][Math]::Round($X * $script:UiScale)
+    $Y = [int][Math]::Round($Y * $script:UiScale)
     $point = [BongoCatNavigationNative+Point]::new()
     $point.X = $X; $point.Y = $Y
     [void][BongoCatNavigationNative]::ClientToScreen($Window, [ref]$point)
@@ -127,12 +134,15 @@ function Measure-Transition([IntPtr]$Window, [int]$Y) {
     $before = Read-Pixel $Window 120 $Y
     $watch = [Diagnostics.Stopwatch]::StartNew()
     $point = [BongoCatNavigationNative+Point]::new()
-    $point.X = 82; $point.Y = $Y
+    $nativeX = [int][Math]::Round(82 * $script:UiScale)
+    $nativeY = [int][Math]::Round($Y * $script:UiScale)
+    $point.X = $nativeX; $point.Y = $nativeY
     [void][BongoCatNavigationNative]::ClientToScreen($Window, [ref]$point)
     $clip = [BongoCatNavigationNative+Rect]::new()
     $clip.Left = $point.X; $clip.Top = $point.Y
     $clip.Right = $point.X + 1; $clip.Bottom = $point.Y + 1
-    $packed = [IntPtr]((82 -band 0xffff) -bor (($Y -band 0xffff) -shl 16))
+    $packed = [IntPtr](($nativeX -band 0xffff) -bor
+        (($nativeY -band 0xffff) -shl 16))
     [void][BongoCatNavigationNative]::ClipCursorRect([ref]$clip)
     try {
         [void][BongoCatNavigationNative]::SendMessageW(
@@ -140,7 +150,7 @@ function Measure-Transition([IntPtr]$Window, [int]$Y) {
         [void][BongoCatNavigationNative]::SendMessageW(
             $Window, 0x0201, [UIntPtr]::new(1), $packed)
         Start-Sleep -Milliseconds 5
-        Move-Client $Window 82 $Y
+        [void][BongoCatNavigationNative]::SetCursorPos($point.X, $point.Y)
         [void][BongoCatNavigationNative]::SendMessageW(
             $Window, 0x0202, [UIntPtr]::Zero, $packed)
     } finally { [void][BongoCatNavigationNative]::ReleaseCursor([IntPtr]::Zero) }
@@ -191,7 +201,21 @@ try {
         [IntPtr](-1), 40, 40, 0, 0, 0x0041)
     [void][BongoCatNavigationNative]::SetForegroundWindow($window)
     Start-Sleep -Milliseconds 500
-    $centers = @(207, 283, 359, 435, 511)
+    $client = [BongoCatNavigationNative+Rect]::new()
+    [void][BongoCatNavigationNative]::GetClientRect($window, [ref]$client)
+    $script:UiScale = $client.Right / 900.0
+    $logicalHeight = $client.Bottom / $script:UiScale
+    $room = [Math]::Max(1.0, $logicalHeight - 16.0 - 148.0)
+    $top = [Math]::Min(16.0, [Math]::Max(4.0, $room * .05))
+    $row = 68.0
+    $gap = [Math]::Min(8.0, [Math]::Max(0.0,
+        ($room - $top - $row * 5.0) / 4.0))
+    if ($top + $row * 5.0 -gt $room) {
+        $row = [Math]::Max(40.0, ($room - $top) / 5.0)
+    }
+    $centers = @(0..4 | ForEach-Object {
+        [int][Math]::Round(8.0 + 148.0 + $row * $_ + $top +
+            $gap * $_ + ($row - 1.0) * .5) })
     $navigation = foreach ($page in @(4, 3, 2, 1, 0)) {
         Click-Client $window 82 $centers[$page]
         Start-Sleep -Milliseconds 280

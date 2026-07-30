@@ -71,9 +71,12 @@ static bool create_device(BongoCatUIBackend *ui, BongoCatError *error) {
 bool bongo_cat_ui_init(BongoCatUIBackend *ui, SDL_Window *window,
     const char *body_font_path, const char *body_fallback_path,
     const char *heading_font_path, const char *heading_fallback_path,
-    const nk_rune *glyph_ranges, BongoCatError *error) {
+    const nk_rune *glyph_ranges, float layout_scale, float raster_scale,
+    BongoCatError *error) {
     memset(ui, 0, sizeof(*ui));
     ui->window = window;
+    ui->layout_scale = layout_scale;
+    ui->raster_scale = raster_scale;
     ui->vertex_capacity = 256 * 1024;
     ui->element_capacity = 96 * 1024;
     ui->vertices = malloc(ui->vertex_capacity);
@@ -81,7 +84,12 @@ bool bongo_cat_ui_init(BongoCatUIBackend *ui, SDL_Window *window,
     if (!ui->vertices || !ui->elements || !nk_init_default(&ui->context, NULL) ||
         !create_device(ui, error) || !bongo_cat_ui_font_atlas_create(ui,
             body_font_path, body_fallback_path, heading_font_path,
-            heading_fallback_path, glyph_ranges)) return false;
+            heading_fallback_path, glyph_ranges, raster_scale)) {
+        if (error && !error->message[0]) bongo_cat_error_set(error,
+            BONGO_CAT_ERROR_MEMORY, "Preferences UI resources could not be created");
+        bongo_cat_ui_destroy(ui);
+        return false;
+    }
     nk_buffer_init_default(&ui->commands);
     context_backend = ui;
     ui->context.clip.copy = clipboard_copy;
@@ -93,7 +101,7 @@ void bongo_cat_ui_destroy(BongoCatUIBackend *ui) {
     if (!ui) return;
     if (context_backend == ui) context_backend = NULL;
     bongo_cat_ui_paint_destroy(ui);
-    bongo_cat_ui_font_atlas_destroy(ui);
+    if (ui->atlas.permanent.alloc) bongo_cat_ui_font_atlas_destroy(ui);
     nk_buffer_free(&ui->commands);
     nk_free(&ui->context);
     if (ui->font_texture) glDeleteTextures(1, &ui->font_texture);
@@ -149,8 +157,9 @@ static void convert(BongoCatUIBackend *ui) {
 }
 
 void bongo_cat_ui_render(BongoCatUIBackend *ui) {
-    int width, height, pixel_width, pixel_height;
-    SDL_GetWindowSize(ui->window, &width, &height);
+    int pixel_width, pixel_height;
+    float width = 0.0f, height = 0.0f;
+    bongo_cat_ui_logical_size(ui, &width, &height);
     SDL_GetWindowSizeInPixels(ui->window, &pixel_width, &pixel_height);
     float projection[4][4] = {{2.0f / width, 0, 0, 0}, {0, -2.0f / height, 0, 0},
         {0, 0, -1, 0}, {-1, 1, 0, 1}};
@@ -171,7 +180,7 @@ void bongo_cat_ui_render(BongoCatUIBackend *ui) {
     ui->gl.bind_vertex_array(ui->vao);
     const struct nk_draw_command *command;
     const nk_draw_index *offset = NULL;
-    float sx = (float)pixel_width / width, sy = (float)pixel_height / height;
+    float sx = pixel_width / width, sy = pixel_height / height;
     ui->last_draw_commands = 0;
     ui->last_draw_elements = 0;
     nk_draw_foreach(command, &ui->context, &ui->commands) {

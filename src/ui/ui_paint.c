@@ -51,12 +51,13 @@ static bool texture_dimensions(struct nk_context *context,
     float *scale_y, BongoCatUIBackend **backend) {
     *backend = bongo_cat_ui_backend_for_context(context);
     if (!*backend || !(*backend)->window) return false;
-    int logical_width, logical_height, pixel_width, pixel_height;
-    SDL_GetWindowSize((*backend)->window, &logical_width, &logical_height);
+    float logical_width = 0.0f, logical_height = 0.0f;
+    int pixel_width, pixel_height;
+    bongo_cat_ui_logical_size(*backend, &logical_width, &logical_height);
     SDL_GetWindowSizeInPixels((*backend)->window, &pixel_width, &pixel_height);
-    if (logical_width < 1 || logical_height < 1) return false;
-    *scale_x = (float)pixel_width / logical_width;
-    *scale_y = (float)pixel_height / logical_height;
+    if (logical_width < 1.0f || logical_height < 1.0f) return false;
+    *scale_x = pixel_width / logical_width;
+    *scale_y = pixel_height / logical_height;
     *width = NK_MAX(1, (int)ceilf(bounds.w * *scale_x));
     *height = NK_MAX(1, (int)ceilf(bounds.h * *scale_y));
     return true;

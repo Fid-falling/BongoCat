@@ -1,22 +1,15 @@
 #include "bongo_cat/preferences.h"
 #include "bongo_cat/app.h"
-#include "bongo_cat/i18n.h"
 #include "bongo_cat/memory.h"
 #include "bongo_cat/platform.h"
 #include "preferences_controls.h"
 #include "preferences_state.h"
-#include "ui_catime.h"
 #include "ui_animation.h"
-#include "ui_font.h"
+#include "ui_catime.h"
 #include "ui_native_theme.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
 #include <stdlib.h>
-
-#define BONGO_CAT_PREF_WIDTH 900
-#define BONGO_CAT_PREF_HEIGHT 680
-#define BONGO_CAT_PREF_MIN_WIDTH 720
-#define BONGO_CAT_PREF_MIN_HEIGHT 560
 
 int bongo_cat_preferences_resolved_theme(const BongoCatPreferences *value) {
     if (value->app->config.app.theme == BONGO_CAT_THEME_DARK) return 1;
@@ -34,108 +27,6 @@ void bongo_cat_preferences_apply_theme(BongoCatPreferences *value) {
     bongo_cat_ui_native_theme_apply(value->window, dark != 0);
 }
 
-static SDL_HitTestResult SDLCALL preference_hit_test(SDL_Window *window,
-    const SDL_Point *point, void *data) {
-    BongoCatPreferences *value = data;
-    if (!value || !point || bongo_cat_preferences_remove_dialog_active(value->app))
-        return SDL_HITTEST_NORMAL;
-    int width = 0, height = 0;
-    SDL_GetWindowSize(window, &width, &height);
-    const int edge = 7;
-    bool left = point->x < edge, right = point->x >= width - edge;
-    bool top = point->y < edge, bottom = point->y >= height - edge;
-    if (top && left) return SDL_HITTEST_RESIZE_TOPLEFT;
-    if (top && right) return SDL_HITTEST_RESIZE_TOPRIGHT;
-    if (bottom && left) return SDL_HITTEST_RESIZE_BOTTOMLEFT;
-    if (bottom && right) return SDL_HITTEST_RESIZE_BOTTOMRIGHT;
-    if (top) return SDL_HITTEST_RESIZE_TOP;
-    if (right) return SDL_HITTEST_RESIZE_RIGHT;
-    if (bottom) return SDL_HITTEST_RESIZE_BOTTOM;
-    if (left) return SDL_HITTEST_RESIZE_LEFT;
-    return bongo_cat_ui_title_drag_hit((float)point->x, (float)point->y,
-        (float)width) ? SDL_HITTEST_DRAGGABLE : SDL_HITTEST_NORMAL;
-}
-
-static void preferred_window_size(int *width, int *height) {
-    *width = BONGO_CAT_PREF_WIDTH;
-    *height = BONGO_CAT_PREF_HEIGHT;
-    SDL_Rect usable;
-    SDL_DisplayID display = SDL_GetPrimaryDisplay();
-    if (!display || !SDL_GetDisplayUsableBounds(display, &usable)) return;
-    int available_width = usable.w - 48;
-    int available_height = usable.h - 48;
-    if (available_width > 0 && *width > available_width) *width = available_width;
-    if (available_height > 0 && *height > available_height) *height = available_height;
-    if (*width < 640) *width = 640;
-    if (*height < 520) *height = 520;
-}
-
-static bool open_window(BongoCatPreferences *value) {
-    SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS |
-        SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;
-    int width, height;
-    preferred_window_size(&width, &height);
-#ifdef _WIN32
-    SDL_SetHint(SDL_HINT_WINDOWS_ERASE_BACKGROUND_MODE, "0");
-#endif
-    value->window = SDL_CreateWindow(BONGO_CAT_NAME, width, height, flags);
-    if (!value->window) return false;
-    SDL_SetWindowMinimumSize(value->window, BONGO_CAT_PREF_MIN_WIDTH,
-        BONGO_CAT_PREF_MIN_HEIGHT);
-    SDL_SetWindowPosition(value->window, SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED);
-    value->native_drag = SDL_SetWindowHitTest(value->window,
-        preference_hit_test, value);
-    value->gl_context = value->app->gl_context;
-    if (!SDL_GL_MakeCurrent(value->window, value->gl_context)) {
-        SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
-        SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
-        value->gl_context = SDL_GL_CreateContext(value->window);
-        SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0);
-        value->owns_gl_context = value->gl_context != NULL;
-        if (!value->gl_context ||
-            !SDL_GL_MakeCurrent(value->window, value->gl_context)) return false;
-    }
-    BongoCatError error = {0};
-    char body_path[BONGO_CAT_PATH_CAP], body_fallback_path[BONGO_CAT_PATH_CAP];
-    char heading_path[BONGO_CAT_PATH_CAP], heading_fallback_path[BONGO_CAT_PATH_CAP];
-    const char *body_font, *body_fallback, *heading_font, *heading_fallback;
-    const nk_rune *ranges = NULL;
-    body_font = bongo_cat_ui_system_font(body_path, sizeof(body_path), false);
-    body_fallback = bongo_cat_ui_system_font(body_fallback_path,
-        sizeof(body_fallback_path), true);
-    heading_font = bongo_cat_ui_system_heading_font(heading_path,
-        sizeof(heading_path), false);
-    heading_fallback = bongo_cat_ui_system_heading_font(heading_fallback_path,
-        sizeof(heading_fallback_path), true);
-    if (!heading_font) heading_font = body_font;
-    if (!heading_fallback) heading_fallback = body_fallback;
-    if (value->app->i18n) {
-        bongo_cat_i18n_all_glyph_ranges(value->app->i18n, value->glyph_ranges,
-            sizeof(value->glyph_ranges) / sizeof(value->glyph_ranges[0]));
-        ranges = value->glyph_ranges;
-    }
-    if (!bongo_cat_ui_init(&value->ui, value->window, body_font,
-        body_fallback, heading_font, heading_fallback, ranges, &error)) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
-        return false;
-    }
-    bongo_cat_preferences_assets_load(value);
-    bongo_cat_platform_trim_memory();
-    value->style_theme = -1;
-    value->font_language = value->app->config.app.language;
-    int pixel_width = 0, pixel_height = 0;
-    SDL_GetWindowSizeInPixels(value->window, &pixel_width, &pixel_height);
-    SDL_Log("Preferences GL ready: dedicated=%d pixels=%dx%d",
-        value->owns_gl_context, pixel_width, pixel_height);
-    if (!SDL_GL_SetSwapInterval(0)) SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
-        "Preferences VSync disable unavailable: %s", SDL_GetError());
-    SDL_StartTextInput(value->window);
-    value->render_dirty = true;
-    bongo_cat_preferences_live_resize_install(value);
-    SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
-    return true;
-}
 BongoCatPreferences *bongo_cat_preferences_create(BongoCatApp *app) {
     if (!app) return NULL;
     BongoCatPreferences *value = calloc(1, sizeof(*value));
@@ -148,7 +39,7 @@ BongoCatPreferences *bongo_cat_preferences_create(BongoCatApp *app) {
 }
 void bongo_cat_preferences_show(BongoCatPreferences *value) {
     if (!value) return;
-    if (!value->window && !open_window(value)) {
+    if (!value->window && !bongo_cat_preferences_open_window(value)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Preferences failed: %s", SDL_GetError());
         bongo_cat_preferences_close(value);
         return;
@@ -161,20 +52,27 @@ void bongo_cat_preferences_close(BongoCatPreferences *value) {
     if (!value || !value->window) return;
     bongo_cat_preferences_live_resize_uninstall(value);
     bongo_cat_preferences_shortcut_cancel(value);
-    SDL_GL_MakeCurrent(value->window, value->gl_context);
-    if (value->input_active) bongo_cat_preferences_input_end(value);
+    if (value->gl_context) SDL_GL_MakeCurrent(value->window, value->gl_context);
+    if (value->ui_initialized && value->input_active)
+        bongo_cat_preferences_input_end(value);
     SDL_StopTextInput(value->window);
     bongo_cat_preferences_model_cache_clear(value->app);
-    bongo_cat_pref_controls_reset(&value->ui.context);
-    bongo_cat_ui_animations_reset(&value->ui.context);
+    if (value->ui_initialized) {
+        bongo_cat_pref_controls_reset(&value->ui.context);
+        bongo_cat_ui_animations_reset(&value->ui.context);
+    }
     bongo_cat_preferences_assets_clear(value);
-    bongo_cat_ui_cursor_destroy(&value->ui); bongo_cat_ui_destroy(&value->ui);
+    if (value->ui_initialized) {
+        bongo_cat_ui_cursor_destroy(&value->ui);
+        bongo_cat_ui_destroy(&value->ui);
+    }
     if (value->owns_gl_context && value->gl_context)
         SDL_GL_DestroyContext(value->gl_context);
     SDL_DestroyWindow(value->window);
     value->window = NULL;
     value->gl_context = NULL;
     value->owns_gl_context = false;
+    value->ui_initialized = false;
     value->native_drag = false;
     value->chrome_dragging = false;
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
@@ -237,8 +135,9 @@ static bool chrome_event(BongoCatPreferences *value, const SDL_Event *event) {
         event->button.button == SDL_BUTTON_LEFT) {
         int width = 0;
         SDL_GetWindowSize(value->window, &width, NULL);
-        if (!bongo_cat_ui_title_drag_hit(event->button.x, event->button.y,
-            (float)width)) return false;
+        float scale = value->ui.layout_scale > 0.0f ? value->ui.layout_scale : 1.0f;
+        if (!bongo_cat_ui_title_drag_hit(event->button.x / scale,
+            event->button.y / scale, width / scale)) return false;
         SDL_GetWindowPosition(value->window, &value->drag_window_x,
             &value->drag_window_y);
         SDL_GetGlobalMouseState(&value->drag_pointer_x, &value->drag_pointer_y);
@@ -270,6 +169,7 @@ bool bongo_cat_preferences_event(BongoCatPreferences *value, const SDL_Event *ev
         value->render_dirty = true; return false;
     }
     if (event_window(event) != SDL_GetWindowID(value->window)) return false;
+    if (bongo_cat_preferences_scale_event(value, event)) return true;
     if (event->type == SDL_EVENT_WINDOW_FOCUS_LOST)
         bongo_cat_pref_controls_reset(&value->ui.context);
     if (value->app->smoke_input_audit && (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN ||

@@ -1,7 +1,12 @@
 #include "preferences_state.h"
+#include "bongo_cat/file.h"
+#include "bongo_cat/path.h"
+
+#include <stdio.h>
 
 static void send_key(BongoCatPreferences *value, Uint32 type, bool down) {
-    SDL_Event event = {0};
+    SDL_Event event;
+    SDL_zero(event);
     event.type = type;
     event.key.windowID = SDL_GetWindowID(value->window);
     event.key.down = down;
@@ -17,4 +22,47 @@ void bongo_cat_preferences_shortcut_smoke(BongoCatPreferences *value) {
     value->app->smoke_preference_shortcut = false;
     send_key(value, SDL_EVENT_KEY_DOWN, true);
     send_key(value, SDL_EVENT_KEY_UP, false);
+}
+
+static float font_height(const struct nk_user_font *font) {
+    return font ? font->height : 0.0f;
+}
+
+void bongo_cat_preferences_smoke_frame(BongoCatPreferences *value) {
+    if (!value || !value->app->smoke) return;
+    bool valid = bongo_cat_ui_frame_valid(&value->ui);
+    if (!value->frame_checked) {
+        value->frame_checked = true;
+        if (!valid) value->app->exit_code = 1;
+    }
+    int window_width = 0, window_height = 0;
+    int pixel_width = 0, pixel_height = 0;
+    float logical_width = 0.0f, logical_height = 0.0f;
+    SDL_GetWindowSize(value->window, &window_width, &window_height);
+    SDL_GetWindowSizeInPixels(value->window, &pixel_width, &pixel_height);
+    bongo_cat_ui_logical_size(&value->ui, &logical_width, &logical_height);
+    char path[BONGO_CAT_PATH_CAP];
+    bongo_cat_path_join(path, sizeof(path), value->app->data_root,
+        "ui-frame.txt");
+    FILE *file = bongo_cat_file_open(path, "wb");
+    if (!file) return;
+    fprintf(file, "valid=%d page=%d convert=%d vertices=%zu elements=%zu "
+        "commands=%u draw_elements=%u gl_error=%u alpha_vertices=%u "
+        "max_alpha=%u font_path=%d font_file=%d custom_font=%d font_probe=%d "
+        "layout_scale=%.3f raster_scale=%.3f window=%dx%d pixels=%dx%d "
+        "logical=%.2fx%.2f atlas=%dx%d fonts=%.1f,%.1f,%.1f,%.1f,%.1f\n",
+        valid, value->page, value->ui.last_convert_result,
+        value->ui.last_vertex_bytes, value->ui.last_element_bytes,
+        value->ui.last_draw_commands, value->ui.last_draw_elements,
+        (unsigned)value->ui.last_gl_error, value->ui.nonzero_alpha_vertices,
+        value->ui.max_alpha, value->ui.font_path_found,
+        value->ui.font_file_loaded, value->ui.custom_font_loaded,
+        value->ui.font_probe_loaded, value->ui.layout_scale,
+        value->ui.raster_scale, window_width, window_height,
+        pixel_width, pixel_height, logical_width, logical_height,
+        value->ui.font_atlas_width, value->ui.font_atlas_height,
+        font_height(value->ui.caption_font), font_height(value->ui.body_font),
+        font_height(value->ui.label_font), font_height(value->ui.heading_font),
+        font_height(value->ui.hero_font));
+    fclose(file);
 }

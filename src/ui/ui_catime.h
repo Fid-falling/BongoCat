@@ -46,6 +46,7 @@ bool bongo_cat_ui_content_header(struct nk_context *context,
     const char *title, int icon, bool interactive, bool dark);
 void bongo_cat_ui_tabs(struct nk_context *context, const char *const *labels,
     int count, int *active, bool interactive, bool dark,
+    float available_height,
     BongoCatUIIconDraw draw_icon, void *icon_userdata);
 void bongo_cat_ui_set_icons(BongoCatUIIconDraw draw_icon,
     void *icon_userdata);

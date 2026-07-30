@@ -85,8 +85,9 @@ function Get-ClientPoint([IntPtr]$Window, [double]$X, [double]$Y) {
     $client = [BongoCatPreferencesNative+Rect]::new()
     [void][BongoCatPreferencesNative]::GetClientRect($Window, [ref]$client)
     $point = [BongoCatPreferencesNative+Point]::new()
-    $clientX = [int][Math]::Round($X * ($client.R - $client.L) / 900.0)
-    $clientY = [int][Math]::Round($Y * ($client.B - $client.T) / 680.0)
+    $scale = ($client.R - $client.L) / 900.0
+    $clientX = [int][Math]::Round($X * $scale)
+    $clientY = [int][Math]::Round($Y * $scale)
     $point.X = $clientX; $point.Y = $clientY
     [void][BongoCatPreferencesNative]::ClientToScreen($Window, [ref]$point)
     return [pscustomobject]@{ X=$point.X; Y=$point.Y; ClientX=$clientX; ClientY=$clientY }

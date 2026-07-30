@@ -18,6 +18,7 @@ struct BongoCatPreferences {
     SDL_Window *window;
     SDL_GLContext gl_context;
     bool owns_gl_context;
+    bool ui_initialized;
     BongoCatUIBackend ui;
     unsigned int logo_texture;
     unsigned int icon_texture;
@@ -71,11 +72,16 @@ struct BongoCatPreferences {
 
 int bongo_cat_preferences_resolved_theme(const BongoCatPreferences *value);
 void bongo_cat_preferences_apply_theme(BongoCatPreferences *value);
+bool bongo_cat_preferences_open_window(BongoCatPreferences *value);
+bool bongo_cat_preferences_scale_event(BongoCatPreferences *value,
+    const SDL_Event *event);
 void bongo_cat_preferences_live_resize_install(BongoCatPreferences *value);
 void bongo_cat_preferences_live_resize_uninstall(BongoCatPreferences *value);
 void bongo_cat_preferences_assets_load(BongoCatPreferences *value);
 void bongo_cat_preferences_support_assets_load(BongoCatPreferences *value);
 void bongo_cat_preferences_assets_clear(BongoCatPreferences *value);
+void bongo_cat_preferences_model_cover_cache_clear(BongoCatApp *app);
+void bongo_cat_preferences_smoke_frame(BongoCatPreferences *value);
 void bongo_cat_preferences_icon_draw(const BongoCatPreferences *value,
     struct nk_command_buffer *canvas, int icon, struct nk_rect bounds,
     struct nk_color color);

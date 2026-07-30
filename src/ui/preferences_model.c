@@ -142,14 +142,11 @@ static void model_card(BongoCatPreferences *value, struct nk_context *context,
     struct nk_rect preview = nk_rect(bounds.x + 1, bounds.y + 1,
         bounds.w - 2, preview_height);
     nk_fill_rect(canvas, preview, 12, p.field);
-    int logical_width = 0, logical_height = 0, pixel_width = 0, pixel_height = 0;
-    SDL_GetWindowSize(value->window, &logical_width, &logical_height);
-    SDL_GetWindowSizeInPixels(value->window, &pixel_width, &pixel_height);
-    float scale_x = logical_width > 0 ? (float)pixel_width / logical_width : 1;
-    float scale_y = logical_height > 0 ? (float)pixel_height / logical_height : 1;
+    float raster_scale = value->ui.raster_scale > 0.0f ?
+        value->ui.raster_scale : 1.0f;
     const BongoCatModelCover *cover = bongo_cat_preferences_model_cover(
-        app, entry, NK_MAX(1, (int)lroundf(preview.w * scale_x)),
-        NK_MAX(1, (int)lroundf(preview.h * scale_y)));
+        app, entry, NK_MAX(1, (int)lroundf(preview.w * raster_scale)),
+        NK_MAX(1, (int)lroundf(preview.h * raster_scale)));
     if (cover) {
         float scale = NK_MIN(preview.w / cover->width, preview.h / cover->height);
         struct nk_rect image = nk_rect(preview.x + (preview.w - cover->width * scale) * .5f,

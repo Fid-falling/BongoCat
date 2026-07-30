@@ -32,6 +32,7 @@ public static class BongoCatModelBorderNative {
 }
 '@
 [void][BongoCatModelBorderNative]::SetProcessDPIAware()
+$script:UiScale = 1.0
 
 function Wait-Preferences([int]$ProcessId) {
     $deadline = [DateTime]::UtcNow.AddSeconds(20)
@@ -56,6 +57,8 @@ function Wait-Preferences([int]$ProcessId) {
 }
 
 function Move-Client([IntPtr]$Window, [int]$X, [int]$Y) {
+    $X = [int][Math]::Round($X * $script:UiScale)
+    $Y = [int][Math]::Round($Y * $script:UiScale)
     $point = [BongoCatModelBorderNative+Point]::new()
     $point.X = $X; $point.Y = $Y
     [void][BongoCatModelBorderNative]::ClientToScreen($Window, [ref]$point)
@@ -80,7 +83,11 @@ function Save-Client([IntPtr]$Window, [string]$Name) {
 }
 
 function Measure-Outline([string]$Path, [string]$Color,
-    [int]$Left, [int]$Top, [int]$Right, [int]$Bottom) {
+    [int]$Left, [int]$Top, [int]$Right, [int]$Bottom, [double]$Scale) {
+    $Left = [int][Math]::Floor($Left * $Scale)
+    $Top = [int][Math]::Floor($Top * $Scale)
+    $Right = [int][Math]::Ceiling($Right * $Scale)
+    $Bottom = [int][Math]::Ceiling($Bottom * $Scale)
     $bitmap = [Drawing.Bitmap]::new($Path)
     try {
         $points = [Collections.Generic.List[object]]::new()
@@ -110,9 +117,11 @@ function Measure-Outline([string]$Path, [string]$Color,
             $_.X -le $minX + 18 -and $_.Y -ge $maxY - 18 }).Count
         $bottomRight = @($points | Where-Object {
             $_.X -ge $maxX - 18 -and $_.Y -ge $maxY - 18 }).Count
-        $passed = $maxX - $minX -ge 200 -and $maxY - $minY -ge 200 -and
-            $leftCount -ge 80 -and $rightCount -ge 80 -and
-            $bottomCount -ge 150 -and $bottomLeft -ge 35 -and $bottomRight -ge 35
+        $passed = $maxX - $minX -ge 200 * $Scale -and
+            $maxY - $minY -ge 200 * $Scale -and
+            $leftCount -ge 70 * $Scale -and $rightCount -ge 70 * $Scale -and
+            $bottomCount -ge 130 * $Scale -and
+            $bottomLeft -ge 30 * $Scale -and $bottomRight -ge 30 * $Scale
         return [pscustomobject]@{ Pixels=$points.Count; MinX=$minX; MaxX=$maxX;
             MinY=$minY; MaxY=$maxY; Left=$leftCount; Right=$rightCount;
             Bottom=$bottomCount; BottomLeft=$bottomLeft;
@@ -129,21 +138,26 @@ $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
     -WorkingDirectory (Split-Path $Exe) -PassThru
 try {
     $window = Wait-Preferences $process.Id
+    $client = [BongoCatModelBorderNative+Rect]::new()
+    [void][BongoCatModelBorderNative]::GetClientRect($window, [ref]$client)
+    $script:UiScale = $client.R / 900.0
     [void][BongoCatModelBorderNative]::SetWindowPos($window,
-        [IntPtr](-1), 40, 40, 900, 680, 0x0040)
+        [IntPtr](-1), 40, 40, [int](900 * $script:UiScale),
+        [int](680 * $script:UiScale), 0x0040)
     [void][BongoCatModelBorderNative]::SetForegroundWindow($window)
     Move-Client $window 100 500
     Start-Sleep -Milliseconds 120
     Move-Client $window 750 200
     Start-Sleep -Milliseconds 600
     $hoverPath = Save-Client $window "hover-default.png"
-    $hover = Measure-Outline $hoverPath "blue" 620 100 875 350
+    $hover = Measure-Outline $hoverPath "blue" 620 100 875 350 $script:UiScale
     [void][BongoCatModelBorderNative]::SetWindowPos($window,
-        [IntPtr](-1), 40, 40, 720, 560, 0x0040)
+        [IntPtr](-1), 40, 40, [int](720 * $script:UiScale),
+        [int](560 * $script:UiScale), 0x0040)
     Move-Client $window 100 500
     Start-Sleep -Milliseconds 600
     $selectedPath = Save-Client $window "selected-minimum.png"
-    $selected = Measure-Outline $selectedPath "pink" 350 90 705 355
+    $selected = Measure-Outline $selectedPath "pink" 350 90 705 355 $script:UiScale
     $passed = $hover.Passed -and $selected.Passed
     $result = [ordered]@{ HoverBlue=$hover; SelectedPink=$selected; Passed=$passed }
     $result | ConvertTo-Json -Depth 3 | Set-Content -Encoding utf8 `

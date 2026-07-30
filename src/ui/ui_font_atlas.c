@@ -152,6 +152,16 @@ static bool upload_atlas(BongoCatUIBackend *ui) {
     const void *pixels = nk_font_atlas_bake(&ui->atlas, &width, &height,
         NK_FONT_ATLAS_ALPHA8);
     if (!pixels || width < 1 || height < 1) return false;
+    GLint maximum = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maximum);
+    if (width > maximum || height > maximum) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+            "Preferences font atlas %dx%d exceeds GPU limit %d", width, height,
+            maximum);
+        return false;
+    }
+    ui->font_atlas_width = width;
+    ui->font_atlas_height = height;
     SDL_Log("Preferences font atlas ready: %dx%d", width, height);
     glGenTextures(1, &ui->font_texture);
     glBindTexture(GL_TEXTURE_2D, ui->font_texture);
@@ -173,7 +183,7 @@ static bool upload_atlas(BongoCatUIBackend *ui) {
 bool bongo_cat_ui_font_atlas_create(BongoCatUIBackend *ui,
     const char *body_path, const char *body_fallback_path,
     const char *heading_path, const char *heading_fallback_path,
-    const nk_rune *glyph_ranges) {
+    const nk_rune *glyph_ranges, float raster_scale) {
     UIFontSource body = {0}, body_fallback = {0};
     UIFontSource heading = {0}, heading_fallback = {0};
     bool body_loaded = body_path && source_load(&body, body_path);
@@ -196,18 +206,26 @@ bool bongo_cat_ui_font_atlas_create(BongoCatUIBackend *ui,
     }
     nk_font_atlas_init_default(&ui->atlas);
     nk_font_atlas_begin(&ui->atlas);
+    GLint maximum_texture = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maximum_texture);
+    float scale_limit = maximum_texture >= 16384 ? 2.0f :
+        (maximum_texture >= 8192 ? 1.25f : 1.0f);
+    float font_scale = NK_CLAMP(1.0f, raster_scale, scale_limit);
+    if (font_scale + .01f < raster_scale) SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
+        "Preferences font raster scale limited to %.2fx by GPU texture size %d",
+        font_scale, maximum_texture);
     const UIFontSource *body_source = body_loaded ? &body : NULL;
     const UIFontSource *fallback_source = body_fallback_loaded ? &body_fallback : NULL;
     struct nk_font *caption_font = add_family_font(&ui->atlas, body_source,
-        fallback_source, 18.0f, glyph_ranges, latin_ranges, cjk_ranges);
+        fallback_source, 18.0f * font_scale, glyph_ranges, latin_ranges, cjk_ranges);
     struct nk_font *body_font = add_family_font(&ui->atlas, body_source,
-        fallback_source, 20.0f, glyph_ranges, latin_ranges, cjk_ranges);
+        fallback_source, 20.0f * font_scale, glyph_ranges, latin_ranges, cjk_ranges);
     struct nk_font *label_font = add_family_font(&ui->atlas, heading_source,
-        heading_fallback_source, 20.0f, glyph_ranges, latin_ranges, cjk_ranges);
+        heading_fallback_source, 20.0f * font_scale, glyph_ranges, latin_ranges, cjk_ranges);
     struct nk_font *heading_font = add_family_font(&ui->atlas, heading_source,
-        heading_fallback_source, 28.0f, glyph_ranges, latin_ranges, cjk_ranges);
+        heading_fallback_source, 28.0f * font_scale, glyph_ranges, latin_ranges, cjk_ranges);
     struct nk_font *hero_font = add_family_font(&ui->atlas, heading_source,
-        heading_fallback_source, 36.0f, glyph_ranges, latin_ranges, cjk_ranges);
+        heading_fallback_source, 36.0f * font_scale, glyph_ranges, latin_ranges, cjk_ranges);
     bool uploaded = caption_font && body_font && label_font && heading_font &&
         hero_font && upload_atlas(ui);
     if (uploaded) {
@@ -216,6 +234,11 @@ bool bongo_cat_ui_font_atlas_create(BongoCatUIBackend *ui,
         ui->label_font = &label_font->handle;
         ui->heading_font = &heading_font->handle;
         ui->hero_font = &hero_font->handle;
+        caption_font->handle.height = 18.0f;
+        body_font->handle.height = 20.0f;
+        label_font->handle.height = 20.0f;
+        heading_font->handle.height = 28.0f;
+        hero_font->handle.height = 36.0f;
         ui->latin_glyph_ranges = latin_ranges;
         ui->cjk_glyph_ranges = cjk_ranges;
         ui->font_probe_loaded = font_has_ranges(body_font, glyph_ranges);
@@ -246,4 +269,6 @@ void bongo_cat_ui_font_atlas_destroy(BongoCatUIBackend *ui) {
     ui->label_font = NULL;
     ui->heading_font = NULL;
     ui->hero_font = NULL;
+    ui->font_atlas_width = 0;
+    ui->font_atlas_height = 0;
 }

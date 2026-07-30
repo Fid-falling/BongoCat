@@ -5,6 +5,7 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
+#include <math.h>
 
 static unsigned int load(BongoCatPreferences *value, const char *name,
     int size, int *width, int *height) {
@@ -19,8 +20,13 @@ static unsigned int load(BongoCatPreferences *value, const char *name,
     return texture;
 }
 
+static int raster_size(const BongoCatPreferences *value, int logical) {
+    float scale = value->ui.raster_scale > 0.0f ? value->ui.raster_scale : 1.0f;
+    return SDL_clamp((int)ceilf(logical * scale), logical, logical * 4);
+}
+
 void bongo_cat_preferences_assets_load(BongoCatPreferences *value) {
-    value->logo_texture = load(value, "logo.png", 192,
+    value->logo_texture = load(value, "logo.png", raster_size(value, 192),
         &value->logo_width, &value->logo_height);
     int width = 0, height = 0;
     value->icon_texture = load(value, "ui-symbols.png", 0, &width, &height);
@@ -33,13 +39,9 @@ void bongo_cat_preferences_icon_draw(const BongoCatPreferences *value,
     struct nk_color color) {
     if (!value || !value->icon_texture || icon < 0 ||
         icon >= BONGO_CAT_UI_ICON_COUNT) return;
-    int logical_width = 0, logical_height = 0, pixel_width = 0, pixel_height = 0;
-    SDL_GetWindowSize(value->window, &logical_width, &logical_height);
-    SDL_GetWindowSizeInPixels(value->window, &pixel_width, &pixel_height);
     bool large = bounds.w > 24.0f || bounds.h > 24.0f;
     bool hidpi = value->icon_texture_hidpi && (large ||
-        pixel_width > logical_width * 3 / 2 ||
-        pixel_height > logical_height * 3 / 2);
+        value->ui.raster_scale > 1.05f);
     int cell = hidpi ? 96 : 24;
     int atlas_width = cell * BONGO_CAT_UI_ICON_COUNT;
     unsigned int texture = hidpi ? value->icon_texture_hidpi : value->icon_texture;
@@ -51,14 +53,16 @@ void bongo_cat_preferences_icon_draw(const BongoCatPreferences *value,
 void bongo_cat_preferences_support_assets_load(BongoCatPreferences *value) {
     if (value->support_assets_loaded) return;
     value->support_assets_loaded = true;
-    value->catime_texture = load(value, "catime.png", 192,
+    int image_size = raster_size(value, 192);
+    value->catime_texture = load(value, "catime.png", image_size,
         &value->catime_width, &value->catime_height);
     char path[BONGO_CAT_PATH_CAP];
     if (bongo_cat_path_join(path, sizeof(path), value->app->asset_root,
         "vlaina.jpg")) {
         BongoCatError error = {0};
         value->vlaina_texture = bongo_cat_image_texture_resampled(path,
-            192, 192, 48, &value->vlaina_width, &value->vlaina_height, &error);
+            image_size, image_size, (float)raster_size(value, 48),
+            &value->vlaina_width, &value->vlaina_height, &error);
         if (!value->vlaina_texture && error.message[0])
             SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
     }

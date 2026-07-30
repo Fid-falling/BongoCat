@@ -74,7 +74,7 @@ static void root_style_restore(struct nk_context *context,
 }
 
 static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
-    int width, int height, bool dark) {
+    float width, float height, bool dark) {
     static const char *page_ids[] = {
         "page-cat", "page-general", "page-model", "page-shortcuts", "page-about"};
     const char *menus[] = {
@@ -86,9 +86,9 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
     bool modal = bongo_cat_preferences_remove_dialog_active(value->app) ||
         bongo_cat_preferences_behavior_dialog_active(value);
     BongoCatUIPalette p = bongo_cat_ui_palette(dark);
-    bongo_cat_ui_shell_draw(context, (float)width, (float)height, dark);
-    float sidebar = bongo_cat_ui_sidebar_width((float)width);
-    float interior_height = (float)height - BONGO_CAT_UI_MARGIN * 2.0f;
+    bongo_cat_ui_shell_draw(context, width, height, dark);
+    float sidebar = bongo_cat_ui_sidebar_width(width);
+    float interior_height = height - BONGO_CAT_UI_MARGIN * 2.0f;
     nk_layout_row_begin(context, NK_STATIC, interior_height, 2);
     nk_layout_row_push(context, sidebar);
     struct nk_color clear = nk_rgba(0, 0, 0, 0);
@@ -103,6 +103,7 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Cannot open website: %s", SDL_GetError());
     bongo_cat_ui_set_icons(draw_icon, value);
     bongo_cat_ui_tabs(context, menus, 5, &value->page, !modal, dark,
+        interior_height,
         draw_icon, value);
     if (!value->page_seen) {
         value->page_seen = true; value->last_page = value->page;
@@ -112,7 +113,7 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
     }
     nk_group_end(context);
     }
-    nk_layout_row_push(context, (float)width - BONGO_CAT_UI_MARGIN * 2.0f - sidebar);
+    nk_layout_row_push(context, width - BONGO_CAT_UI_MARGIN * 2.0f - sidebar);
     bool close_requested = false;
     if (nk_group_begin(context, "preferences-content", NK_WINDOW_NO_SCROLLBAR)) {
     close_requested = bongo_cat_ui_content_header(context,
@@ -185,13 +186,13 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
     nk_layout_row_end(context);
     context->style.window.fixed_background = nk_style_item_color(p.surface);
     context->style.window.background = p.surface;
-    bongo_cat_preferences_notice_draw(value, context, (float)width, (float)height);
+    bongo_cat_preferences_notice_draw(value, context, width, height);
     bongo_cat_preferences_remove_dialog_draw(value->app, context);
     bongo_cat_preferences_behavior_dialog_draw(value, context);
     return close_requested;
 }
 
-static bool draw_frame(BongoCatPreferences *value, int width, int height,
+static bool draw_frame(BongoCatPreferences *value, float width, float height,
     bool dark) {
     struct nk_context *context = &value->ui.context;
     RootStyle saved = root_style_save(context);
@@ -204,28 +205,6 @@ static bool draw_frame(BongoCatPreferences *value, int width, int height,
     nk_end(context);
     root_style_restore(context, &saved);
     return close_requested;
-}
-
-static void write_smoke_frame(BongoCatPreferences *value) {
-    if (!value->app->smoke || value->frame_checked) return;
-    value->frame_checked = true;
-    char path[BONGO_CAT_PATH_CAP];
-    bongo_cat_path_join(path, sizeof(path), value->app->data_root, "ui-frame.txt");
-    FILE *file = bongo_cat_file_open(path, "wb");
-    if (file) {
-        fprintf(file, "valid=%d convert=%d vertices=%zu elements=%zu commands=%u "
-            "draw_elements=%u gl_error=%u alpha_vertices=%u max_alpha=%u "
-            "font_path=%d font_file=%d custom_font=%d font_probe=%d\n",
-            bongo_cat_ui_frame_valid(&value->ui), value->ui.last_convert_result,
-            value->ui.last_vertex_bytes, value->ui.last_element_bytes,
-            value->ui.last_draw_commands, value->ui.last_draw_elements,
-            (unsigned)value->ui.last_gl_error, value->ui.nonzero_alpha_vertices,
-            value->ui.max_alpha, value->ui.font_path_found,
-            value->ui.font_file_loaded, value->ui.custom_font_loaded,
-            value->ui.font_probe_loaded);
-        fclose(file);
-    }
-    if (!bongo_cat_ui_frame_valid(&value->ui)) value->app->exit_code = 1;
 }
 
 static bool reload_language(BongoCatPreferences *value) {
@@ -263,8 +242,8 @@ void bongo_cat_preferences_render(BongoCatPreferences *value) {
     bongo_cat_preferences_input_end(value);
     SDL_GL_MakeCurrent(value->window, value->gl_context);
     bongo_cat_preferences_apply_theme(value);
-    int width, height;
-    SDL_GetWindowSize(value->window, &width, &height);
+    float width = 0.0f, height = 0.0f;
+    bongo_cat_ui_logical_size(&value->ui, &width, &height);
     bongo_cat_ui_cursor_begin(&value->ui);
     bool dark = bongo_cat_preferences_resolved_theme(value) != 0;
     bool close_requested = draw_frame(value, width, height, dark);
@@ -276,7 +255,7 @@ void bongo_cat_preferences_render(BongoCatPreferences *value) {
     bongo_cat_ui_render(&value->ui);
     SDL_GL_SwapWindow(value->window);
     record_frame(value);
-    write_smoke_frame(value);
+    bongo_cat_preferences_smoke_frame(value);
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
     bongo_cat_ui_cursor_apply(&value->ui);
     if (close_requested) {
