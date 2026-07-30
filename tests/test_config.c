@@ -18,6 +18,7 @@ void test_config(void) {
     CHECK(value.model.max_fps == 60);
     CHECK(value.window.width == 612 && value.window.height == 354);
     CHECK(value.window.visible && value.window.always_on_top);
+    CHECK(!value.window.keep_in_screen);
 
     value.model.max_fps = 900;
     value.window.scale_percent = -2.0f;
@@ -66,12 +67,21 @@ void test_config(void) {
     CHECK(strcmp(loaded.current_model, "keyboard") == 0);
     CHECK(loaded.current_mode == BONGO_CAT_MODE_GAMEPAD);
 
-    const char *legacy = "bongo-cat-legacy.json";
-    write_text(legacy, "{\"schemaVersion\":2,\"model\":{\"maxFPS\":1}}");
+    const char *unsupported = "bongo-cat-unsupported.json";
+    write_text(unsupported, "{\"schemaVersion\":2,\"model\":{\"maxFPS\":1}}");
     int preserved_fps = loaded.model.max_fps;
-    CHECK(bongo_cat_preferences_load(legacy, &loaded, &error) ==
+    CHECK(bongo_cat_preferences_load(unsupported, &loaded, &error) ==
         BONGO_CAT_ERROR_FORMAT);
     CHECK(loaded.model.max_fps == preserved_fps);
+    write_text(unsupported,
+        "{\"format\":\"bongo-cat/preferences\",\"version\":1,\"model\":{\"maxFPS\":1}}");
+    CHECK(bongo_cat_preferences_load(unsupported, &loaded, &error) ==
+        BONGO_CAT_ERROR_FORMAT);
+    CHECK(loaded.model.max_fps == preserved_fps);
+    write_text(unsupported,
+        "{\"format\":\"bongo-cat/preferences\",\"version\":3,\"model\":{\"maxFPS\":1}}");
+    CHECK(bongo_cat_preferences_load(unsupported, &loaded, &error) ==
+        BONGO_CAT_ERROR_FORMAT);
 
     const char *broken_session = "bongo-cat-broken-session.json";
     write_text(broken_session, "{ invalid");
@@ -79,9 +89,18 @@ void test_config(void) {
     CHECK(bongo_cat_session_load(broken_session, &loaded, &error) ==
         BONGO_CAT_ERROR_FORMAT);
     CHECK(loaded.model.mirror == preserved_mirror);
+    write_text(broken_session,
+        "{\"format\":\"bongo-cat/session\",\"version\":1,\"window\":{\"visible\":false}}");
+    CHECK(bongo_cat_session_load(broken_session, &loaded, &error) ==
+        BONGO_CAT_ERROR_FORMAT);
+    CHECK(loaded.model.mirror == preserved_mirror);
+    write_text(broken_session,
+        "{\"format\":\"bongo-cat/session\",\"version\":3,\"window\":{\"visible\":false}}");
+    CHECK(bongo_cat_session_load(broken_session, &loaded, &error) ==
+        BONGO_CAT_ERROR_FORMAT);
 
     CHECK(bongo_cat_file_remove(preferences));
     CHECK(bongo_cat_file_remove(session));
-    CHECK(bongo_cat_file_remove(legacy));
+    CHECK(bongo_cat_file_remove(unsupported));
     CHECK(bongo_cat_file_remove(broken_session));
 }

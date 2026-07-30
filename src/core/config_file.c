@@ -30,10 +30,12 @@ yyjson_doc *bongo_cat_config_read_document(const char *path,
     yyjson_val *version = yyjson_obj_get(root, "version");
     if (!yyjson_is_obj(root) || !yyjson_is_str(format_value) ||
         strcmp(yyjson_get_str(format_value), format) != 0 ||
-        !yyjson_is_int(version) || yyjson_get_sint(version) != 1) {
+        !yyjson_is_int(version) ||
+        yyjson_get_sint(version) != BONGO_CAT_CONFIG_VERSION) {
         yyjson_doc_free(document);
         bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
-            "Unsupported configuration format; expected %s version 1", format);
+            "Unsupported configuration format; expected %s version %d",
+            format, BONGO_CAT_CONFIG_VERSION);
         return NULL;
     }
     return document;

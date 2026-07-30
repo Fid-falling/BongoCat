@@ -40,6 +40,10 @@ bool bongo_cat_window_apply_geometry(BongoCatApp *app, int x, int y,
     float scale, int width, int height);
 bool bongo_cat_window_set_scale(BongoCatApp *app, float scale);
 void bongo_cat_window_clamp_to_display(BongoCatApp *app);
+bool bongo_cat_window_recover_to_display(BongoCatApp *app);
+void bongo_cat_window_display_event(BongoCatApp *app, const SDL_Event *event);
+void bongo_cat_window_update_display_recovery(BongoCatApp *app, uint64_t now);
+bool bongo_cat_window_display_self_test(void);
 void bongo_cat_window_resize_by_pointer(BongoCatApp *app, const SDL_Event *event);
 const char *bongo_cat_gamepad_axis_name(Uint8 axis);
 const char *bongo_cat_gamepad_button_name(Uint8 button);

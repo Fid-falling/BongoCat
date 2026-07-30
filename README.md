@@ -39,6 +39,9 @@ instead of a diagnostic build.
   read-only and BongoCat caches only generated adapter files.
 - Keyboard and mouse input, pointer tracking, gamepad buttons and axes,
   mirroring, automatic key release, and configurable shortcuts.
+- Optional keep-on-screen positioning, disabled by default. A fully unreachable
+  window is recovered after a display is disconnected, without polling or
+  interacting with fullscreen applications.
 - Transparent borderless window, click-through, always-on-top, hover hiding,
   monitor clamping, scaling, opacity, tray integration, and Shift + right-drag
   resizing.
@@ -171,6 +174,9 @@ cmake --install build --config Release --component Runtime --prefix out
 The install tree is portable. Windows embeds the resource archive; Unix builds
 place `assets/` beside the executable or application bundle. Settings and
 imported models are kept in the per-user data directory.
+Native preferences and session files use schema version 2. Version 1 and any
+other unsupported schema are rejected and rebuilt from current defaults; no
+configuration migration path is retained.
 
 ## Runtime Data and Test Switches
 
@@ -192,9 +198,10 @@ stable end-user command-line interface.
 
 ## Tests and Audits
 
-The CTest suite covers configuration migration, model discovery, input ordering
-and recovery, shortcuts, localization, UI helpers, application state, and
-SHA-256 resource validation.
+The CTest suite covers strict configuration-format validation, model discovery,
+input ordering and recovery, shortcuts, localization, UI helpers, application
+state, and SHA-256 resource validation. Only the current configuration format
+is accepted; older schemas are rejected without migration.
 
 ```powershell
 ctest --test-dir build --output-on-failure

@@ -47,7 +47,8 @@ void bongo_cat_window_set_visible(BongoCatApp *app, bool visible) {
     SDL_SetWindowOpacity(app->window,
         app->config.window.opacity_percent / 100.0f);
     SDL_ShowWindow(app->window);
-    bongo_cat_window_clamp_to_display(app);
+    if (app->config.window.keep_in_screen) bongo_cat_window_clamp_to_display(app);
+    else bongo_cat_window_recover_to_display(app);
     bongo_cat_window_mark_hit_dirty(app);
     app->dirty = true;
 }

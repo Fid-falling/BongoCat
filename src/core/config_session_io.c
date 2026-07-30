@@ -52,7 +52,7 @@ BongoCatResult bongo_cat_session_save(const char *path,
     if (!doc) return BONGO_CAT_ERROR_MEMORY;
     yyjson_mut_val *root = yyjson_mut_obj(doc); yyjson_mut_doc_set_root(doc, root);
     yyjson_mut_obj_add_strcpy(doc, root, "format", SESSION_FORMAT);
-    yyjson_mut_obj_add_int(doc, root, "version", 1);
+    yyjson_mut_obj_add_int(doc, root, "version", BONGO_CAT_CONFIG_VERSION);
     yyjson_mut_val *window = yyjson_mut_obj_add_obj(doc, root, "window");
     yyjson_mut_obj_add_bool(doc, window, "visible", config->window.visible);
     yyjson_mut_obj_add_real(doc, window, "scale", config->window.scale_percent);

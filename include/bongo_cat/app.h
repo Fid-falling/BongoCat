@@ -69,6 +69,7 @@ typedef struct BongoCatApp {
     uint64_t smoke_deadline_ns;
     uint64_t hover_deadline_ns;
     uint64_t pointer_hit_deadline_ns;
+    uint64_t display_recovery_due_ns;
     uint64_t mouse_last_ns;
     uint64_t frame_audit_bmp_ns;
     uint64_t preferences_saved_hash, preferences_observed_hash;
@@ -98,6 +99,7 @@ typedef struct BongoCatApp {
     float wheel_geometry_scale;
     int wheel_base_width, wheel_base_height;
     bool drag_candidate;
+    bool window_drag_active;
     float drag_start_x, drag_start_y;
     float left_stick_x, left_stick_y;
     float right_stick_x, right_stick_y;

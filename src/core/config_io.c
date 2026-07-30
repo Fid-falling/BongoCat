@@ -161,7 +161,7 @@ BongoCatResult bongo_cat_preferences_save(const char *path,
     if (!doc) return BONGO_CAT_ERROR_MEMORY;
     yyjson_mut_val *root = yyjson_mut_obj(doc); yyjson_mut_doc_set_root(doc, root);
     yyjson_mut_obj_add_strcpy(doc, root, "format", PREFERENCES_FORMAT);
-    yyjson_mut_obj_add_int(doc, root, "version", 1);
+    yyjson_mut_obj_add_int(doc, root, "version", BONGO_CAT_CONFIG_VERSION);
     write_model(doc, yyjson_mut_obj_add_obj(doc, root, "model"), &config->model);
     write_window(doc, yyjson_mut_obj_add_obj(doc, root, "window"), &config->window);
     write_app(doc, yyjson_mut_obj_add_obj(doc, root, "app"), &config->app);

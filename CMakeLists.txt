@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(BongoCat VERSION 0.1.0 LANGUAGES C CXX)
+project(BongoCat VERSION 0.1.0 DESCRIPTION "BongoCat Live2D desktop pet" HOMEPAGE_URL "https://bongocat.com" LANGUAGES C CXX)
 include(FetchContent)
 include(CTest)
 option(BONGO_CAT_FETCH_DEPS "Download pinned open-source dependencies" ON)
@@ -104,7 +104,7 @@ add_library(bongo_cat_runtime STATIC
   src/runtime/runtime_flow.c
   src/runtime/shortcuts.c
   src/runtime/tray.c
-  src/runtime/window.c src/runtime/window_geometry.c
+  src/runtime/window.c src/runtime/window_display.c src/runtime/window_geometry.c
   src/runtime/window_menu_behavior.c src/runtime/window_menu_preview.c
   src/runtime/window_hit.c src/runtime/window_wheel.c
   src/ui/nuklear_impl.c

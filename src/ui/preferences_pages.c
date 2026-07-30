@@ -33,6 +33,10 @@ void bongo_cat_preferences_page_cat(BongoCatApp *app, struct nk_context *context
         "composables.useAppMenu.labels.alwaysOnTop", "Always on Top"), "",
         &window->always_on_top))
         bongo_cat_platform_set_always_on_top(&app->platform, window->always_on_top);
+    if (bongo_cat_pref_toggle(context, "keep-in-screen", tr(app,
+        "pages.preference.cat.labels.keepInScreen", "Keep on Screen"), "",
+        &window->keep_in_screen) && window->keep_in_screen)
+        bongo_cat_window_clamp_to_display(app);
     float old_scale = window->scale_percent;
     bongo_cat_pref_float(context, "window-size", tr(app,
         "pages.preference.cat.labels.windowSize", "Window Size"), tr(app,

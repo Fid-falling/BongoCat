@@ -119,14 +119,15 @@ static bool initialize(BongoCatApp *app, int argc, char **argv, BongoCatError *e
     if (app->smoke_menu) {
         bool menu = bongo_cat_window_menu_self_test(app);
         bool geometry = bongo_cat_window_geometry_self_test(app);
+        bool display = bongo_cat_window_display_self_test();
         bool wheel = bongo_cat_window_wheel_self_test(app);
         bool tray = bongo_cat_tray_self_test(app->tray);
         bool wait = bongo_cat_window_wait_timeout_self_test();
-        if (!menu || !geometry || !wheel || !tray || !wait) {
+        if (!menu || !geometry || !display || !wheel || !tray || !wait) {
             BongoCatError menu_error = {0};
             bongo_cat_error_set(&menu_error, BONGO_CAT_ERROR_PLATFORM,
-                "Context menu action self-test failed (menu=%d geometry=%d wheel=%d tray=%d wait=%d)",
-                menu, geometry, wheel, tray, wait);
+                "Context menu action self-test failed (menu=%d geometry=%d display=%d wheel=%d tray=%d wait=%d)",
+                menu, geometry, display, wheel, tray, wait);
             bongo_cat_startup_ci_failure(app, &menu_error);
         }
     }
@@ -222,6 +223,7 @@ static void loop(BongoCatApp *app) {
         take_instance_wake(app);
         drain_input(app);
         uint64_t now = SDL_GetTicksNS(); bongo_cat_window_update_wheel_animation(app, now);
+        bongo_cat_window_update_display_recovery(app, now);
         bongo_cat_runtime_flow_update(app, now);
         bongo_cat_window_apply_pending_resize(app);
         bongo_cat_app_update_hover(app, now);

@@ -12,9 +12,9 @@ $OutputDir = [IO.Path]::GetFullPath($OutputDir)
 $data = Join-Path $OutputDir "data"
 New-Item -ItemType Directory -Force -Path $data | Out-Null
 [IO.File]::WriteAllText((Join-Path $data "preferences.json"),
-    '{"format":"bongo-cat/preferences","version":1,"model":{"maxFPS":1}}')
+    '{"format":"bongo-cat/preferences","version":2,"model":{"maxFPS":1}}')
 [IO.File]::WriteAllText((Join-Path $data "session.json"),
-    '{"format":"bongo-cat/session","version":1,"window":{"visible":false}}')
+    '{"format":"bongo-cat/session","version":2,"window":{"visible":false}}')
 
 Add-Type -AssemblyName System.Drawing
 Add-Type @'

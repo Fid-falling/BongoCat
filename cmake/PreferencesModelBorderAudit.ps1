@@ -27,6 +27,7 @@ public static class BongoCatModelBorderNative {
     [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr handle, IntPtr after, int x, int y, int width, int height, uint flags);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr handle);
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] public static extern bool PostMessageW(IntPtr handle, uint message, UIntPtr wparam, IntPtr lparam);
     [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
 }
 '@
@@ -59,6 +60,9 @@ function Move-Client([IntPtr]$Window, [int]$X, [int]$Y) {
     $point.X = $X; $point.Y = $Y
     [void][BongoCatModelBorderNative]::ClientToScreen($Window, [ref]$point)
     [void][BongoCatModelBorderNative]::SetCursorPos($point.X, $point.Y)
+    $position = (($Y -band 0xffff) -shl 16) -bor ($X -band 0xffff)
+    [void][BongoCatModelBorderNative]::PostMessageW($Window, 0x0200,
+        [UIntPtr]::Zero, [IntPtr]$position)
 }
 
 function Save-Client([IntPtr]$Window, [string]$Name) {
@@ -128,6 +132,8 @@ try {
     [void][BongoCatModelBorderNative]::SetWindowPos($window,
         [IntPtr](-1), 40, 40, 900, 680, 0x0040)
     [void][BongoCatModelBorderNative]::SetForegroundWindow($window)
+    Move-Client $window 100 500
+    Start-Sleep -Milliseconds 120
     Move-Client $window 750 200
     Start-Sleep -Milliseconds 600
     $hoverPath = Save-Client $window "hover-default.png"

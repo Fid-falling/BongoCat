@@ -87,9 +87,8 @@ void bongo_cat_window_apply(BongoCatApp *app) {
     SDL_SetWindowSize(app->window, value->width, value->height);
     if (value->x || value->y) SDL_SetWindowPosition(app->window, value->x, value->y);
     SDL_SyncWindow(app->window);
-    bool keep_in_screen = value->keep_in_screen;
-    value->keep_in_screen = true; bongo_cat_window_clamp_to_display(app);
-    value->keep_in_screen = keep_in_screen;
+    if (value->keep_in_screen) bongo_cat_window_clamp_to_display(app);
+    else bongo_cat_window_recover_to_display(app);
     SDL_SyncWindow(app->window);
     value->visible ? SDL_ShowWindow(app->window) : SDL_HideWindow(app->window);
     bongo_cat_window_sync_click_through(app);
@@ -106,10 +105,13 @@ static void begin_drag_candidate(BongoCatApp *app, const SDL_MouseButtonEvent *e
 
 static void update_drag_candidate(BongoCatApp *app, const SDL_MouseMotionEvent *event) {
     if (!app->drag_candidate) return;
-    if (!(event->state & SDL_BUTTON_LMASK)) { app->drag_candidate = false; return; }
+    if (!(event->state & SDL_BUTTON_LMASK)) {
+        app->drag_candidate = false; app->window_drag_active = false; return;
+    }
     float x = event->x - app->drag_start_x, y = event->y - app->drag_start_y;
     if (x * x + y * y < 9.0f) return;
     app->drag_candidate = false;
+    app->window_drag_active = true;
     bongo_cat_platform_begin_drag(&app->platform);
 }
 
@@ -183,10 +185,10 @@ void bongo_cat_window_menu_action(BongoCatApp *app, BongoCatMenuAction action) {
     } else if (bongo_cat_window_behavior_action(app, action)) {
         bongo_cat_app_render_now(app);
     } else if (action >= BONGO_CAT_MENU_MODEL_FIRST &&
-        action < BONGO_CAT_MENU_MOTION_FIRST &&
-        (size_t)(action - BONGO_CAT_MENU_MODEL_FIRST) < app->models.count) {
-        bongo_cat_app_select_model(app,
-            app->models.entries[action - BONGO_CAT_MENU_MODEL_FIRST].id);
+        action < BONGO_CAT_MENU_MODEL_FIRST + BONGO_CAT_MODEL_CAP) {
+        size_t index = (size_t)(action - BONGO_CAT_MENU_MODEL_FIRST);
+        if (index < app->models.count)
+            bongo_cat_app_select_model(app, app->models.entries[index].id);
     } else if (action == BONGO_CAT_MENU_EXIT) app->running = false;
     bongo_cat_preferences_invalidate(app->preferences);
 }
@@ -212,6 +214,7 @@ bool bongo_cat_window_menu_self_test(BongoCatApp *app) {
 }
 
 bool bongo_cat_window_event(BongoCatApp *app, const SDL_Event *event) {
+    bongo_cat_window_display_event(app, event);
     if (event->type >= SDL_EVENT_WINDOW_FIRST && event->type <= SDL_EVENT_WINDOW_LAST &&
         event->window.windowID != SDL_GetWindowID(app->window)) return true;
     if (event->type == SDL_EVENT_QUIT) return false;
@@ -256,6 +259,7 @@ bool bongo_cat_window_event(BongoCatApp *app, const SDL_Event *event) {
         event->button.button == SDL_BUTTON_LEFT) {
         bongo_cat_window_mark_hit_dirty(app);
         app->drag_candidate = false;
+        app->window_drag_active = false;
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_UP &&
         event->button.button == SDL_BUTTON_RIGHT) {
         bongo_cat_window_mark_hit_dirty(app);

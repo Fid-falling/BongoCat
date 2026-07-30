@@ -31,3 +31,17 @@ add_test(NAME preferences-model-border COMMAND powershell.exe -NoProfile
   -Exe $<TARGET_FILE:bongo_cat>
   -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/preferences-model-border-test)
 set_tests_properties(preferences-model-border PROPERTIES TIMEOUT 30 RUN_SERIAL TRUE)
+
+add_test(NAME screen-policy COMMAND powershell.exe -NoProfile
+  -ExecutionPolicy Bypass -File
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/ScreenPolicyAudit.ps1
+  -Exe $<TARGET_FILE:bongo_cat>
+  -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/screen-policy-test)
+set_tests_properties(screen-policy PROPERTIES TIMEOUT 45 RUN_SERIAL TRUE)
+
+add_test(NAME preferences-interaction COMMAND powershell.exe -NoProfile
+  -ExecutionPolicy Bypass -File
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/PreferencesInteractionAudit.ps1
+  -Exe $<TARGET_FILE:bongo_cat>
+  -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/preferences-interaction-test)
+set_tests_properties(preferences-interaction PROPERTIES TIMEOUT 45 RUN_SERIAL TRUE)

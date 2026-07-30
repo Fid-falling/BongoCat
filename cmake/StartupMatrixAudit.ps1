@@ -148,10 +148,10 @@ function Invoke-Smoke {
 function Write-Settings {
     param([string]$DataRoot, [bool]$Visible, [bool]$Tray, [int]$X = 0,
         [int]$Y = 0, [string]$Model = "standard")
-    $preferences = @{format="bongo-cat/preferences"; version=1;
+    $preferences = @{format="bongo-cat/preferences"; version=2;
         window=@{keepInScreen=$false}; app=@{trayVisible=$Tray}} |
         ConvertTo-Json -Compress -Depth 4
-    $session = @{format="bongo-cat/session"; version=1;
+    $session = @{format="bongo-cat/session"; version=2;
         window=@{visible=$Visible; x=$X; y=$Y; width=612; height=354};
         currentModel=$Model} | ConvertTo-Json -Compress -Depth 4
     [IO.File]::WriteAllText((Join-Path $DataRoot "preferences.json"), $preferences,

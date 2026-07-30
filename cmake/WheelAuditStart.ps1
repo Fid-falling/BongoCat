@@ -7,7 +7,7 @@ $arguments = @("--ci-smoke", "--ci-frame-series", "--ci-exit-ms=9000",
     "--data-root=$data")
 if ($ControlOpacity) {
     $config = Join-Path $OutputDir "opacity-session.json"
-    $json = @{ format="bongo-cat/session"; version=1;
+    $json = @{ format="bongo-cat/session"; version=2;
         window=@{ opacity=$InitialOpacity } } |
         ConvertTo-Json -Compress
     [IO.File]::WriteAllText($config, $json, [Text.UTF8Encoding]::new($false))

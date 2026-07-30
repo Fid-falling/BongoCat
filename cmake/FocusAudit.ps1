@@ -43,7 +43,7 @@ try {
     if (-not (Test-Path $frame)) { throw "bongo_cat frame audit was not created" }
     $process.Refresh()
     $catWindow = $process.MainWindowHandle
-    if ($catWindow -eq [IntPtr]::Zero) { throw "Bongo Cat window was not found" }
+    if ($catWindow -eq [IntPtr]::Zero) { throw "BongoCat window was not found" }
     $samples = [Collections.Generic.List[object]]::new()
     $started = [Diagnostics.Stopwatch]::StartNew()
     $explorer = Start-Process explorer.exe -ArgumentList (Get-Location) -PassThru
@@ -58,7 +58,7 @@ try {
     $inactiveBeforeDrag = [BongoCatFocusNative]::GetForegroundWindow() -ne $catWindow
     $before = [BongoCatFocusNative+Rect]::new()
     if (-not [BongoCatFocusNative]::GetWindowRect($catWindow, [ref]$before)) {
-        throw "Bongo Cat bounds were not available"
+        throw "BongoCat bounds were not available"
     }
     $startX = [int](($before.L + $before.R) / 2)
     $startY = [int](($before.T + $before.B) / 2)

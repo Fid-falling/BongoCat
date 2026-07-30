@@ -67,25 +67,6 @@ bool bongo_cat_window_set_scale(BongoCatApp *app, float scale) {
         actual, next_width, next_height);
 }
 
-void bongo_cat_window_clamp_to_display(BongoCatApp *app) {
-    if (!app || !app->config.window.keep_in_screen) return;
-    SDL_DisplayID display = SDL_GetDisplayForWindow(app->window);
-    if (!display) display = SDL_GetPrimaryDisplay();
-    SDL_Rect bounds;
-    if (!display || !SDL_GetDisplayUsableBounds(display, &bounds)) return;
-    int x, y, width, height;
-    if (!SDL_GetWindowPosition(app->window, &x, &y) ||
-        !SDL_GetWindowSize(app->window, &width, &height)) return;
-    int max_x = SDL_max(bounds.x, bounds.x + bounds.w - width);
-    int max_y = SDL_max(bounds.y, bounds.y + bounds.h - height);
-    int next_x = SDL_clamp(x, bounds.x, max_x);
-    int next_y = SDL_clamp(y, bounds.y, max_y);
-    if (next_x == x && next_y == y) return;
-    SDL_SetWindowPosition(app->window, next_x, next_y);
-    app->config.window.x = next_x;
-    app->config.window.y = next_y;
-}
-
 void bongo_cat_window_resize_by_pointer(BongoCatApp *app, const SDL_Event *event) {
     bool shift = (SDL_GetModState() & SDL_KMOD_SHIFT) != 0 ||
         bongo_cat_input_shift_down(&app->input);

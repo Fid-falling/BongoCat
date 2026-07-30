@@ -196,6 +196,7 @@ try {
     Invoke-PhysicalClick $window 820 141
     $toggled = Save-Window $window "02-toggle-card.png"
     Invoke-PhysicalClick $window 833 293
+    Invoke-PhysicalClick $window 833 371
     $debouncePersisted = $false
     for ($i = 0; $i -lt 40 -and -not $debouncePersisted; $i++) {
         Start-Sleep -Milliseconds 50
@@ -252,11 +253,12 @@ try {
         EditDifference = Measure-Difference $shortcuts $edited
         DebouncePersisted = $debouncePersisted
         PreferencesFormatValid = $config.format -eq "bongo-cat/preferences" -and
-            $config.version -eq 1
+            $config.version -eq 2
         SessionFormatValid = $session.format -eq "bongo-cat/session" -and
-            $session.version -eq 1
+            $session.version -eq 2
         LanguagePersisted = $config.app.language -eq "zh-TW"
         TogglePersisted = $config.window.passThrough -eq $true
+        ScreenPolicyPersisted = $config.window.keepInScreen -eq $true
         StepperPersisted = $session.window.scale -eq 101
         ShortcutPersisted = $config.shortcuts.visibleCat -eq "Control+Shift+B"
     }
@@ -267,6 +269,7 @@ try {
         $result.EditDifference -gt 0.0001 -and $result.DebouncePersisted -and
         $result.PreferencesFormatValid -and $result.SessionFormatValid -and
         $result.LanguagePersisted -and $result.TogglePersisted -and
+        $result.ScreenPolicyPersisted -and
         $result.StepperPersisted -and
         $result.ShortcutPersisted
     if (-not $passed) { exit 1 }

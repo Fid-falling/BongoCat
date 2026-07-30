@@ -15,7 +15,7 @@ void bongo_cat_config_defaults(BongoCatConfig *config) {
     config->model.max_fps = 60;
     config->window.visible = true;
     config->window.always_on_top = true;
-    config->window.keep_in_screen = true;
+    config->window.keep_in_screen = false;
     config->window.scale_percent = 100.0f;
     config->window.opacity_percent = 100.0f;
     config->window.width = 612;
