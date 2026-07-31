@@ -3,6 +3,13 @@ $env:BONGO_CAT_TEST_INSTANCE_ID = "wheel-audit-$PID"
 $data = if ($DataRoot) { [IO.Path]::GetFullPath($DataRoot) } else {
     Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
 }
+if ($AtEdge) {
+    New-Item -ItemType Directory -Force -Path $data | Out-Null
+    $preferences = @{ format="bongo-cat/preferences"; version=2;
+        window=@{ keepInScreen=$true } } | ConvertTo-Json -Compress
+    [IO.File]::WriteAllText((Join-Path $data "preferences.json"),
+        $preferences, [Text.UTF8Encoding]::new($false))
+}
 $arguments = @("--ci-smoke", "--ci-frame-series", "--ci-exit-ms=9000",
     "--data-root=$data")
 if ($ControlOpacity) {

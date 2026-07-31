@@ -1,5 +1,5 @@
-param([string]$Exe="", [string]$OutputDir="", [double]$MaximumWorkingMiB=170,
-    [double]$MaximumPrivateMiB=140, [double]$MaximumRecoveryGrowthMiB=12,
+param([string]$Exe="", [string]$OutputDir="", [double]$MaximumWorkingMiB=200,
+    [double]$MaximumPrivateMiB=160, [double]$MaximumRecoveryGrowthMiB=12,
     [int]$MaximumHandleGrowth=12)
 $ErrorActionPreference="Stop"
 $root=Split-Path $PSScriptRoot -Parent

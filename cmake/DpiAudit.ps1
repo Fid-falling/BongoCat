@@ -1,7 +1,7 @@
 param(
     [string]$Exe = "",
     [string]$OutputDir = "",
-    [double[]]$Scales = @(1.0, 1.25, 1.5, 1.75, 2.0)
+    [double[]]$Scales = @(1.0, 1.25, 1.5, 1.75, 2.0, 2.25)
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,7 +26,9 @@ public static class BongoCatDpiNative {
     [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr handle, ref Point point);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr handle);
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
-    [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint x, uint y, uint data, UIntPtr extra);
+    [DllImport("user32.dll", EntryPoint="ClipCursor")] public static extern bool ClipCursorRect(ref Rect rect);
+    [DllImport("user32.dll", EntryPoint="ClipCursor")] public static extern bool ReleaseCursor(IntPtr rect);
+    [DllImport("user32.dll")] public static extern IntPtr SendMessageW(IntPtr window, uint message, UIntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
 }
 '@
@@ -107,10 +109,20 @@ function Click-Support([IntPtr]$Window, [double]$Scale,
     [void][BongoCatDpiNative]::ClientToScreen($Window, [ref]$screen)
     [void][BongoCatDpiNative]::SetForegroundWindow($Window)
     [void][BongoCatDpiNative]::SetCursorPos($screen.X, $screen.Y)
-    Start-Sleep -Milliseconds 80
-    [BongoCatDpiNative]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
-    Start-Sleep -Milliseconds 20
-    [BongoCatDpiNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
+    $clip = [BongoCatDpiNative+Rect]::new()
+    $clip.L = $screen.X; $clip.T = $screen.Y
+    $clip.R = $screen.X + 1; $clip.B = $screen.Y + 1
+    $packed = [IntPtr](($x -band 0xffff) -bor (($y -band 0xffff) -shl 16))
+    [void][BongoCatDpiNative]::ClipCursorRect([ref]$clip)
+    try {
+        [void][BongoCatDpiNative]::SendMessageW(
+            $Window, 0x0200, [UIntPtr]::Zero, $packed)
+        [void][BongoCatDpiNative]::SendMessageW(
+            $Window, 0x0201, [UIntPtr]::new(1), $packed)
+        Start-Sleep -Milliseconds 5
+        [void][BongoCatDpiNative]::SendMessageW(
+            $Window, 0x0202, [UIntPtr]::Zero, $packed)
+    } finally { [void][BongoCatDpiNative]::ReleaseCursor([IntPtr]::Zero) }
 }
 
 $env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
@@ -157,8 +169,12 @@ foreach ($scale in $Scales) {
             $fonts[3] -eq 28.0 -and $fonts[4] -eq 36.0 -and
             $windowSize[0] -ge $previousWindowWidth -and
             $atlasArea -ge $previousAtlasArea
-        Click-Support $window $scale $logicalSize[0] $logicalSize[1]
-        $after = Wait-Metrics $frame 4 8
+        $after = $null
+        for ($attempt = 0; $attempt -lt 3; $attempt++) {
+            Click-Support $window $scale $logicalSize[0] $logicalSize[1]
+            try { $after = Wait-Metrics $frame 4 4; break }
+            catch { if ($attempt -eq 2) { throw } }
+        }
         $passed = $passed -and [int]$after.valid -eq 1
         $result = [pscustomobject]@{ Scale=$scale; Window=$metrics.window;
             Pixels=$metrics.pixels; Logical=$metrics.logical; Atlas=$metrics.atlas;

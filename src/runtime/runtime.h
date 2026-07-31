@@ -4,12 +4,6 @@
 #include "bongo_cat/app.h"
 #include <SDL3/SDL.h>
 
-#ifdef BONGO_CAT_HAS_CUBISM
-#define BONGO_CAT_FRAME_WAIT(app) (1000 / (app)->config.model.max_fps)
-#else
-#define BONGO_CAT_FRAME_WAIT(app) 100
-#endif
-
 BongoCatResult bongo_cat_window_create(BongoCatApp *app, BongoCatError *error);
 BongoCatResult bongo_cat_app_locate_assets(BongoCatApp *app, BongoCatError *error);
 bool bongo_cat_startup_prepare(BongoCatApp *app, int argc, char **argv,
@@ -28,6 +22,9 @@ void bongo_cat_window_schedule_pointer_hit(BongoCatApp *app);
 void bongo_cat_window_schedule_hit_check(BongoCatApp *app);
 int bongo_cat_window_wait_timeout(const BongoCatApp *app, uint64_t now);
 bool bongo_cat_window_wait_timeout_self_test(void);
+bool bongo_cat_model_frame_due(const BongoCatApp *app, uint64_t now);
+bool bongo_cat_wait_event(SDL_Event *event, int timeout_ms);
+bool bongo_cat_app_step_live2d(BongoCatApp *app, float elapsed_seconds);
 void bongo_cat_window_sync_click_through(BongoCatApp *app);
 void bongo_cat_window_apply_pending_resize(BongoCatApp *app);
 void bongo_cat_window_wheel(BongoCatApp *app, const SDL_MouseWheelEvent *event);

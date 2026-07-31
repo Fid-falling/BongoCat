@@ -98,6 +98,7 @@ void bongo_cat_gamepads_set_enabled(BongoCatApp *app, bool enabled) {
     if (!enabled) {
         app->active_gamepad = 0;
         bongo_cat_app_reset_gamepad(app);
+        if (initialized) SDL_QuitSubSystem(SDL_INIT_GAMEPAD);
     } else if (active_connected) {
         ids = SDL_GetGamepads(&count);
         close_inactive_gamepads(app, ids, count);

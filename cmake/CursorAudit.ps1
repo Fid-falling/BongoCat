@@ -84,9 +84,10 @@ function Wait-Preferences([int]$ProcessId) {
 function Get-ClientPoint([IntPtr]$Window, [double]$X, [double]$Y) {
     $client = [BongoCatCursorNative+Rect]::new()
     [void][BongoCatCursorNative]::GetClientRect($Window, [ref]$client)
+    $scale = ($client.R - $client.L) / 900.0
     $point = [BongoCatCursorNative+Point]::new()
-    $point.X = [int][Math]::Round($X * ($client.R - $client.L) / 900.0)
-    $point.Y = [int][Math]::Round($Y * ($client.B - $client.T) / 680.0)
+    $point.X = [int][Math]::Round($X * $scale)
+    $point.Y = [int][Math]::Round($Y * $scale)
     [void][BongoCatCursorNative]::ClientToScreen($Window, [ref]$point)
     return $point
 }
@@ -116,8 +117,9 @@ function Test-Cursor([IntPtr]$Window, [string]$Name, [double]$X,
     $point = Get-ClientPoint $Window $X $Y
     $client = [BongoCatCursorNative+Rect]::new()
     [void][BongoCatCursorNative]::GetClientRect($Window, [ref]$client)
-    $clientX = [int][Math]::Round($X * ($client.R - $client.L) / 900.0)
-    $clientY = [int][Math]::Round($Y * ($client.B - $client.T) / 680.0)
+    $scale = ($client.R - $client.L) / 900.0
+    $clientX = [int][Math]::Round($X * $scale)
+    $clientY = [int][Math]::Round($Y * $scale)
     $position = [IntPtr]([long](($clientY -band 0xFFFF) -shl 16) -bor
         [long]($clientX -band 0xFFFF))
     $expected = [BongoCatCursorNative]::LoadCursor([IntPtr]::Zero, [IntPtr]$SystemId)

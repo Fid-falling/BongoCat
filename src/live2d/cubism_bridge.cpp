@@ -264,10 +264,6 @@ extern "C" void bongo_cat_live2d_set_dragging(BongoCatLive2D *runtime,
     float x, float y) {
     if (runtime && runtime->model) runtime->model->set_dragging(x, y);
 }
-extern "C" void bongo_cat_live2d_set_mver_compatibility(
-    BongoCatLive2D *runtime, bool enabled) {
-    if (runtime && runtime->model) runtime->model->set_mver_compatibility(enabled);
-}
 extern "C" bool bongo_cat_live2d_set_parameter(BongoCatLive2D *runtime, const char *id, float value) {
     return runtime && runtime->model && runtime->model->set_parameter(id, value);
 }

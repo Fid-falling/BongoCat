@@ -4,6 +4,7 @@
 #include "bongo_cat/gl_api.h"
 #include <SDL3/SDL.h>
 #include "nuklear_config.h"
+#include <stdint.h>
 
 typedef enum BongoCatUICursor {
     BONGO_CAT_UI_CURSOR_DEFAULT,
@@ -43,6 +44,7 @@ typedef struct BongoCatUIBackend {
     size_t element_capacity;
     size_t last_vertex_bytes;
     size_t last_element_bytes;
+    uint64_t paint_frame_marker;
     unsigned last_draw_commands;
     unsigned last_draw_elements;
     int last_convert_result;

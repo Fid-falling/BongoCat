@@ -68,7 +68,6 @@ bool bongo_cat_live2d_update(BongoCatLive2D *live2d, float delta_seconds);
 void bongo_cat_live2d_draw(BongoCatLive2D *live2d);
 void bongo_cat_live2d_set_mirror(BongoCatLive2D *live2d, bool mirror);
 void bongo_cat_live2d_set_dragging(BongoCatLive2D *live2d, float x, float y);
-void bongo_cat_live2d_set_mver_compatibility(BongoCatLive2D *live2d, bool enabled);
 bool bongo_cat_live2d_set_parameter(BongoCatLive2D *live2d, const char *id, float value);
 bool bongo_cat_live2d_parameter(BongoCatLive2D *live2d, const char *id,
     BongoCatParameterRange *range);

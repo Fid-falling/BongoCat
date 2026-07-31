@@ -122,12 +122,11 @@ function Wait-PreferencesFile([string]$Data) {
     return $path
 }
 
-function Test-LiveConstrainedDrag([IntPtr]$Window) {
+function Invoke-ConstrainedDrag([IntPtr]$Window, [double]$FractionX,
+    [double]$FractionY) {
     $before = Get-Rect $Window
-    $startX = [int](($before.L + $before.R) / 2)
-    $startY = [int](($before.T + $before.B) / 2)
-    $original = [BongoCatScreenPolicyNative+Point]::new()
-    [void][BongoCatScreenPolicyNative]::GetCursorPos([ref]$original)
+    $startX = [int]($before.L + ($before.R - $before.L) * $FractionX)
+    $startY = [int]($before.T + ($before.B - $before.T) * $FractionY)
     $pressed = $false
     try {
         [void][BongoCatScreenPolicyNative]::SetCursorPos($startX, $startY)
@@ -140,6 +139,10 @@ function Test-LiveConstrainedDrag([IntPtr]$Window) {
             Start-Sleep -Milliseconds 35
         }
         $moved = Get-Rect $Window
+        $didMove = [Math]::Abs($moved.L - $before.L) -ge 20
+        if (-not $didMove) {
+            return [pscustomobject]@{ Moved=$false; BlockedWhileHeld=$false }
+        }
         foreach ($step in 1..10) {
             $x = [int](($startX + 60) + ($work.Left - ($startX + 60)) * $step / 10)
             [void][BongoCatScreenPolicyNative]::SetCursorPos($x, $startY)
@@ -147,13 +150,35 @@ function Test-LiveConstrainedDrag([IntPtr]$Window) {
         }
         $held = Get-Rect $Window
         return [pscustomobject]@{
-            Moved = [Math]::Abs($moved.L - $before.L) -ge 20
+            Moved = $true
             BlockedWhileHeld = $held.L -ge $work.Left
         }
     } finally {
         if ($pressed) {
             [BongoCatScreenPolicyNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
         }
+        Start-Sleep -Milliseconds 80
+    }
+}
+
+function Test-LiveConstrainedDrag([IntPtr]$Window) {
+    $original = [BongoCatScreenPolicyNative+Point]::new()
+    [void][BongoCatScreenPolicyNative]::GetCursorPos([ref]$original)
+    $points = @(
+        [pscustomobject]@{ X=.50; Y=.50 },
+        [pscustomobject]@{ X=.50; Y=.35 },
+        [pscustomobject]@{ X=.35; Y=.50 },
+        [pscustomobject]@{ X=.65; Y=.50 },
+        [pscustomobject]@{ X=.50; Y=.65 },
+        [pscustomobject]@{ X=.35; Y=.35 },
+        [pscustomobject]@{ X=.65; Y=.35 })
+    try {
+        foreach ($point in $points) {
+            $result = Invoke-ConstrainedDrag $Window $point.X $point.Y
+            if ($result.Moved) { return $result }
+        }
+        return [pscustomobject]@{ Moved=$false; BlockedWhileHeld=$false }
+    } finally {
         [void][BongoCatScreenPolicyNative]::SetCursorPos($original.X, $original.Y)
         Start-Sleep -Milliseconds 120
     }

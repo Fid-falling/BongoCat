@@ -43,6 +43,12 @@ bool bongo_cat_gl_load(BongoCatGL *gl, BongoCatError *error) {
     return true;
 }
 
+bool bongo_cat_gl_clear_errors(void) {
+    for (unsigned attempt = 0; attempt < 16; ++attempt)
+        if (glGetError() == GL_NO_ERROR) return true;
+    return false;
+}
+
 static GLuint compile(BongoCatGL *gl, GLenum type, const char *source, BongoCatError *error) {
     GLuint shader = gl->create_shader(type);
     gl->shader_source(shader, 1, &source, NULL);

@@ -163,7 +163,7 @@ void bongo_cat_ui_render(BongoCatUIBackend *ui) {
     SDL_GetWindowSizeInPixels(ui->window, &pixel_width, &pixel_height);
     float projection[4][4] = {{2.0f / width, 0, 0, 0}, {0, -2.0f / height, 0, 0},
         {0, 0, -1, 0}, {-1, 1, 0, 1}};
-    while (glGetError() != GL_NO_ERROR) {}
+    bongo_cat_gl_clear_errors();
     convert(ui);
     glViewport(0, 0, pixel_width, pixel_height);
     glEnable(GL_BLEND);

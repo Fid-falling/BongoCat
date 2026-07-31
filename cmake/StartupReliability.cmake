@@ -52,3 +52,17 @@ add_test(NAME preferences-dpi COMMAND powershell.exe -NoProfile
   -Exe $<TARGET_FILE:bongo_cat>
   -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/preferences-dpi-test)
 set_tests_properties(preferences-dpi PROPERTIES TIMEOUT 300 RUN_SERIAL TRUE)
+
+add_test(NAME preferences-performance COMMAND powershell.exe -NoProfile
+  -ExecutionPolicy Bypass -File
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/PreferencesPerformanceAudit.ps1
+  -Exe $<TARGET_FILE:bongo_cat>
+  -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/preferences-performance-test)
+set_tests_properties(preferences-performance PROPERTIES TIMEOUT 45 RUN_SERIAL TRUE)
+
+add_test(NAME live2d-pointer-motion COMMAND powershell.exe -NoProfile
+  -ExecutionPolicy Bypass -File
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Live2DPointerAudit.ps1
+  -Exe $<TARGET_FILE:bongo_cat>
+  -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/live2d-pointer-test)
+set_tests_properties(live2d-pointer-motion PROPERTIES TIMEOUT 15 RUN_SERIAL TRUE)

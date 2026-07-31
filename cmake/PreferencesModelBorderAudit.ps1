@@ -27,7 +27,10 @@ public static class BongoCatModelBorderNative {
     [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr handle, IntPtr after, int x, int y, int width, int height, uint flags);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr handle);
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
-    [DllImport("user32.dll")] public static extern bool PostMessageW(IntPtr handle, uint message, UIntPtr wparam, IntPtr lparam);
+    [DllImport("user32.dll", EntryPoint="ClipCursor")] public static extern bool ClipCursorRect(ref Rect rect);
+    [DllImport("user32.dll", EntryPoint="ClipCursor")] public static extern bool ReleaseCursor(IntPtr rect);
+    [DllImport("user32.dll")] public static extern bool ReleaseCapture();
+    [DllImport("user32.dll")] public static extern IntPtr SendMessageW(IntPtr handle, uint message, UIntPtr wparam, IntPtr lparam);
     [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
 }
 '@
@@ -64,8 +67,57 @@ function Move-Client([IntPtr]$Window, [int]$X, [int]$Y) {
     [void][BongoCatModelBorderNative]::ClientToScreen($Window, [ref]$point)
     [void][BongoCatModelBorderNative]::SetCursorPos($point.X, $point.Y)
     $position = (($Y -band 0xffff) -shl 16) -bor ($X -band 0xffff)
-    [void][BongoCatModelBorderNative]::PostMessageW($Window, 0x0200,
+    [void][BongoCatModelBorderNative]::SendMessageW($Window, 0x0200,
         [UIntPtr]::Zero, [IntPtr]$position)
+}
+
+function Release-Pointer([IntPtr]$Window) {
+    [void][BongoCatModelBorderNative]::ReleaseCapture()
+    [void][BongoCatModelBorderNative]::SendMessageW(
+        $Window, 0x001F, [UIntPtr]::Zero, [IntPtr]::Zero)
+    [void][BongoCatModelBorderNative]::SendMessageW(
+        $Window, 0x0202, [UIntPtr]::Zero, [IntPtr]::Zero)
+}
+
+function Click-Client([IntPtr]$Window, [int]$X, [int]$Y) {
+    Move-Client $Window $X $Y
+    $nativeX = [int][Math]::Round($X * $script:UiScale)
+    $nativeY = [int][Math]::Round($Y * $script:UiScale)
+    $point = [BongoCatModelBorderNative+Point]::new()
+    $point.X = $nativeX; $point.Y = $nativeY
+    [void][BongoCatModelBorderNative]::ClientToScreen($Window, [ref]$point)
+    $clip = [BongoCatModelBorderNative+Rect]::new()
+    $clip.L = $point.X; $clip.T = $point.Y
+    $clip.R = $point.X + 1; $clip.B = $point.Y + 1
+    $packed = [IntPtr](($nativeX -band 0xffff) -bor
+        (($nativeY -band 0xffff) -shl 16))
+    [void][BongoCatModelBorderNative]::ClipCursorRect([ref]$clip)
+    try {
+        [void][BongoCatModelBorderNative]::SendMessageW(
+            $Window, 0x0201, [UIntPtr]::new(1), $packed)
+        Start-Sleep -Milliseconds 5
+        [void][BongoCatModelBorderNative]::SendMessageW(
+            $Window, 0x0202, [UIntPtr]::Zero, $packed)
+    } finally {
+        [void][BongoCatModelBorderNative]::ReleaseCursor([IntPtr]::Zero)
+    }
+}
+
+function Select-ModelPage([IntPtr]$Window, [string]$Frame) {
+    for ($attempt = 0; $attempt -lt 3; $attempt++) {
+        Release-Pointer $Window
+        Click-Client $Window 82 358
+        $deadline = [DateTime]::UtcNow.AddSeconds(1)
+        do {
+            $content = Get-Content -Raw -LiteralPath $Frame `
+                -ErrorAction SilentlyContinue
+            if ($content -match 'page=(\d+)' -and [int]$Matches[1] -eq 2) {
+                return
+            }
+            Start-Sleep -Milliseconds 20
+        } while ([DateTime]::UtcNow -lt $deadline)
+    }
+    throw "Preferences did not remain on the model page"
 }
 
 function Save-Client([IntPtr]$Window, [string]$Name) {
@@ -131,9 +183,9 @@ function Measure-Outline([string]$Path, [string]$Color,
 
 $env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
 $env:BONGO_CAT_TEST_INSTANCE_ID = "preferences-model-border-audit-$PID"
-$arguments = @("--ci-preferences", "--ci-preference-page=2",
+$arguments = @("--ci-smoke", "--ci-preferences", "--ci-preference-page=2",
     "--ci-language=zh-CN", "--ci-theme=light", "--ci-exit-ms=15000",
-    "--data-root=$data")
+    "--ci-ignore-global-input", "--data-root=$data")
 $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
     -WorkingDirectory (Split-Path $Exe) -PassThru
 try {
@@ -145,6 +197,8 @@ try {
         [IntPtr](-1), 40, 40, [int](900 * $script:UiScale),
         [int](680 * $script:UiScale), 0x0040)
     [void][BongoCatModelBorderNative]::SetForegroundWindow($window)
+    $frame = Join-Path $data "ui-frame.txt"
+    Select-ModelPage $window $frame
     Move-Client $window 100 500
     Start-Sleep -Milliseconds 120
     Move-Client $window 750 200
@@ -154,6 +208,7 @@ try {
     [void][BongoCatModelBorderNative]::SetWindowPos($window,
         [IntPtr](-1), 40, 40, [int](720 * $script:UiScale),
         [int](560 * $script:UiScale), 0x0040)
+    Select-ModelPage $window $frame
     Move-Client $window 100 500
     Start-Sleep -Milliseconds 600
     $selectedPath = Save-Client $window "selected-minimum.png"

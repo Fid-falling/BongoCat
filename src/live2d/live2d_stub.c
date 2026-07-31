@@ -47,9 +47,6 @@ void bongo_cat_live2d_set_mirror(BongoCatLive2D *live2d, bool mirror) {
 void bongo_cat_live2d_set_dragging(BongoCatLive2D *live2d, float x, float y) {
     (void)live2d; (void)x; (void)y;
 }
-void bongo_cat_live2d_set_mver_compatibility(BongoCatLive2D *live2d, bool enabled) {
-    (void)live2d; (void)enabled;
-}
 bool bongo_cat_live2d_set_parameter(BongoCatLive2D *live2d, const char *id, float value) {
     (void)live2d; (void)id; (void)value; return false;
 }

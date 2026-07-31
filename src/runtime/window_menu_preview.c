@@ -3,21 +3,27 @@
 #include <stdio.h>
 #include <string.h>
 
-static bool previewable(BongoCatMenuAction action) {
+static const BongoCatModelEntry *menu_model(const BongoCatApp *app,
+    BongoCatMenuAction action) {
+    if (!app || action < BONGO_CAT_MENU_MODEL_FIRST ||
+        action >= BONGO_CAT_MENU_MODEL_FIRST + BONGO_CAT_MODEL_CAP) return NULL;
+    size_t index = (size_t)(action - BONGO_CAT_MENU_MODEL_FIRST);
+    return index < app->models.count ? &app->models.entries[index] : NULL;
+}
+
+static bool previewable(const BongoCatApp *app, BongoCatMenuAction action) {
     return (action >= BONGO_CAT_MENU_SCALE_50 &&
         action <= BONGO_CAT_MENU_OPACITY_100) ||
-        (action >= BONGO_CAT_MENU_MODEL_FIRST &&
-            action < BONGO_CAT_MENU_MOTION_FIRST) ||
+        menu_model(app, action) != NULL ||
         bongo_cat_window_behavior_menu_action(action);
 }
 
-static int preview_group(BongoCatMenuAction action) {
+static int preview_group(const BongoCatApp *app, BongoCatMenuAction action) {
     if (action >= BONGO_CAT_MENU_SCALE_50 &&
         action <= BONGO_CAT_MENU_SCALE_200) return 1;
     if (action >= BONGO_CAT_MENU_OPACITY_10 &&
         action <= BONGO_CAT_MENU_OPACITY_100) return 2;
-    if (action >= BONGO_CAT_MENU_MODEL_FIRST &&
-        action < BONGO_CAT_MENU_MOTION_FIRST) return 3;
+    if (menu_model(app, action)) return 3;
     if (bongo_cat_window_behavior_menu_action(action)) return 4;
     return 0;
 }
@@ -37,22 +43,19 @@ void bongo_cat_window_menu_preview(void *userdata, BongoCatMenuAction action) {
     BongoCatWindowMenuPreview *state = userdata;
     if (!state || !state->app || action == state->last) return;
     BongoCatApp *app = state->app;
-    int previous_group = preview_group(state->last);
-    int next_group = preview_group(action);
+    int previous_group = preview_group(app, state->last);
+    int next_group = preview_group(app, action);
     if (state->last != BONGO_CAT_MENU_NONE && previous_group != next_group)
         bongo_cat_window_menu_restore(state, BONGO_CAT_MENU_NONE);
-    if (!previewable(action)) {
+    if (!previewable(app, action)) {
         if (previous_group == 0)
             bongo_cat_window_menu_restore(state, BONGO_CAT_MENU_NONE);
         state->last = action;
         return;
     }
     state->last = action;
-    if (action >= BONGO_CAT_MENU_MODEL_FIRST &&
-        action < BONGO_CAT_MENU_MOTION_FIRST &&
-        (size_t)(action - BONGO_CAT_MENU_MODEL_FIRST) < app->models.count)
-        bongo_cat_app_select_model(app,
-            app->models.entries[action - BONGO_CAT_MENU_MODEL_FIRST].id);
+    const BongoCatModelEntry *model = menu_model(app, action);
+    if (model) bongo_cat_app_select_model(app, model->id);
     else if (action >= BONGO_CAT_MENU_SCALE_50 &&
         action <= BONGO_CAT_MENU_SCALE_200)
         bongo_cat_window_set_scale(app,
@@ -87,8 +90,7 @@ void bongo_cat_window_menu_restore(void *userdata, BongoCatMenuAction selected) 
     if (!state || !state->app) return;
     BongoCatApp *app = state->app;
     bool changed = false;
-    bool keep_model = selected >= BONGO_CAT_MENU_MODEL_FIRST &&
-        selected < BONGO_CAT_MENU_MOTION_FIRST;
+    bool keep_model = menu_model(app, selected) != NULL;
     bool keep_scale = selected >= BONGO_CAT_MENU_SCALE_50 &&
         selected <= BONGO_CAT_MENU_SCALE_200;
     bool keep_opacity = selected >= BONGO_CAT_MENU_OPACITY_10 &&

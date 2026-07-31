@@ -31,7 +31,6 @@ public:
     void draw();
     void set_mirror(bool mirror);
     void set_dragging(float x, float y);
-    void set_mver_compatibility(bool enabled);
     bool set_parameter(const char *id, float value);
     bool parameter(const char *id, float *minimum, float *maximum, float *value);
     bool start_motion(const char *group, int index);
@@ -80,7 +79,6 @@ private:
     bool mirror_ = false;
     bool direct_textures_ = false;
     bool external_parameters_dirty_ = false;
-    bool mver_compatibility_ = false;
     std::vector<std::string> idle_motion_keys_;
     float opacity_snapshot_ = -1.0f;
 };

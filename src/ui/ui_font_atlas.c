@@ -7,6 +7,8 @@
 #ifdef _WIN32
 #include <io.h>
 #include <windows.h>
+#else
+#include <sys/mman.h>
 #endif
 
 typedef struct UIFontSource {
@@ -28,14 +30,10 @@ static bool source_load(UIFontSource *source, const char *path) {
     source->mapping = mapping;
     source->size = source->data ? (size_t)size : 0;
 #else
-    source->data = malloc((size_t)size);
-    source->size = source->data
-        ? fread(source->data, 1, (size_t)size, source->file) : 0;
-    if (source->size != (size_t)size) {
-        free(source->data);
-        source->data = NULL;
-        source->size = 0;
-    }
+    source->data = mmap(NULL, (size_t)size, PROT_READ, MAP_PRIVATE,
+        fileno(source->file), 0);
+    if (source->data == MAP_FAILED) source->data = NULL;
+    source->size = source->data ? (size_t)size : 0;
 #endif
     return source->data != NULL;
 }
@@ -45,7 +43,7 @@ static void source_release(UIFontSource *source) {
     if (source->data) UnmapViewOfFile(source->data);
     if (source->mapping) CloseHandle((HANDLE)source->mapping);
 #else
-    free(source->data);
+    if (source->data) munmap(source->data, source->size);
 #endif
     if (source->file) fclose(source->file);
     memset(source, 0, sizeof(*source));
@@ -163,6 +161,7 @@ static bool upload_atlas(BongoCatUIBackend *ui) {
     ui->font_atlas_width = width;
     ui->font_atlas_height = height;
     SDL_Log("Preferences font atlas ready: %dx%d", width, height);
+    bongo_cat_gl_clear_errors();
     glGenTextures(1, &ui->font_texture);
     glBindTexture(GL_TEXTURE_2D, ui->font_texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -175,9 +174,20 @@ static bool upload_atlas(BongoCatUIBackend *ui) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED,
         GL_UNSIGNED_BYTE, pixels);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    GLenum upload_error = glGetError();
+    if (!ui->font_texture || upload_error != GL_NO_ERROR) {
+        SDL_LogError(SDL_LOG_CATEGORY_VIDEO,
+            "Preferences font atlas upload failed (0x%x)",
+            (unsigned)upload_error);
+        if (ui->font_texture) glDeleteTextures(1, &ui->font_texture);
+        ui->font_texture = 0;
+        ui->font_atlas_width = 0;
+        ui->font_atlas_height = 0;
+        return false;
+    }
     nk_font_atlas_end(&ui->atlas, nk_handle_id((int)ui->font_texture),
         &ui->null_texture);
-    return ui->font_texture != 0;
+    return true;
 }
 
 bool bongo_cat_ui_font_atlas_create(BongoCatUIBackend *ui,

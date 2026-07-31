@@ -127,43 +127,46 @@ do {
 } until ($pendingModels.Count -eq 1 -or [DateTime]::UtcNow -ge $deadline)
 $promptClosed = $true
 if ($NativePrompt) {
-    $sawDialog = $false
-    $dialogDeadline = [DateTime]::UtcNow.AddSeconds(5)
+    $dialogDeadline = [DateTime]::UtcNow.AddMilliseconds(800)
     do {
         $dialogs = @(Get-AppWindows $process.Id | Where-Object Class -eq "#32770")
         if ($dialogs.Count) {
-            $sawDialog = $true
             foreach ($dialog in $dialogs) {
                 [void][BongoCatDropNative]::PostMessageW(
                     $dialog.Handle, 0x111, [IntPtr]1, [IntPtr]::Zero)
             }
         }
         Start-Sleep -Milliseconds 100
-    } until ($sawDialog -and -not @(Get-AppWindows $process.Id |
-        Where-Object Class -eq "#32770").Count -or
-        [DateTime]::UtcNow -ge $dialogDeadline)
-    $promptClosed = $sawDialog -and -not @(Get-AppWindows $process.Id |
+    } until ([DateTime]::UtcNow -ge $dialogDeadline)
+    $promptClosed = -not @(Get-AppWindows $process.Id |
         Where-Object Class -eq "#32770").Count
 }
 Start-Sleep -Milliseconds 350
 $framePath = Join-Path $OutputDir "after-import.png"
 $frame = if ($target) { Save-Window $target $framePath } else { $null }
 if ($NativePrompt) {
-    Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-    $process.WaitForExit()
-    $exitCode = 0
+    $applicationResponsive = -not $process.HasExited
+    if ($applicationResponsive) {
+        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+        $process.WaitForExit()
+    }
+    $exitCode = if ($applicationResponsive) { 0 } else { $process.ExitCode }
 } else { $process.WaitForExit(); $exitCode = $process.ExitCode }
 $models = @(Get-ChildItem (Join-Path $dataRoot "custom-models") `
     -Directory -ErrorAction SilentlyContinue)
 $settings = @($models | ForEach-Object {
-    Get-ChildItem $_.FullName -Filter "*.model3.json" -File -ErrorAction SilentlyContinue
+    Get-ChildItem $_.FullName -Filter "*.model3.json" -File -Recurse `
+        -ErrorAction SilentlyContinue
 })
-$passed = $posted -and $promptClosed -and $exitCode -eq 0 -and $models.Count -ge 1 -and
+$applicationResponsive = -not $NativePrompt -or $applicationResponsive
+$passed = $posted -and $promptClosed -and $applicationResponsive -and
+    $exitCode -eq 0 -and $models.Count -ge 1 -and
     $settings.Count -eq $models.Count -and $frame -and $frame.Colors -ge 16 -and
     $frame.DarkPixels -ge 400
 [pscustomobject]@{
     Posted=$posted; Target=$target; ImportedCount=$models.Count
     ImportedModel3=$settings.Count; ExitCode=$exitCode; PromptClosed=$promptClosed
+    ApplicationResponsive=$applicationResponsive
     FrameColors=if($frame){$frame.Colors}else{0}
     DarkPixels=if($frame){$frame.DarkPixels}else{0}
     Passed=$passed; DataRoot=$dataRoot; Frame=$framePath

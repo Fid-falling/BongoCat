@@ -1,4 +1,5 @@
 #include "bongo_cat/file.h"
+#include "bongo_cat/gl_api.h"
 #include "bongo_cat/image.h"
 
 #ifdef _WIN32
@@ -236,7 +237,7 @@ unsigned int bongo_cat_image_texture_model(const char *path, bool direct_decode,
     (void)direct_decode;
     if (bongo_cat_image_load(path, &image, error) != BONGO_CAT_OK) return 0;
 #endif
-    while (glGetError() != GL_NO_ERROR) {}
+    bongo_cat_gl_clear_errors();
     GLuint texture = upload(&image, 0, true);
     GLenum upload_error = glGetError();
     if (!texture || upload_error != GL_NO_ERROR) {

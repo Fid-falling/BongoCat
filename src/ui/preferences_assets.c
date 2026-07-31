@@ -13,8 +13,18 @@ static unsigned int load(BongoCatPreferences *value, const char *name,
     if (!bongo_cat_path_join(path, sizeof(path), value->app->asset_root,
         name)) return 0;
     BongoCatError error = {0};
+    bongo_cat_gl_clear_errors();
     unsigned int texture = bongo_cat_image_texture_thumbnail(path, size,
         size, width, height, &error);
+    GLenum upload_error = glGetError();
+    if (texture && upload_error != GL_NO_ERROR) {
+        glDeleteTextures(1, &texture);
+        texture = 0;
+    }
+    if (upload_error != GL_NO_ERROR)
+        SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
+            "UI asset upload failed for %s (0x%x)", name,
+            (unsigned)upload_error);
     if (!texture && error.message[0])
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
     return texture;

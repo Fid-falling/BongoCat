@@ -3,6 +3,7 @@
 #include "preferences_notice.h"
 #include "ui_catime.h"
 #include "ui_animation.h"
+#include "ui_paint.h"
 #include "bongo_cat/file.h"
 #include "bongo_cat/path.h"
 #include "bongo_cat/tray.h"
@@ -52,14 +53,15 @@ static RootStyle root_style_save(struct nk_context *context) {
 }
 
 static void root_style_apply(struct nk_context *context,
-    BongoCatUIPalette palette) {
+    BongoCatUIPalette palette, bool transparent) {
     context->style.window.padding = nk_vec2(BONGO_CAT_UI_MARGIN,
         BONGO_CAT_UI_MARGIN);
     context->style.window.group_padding = nk_vec2(0, 0);
     context->style.window.spacing = nk_vec2(0, 0);
-    context->style.window.fixed_background = nk_style_item_color(
-        palette.background);
-    context->style.window.background = palette.background;
+    struct nk_color background = transparent ? nk_rgba(0, 0, 0, 0) :
+        palette.background;
+    context->style.window.fixed_background = nk_style_item_color(background);
+    context->style.window.background = background;
     context->style.window.group_border = 0;
 }
 
@@ -197,7 +199,7 @@ static bool draw_frame(BongoCatPreferences *value, float width, float height,
     struct nk_context *context = &value->ui.context;
     RootStyle saved = root_style_save(context);
     BongoCatUIPalette palette = bongo_cat_ui_palette(dark);
-    root_style_apply(context, palette);
+    root_style_apply(context, palette, value->transparent_window);
     bool close_requested = false;
     if (nk_begin(context, BONGO_CAT_NAME,
         nk_rect(0, 0, (float)width, (float)height), NK_WINDOW_NO_SCROLLBAR))
@@ -205,21 +207,6 @@ static bool draw_frame(BongoCatPreferences *value, float width, float height,
     nk_end(context);
     root_style_restore(context, &saved);
     return close_requested;
-}
-
-static bool reload_language(BongoCatPreferences *value) {
-    if (value->font_language == value->app->config.app.language) return false;
-    BongoCatError error = {0};
-    if (!value->app->i18n || bongo_cat_i18n_reload(value->app->i18n,
-        value->app->config.app.language, &error) != BONGO_CAT_OK) {
-        value->app->config.app.language = value->font_language;
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
-        return false;
-    }
-    value->font_language = value->app->config.app.language;
-    if (value->app->tray) bongo_cat_tray_sync(value->app->tray);
-    value->render_dirty = true;
-    return true;
 }
 
 static void record_frame(BongoCatPreferences *value) {
@@ -236,26 +223,48 @@ static void record_frame(BongoCatPreferences *value) {
 void bongo_cat_preferences_render(BongoCatPreferences *value) {
     if (!value || !value->window) return;
     uint64_t now = SDL_GetTicksNS();
-    if (!value->render_dirty && value->last_render_ns) return;
+    bool raster_due = value->pending_raster_scale > 0.0f &&
+        value->raster_retry_ns <= now;
+    if (value->render_retry_ns > now ||
+        (!value->render_dirty && value->last_render_ns && !raster_due)) return;
     value->render_dirty = false;
     value->last_render_ns = now;
     bongo_cat_preferences_input_end(value);
-    SDL_GL_MakeCurrent(value->window, value->gl_context);
+    if (!SDL_GL_MakeCurrent(value->window, value->gl_context)) {
+        value->render_dirty = true;
+        value->render_retry_ns = now + 1000000000ull;
+        SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
+            "Preferences GL context could not be activated: %s", SDL_GetError());
+        return;
+    }
+    value->render_retry_ns = 0;
+    bongo_cat_preferences_refresh_raster(value);
+    bongo_cat_preferences_reload_language(value);
     bongo_cat_preferences_apply_theme(value);
     float width = 0.0f, height = 0.0f;
     bongo_cat_ui_logical_size(&value->ui, &width, &height);
+    bongo_cat_ui_paint_begin_frame(&value->ui);
     bongo_cat_ui_cursor_begin(&value->ui);
     bool dark = bongo_cat_preferences_resolved_theme(value) != 0;
     bool close_requested = draw_frame(value, width, height, dark);
     bongo_cat_preferences_shortcut_smoke(value);
     BongoCatUIPalette palette = bongo_cat_ui_palette(dark);
-    glClearColor(palette.background.r / 255.0f, palette.background.g / 255.0f,
-        palette.background.b / 255.0f, 1.0f);
+    glDisable(GL_SCISSOR_TEST);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glClearColor(value->transparent_window ? 0.0f : palette.background.r / 255.0f,
+        value->transparent_window ? 0.0f : palette.background.g / 255.0f,
+        value->transparent_window ? 0.0f : palette.background.b / 255.0f,
+        value->transparent_window ? 0.0f : 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     bongo_cat_ui_render(&value->ui);
-    SDL_GL_SwapWindow(value->window);
-    record_frame(value);
     bongo_cat_preferences_smoke_frame(value);
+    if (!SDL_GL_SwapWindow(value->window)) {
+        value->render_dirty = true;
+        value->render_retry_ns = now + 1000000000ull;
+        SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
+            "Preferences frame presentation failed: %s", SDL_GetError());
+    }
+    record_frame(value);
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
     bongo_cat_ui_cursor_apply(&value->ui);
     if (close_requested) {
@@ -268,7 +277,6 @@ void bongo_cat_preferences_render(BongoCatPreferences *value) {
         if (!bongo_cat_preferences_import_open(value->import_dialog, value->window))
             value->render_dirty = true;
     }
-    reload_language(value);
     if (value->shortcut_recording ||
         bongo_cat_pref_controls_animating(&value->ui.context) ||
         bongo_cat_ui_animations_active(&value->ui.context))

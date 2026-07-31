@@ -151,7 +151,7 @@ try {
     $window = Wait-Preferences $process.Id
     [void][BongoCatModelSelectionNative]::ShowWindow($window, 9)
     [void][BongoCatModelSelectionNative]::SetWindowPos($window,
-        [IntPtr](-1), 40, 40, 900, 680, 0x0040)
+        [IntPtr](-1), 40, 40, 0, 0, 0x0041)
     [void][BongoCatModelSelectionNative]::SetForegroundWindow($window)
     Start-Sleep -Milliseconds 900
     Save-Client $window "before.png"

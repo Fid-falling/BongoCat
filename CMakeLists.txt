@@ -85,11 +85,11 @@ add_library(bongo_cat_runtime STATIC
   src/render/overlay.c
   src/runtime/app.c src/runtime/config_store.c
   src/runtime/assets.c src/runtime/startup.c
-  src/runtime/frame_audit.c
+  src/runtime/frame_audit.c src/runtime/frame_clock.c
   src/runtime/gamepad.c
   src/runtime/live2d_audit.c
   src/runtime/mouse.c
-  src/runtime/model_files.c
+  src/runtime/model_files.c src/runtime/model_update.c
   src/runtime/model_storage.c
   src/runtime/model_import.c
   src/runtime/model_import_package.c
@@ -115,7 +115,7 @@ add_library(bongo_cat_runtime STATIC
   src/ui/ui_input.c
   src/ui/ui_catime.c src/ui/ui_catime_tabs.c src/ui/ui_catime_theme.c src/ui/ui_catime_icons.c
   src/ui/ui_native_theme.c
-  src/ui/preferences.c src/ui/preferences_scale.c src/ui/preferences_render.c
+  src/ui/preferences.c src/ui/preferences_scale.c src/ui/preferences_render.c src/ui/preferences_language.c
   src/ui/preferences_assets.c src/ui/preferences_about.c src/ui/preferences_about_community.c
   src/ui/preferences_live_resize.c
   src/ui/preferences_dialog.c src/ui/preferences_import.c src/ui/preferences_overlay.c

@@ -1,6 +1,7 @@
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include <stb_image_resize2.h>
 
+#include "bongo_cat/gl_api.h"
 #include "bongo_cat/image.h"
 
 #include <SDL3/SDL.h>
@@ -34,7 +35,7 @@ static void apply_rounding(unsigned char *pixels, int width, int height,
 
 static GLuint upload(const unsigned char *pixels, int width, int height,
     BongoCatError *error) {
-    while (glGetError() != GL_NO_ERROR) {}
+    bongo_cat_gl_clear_errors();
     GLuint texture = 0;
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);

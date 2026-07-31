@@ -118,6 +118,6 @@ void bongo_cat_app_apply_mouse(BongoCatApp *app) {
     bongo_cat_window_sync_click_through(app);
     uint64_t now = SDL_GetTicksNS();
     app->mouse_last_ns = now;
-    if (app->config.model.ignore_mouse) return;
+    if (app->config.model.ignore_mouse || !moved) return;
     apply_mouse_coordinates(app, target_x, target_y);
 }

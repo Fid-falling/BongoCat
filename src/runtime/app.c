@@ -123,6 +123,8 @@ static bool initialize(BongoCatApp *app, int argc, char **argv, BongoCatError *e
         bool wheel = bongo_cat_window_wheel_self_test(app);
         bool tray = bongo_cat_tray_self_test(app->tray);
         bool wait = bongo_cat_window_wait_timeout_self_test();
+        SDL_Log("Menu self-test: menu=%d geometry=%d display=%d wheel=%d tray=%d wait=%d",
+            menu, geometry, display, wheel, tray, wait);
         if (!menu || !geometry || !display || !wheel || !tray || !wait) {
             BongoCatError menu_error = {0};
             bongo_cat_error_set(&menu_error, BONGO_CAT_ERROR_PLATFORM,
@@ -178,10 +180,19 @@ static void update_model(BongoCatApp *app, uint64_t now) {
     if (elapsed > 0.25f) elapsed = 0.25f;
     app->last_frame_ns = now;
     if (app->smoke_freeze_model) return;
-    if (bongo_cat_live2d_update(app->live2d, elapsed)) app->dirty = true;
+    bongo_cat_app_step_live2d(app, elapsed);
 }
 static void render(BongoCatApp *app) {
-    SDL_GL_MakeCurrent(app->window, app->gl_context);
+    uint64_t now = SDL_GetTicksNS();
+    if (app->render_retry_ns > now) return;
+    if (!SDL_GL_MakeCurrent(app->window, app->gl_context)) {
+        app->dirty = true;
+        app->render_retry_ns = now + 1000000000ull;
+        SDL_LogError(SDL_LOG_CATEGORY_VIDEO,
+            "Main GL context could not be activated: %s", SDL_GetError());
+        return;
+    }
+    app->render_retry_ns = 0;
     int width, height;
     SDL_GetWindowSizeInPixels(app->window, &width, &height);
     glViewport(0, 0, width, height); glEnable(GL_MULTISAMPLE);
@@ -195,7 +206,13 @@ static void render(BongoCatApp *app) {
     bongo_cat_overlay_draw_keys(app->overlay, app->config.model.mirror);
     bongo_cat_overlay_draw_effect(app->overlay, app->config.model.mirror);
     bongo_cat_frame_audit(app, width, height);
-    SDL_GL_SwapWindow(app->window);
+    if (!SDL_GL_SwapWindow(app->window)) {
+        app->dirty = true;
+        app->render_retry_ns = now + 1000000000ull;
+        SDL_LogError(SDL_LOG_CATEGORY_VIDEO,
+            "Main frame presentation failed: %s", SDL_GetError());
+        return;
+    }
     bongo_cat_startup_ready(app);
     app->dirty = false;
     bongo_cat_window_sync_click_through(app); bongo_cat_window_schedule_hit_check(app);
@@ -208,16 +225,19 @@ static void take_instance_wake(BongoCatApp *app) {
     SDL_Log("Existing instance requested window reveal");
 }
 static void loop(BongoCatApp *app) {
-    uint64_t iterations = 0, wakes = 0;
+    uint64_t iterations = 0, wakes = 0, zero_waits = 0;
     while (app->running) {
         iterations++;
         int wait_ms = bongo_cat_window_wait_timeout(app, SDL_GetTicksNS());
+        if (!wait_ms) zero_waits++;
         bongo_cat_preferences_input_begin(app->preferences);
         SDL_Event event;
-        if (SDL_WaitEventTimeout(&event, wait_ms)) {
+        if (bongo_cat_wait_event(&event, wait_ms)) {
             wakes++;
             handle_event(app, &event);
-            while (SDL_PollEvent(&event)) handle_event(app, &event);
+            unsigned queued = 0;
+            while (queued++ < 256 && SDL_PollEvent(&event))
+                handle_event(app, &event);
         }
         bongo_cat_preferences_input_end(app->preferences);
         take_instance_wake(app);
@@ -227,7 +247,8 @@ static void loop(BongoCatApp *app) {
         bongo_cat_runtime_flow_update(app, now);
         bongo_cat_window_apply_pending_resize(app);
         bongo_cat_app_update_hover(app, now);
-        if (app->config.window.visible) update_model(app, now); else app->last_frame_ns = now;
+        if (bongo_cat_model_frame_due(app, now)) update_model(app, now);
+        else if (!app->config.window.visible) app->last_frame_ns = now;
         if (app->config.window.visible && app->dirty) render(app);
         bongo_cat_preferences_render(app->preferences);
         if (app->config.window.visible && app->dirty) render(app);
@@ -235,8 +256,9 @@ static void loop(BongoCatApp *app) {
         bongo_cat_config_store_update(app, now);
         if (app->smoke_deadline_ns && now >= app->smoke_deadline_ns) app->running = false;
     }
-    if (app->smoke) SDL_Log("Smoke loop: iterations=%llu wakes=%llu",
-        (unsigned long long)iterations, (unsigned long long)wakes);
+    if (app->smoke) SDL_Log("Smoke loop: iterations=%llu wakes=%llu zero_waits=%llu",
+        (unsigned long long)iterations, (unsigned long long)wakes,
+        (unsigned long long)zero_waits);
 }
 static void shutdown(BongoCatApp *app) {
     bongo_cat_config_store_flush(app);

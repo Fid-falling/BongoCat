@@ -26,6 +26,7 @@ public static class BongoCatInteractionNative {
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out Rect r);
     [DllImport("user32.dll", EntryPoint="GetWindowLongPtrW")]
     public static extern IntPtr GetWindowLongPtr(IntPtr h, int n);
+    [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] public static extern void keybd_event(
         byte key, byte scan, uint flags, UIntPtr extra);
@@ -68,29 +69,34 @@ function Copy-Frame([string]$Destination) {
     throw "Cannot copy the current frame"
 }
 
-function Send-Alt1 {
-    [BongoCatInteractionNative]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero)
-    [BongoCatInteractionNative]::keybd_event(0x31, 0, 0, [UIntPtr]::Zero)
-    [BongoCatInteractionNative]::keybd_event(0x31, 0, 2, [UIntPtr]::Zero)
-    [BongoCatInteractionNative]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)
+function Send-VisibilityShortcut {
+    [BongoCatInteractionNative]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero)
+    [BongoCatInteractionNative]::keybd_event(0x42, 0, 0, [UIntPtr]::Zero)
+    [BongoCatInteractionNative]::keybd_event(0x42, 0, 2, [UIntPtr]::Zero)
+    [BongoCatInteractionNative]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero)
 }
 
-function Measure-FrameDifference([string]$First, [string]$Second) {
-    $left = [Drawing.Bitmap]::new($First)
-    $right = [Drawing.Bitmap]::new($Second)
-    try {
-        $changed = 0; $samples = 0
-        for ($y = 0; $y -lt $left.Height; $y += 3) {
-            for ($x = 0; $x -lt $left.Width; $x += 3) {
-                $a = $left.GetPixel($x, $y); $b = $right.GetPixel($x, $y)
-                $delta = [Math]::Abs($a.R - $b.R) + [Math]::Abs($a.G - $b.G) +
-                    [Math]::Abs($a.B - $b.B) + [Math]::Abs($a.A - $b.A)
-                if ($delta -gt 12) { $changed++ }
-                $samples++
-            }
+function Wait-Visibility([IntPtr]$Window, [bool]$Expected, [int]$TimeoutMs) {
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    do {
+        if ([BongoCatInteractionNative]::IsWindowVisible($Window) -eq $Expected) {
+            return $watch.ElapsedMilliseconds
         }
-        return $changed / [double]$samples
-    } finally { $left.Dispose(); $right.Dispose() }
+        Start-Sleep -Milliseconds 5
+    } while ($watch.ElapsedMilliseconds -le $TimeoutMs)
+    return -1
+}
+
+function Wait-RestoredFrame([IntPtr]$Window, [datetime]$Previous, [int]$TimeoutMs) {
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    do {
+        if ([BongoCatInteractionNative]::IsWindowVisible($Window) -and
+            [IO.File]::GetLastWriteTimeUtc($frame) -gt $Previous) {
+            return $watch.ElapsedMilliseconds
+        }
+        Start-Sleep -Milliseconds 5
+    } while ($watch.ElapsedMilliseconds -le $TimeoutMs)
+    return -1
 }
 
 function Find-AlphaPoints([string]$Path) {
@@ -161,22 +167,6 @@ function Measure-WatermarkInk([string]$Path) {
     } finally { $bitmap.Dispose() }
 }
 
-function Measure-WatermarkInkFast([string]$Path) {
-    $bitmap = [Drawing.Bitmap]::new($Path)
-    try {
-        $white = 0; $samples = 0
-        for ($y = 15; $y -lt [Math]::Min(300, $bitmap.Height); $y += 7) {
-            for ($x = 90; $x -lt [Math]::Min(500, $bitmap.Width); $x += 7) {
-                $pixel = $bitmap.GetPixel($x, $y)
-                if ($pixel.A -gt 220 -and $pixel.R -gt 220 -and
-                    $pixel.G -gt 220 -and $pixel.B -gt 220) { $white++ }
-                $samples++
-            }
-        }
-        return $white / [double]$samples
-    } finally { $bitmap.Dispose() }
-}
-
 function Test-ClickThrough([IntPtr]$Window, [int]$X, [int]$Y) {
     [void][BongoCatInteractionNative]::SetCursorPos($X, $Y)
     Start-Sleep -Milliseconds 350
@@ -189,7 +179,7 @@ $env:BONGO_CAT_TEST_INSTANCE_ID = "interaction-audit-$PID"
 Remove-Item $frame -Force -ErrorAction SilentlyContinue
 Remove-Item $inputAudit -Force -ErrorAction SilentlyContinue
 $settings = Join-Path $DataRoot "preferences.json"
-Set-Content -LiteralPath $settings -Value '{"format":"bongo-cat/preferences","version":2,"model":{"ignoreMouse":true}}' -NoNewline
+Set-Content -LiteralPath $settings -Value '{"format":"bongo-cat/preferences","version":2,"model":{"ignoreMouse":true},"shortcuts":{"visibleCat":"Control+B"}}' -NoNewline
 $arguments = @("--ci-smoke", "--ci-input-audit", "--ci-exit-ms=14000",
     "--ci-model=$Model", "--data-root=$DataRoot")
 $process = Start-Process $Exe -ArgumentList $arguments -WorkingDirectory `
@@ -208,49 +198,25 @@ try {
     $opaqueY = $rect.T + [int](($points[1][1] + 0.5) * $height / $size[1])
     $transparentPasses = Test-ClickThrough $window $transparentX $transparentY
     $opaquePasses = Test-ClickThrough $window $opaqueX $opaqueY
-    Send-Alt1; Start-Sleep -Milliseconds 500
-    $hidden = Join-Path $OutputDir "toggle-1.bmp"; Copy-Frame $hidden
-    $baselineVsHidden = Measure-FrameDifference $baseline $hidden
-    $restoreDifferenceThreshold = $baselineVsHidden * 0.5
-    $observed = Join-Path $OutputDir "toggle-2-observed.bmp"
-    $observedDifference = -1.0
-    $baselineInk = Measure-WatermarkInkFast $baseline
-    $hiddenInk = Measure-WatermarkInkFast $hidden
-    $visibleInkThreshold = $hiddenInk + [Math]::Max(0.01, ($baselineInk - $hiddenInk) * 0.25)
-    Send-Alt1
-    # Frame files are intentionally throttled and Windows timestamp polling is
-    # coarse under load. A fixed upper-bound sample avoids measuring the image
-    # decoder itself as input latency while still proving restoration promptly.
-    $restoreLatency = 120
-    Start-Sleep -Milliseconds $restoreLatency
-    Copy-Frame $observed
-    $observedDifference = Measure-FrameDifference $observed $hidden
-    $watch = [Diagnostics.Stopwatch]::StartNew()
-    $restored = @{}
-    foreach ($delay in 15, 60, 150, 500) {
-        while ($watch.ElapsedMilliseconds -lt $delay) { Start-Sleep -Milliseconds 2 }
-        $restored[$delay] = Join-Path $OutputDir ("toggle-2-{0:D3}.bmp" -f $delay)
-        Copy-Frame $restored[$delay]
-    }
-    Send-Alt1; Start-Sleep -Milliseconds 500
-    $hiddenAgain = Join-Path $OutputDir "toggle-3.bmp"; Copy-Frame $hiddenAgain
+    Send-VisibilityShortcut
+    $firstHideLatency = Wait-Visibility $window $false 300
+    $previousFrame = [IO.File]::GetLastWriteTimeUtc($frame)
+    Send-VisibilityShortcut
+    $restoreLatency = Wait-RestoredFrame $window $previousFrame 300
+    $restored = Join-Path $OutputDir "toggle-2-restored.bmp"; Copy-Frame $restored
+    $baselineInk = Measure-WatermarkInk $baseline
+    $restoredInk = Measure-WatermarkInk $restored
+    $inkRatio = if ($baselineInk -gt 0) { $restoredInk / $baselineInk } else { 0 }
+    Send-VisibilityShortcut
+    $secondHideLatency = Wait-Visibility $window $false 300
     $process.Refresh()
     $result = [ordered]@{
-        BaselineVsHidden = $baselineVsHidden
-        RestoreObservedVsHidden = $observedDifference
-        Restore015VsHidden = Measure-FrameDifference $restored[15] $hidden
-        Restore060VsHidden = Measure-FrameDifference $restored[60] $hidden
-        Restore150VsHidden = Measure-FrameDifference $restored[150] $hidden
-        Restore500VsHidden = Measure-FrameDifference $restored[500] $hidden
-        ThirdVsHidden = Measure-FrameDifference $hiddenAgain $hidden
-        BaselineWatermarkInk = Measure-WatermarkInk $baseline
-        HiddenWatermarkInk = Measure-WatermarkInk $hidden
-        Restore015WatermarkInk = Measure-WatermarkInk $restored[15]
-        Restore060WatermarkInk = Measure-WatermarkInk $restored[60]
-        Restore150WatermarkInk = Measure-WatermarkInk $restored[150]
-        Restore500WatermarkInk = Measure-WatermarkInk $restored[500]
+        FirstHideLatencyMs = $firstHideLatency
         RestoreLatencyMs = $restoreLatency
-        ThirdWatermarkInk = Measure-WatermarkInk $hiddenAgain
+        SecondHideLatencyMs = $secondHideLatency
+        BaselineWatermarkInk = $baselineInk
+        RestoredWatermarkInk = $restoredInk
+        RestoredInkRatio = $inkRatio
         TransparentPixelPassThrough = $transparentPasses
         OpaquePixelPassThrough = $opaquePasses
         TransparentPoint = "$transparentX,$transparentY"
@@ -260,19 +226,18 @@ try {
         MouseAuditLines = if (Test-Path $inputAudit) {
             @(Get-Content $inputAudit | Where-Object { $_ -like "mouse*" }).Count
         } else { 0 }
+        ShortcutInputLines = if (Test-Path $inputAudit) {
+            @(Get-Content $inputAudit | Where-Object {
+                $_ -match "name=(ControlLeft|ControlRight|KeyB)" }).Count
+        } else { 0 }
     }
     $result | ConvertTo-Json | Set-Content (Join-Path $OutputDir "result.json")
     [pscustomobject]$result | Format-List
-    $toggleThreshold = $result.BaselineVsHidden * 0.5
-    $passed = $result.BaselineVsHidden -gt 0.05 -and
-        $result.RestoreLatencyMs -ge 0 -and $result.RestoreLatencyMs -le 300 -and
-        $result.RestoreObservedVsHidden -gt $toggleThreshold -and
-        $result.Restore015VsHidden -gt $toggleThreshold -and
-        $result.Restore060VsHidden -gt $toggleThreshold -and
-        $result.Restore150VsHidden -gt $toggleThreshold -and
-        $result.Restore500VsHidden -gt $toggleThreshold -and
-        $result.ThirdVsHidden -lt $toggleThreshold -and
-        $transparentPasses -and -not $opaquePasses
+    $passed = $firstHideLatency -ge 0 -and $firstHideLatency -le 300 -and
+        $restoreLatency -ge 0 -and $restoreLatency -le 300 -and
+        $secondHideLatency -ge 0 -and $secondHideLatency -le 300 -and
+        $inkRatio -ge 0.7 -and $inkRatio -le 1.3 -and
+        $result.ShortcutInputLines -ge 12 -and $transparentPasses -and -not $opaquePasses
     if (-not $passed) { exit 1 }
 } finally {
     if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }

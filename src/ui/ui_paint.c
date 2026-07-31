@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#define BONGO_CAT_UI_PAINT_SCALE_MAX 2.25f
+
 static float clamp01(float value) {
     return NK_CLAMP(0.0f, value, 1.0f);
 }
@@ -56,8 +58,10 @@ static bool texture_dimensions(struct nk_context *context,
     bongo_cat_ui_logical_size(*backend, &logical_width, &logical_height);
     SDL_GetWindowSizeInPixels((*backend)->window, &pixel_width, &pixel_height);
     if (logical_width < 1.0f || logical_height < 1.0f) return false;
-    *scale_x = pixel_width / logical_width;
-    *scale_y = pixel_height / logical_height;
+    *scale_x = NK_MIN(pixel_width / logical_width,
+        BONGO_CAT_UI_PAINT_SCALE_MAX);
+    *scale_y = NK_MIN(pixel_height / logical_height,
+        BONGO_CAT_UI_PAINT_SCALE_MAX);
     *width = NK_MAX(1, (int)ceilf(bounds.w * *scale_x));
     *height = NK_MAX(1, (int)ceilf(bounds.h * *scale_y));
     return true;
@@ -153,6 +157,45 @@ void bongo_cat_ui_paint_radial_circle(struct nk_context *context,
         edge, midpoint, outer);
 }
 
+void bongo_cat_ui_paint_sidebar_glow(struct nk_context *context,
+    struct nk_rect surface, float sidebar, float rounding,
+    struct nk_color color) {
+    int width, height; float sx, sy; BongoCatUIBackend *backend;
+    if (!texture_dimensions(context, surface, &width, &height, &sx, &sy,
+        &backend)) return;
+    float scale = (sx + sy) * .5f;
+    BongoCatUIPaintKey key = {BONGO_CAT_UI_PAINT_SIDEBAR_GLOW,
+        width, height, (int)lroundf(rounding * scale),
+        (int)lroundf(sidebar * sx), 0, pack(color), 0};
+    BongoCatUIPaintTexture *item = bongo_cat_ui_paint_cache_get(backend, &key);
+    if (!item) return;
+    if (!bongo_cat_ui_paint_cache_ready(item)) {
+        unsigned char *pixels = malloc((size_t)width * height);
+        if (!pixels) return;
+        for (int y = 0; y < height; ++y) for (int x = 0; x < width; ++x) {
+            float logical_x = (x + .5f) / sx, logical_y = (y + .5f) / sy;
+            float dx = (logical_x - 12.0f) / 210.0f;
+            float dy = (logical_y - 12.0f) / 210.0f;
+            float distance = sqrtf(dx * dx + dy * dy);
+            float fade = clamp01((1.1f - distance) / .75f);
+            fade = fade * fade * (3.0f - 2.0f * fade);
+            float radial = distance <= .35f ? 1.0f : fade;
+            float rounded = .5f - rounded_distance(x + .5f, y + .5f,
+                (float)width, (float)height, (float)key.radius);
+            float sidebar_clip = key.first_parameter + .5f - (x + .5f);
+            float mask = clamp01(NK_MIN(rounded, sidebar_clip));
+            pixels[(size_t)y * width + x] =
+                (unsigned char)(color.a * radial * mask + .5f);
+        }
+        if (!bongo_cat_ui_paint_cache_upload(item, pixels, true)) {
+            free(pixels); return;
+        }
+        free(pixels);
+    }
+    bongo_cat_ui_paint_cache_draw(context, surface, item,
+        nk_rgb(color.r, color.g, color.b));
+}
+
 void bongo_cat_ui_paint_shadow(struct nk_context *context,
     struct nk_rect bounds, float rounding, float offset_x, float offset_y,
     float blur, float spread, struct nk_color color) {
@@ -232,6 +275,10 @@ void bongo_cat_ui_paint_dashed_rounded(struct nk_context *context,
     }
     bongo_cat_ui_paint_cache_draw(context, bounds, item,
         nk_rgb(255, 255, 255));
+}
+
+void bongo_cat_ui_paint_begin_frame(BongoCatUIBackend *backend) {
+    bongo_cat_ui_paint_cache_begin_frame(backend);
 }
 
 void bongo_cat_ui_paint_destroy(BongoCatUIBackend *backend) {

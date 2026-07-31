@@ -29,6 +29,13 @@ if(MSVC)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
+# Keep the Windows loader's control-flow enforcement enabled in release
+# binaries as well as the compiler-side indirect-call instrumentation.
+if(MSVC OR CMAKE_C_SIMULATE_ID STREQUAL "MSVC")
+  add_compile_options($<$<CONFIG:Release>:/guard:cf>)
+  add_link_options($<$<CONFIG:Release>:/guard:cf>)
+endif()
+
 # Apply before FetchContent so static dependencies use the same settings. LTO
 # stays disabled because not every supported third-party archive is LTO-safe.
 if(BONGO_CAT_OPTIMIZE_RELEASE_SIZE)

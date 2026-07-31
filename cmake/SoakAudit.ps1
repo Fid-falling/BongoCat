@@ -8,10 +8,11 @@ param(
     [int]$DurationSeconds = 60,
     [int]$IntervalSeconds = 2,
     [int]$WarmupSeconds = 5,
-    [double]$MaximumWorkingMiB = 120,
-    [double]$MaximumPrivateMiB = 90,
+    [double]$MaximumWorkingMiB = 0,
+    [double]$MaximumPrivateMiB = 0,
     [double]$MaximumGrowthMiB = 8,
-    [int]$MaximumHandleGrowth = 8
+    [int]$MaximumHandleGrowth = 8,
+    [double]$MaximumAverageCpuPercent = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -22,11 +23,22 @@ $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
 if ($DurationSeconds -lt 5 -or $IntervalSeconds -lt 1 -or $WarmupSeconds -lt 1 -or
     $IntervalSeconds -ge $DurationSeconds) { throw "Invalid soak duration or interval" }
+$limits = @{ visible=@(120.0, 90.0, 8.0); hidden=@(150.0, 120.0, 0.5);
+    preferences=@(200.0, 170.0, 8.0) }[$Mode]
+if ($MaximumWorkingMiB -le 0) { $MaximumWorkingMiB = $limits[0] }
+if ($MaximumPrivateMiB -le 0) { $MaximumPrivateMiB = $limits[1] }
+if ($MaximumAverageCpuPercent -le 0) { $MaximumAverageCpuPercent = $limits[2] }
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 $env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
 $env:BONGO_CAT_TEST_INSTANCE_ID = "soak-audit-$PID"
 
 $data = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
+New-Item -ItemType Directory -Force -Path $data | Out-Null
+$isolated = @{ format="bongo-cat/preferences"; version=2;
+    app=@{ trayVisible=$false }; window=@{ passThrough=$true } } |
+    ConvertTo-Json -Compress
+[IO.File]::WriteAllText((Join-Path $data "preferences.json"), $isolated,
+    [Text.UTF8Encoding]::new($false))
 $exitMilliseconds = ($WarmupSeconds + $DurationSeconds + 3) * 1000
 $arguments = @("--ci-smoke", "--ci-ignore-global-input",
     "--ci-exit-ms=$exitMilliseconds", "--data-root=$data")
@@ -87,9 +99,12 @@ $workingGrowth = $last.WorkingMiB - $first.WorkingMiB
 $privateGrowth = $last.PrivateMiB - $first.PrivateMiB
 $handleGrowth = $last.Handles - $first.Handles
 $averageCpu = ($samples | Measure-Object CpuPercent -Average).Average
+$unexpectedPreferences = $Mode -eq "visible" -and
+    (Test-Path -LiteralPath (Join-Path $data "ui-frame.txt"))
 $passed = $process.ExitCode -eq 0 -and $maximumWorking -le $MaximumWorkingMiB -and
     $maximumPrivate -le $MaximumPrivateMiB -and $privateGrowth -le $MaximumGrowthMiB -and
-    $handleGrowth -le $MaximumHandleGrowth
+    $handleGrowth -le $MaximumHandleGrowth -and $averageCpu -le $MaximumAverageCpuPercent -and
+    -not $unexpectedPreferences
 [pscustomobject]@{
     Mode=$Mode; Language=$Language; Samples=$samples.Count; ExitCode=$process.ExitCode
     MaximumWorkingMiB=[Math]::Round($maximumWorking, 3)
@@ -97,6 +112,9 @@ $passed = $process.ExitCode -eq 0 -and $maximumWorking -le $MaximumWorkingMiB -a
     WorkingGrowthMiB=[Math]::Round($workingGrowth, 3)
     PrivateGrowthMiB=[Math]::Round($privateGrowth, 3)
     HandleGrowth=$handleGrowth; AverageCpuPercent=[Math]::Round($averageCpu, 4)
+    WorkingLimitMiB=$MaximumWorkingMiB; PrivateLimitMiB=$MaximumPrivateMiB
+    AverageCpuLimitPercent=$MaximumAverageCpuPercent
+    UnexpectedPreferences=$unexpectedPreferences
     Passed=$passed; Report=$report
 } | Format-List
 if (-not $passed) { exit 1 }

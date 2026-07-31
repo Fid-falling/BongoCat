@@ -44,14 +44,6 @@ static void commit_model(BongoCatApp *app,
     request_model_frame(app);
 }
 
-static bool mver_entry(const BongoCatModelEntry *entry) {
-    if (!entry) return false;
-    if (entry->managed) return true;
-    char marker[BONGO_CAT_PATH_CAP];
-    return bongo_cat_path_join(marker, sizeof(marker), entry->adapter_directory,
-        ".bongo-cat-mver.json") && bongo_cat_path_is_file(marker);
-}
-
 bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     const char *id, BongoCatError *error) {
     BongoCatError local = {0};
@@ -107,7 +99,6 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
         request_model_frame(app);
         return false;
     }
-    bongo_cat_live2d_set_mver_compatibility(app->live2d, mver_entry(entry));
     app->behaviors = *behaviors;
     free(behaviors);
     optional = (BongoCatError){0};
@@ -115,6 +106,7 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
         &optional) != BONGO_CAT_OK && optional.message[0])
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", optional.message);
     snprintf(app->loaded_model, sizeof(app->loaded_model), "%s", entry->id);
+    app->pointer_known = false;
     bongo_cat_live2d_resize(app->live2d, pixel_width, pixel_height);
     if (restore_context && previous_window && previous_context &&
         !SDL_GL_MakeCurrent(previous_window, previous_context))

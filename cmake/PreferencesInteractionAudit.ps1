@@ -139,10 +139,6 @@ function Invoke-Wheel([IntPtr]$Window, [double]$X, [double]$Y) {
 }
 
 function Save-Window([IntPtr]$Window, [string]$Name) {
-    [void][BongoCatPreferencesNative]::ShowWindow($Window, 9)
-    [void][BongoCatPreferencesNative]::SetWindowPos(
-        $Window, [IntPtr](-1), 20, 20, 0, 0, 0x0041)
-    [void][BongoCatPreferencesNative]::SetForegroundWindow($Window)
     Start-Sleep -Milliseconds 180
     $rect = [BongoCatPreferencesNative+Rect]::new()
     [void][BongoCatPreferencesNative]::GetWindowRect($Window, [ref]$rect)
@@ -192,6 +188,9 @@ $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
     -WorkingDirectory (Split-Path $Exe) -PassThru
 try {
     $window = Wait-Preferences $process.Id
+    [void][BongoCatPreferencesNative]::ShowWindow($window, 9)
+    [void][BongoCatPreferencesNative]::SetWindowPos(
+        $window, [IntPtr](-1), 20, 20, 0, 0, 0x0041)
     Focus-Window $window 450 620
     $baseline = Save-Window $window "01-baseline.png"
     Invoke-PhysicalClick $window 820 141

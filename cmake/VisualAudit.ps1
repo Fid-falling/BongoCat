@@ -278,7 +278,9 @@ foreach ($specification in $ExternalKeys) {
 }
 
 $report = Join-Path $OutputDir "audit.csv"
-$results | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $report
+$results | Select-Object View,Theme,Language,Page,Model,Scenario,Width,Height,
+    SampleColors,Difference,FontReady,ModelBrightPixels,SemiTransparentPixels,
+    PremultiplyViolations,Passed,Path | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $report
 Save-ContactSheet @($results | Where-Object { $_.View -eq "preferences" -and
     $_.Theme -eq "dark" -and $_.Language -eq "en-US" } | Sort-Object Page) `
     (Join-Path $OutputDir "contact-pages-dark-en-US.png")

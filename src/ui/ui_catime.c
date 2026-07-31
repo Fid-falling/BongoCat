@@ -61,23 +61,9 @@ void bongo_cat_ui_shell_draw(struct nk_context *context, float width,
         p.surface);
     nk_fill_rect(canvas, nk_rect(8 + side - 20, 8, 20, height - 16), 0,
         p.surface);
-    if (p.effects) {
-        struct nk_rect glow = nk_rect(-190, -190, 420, 420);
-        for (int row = 0; row < 20; ++row) {
-            float y = 8.0f + row;
-            float dy = y + .5f - 28.0f;
-            float start = 28.0f - sqrtf(NK_MAX(0.0f, 400.0f - dy * dy));
-            nk_push_scissor(canvas, nk_rect(start, y, 8 + side - start, 1));
-            bongo_cat_ui_paint_radial(context, glow,
-                nk_rgba(p.accent.r, p.accent.g, p.accent.b, 56),
-                nk_rgba(p.accent.r, p.accent.g, p.accent.b, 56), .35f, 1.1f);
-        }
-        nk_push_scissor(canvas, nk_rect(8, 28, side, 202));
-        bongo_cat_ui_paint_radial(context, glow,
-            nk_rgba(p.accent.r, p.accent.g, p.accent.b, 56),
-            nk_rgba(p.accent.r, p.accent.g, p.accent.b, 56), .35f, 1.1f);
-        nk_push_scissor(canvas, nk_rect(0, 0, width, height));
-    }
+    if (p.effects)
+        bongo_cat_ui_paint_sidebar_glow(context, surface, side, 20,
+            nk_rgba(p.accent.r, p.accent.g, p.accent.b, 56));
     nk_stroke_rect(canvas, surface, 20, 1, p.border);
     nk_stroke_line(canvas, 8 + side, 8, 8 + side, height - 8, 1,
         p.border_subtle);

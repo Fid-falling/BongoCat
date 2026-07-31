@@ -2,7 +2,6 @@
 #include "bongo_cat/preferences.h"
 
 #include <SDL3/SDL_opengl.h>
-#include <stdlib.h>
 
 bool bongo_cat_window_visible_at_pointer(BongoCatApp *app, float x, float y) {
     int width, height, pixel_width, pixel_height;
@@ -69,61 +68,6 @@ void bongo_cat_window_schedule_hit_check(BongoCatApp *app) {
     if (!app || app->pointer_hit_dirty || !app->pointer_known) return;
     app->pointer_hit_dirty = true;
     app->pointer_hit_deadline_ns = SDL_GetTicksNS() + 100000000ull;
-}
-
-int bongo_cat_window_wait_timeout(const BongoCatApp *app, uint64_t now) {
-    if (!app) return 250;
-    int wait_ms = app->config.window.visible ? BONGO_CAT_FRAME_WAIT(app) : 250;
-    if (bongo_cat_preferences_needs_frame(app->preferences) && wait_ms > 4)
-        wait_ms = 4;
-    if (app->wheel_animation_active && wait_ms > 8) wait_ms = 8;
-    bool pending_hit = app->config.window.visible && app->pointer_hit_dirty &&
-        app->pointer_hit_deadline_ns &&
-        !app->config.window.pass_through && !app->hover_hidden &&
-        !app->left_mouse_down && !app->right_mouse_down;
-    if (!pending_hit) return wait_ms;
-    if (app->pointer_hit_deadline_ns <= now) return 0;
-    uint64_t remaining_ns = app->pointer_hit_deadline_ns - now;
-    uint64_t remaining_ms = remaining_ns / 1000000ull +
-        (remaining_ns % 1000000ull != 0);
-    return remaining_ms < (uint64_t)wait_ms ? (int)remaining_ms : wait_ms;
-}
-
-bool bongo_cat_window_wait_timeout_self_test(void) {
-    const uint64_t now = 1000000000ull;
-    BongoCatApp *app = calloc(1, sizeof(*app));
-    if (!app) return false;
-    bool passed = false;
-    app->config.window.visible = true;
-    app->config.model.max_fps = 60;
-    app->pointer_hit_dirty = true;
-    app->pointer_hit_deadline_ns = now + 8000000ull;
-    if (bongo_cat_window_wait_timeout(app, now) != 8) goto done;
-    app->config.model.max_fps = 30;
-    if (bongo_cat_window_wait_timeout(app, now) != 8) goto done;
-    app->pointer_hit_deadline_ns = now + 8500000ull;
-    if (bongo_cat_window_wait_timeout(app, now) != 9) goto done;
-    app->pointer_hit_deadline_ns = now;
-    if (bongo_cat_window_wait_timeout(app, now) != 0) goto done;
-    app->pointer_hit_dirty = false;
-    if (bongo_cat_window_wait_timeout(app, now) != BONGO_CAT_FRAME_WAIT(app)) goto done;
-    app->pointer_hit_dirty = true;
-    app->pointer_hit_deadline_ns = now + 8000000ull;
-    app->config.window.pass_through = true;
-    if (bongo_cat_window_wait_timeout(app, now) != BONGO_CAT_FRAME_WAIT(app)) goto done;
-    app->config.window.pass_through = false;
-    app->left_mouse_down = true;
-    if (bongo_cat_window_wait_timeout(app, now) != BONGO_CAT_FRAME_WAIT(app)) goto done;
-    app->left_mouse_down = false;
-    app->config.window.visible = false;
-    if (bongo_cat_window_wait_timeout(app, now) != 250) goto done;
-    app->pointer_hit_dirty = false;
-    if (bongo_cat_window_wait_timeout(app, now) != 250) goto done;
-    app->wheel_animation_active = true;
-    passed = bongo_cat_window_wait_timeout(app, now) == 8;
-done:
-    free(app);
-    return passed;
 }
 
 void bongo_cat_window_sync_click_through(BongoCatApp *app) {

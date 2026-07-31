@@ -36,6 +36,7 @@ typedef struct BongoCatGL {
 } BongoCatGL;
 
 bool bongo_cat_gl_load(BongoCatGL *gl, BongoCatError *error);
+bool bongo_cat_gl_clear_errors(void);
 unsigned int bongo_cat_gl_program(BongoCatGL *gl, const char *vertex, const char *fragment,
     BongoCatError *error);
 

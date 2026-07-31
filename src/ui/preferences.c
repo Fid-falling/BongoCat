@@ -72,9 +72,13 @@ void bongo_cat_preferences_close(BongoCatPreferences *value) {
     value->window = NULL;
     value->gl_context = NULL;
     value->owns_gl_context = false;
+    value->transparent_window = false;
     value->ui_initialized = false;
     value->native_drag = false;
     value->chrome_dragging = false;
+    value->pending_raster_scale = 0.0f;
+    value->raster_retry_ns = 0;
+    value->render_retry_ns = 0;
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
     SDL_GL_SetSwapInterval(1);
     bongo_cat_platform_trim_memory();
@@ -90,7 +94,12 @@ void bongo_cat_preferences_request_model_import(BongoCatPreferences *value) {
         value->import_requested = true; }
 bool bongo_cat_preferences_visible(const BongoCatPreferences *value) { return value && value->window; }
 bool bongo_cat_preferences_needs_frame(const BongoCatPreferences *value) {
-    return value && value->window && value->render_dirty; }
+    if (!value || !value->window) return false;
+    uint64_t now = SDL_GetTicksNS();
+    if (value->render_retry_ns > now) return false;
+    bool raster_due = value->pending_raster_scale > 0.0f &&
+        value->raster_retry_ns <= now;
+    return value->render_dirty || raster_due; }
 void bongo_cat_preferences_input_begin(BongoCatPreferences *value) {
     if (!value || !value->window || value->input_active) return;
     bongo_cat_ui_input_begin(&value->ui);

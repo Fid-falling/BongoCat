@@ -82,7 +82,7 @@ static void font_paths(BongoCatPreferences *value, PreferenceFonts *fonts) {
     if (!fonts->heading) fonts->heading = fonts->body;
     if (!fonts->heading_fallback) fonts->heading_fallback = fonts->body_fallback;
     if (!value->app->i18n) return;
-    bongo_cat_i18n_all_glyph_ranges(value->app->i18n, value->glyph_ranges,
+    bongo_cat_i18n_glyph_ranges(value->app->i18n, value->glyph_ranges,
         sizeof(value->glyph_ranges) / sizeof(value->glyph_ranges[0]));
     fonts->ranges = value->glyph_ranges;
 }
@@ -122,6 +122,26 @@ static bool attach_gl_context(BongoCatPreferences *value) {
         SDL_GL_MakeCurrent(value->window, value->gl_context);
 }
 
+static void discard_window(BongoCatPreferences *value) {
+    if (value->owns_gl_context && value->gl_context)
+        SDL_GL_DestroyContext(value->gl_context);
+    if (value->window) SDL_DestroyWindow(value->window);
+    value->window = NULL;
+    value->gl_context = NULL;
+    value->owns_gl_context = false;
+    value->transparent_window = false;
+    SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
+}
+
+static bool create_window(BongoCatPreferences *value, int width, int height,
+    SDL_WindowFlags flags, bool transparent) {
+    value->window = SDL_CreateWindow(BONGO_CAT_NAME, width, height,
+        flags | (transparent ? SDL_WINDOW_TRANSPARENT : 0));
+    value->transparent_window = value->window && transparent &&
+        (SDL_GetWindowFlags(value->window) & SDL_WINDOW_TRANSPARENT) != 0;
+    return value->window != NULL;
+}
+
 bool bongo_cat_preferences_open_window(BongoCatPreferences *value) {
     SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS |
         SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;
@@ -133,8 +153,11 @@ bool bongo_cat_preferences_open_window(BongoCatPreferences *value) {
 #ifdef _WIN32
     SDL_SetHint(SDL_HINT_WINDOWS_ERASE_BACKGROUND_MODE, "0");
 #endif
-    value->window = SDL_CreateWindow(BONGO_CAT_NAME, width, height, flags);
-    if (!value->window) return false;
+    if (!create_window(value, width, height, flags, true)) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
+            "Transparent preferences window unavailable: %s", SDL_GetError());
+        if (!create_window(value, width, height, flags, false)) return false;
+    }
     SDL_SetWindowPosition(value->window, SDL_WINDOWPOS_CENTERED_DISPLAY(display),
         SDL_WINDOWPOS_CENTERED_DISPLAY(display));
     SDL_SyncWindow(value->window);
@@ -148,7 +171,21 @@ bool bongo_cat_preferences_open_window(BongoCatPreferences *value) {
     SDL_SetWindowPosition(value->window, SDL_WINDOWPOS_CENTERED_DISPLAY(display),
         SDL_WINDOWPOS_CENTERED_DISPLAY(display));
     SDL_SyncWindow(value->window);
-    if (!attach_gl_context(value)) return false;
+    bool context_ready = attach_gl_context(value);
+    if (!context_ready && value->transparent_window) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
+            "Transparent preferences OpenGL context unavailable: %s",
+            SDL_GetError());
+        discard_window(value);
+        if (!create_window(value, width, height, flags, false)) return false;
+        SDL_SetWindowMinimumSize(value->window, minimum_width, minimum_height);
+        SDL_SetWindowPosition(value->window,
+            SDL_WINDOWPOS_CENTERED_DISPLAY(display),
+            SDL_WINDOWPOS_CENTERED_DISPLAY(display));
+        SDL_SyncWindow(value->window);
+        context_ready = attach_gl_context(value);
+    }
+    if (!context_ready) return false;
     PreferenceFonts fonts;
     font_paths(value, &fonts);
     BongoCatError error = {0};
@@ -167,8 +204,9 @@ bool bongo_cat_preferences_open_window(BongoCatPreferences *value) {
     value->font_language = value->app->config.app.language;
     int pixel_width = 0, pixel_height = 0;
     SDL_GetWindowSizeInPixels(value->window, &pixel_width, &pixel_height);
-    SDL_Log("Preferences GL ready: dedicated=%d pixels=%dx%d layout=%.2f raster=%.2f",
-        value->owns_gl_context, pixel_width, pixel_height,
+    SDL_Log("Preferences GL ready: dedicated=%d transparent=%d pixels=%dx%d layout=%.2f raster=%.2f",
+        value->owns_gl_context, value->transparent_window,
+        pixel_width, pixel_height,
         layout_scale, raster_scale);
     if (!SDL_GL_SetSwapInterval(0)) SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
         "Preferences VSync disable unavailable: %s", SDL_GetError());
@@ -179,20 +217,37 @@ bool bongo_cat_preferences_open_window(BongoCatPreferences *value) {
     return true;
 }
 
-static void refresh_raster_resources(BongoCatPreferences *value,
-    float raster_scale) {
+bool bongo_cat_preferences_reload_fonts(BongoCatPreferences *value) {
+    if (!value || !value->ui_initialized) return false;
+    PreferenceFonts fonts;
+    font_paths(value, &fonts);
+    return bongo_cat_ui_font_atlas_reload(&value->ui, fonts.body,
+        fonts.body_fallback, fonts.heading, fonts.heading_fallback,
+        fonts.ranges, value->ui.raster_scale);
+}
+
+bool bongo_cat_preferences_refresh_raster(BongoCatPreferences *value) {
+    if (!value || value->pending_raster_scale <= 0.0f) return true;
+    uint64_t now = SDL_GetTicksNS();
+    if (value->raster_retry_ns > now) return false;
+    float raster_scale = value->pending_raster_scale;
     PreferenceFonts fonts;
     font_paths(value, &fonts);
     if (!bongo_cat_ui_font_atlas_reload(&value->ui, fonts.body,
         fonts.body_fallback, fonts.heading, fonts.heading_fallback,
-        fonts.ranges, raster_scale))
+        fonts.ranges, raster_scale)) {
+        value->raster_retry_ns = now + 1000000000ull;
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
             "Preferences font atlas could not be rebuilt for %.2fx", raster_scale);
-    value->ui.raster_scale = raster_scale;
+        return false;
+    }
+    value->pending_raster_scale = 0.0f;
+    value->raster_retry_ns = 0;
     bongo_cat_ui_paint_destroy(&value->ui);
     bongo_cat_preferences_model_cover_cache_clear(value->app);
     bongo_cat_preferences_assets_clear(value);
     bongo_cat_preferences_assets_load(value);
+    return true;
 }
 
 bool bongo_cat_preferences_scale_event(BongoCatPreferences *value,
@@ -216,9 +271,18 @@ bool bongo_cat_preferences_scale_event(BongoCatPreferences *value,
     value->live_resize_rendering = true;
     bool context_ready = SDL_GL_MakeCurrent(value->window, value->gl_context);
     value->ui.layout_scale = layout_scale;
-    if (fabsf(raster_scale - old_raster) > 0.01f && context_ready)
-        refresh_raster_resources(value, raster_scale);
-    else value->ui.raster_scale = raster_scale;
+    if (fabsf(raster_scale - old_raster) > 0.01f) {
+        value->pending_raster_scale = raster_scale;
+        value->raster_retry_ns = 0;
+        if (context_ready) bongo_cat_preferences_refresh_raster(value);
+        else SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
+            "Preferences GL context unavailable during scale change: %s",
+            SDL_GetError());
+    } else {
+        value->pending_raster_scale = 0.0f;
+        value->raster_retry_ns = 0;
+        value->ui.raster_scale = raster_scale;
+    }
     SDL_SetWindowMinimumSize(value->window, minimum_width, minimum_height);
     SDL_SetWindowSize(value->window, width, height);
     fit_position(value->window, display, width, height);

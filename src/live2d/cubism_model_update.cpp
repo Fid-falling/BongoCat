@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
-#include <cstring>
 
 namespace bongo_cat {
 
@@ -18,6 +17,11 @@ void NativeModel::resize(int width, int height) {
     width_ = width;
     height_ = height;
     if (!_model || (width == renderer_width_ && height == renderer_height_)) return;
+    if (!_model->IsBlendModeEnabled()) {
+        renderer_width_ = width_;
+        renderer_height_ = height_;
+        return;
+    }
     DeleteRenderer();
     CreateRenderer((Csm::csmUint32)width_, (Csm::csmUint32)height_);
     renderer_width_ = width_;
@@ -100,15 +104,8 @@ void NativeModel::set_dragging(float x, float y) {
     external_parameters_dirty_ = true;
 }
 
-void NativeModel::set_mver_compatibility(bool enabled) {
-    mver_compatibility_ = enabled;
-}
-
 bool NativeModel::set_parameter(const char *id, float value) {
     if (!_model || !id) return false;
-    if (mver_compatibility_ &&
-        (std::strcmp(id, "ParamMouseX") == 0 ||
-         std::strcmp(id, "ParamMouseY") == 0)) return true;
     Csm::CubismIdHandle handle = Csm::CubismFramework::GetIdManager()->GetId(id);
     int index = _model->GetParameterIndex(handle);
     if (index < 0 || index >= _model->GetParameterCount()) return false;

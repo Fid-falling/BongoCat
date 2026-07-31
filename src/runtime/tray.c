@@ -154,6 +154,7 @@ void bongo_cat_tray_sync(BongoCatTray *tray) {
 bool bongo_cat_tray_self_test(BongoCatTray *tray) {
     if (!tray || !tray->handle || !tray->visible || !tray->pass_through ||
         !tray->always_on_top || !tray->preferences || !tray->exit) return false;
+    SDL_Log("Tray self-test: entries ready");
     int count = 0;
     const SDL_TrayEntry **entries = SDL_GetTrayEntries(
         SDL_GetTrayEntryParent(tray->preferences), &count);
@@ -167,12 +168,17 @@ bool bongo_cat_tray_self_test(BongoCatTray *tray) {
     on_pass_through(tray, tray->pass_through);
     on_always_on_top(tray, tray->always_on_top);
     on_always_on_top(tray, tray->always_on_top);
+    SDL_Log("Tray self-test: state actions restored");
     on_preferences(tray, tray->preferences);
     bool preferences = bongo_cat_preferences_visible(app->preferences);
+    SDL_Log("Tray self-test: preferences visible=%d", preferences);
     bongo_cat_preferences_close(app->preferences);
-    return preferences && app->config.window.visible == visible &&
+    SDL_Log("Tray self-test: preferences closed");
+    bool result = preferences && app->config.window.visible == visible &&
         app->config.window.pass_through == pass_through &&
         app->config.window.always_on_top == always_on_top;
+    SDL_Log("Tray self-test: result=%d", result);
+    return result;
 }
 
 void bongo_cat_tray_destroy(BongoCatTray *tray) {

@@ -1,9 +1,14 @@
 #include "ui_backend.h"
 
+#include <math.h>
 #include <stdlib.h>
 
+#define BONGO_CAT_UI_SCALE_MIN 0.5f
+#define BONGO_CAT_UI_SCALE_MAX 8.0f
+
 static float valid_scale(float value) {
-    return value >= 0.5f && value <= 4.0f ? value : 1.0f;
+    if (!isfinite(value) || value < BONGO_CAT_UI_SCALE_MIN) return 1.0f;
+    return SDL_min(value, BONGO_CAT_UI_SCALE_MAX);
 }
 
 static float test_scale(void) {
@@ -11,7 +16,9 @@ static float test_scale(void) {
     if (!text || !text[0]) return 0.0f;
     char *end = NULL;
     float value = strtof(text, &end);
-    return end && !*end && value >= 0.5f && value <= 4.0f ? value : 0.0f;
+    return end && !*end && isfinite(value) &&
+        value >= BONGO_CAT_UI_SCALE_MIN ?
+        SDL_min(value, BONGO_CAT_UI_SCALE_MAX) : 0.0f;
 }
 
 float bongo_cat_ui_display_layout_scale(SDL_DisplayID display) {

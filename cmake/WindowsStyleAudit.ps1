@@ -28,32 +28,48 @@ public static class BongoCatStyleNative {
 }
 '@
 
+function Get-VisibleWindows([int]$ProcessId) {
+    $windows = [Collections.Generic.List[object]]::new()
+    [BongoCatStyleNative]::EnumWindows({
+        param($handle, $unused)
+        [uint32]$owner = 0
+        [void][BongoCatStyleNative]::GetWindowThreadProcessId(
+            $handle, [ref]$owner)
+        if ($owner -eq $ProcessId -and
+            [BongoCatStyleNative]::IsWindowVisible($handle)) {
+            $rect = [BongoCatStyleNative+Rect]::new()
+            if ([BongoCatStyleNative]::GetWindowRect($handle, [ref]$rect)) {
+                $windows.Add([pscustomobject]@{ Handle=$handle;
+                    Area=($rect.R-$rect.L)*($rect.B-$rect.T) })
+            }
+        }
+        return $true
+    }, [IntPtr]::Zero) | Out-Null
+    return $windows
+}
+
 $env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
 $env:BONGO_CAT_TEST_INSTANCE_ID = "window-style-audit-$PID"
 Start-Sleep -Milliseconds 350
 $data = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
-$arguments = @("--ci-smoke", "--ci-exit-ms=5000", "--data-root=$data")
+$arguments = @("--ci-smoke", "--ci-ignore-global-input",
+    "--ci-exit-ms=5000", "--data-root=$data")
 if ($Mode -eq "taskbar") { $arguments += "--ci-taskbar-visible" }
 if ($Mode -eq "menu") { $arguments += "--ci-menu" }
 $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
     -WorkingDirectory (Split-Path $Exe) -WindowStyle Normal -PassThru
-Start-Sleep -Milliseconds 1600
-$windows = [Collections.Generic.List[object]]::new()
-[BongoCatStyleNative]::EnumWindows({
-    param($handle, $data)
-    [uint32]$owner = 0
-    [void][BongoCatStyleNative]::GetWindowThreadProcessId($handle, [ref]$owner)
-    if ($owner -eq $process.Id -and [BongoCatStyleNative]::IsWindowVisible($handle)) {
-        $rect = [BongoCatStyleNative+Rect]::new()
-        if ([BongoCatStyleNative]::GetWindowRect($handle, [ref]$rect)) {
-            $windows.Add([pscustomobject]@{
-                Handle=$handle; Area=($rect.R-$rect.L)*($rect.B-$rect.T)
-            })
-        }
+try {
+$deadline = [DateTime]::UtcNow.AddSeconds(20)
+do {
+    $windows = @(Get-VisibleWindows $process.Id)
+    if ($windows.Count) { break }
+    if ($process.HasExited) {
+        throw "BongoCat exited before creating a visible window"
     }
-    return $true
-}, [IntPtr]::Zero) | Out-Null
+    Start-Sleep -Milliseconds 50
+} while ([DateTime]::UtcNow -lt $deadline)
 $window = $windows | Sort-Object Area -Descending | Select-Object -First 1
+if (-not $window) { throw "Timed out waiting for a visible BongoCat window" }
 $windowStyle = [BongoCatStyleNative]::GetWindowLongPtr($window.Handle, -16).ToInt64()
 $style = [BongoCatStyleNative]::GetWindowLongPtr($window.Handle, -20).ToInt64()
 if ($Mode -eq "menu") {
@@ -85,3 +101,8 @@ $passed = $process.ExitCode -eq 0 -and -not $caption -and -not $thickFrame -and
     Topmost=$topmost; ExitCode=$process.ExitCode; Passed=$passed
 } | Format-List
 if (-not $passed) { exit 1 }
+} finally {
+    if ($process -and -not $process.HasExited) {
+        $process.Kill(); $process.WaitForExit()
+    }
+}
