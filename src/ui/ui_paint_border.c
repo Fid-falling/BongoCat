@@ -1,6 +1,7 @@
 #include "ui_paint_border.h"
 
 #include <math.h>
+#include <stddef.h>
 
 static float clamp01(float value) {
     return NK_CLAMP(0.0f, value, 1.0f);

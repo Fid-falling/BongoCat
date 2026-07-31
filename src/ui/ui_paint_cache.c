@@ -86,7 +86,8 @@ bool bongo_cat_ui_paint_cache_upload(BongoCatUIPaintTexture *item,
     size_t bytes = (size_t)item->key.width * item->key.height * channels;
     if (!reserve_bytes(item->backend, item, bytes)) {
         SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
-            "UI paint cache limit rejected a %zu-byte texture", bytes);
+            "UI paint cache limit rejected a %llu-byte texture",
+            (unsigned long long)bytes);
         return false;
     }
     bongo_cat_gl_clear_errors();
