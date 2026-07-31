@@ -154,7 +154,11 @@ static void begin_log(BongoCatApp *app) {
     bongo_cat_path_join(stage_path, sizeof(stage_path), app->data_root,
         "startup-stage.txt");
     FILE *stage = bongo_cat_file_open(stage_path, "rb");
-    if (stage) { fread(interrupted, 1, sizeof(interrupted) - 1, stage); fclose(stage); }
+    if (stage) {
+        size_t length = fread(interrupted, 1, sizeof(interrupted) - 1, stage);
+        interrupted[ferror(stage) ? 0 : length] = '\0';
+        fclose(stage);
+    }
     if (bongo_cat_path_is_file(startup_log_path))
         bongo_cat_file_replace(startup_log_path, previous, true);
     FILE *file = bongo_cat_file_open(startup_log_path, "wb");
