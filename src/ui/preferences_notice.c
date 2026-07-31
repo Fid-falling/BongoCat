@@ -16,13 +16,13 @@ void bongo_cat_preferences_notice_show(BongoCatApp *app,
     if (!app || !app->preferences || !message || !message[0]) return;
     BongoCatPreferences *value = app->preferences;
     uint64_t now = SDL_GetTicksNS();
-    BongoCatPreferenceNotice *target = NULL;
+    BongoCatPreferenceNotice *target = &value->notices[0];
     for (size_t i = 0; i < sizeof(value->notices) / sizeof(value->notices[0]); ++i) {
         BongoCatPreferenceNotice *notice = &value->notices[i];
         if (!notice->message[0] || notice->until_ns <= now) {
             target = notice; break;
         }
-        if (!target || notice->started_ns < target->started_ns) target = notice;
+        if (notice->started_ns < target->started_ns) target = notice;
     }
     snprintf(target->message, sizeof(target->message), "%s", message);
     target->error = error;
