@@ -129,7 +129,9 @@ jobs:
       - name: Test Windows release
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ctest --test-dir build -C Release --output-on-failure
+        run: >-
+          & ./.github/scripts/test-windows.ps1
+          ctest --test-dir build -C Release --output-on-failure
 
       - name: Test Unix release
         if: runner.os != 'Windows'
