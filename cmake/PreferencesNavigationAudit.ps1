@@ -20,7 +20,6 @@ public static class BongoCatNavigationNative {
     public delegate bool EnumProc(IntPtr handle, IntPtr data);
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc proc, IntPtr data);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr handle);
-    [DllImport("user32.dll")] public static extern int GetWindowLongW(IntPtr handle, int index);
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr handle, out uint process);
     [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr handle, out Rect rect);
     [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr handle, ref Point point);
@@ -45,6 +44,7 @@ function Wait-Preferences([int]$ProcessId) {
     $deadline = [DateTime]::UtcNow.AddSeconds(30)
     do {
         $found = [Collections.Generic.List[object]]::new()
+        $script:visibleWindows = 0
         [BongoCatNavigationNative]::EnumWindows({
             param($handle, $unused)
             [uint32]$owner = 0
@@ -52,8 +52,11 @@ function Wait-Preferences([int]$ProcessId) {
                 $handle, [ref]$owner)
             $rect = [BongoCatNavigationNative+Rect]::new()
             if ($owner -eq $ProcessId -and
+                [BongoCatNavigationNative]::IsWindowVisible($handle)) {
+                $script:visibleWindows++
+            }
+            if ($owner -eq $ProcessId -and
                 [BongoCatNavigationNative]::IsWindowVisible($handle) -and
-                -not ([BongoCatNavigationNative]::GetWindowLongW($handle, -20) -band 0x80) -and
                 [BongoCatNavigationNative]::GetClientRect($handle, [ref]$rect) -and
                 $rect.Right -ge 400 -and $rect.Bottom -ge 300) {
                 $found.Add([pscustomobject]@{ Handle=$handle
@@ -61,7 +64,7 @@ function Wait-Preferences([int]$ProcessId) {
             }
             return $true
         }, [IntPtr]::Zero) | Out-Null
-        if ($found.Count) {
+        if ($found.Count -and $script:visibleWindows -ge 2) {
             return ($found | Sort-Object Area -Descending | Select-Object -First 1).Handle
         }
         Start-Sleep -Milliseconds 50
@@ -208,6 +211,7 @@ try {
         [IntPtr](-1), 40, 40, 0, 0, 0x0041)
     [void][BongoCatNavigationNative]::SetForegroundWindow($window)
     Start-Sleep -Milliseconds 500
+    $window = Wait-Preferences $process.Id
     $client = [BongoCatNavigationNative+Rect]::new()
     [void][BongoCatNavigationNative]::GetClientRect($window, [ref]$client)
     $script:UiScale = $client.Right / 900.0

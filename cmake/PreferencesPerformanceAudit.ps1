@@ -25,7 +25,7 @@ public static class BongoCatPreferencePerformanceNative {
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L,T,R,B; }
     [StructLayout(LayoutKind.Sequential)] public struct Point { public int X,Y; }
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc proc, IntPtr data);
-    [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr handle); [DllImport("user32.dll")] public static extern int GetWindowLongW(IntPtr handle, int index);
+    [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr handle);
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr handle, out uint process);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr handle, out Rect rect);
     [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr handle, out Rect rect);
@@ -41,18 +41,16 @@ public static class BongoCatPreferencePerformanceNative {
 '@
 [void][BongoCatPreferencePerformanceNative]::SetProcessDPIAware()
 $script:UiScale = 1.0
-
 function Wait-Preferences([int]$ProcessId) {
     $deadline = [DateTime]::UtcNow.AddSeconds(20)
     do {
-        $script:found = [IntPtr]::Zero; $script:bestArea = 0
+        $script:found=[IntPtr]::Zero; $script:bestArea=0
         [BongoCatPreferencePerformanceNative]::EnumWindows({
             param($handle, $unused)
             [uint32]$owner = 0
             [void][BongoCatPreferencePerformanceNative]::GetWindowThreadProcessId($handle,
                 [ref]$owner)
-            if ($owner -eq $ProcessId -and [BongoCatPreferencePerformanceNative]::IsWindowVisible($handle) -and
-                -not ([BongoCatPreferencePerformanceNative]::GetWindowLongW($handle,-20) -band 0x80)) {
+            if ($owner-eq $ProcessId-and [BongoCatPreferencePerformanceNative]::IsWindowVisible($handle)) {
                 $rect = [BongoCatPreferencePerformanceNative+Rect]::new()
                 if ([BongoCatPreferencePerformanceNative]::GetWindowRect($handle,
                     [ref]$rect)) {
@@ -64,7 +62,7 @@ function Wait-Preferences([int]$ProcessId) {
             }
             return $true
         }, [IntPtr]::Zero) | Out-Null
-        if ($script:found -ne [IntPtr]::Zero) { return $script:found }
+        if ($script:found-ne [IntPtr]::Zero) { return $script:found }
         Start-Sleep -Milliseconds 50
     } while ([DateTime]::UtcNow -lt $deadline)
     throw "Preferences window was not created"
@@ -200,6 +198,7 @@ $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
 try {
     $window = Wait-Preferences $process.Id
     $script:UiScale = Wait-UiScale (Join-Path $data "ui-frame.txt")
+    $window = Wait-Preferences $process.Id
     [void][BongoCatPreferencePerformanceNative]::SetWindowPos($window,
         [IntPtr](-1), 40, 40, 0, 0, 0x0041)
     [void][BongoCatPreferencePerformanceNative]::SetForegroundWindow($window)

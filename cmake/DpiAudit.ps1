@@ -21,7 +21,6 @@ public static class BongoCatDpiNative {
     [StructLayout(LayoutKind.Sequential)] public struct Point { public int X,Y; }
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc proc, IntPtr data);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr handle);
-    [DllImport("user32.dll")] public static extern int GetWindowLongW(IntPtr handle, int index);
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr handle, out uint process);
     [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr handle, out Rect rect);
     [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr handle, ref Point point);
@@ -39,6 +38,7 @@ function Wait-Preferences([int]$ProcessId) {
     $deadline = [DateTime]::UtcNow.AddSeconds(30)
     do {
         $found = [Collections.Generic.List[object]]::new()
+        $script:visibleWindows = 0
         [BongoCatDpiNative]::EnumWindows({
             param($handle, $unused)
             [uint32]$owner = 0
@@ -46,15 +46,18 @@ function Wait-Preferences([int]$ProcessId) {
                 $handle, [ref]$owner)
             $rect = [BongoCatDpiNative+Rect]::new()
             if ($owner -eq $ProcessId -and
+                [BongoCatDpiNative]::IsWindowVisible($handle)) {
+                $script:visibleWindows++
+            }
+            if ($owner -eq $ProcessId -and
                 [BongoCatDpiNative]::IsWindowVisible($handle) -and
-                -not ([BongoCatDpiNative]::GetWindowLongW($handle, -20) -band 0x80) -and
                 [BongoCatDpiNative]::GetClientRect($handle, [ref]$rect) -and
                 $rect.R -ge 400 -and $rect.B -ge 300) {
                 $found.Add([pscustomobject]@{Handle=$handle;Area=$rect.R*$rect.B})
             }
             return $true
         }, [IntPtr]::Zero) | Out-Null
-        if ($found.Count) {
+        if ($found.Count -and $script:visibleWindows -ge 2) {
             return ($found | Sort-Object Area -Descending | Select-Object -First 1).Handle
         }
         Start-Sleep -Milliseconds 40

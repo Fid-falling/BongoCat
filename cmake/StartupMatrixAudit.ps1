@@ -10,6 +10,12 @@ function Get-IoPath([string]$Path) {
     if ($Path.StartsWith("\\")) { return "\\?\UNC\" + $Path.Substring(2) }
     return "\\?\" + $Path
 }
+function Get-Sha256([string]$Path) {
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { return [BitConverter]::ToString(
+        $sha.ComputeHash([IO.File]::ReadAllBytes($Path))).Replace("-", "") }
+    finally { $sha.Dispose() }
+}
 if (-not (Test-Path -LiteralPath $Exe -PathType Leaf)) { throw "Executable not found: $Exe" }
 if ($OutputDir -eq [IO.Path]::GetPathRoot($OutputDir)) { throw "Unsafe output directory" }
 if (Test-Path -LiteralPath $OutputDir) { [IO.Directory]::Delete((Get-IoPath $OutputDir), $true) }
@@ -166,11 +172,11 @@ $log = Invoke-Smoke "fresh startup" $shared -Probe
 
 $asset = Join-Path $shared "embedded-assets-0.1.0\assets\locales\en-US.json"
 if (-not (Test-Path -LiteralPath $asset)) { throw "Embedded asset was not extracted" }
-$expectedHash = (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash
+$expectedHash = Get-Sha256 $asset
 $bytes = [IO.File]::ReadAllBytes($asset); $bytes[0] = $bytes[0] -bxor 1
 [IO.File]::WriteAllBytes($asset, $bytes)
 $log = Invoke-Smoke "same-size asset repair" $shared
-if ((Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash -ne $expectedHash -or
+if ((Get-Sha256 $asset) -ne $expectedHash -or
     $log -notmatch "cache is incomplete") { throw "Corrupt asset cache was not repaired" }
 
 [IO.File]::WriteAllText((Join-Path $shared "preferences.json"), "{ invalid",
