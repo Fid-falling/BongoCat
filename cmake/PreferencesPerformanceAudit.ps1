@@ -219,10 +219,11 @@ try {
     $paintTextures = [int]$paintMatch.Groups[1].Value
     $paintMiB = [double]$paintMatch.Groups[2].Value / 1MB
     $resizeMatch = [regex]::Match($frameContent,
-        'resize_cached=(\d+) resize_failures=(\d+)')
+        'resize_cached=(\d+) resize_failures=(\d+) resize_layout=(\d+)')
     if (-not $resizeMatch.Success) { throw "Resize cache metrics were not reported" }
     $resizeCached = [int]$resizeMatch.Groups[1].Value
     $resizeFailures = [int]$resizeMatch.Groups[2].Value
+    $resizeLayout = [int]$resizeMatch.Groups[3].Value
     $client = [BongoCatPreferencePerformanceNative+Rect]::new()
     [void][BongoCatPreferencePerformanceNative]::GetClientRect(
         $window, [ref]$client)
@@ -268,6 +269,7 @@ try {
         ResizeBlackBottom = $resizeBlackBottom
         ResizeCached = $resizeCached
         ResizeFailures = $resizeFailures
+        ResizeLayout = $resizeLayout
         VisibleWindows = $visibleWindows
         PaintTextures = $paintTextures
         PaintMiB = $paintMiB
@@ -278,6 +280,7 @@ try {
         $result.IdleFrameChanges -le 1 -and $result.ResizeFrames -ge 4 -and
         $result.ResizeBlackBottom -le 2 -and
         $result.ResizeCached -ge 4 -and $result.ResizeFailures -eq 0 -and
+        $result.ResizeLayout -ge 4 -and
         $result.VisibleWindows -eq 1 -and
         $result.PaintTextures -le 48 -and $result.PaintMiB -le 32.0
     $result | ConvertTo-Json | Set-Content -Encoding utf8 `

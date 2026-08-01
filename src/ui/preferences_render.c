@@ -102,7 +102,7 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
     if (nk_group_begin(context, "preferences-sidebar", NK_WINDOW_NO_SCROLLBAR)) {
     bongo_cat_ui_header(context, "BongoCat",
         value->ui.caption_font, value->logo_texture, &title_clicked, !modal, dark);
-    if (title_clicked && !SDL_OpenURL("https://bongocat.com"))
+    if (title_clicked && !SDL_OpenURL("https://bongocat.pet"))
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Cannot open website: %s", SDL_GetError());
     bongo_cat_ui_set_icons(draw_icon, value);
     bongo_cat_ui_tabs(context, menus, 5, &value->page, !modal, dark,

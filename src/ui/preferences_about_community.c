@@ -8,6 +8,7 @@
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
+#include <string.h>
 
 static const char *tr(BongoCatPreferences *value, const char *key,
     const char *fallback) {
@@ -27,6 +28,18 @@ static void centered(struct nk_command_buffer *canvas, struct nk_rect bounds,
     text(canvas, nk_rect(bounds.x + (bounds.w - width) * .5f,
         bounds.y + (bounds.h - font->height) * .5f,
         NK_MIN(width + 1, bounds.w), font->height), value, font, color);
+}
+
+static float span_width(const struct nk_user_font *font,
+    const char *value, int length) {
+    return font->width(font->userdata, font->height, value, length);
+}
+
+static void span(struct nk_command_buffer *canvas, struct nk_rect bounds,
+    const char *value, int length, const struct nk_user_font *font,
+    struct nk_color color) {
+    if (length > 0) nk_draw_text(canvas, bounds, value, length, font,
+        nk_rgba(0, 0, 0, 0), color);
 }
 
 static bool hit(struct nk_context *context, struct nk_rect bounds) {
@@ -97,7 +110,48 @@ static void coffee(BongoCatPreferences *value, struct nk_context *context,
         value->ui.caption_font, nk_rgb(255, 255, 255));
     if (hover) bongo_cat_ui_cursor_hover_rect(context, pill,
         BONGO_CAT_UI_CURSOR_POINTER);
-    if (hit(context, pill)) open_url("https://bongocat.com/support");
+    if (hit(context, pill)) open_url("https://bongocat.pet/support");
+}
+
+void bongo_cat_preferences_about_projects_heading(
+    BongoCatPreferences *value, struct nk_context *context,
+    struct nk_rect bounds) {
+    BongoCatUIPalette p = bongo_cat_ui_palette(bongo_cat_ui_dark(context));
+    struct nk_command_buffer *canvas = nk_window_get_canvas(context);
+    centered(canvas, nk_rect(bounds.x, bounds.y + 20, bounds.w, 30),
+        tr(value, "native.support.works", "More apps"),
+        value->ui.heading_font, p.text);
+    const char *caption = tr(value, "native.support.worksText",
+        "More software from vladelaina");
+    const char *developer = strstr(caption, "vladelaina");
+    int prefix = developer ? (int)(developer - caption) : nk_strlen(caption);
+    int name_length = developer ? 11 : 0;
+    const char *suffix = developer ? developer + name_length : caption + prefix;
+    int suffix_length = nk_strlen(suffix);
+    float prefix_width = span_width(value->ui.caption_font, caption, prefix);
+    float name_width = span_width(value->ui.caption_font,
+        developer ? developer : "", name_length);
+    float suffix_width = span_width(value->ui.caption_font, suffix, suffix_length);
+    float x = bounds.x + (bounds.w - prefix_width - name_width - suffix_width) * .5f;
+    float y = bounds.y + 49;
+    span(canvas, nk_rect(x, y, prefix_width + 1, 24), caption, prefix,
+        value->ui.caption_font, p.muted);
+    struct nk_rect link = nk_rect(x + prefix_width, y, name_width + 1, 24);
+    bool hover = developer && nk_input_is_mouse_hovering_rect(
+        &context->input, link);
+    float amount = bongo_cat_ui_animate_eased(context, "works-author-hover",
+        hover ? 1.0f : 0.0f, 200, BONGO_CAT_UI_EASE_STANDARD);
+    span(canvas, link, developer ? developer : "", name_length,
+        value->ui.caption_font, bongo_cat_ui_color_mix(p.accent, p.pink, amount));
+    span(canvas, nk_rect(link.x + name_width, y, suffix_width + 1, 24),
+        suffix, suffix_length, value->ui.caption_font, p.muted);
+    if (hover) bongo_cat_ui_cursor_hover_rect(context, link,
+        BONGO_CAT_UI_CURSOR_POINTER);
+    if (developer && hit(context, link)) open_url("https://vlaina.com/");
+    centered(canvas, nk_rect(bounds.x, bounds.y + 72, bounds.w, 22),
+        tr(value, "native.support.refactorDeveloper",
+        "(Developer who rebuilt BongoCat in C)"),
+        value->ui.caption_font, p.muted);
 }
 
 void bongo_cat_preferences_about_community(

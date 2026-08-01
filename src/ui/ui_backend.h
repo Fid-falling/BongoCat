@@ -61,6 +61,7 @@ typedef struct BongoCatUIBackend {
     bool font_path_found;
     bool font_file_loaded;
     bool dark_theme;
+    bool live_resize_fast;
     SDL_Cursor *default_cursor;
     SDL_Cursor *pointer_cursor;
     SDL_Cursor *text_cursor;

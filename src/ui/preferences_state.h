@@ -61,6 +61,9 @@ struct BongoCatPreferences {
     bool chrome_dragging;
     bool live_resize_active;
     bool live_resize_rendering;
+    bool live_resize_pending;
+    bool live_resize_timer;
+    unsigned live_resize_layout_frames;
     int drag_window_x;
     int drag_window_y;
     float drag_pointer_x;

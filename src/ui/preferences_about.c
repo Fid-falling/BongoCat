@@ -99,7 +99,7 @@ static void logo(BongoCatPreferences *value, struct nk_context *context,
         value->logo_height, nk_rect(inner.x + 12, inner.y + 12,
         inner.w - 24, inner.h - 24));
     link_cursor(context, bounds);
-    if (hit(context, bounds)) open_url("https://bongocat.com");
+    if (hit(context, bounds)) open_url("https://bongocat.pet");
 }
 static void star_button(BongoCatPreferences *value,
     struct nk_context *context, struct nk_command_buffer *canvas,
@@ -123,13 +123,13 @@ static void star_button(BongoCatPreferences *value,
         value->ui.label_font, nk_rgb(255, 255, 255));
     link_cursor(context, bounds);
     if (hit(context, bounds))
-        open_url("https://github.com/vladelaina/BongoCat");
+        open_url("https://github.com/bongocat-pet/BongoCat");
 }
 static void hero_title(BongoCatPreferences *value, struct nk_context *context,
     struct nk_command_buffer *canvas, struct nk_rect bounds,
     BongoCatUIPalette p) {
     const char *title = "BongoCat";
-    const char *by = "by ", *developer = "vladelaina";
+    const char *by = "by ", *developer = "BongoCat-pet";
     float gap = 8, title_width = width(value->ui.hero_font, title);
     float by_width = width(value->ui.caption_font, by),
         developer_width = width(value->ui.caption_font, developer);
@@ -147,7 +147,7 @@ static void hero_title(BongoCatPreferences *value, struct nk_context *context,
     text(canvas, link, developer, value->ui.caption_font,
         bongo_cat_ui_color_mix(p.accent, p.pink, amount));
     link_cursor(context, link); if (hit(context, link))
-        open_url("http://vladelaina.com");
+        open_url("https://github.com/bongocat-pet");
 }
 static void footer(BongoCatPreferences *value, struct nk_context *context,
     struct nk_command_buffer *canvas, struct nk_rect bounds,
@@ -204,7 +204,7 @@ static void footer(BongoCatPreferences *value, struct nk_context *context,
         bongo_cat_ui_color_mix(p.accent, p.pink, feedback_amount));
     link_cursor(context, feedback_link);
     if (hit(context, feedback_link))
-        open_url("https://github.com/vladelaina/BongoCat/issues");
+        open_url("https://github.com/bongocat-pet/BongoCat/issues");
 }
 
 static void hero(BongoCatPreferences *value, struct nk_context *context) {
@@ -276,17 +276,12 @@ static void projects(BongoCatPreferences *value, struct nk_context *context) {
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     nk_stroke_line(canvas, bounds.x + 8, bounds.y - 5, bounds.x + bounds.w - 8,
         bounds.y - 5, 1, p.border_subtle);
-    centered(canvas, nk_rect(bounds.x, bounds.y + 20, bounds.w, 30),
-        tr(value, "native.support.works", "More apps"),
-        value->ui.heading_font, p.text);
-    centered(canvas, nk_rect(bounds.x, bounds.y + 49, bounds.w, 24),
-        tr(value, "native.support.worksText", "More software from vladelaina"),
-        value->ui.caption_font, p.muted);
+    bongo_cat_preferences_about_projects_heading(value, context, bounds);
     float card_width = 220, center = bounds.x + bounds.w * .5f + 3;
-    project(value, context, canvas, nk_rect(center - 262, bounds.y + 103,
+    project(value, context, canvas, nk_rect(center - 262, bounds.y + 112,
         card_width, 200), value->catime_texture, value->catime_width,
         value->catime_height, "Catime", "https://cati.me/", false, p);
-    project(value, context, canvas, nk_rect(center + 42, bounds.y + 103,
+    project(value, context, canvas, nk_rect(center + 42, bounds.y + 112,
         card_width, 200), value->vlaina_texture, value->vlaina_width,
         value->vlaina_height, "vlaina", "https://vlaina.com/", true, p);
 }

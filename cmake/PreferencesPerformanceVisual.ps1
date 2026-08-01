@@ -44,13 +44,13 @@ function Invoke-LiveResizeAudit([IntPtr]$Window, [string]$FrameSeries) {
     [void][BongoCatPreferencePerformanceNative]::SendMessageW(
         $Window, 0x0231, [UIntPtr]::Zero, [IntPtr]::Zero)
     try {
-        for ($index = 0; $index -lt 24; $index++) {
+        for ($index = 0; $index -lt 48; $index++) {
             $width = [int][Math]::Round((720 + ($index % 8) * 32) * $script:UiScale)
             $height = [int][Math]::Round((560 + ($index % 6) * 18) * $script:UiScale)
             [void][BongoCatPreferencePerformanceNative]::SetWindowPos($Window,
                 [IntPtr](-1), 40, 40, $width, $height, 0x0040)
-            Start-Sleep -Milliseconds 25
-            if ($index -eq 12) { $capture = Save-Screen $Window "resize-midpoint.png" }
+            Start-Sleep -Milliseconds 5
+            if ($index -eq 24) { $capture = Save-Screen $Window "resize-midpoint.png" }
         }
     } finally {
         [void][BongoCatPreferencePerformanceNative]::SendMessageW(

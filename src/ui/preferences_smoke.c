@@ -87,7 +87,7 @@ void bongo_cat_preferences_smoke_frame(BongoCatPreferences *value) {
         "max_alpha=%u font_path=%d font_file=%d custom_font=%d font_probe=%d "
         "layout_scale=%.3f raster_scale=%.3f window=%dx%d pixels=%dx%d "
         "logical=%.2fx%.2f atlas=%dx%d transparent=%d corner_alpha=%u "
-        "resize_cached=%u resize_failures=%u "
+        "resize_cached=%u resize_failures=%u resize_layout=%u "
         "fonts=%.1f,%.1f,%.1f,%.1f,%.1f "
         "paint_textures=%zu paint_bytes=%zu\n",
         valid, value->page, value->ui.last_convert_result,
@@ -102,6 +102,7 @@ void bongo_cat_preferences_smoke_frame(BongoCatPreferences *value) {
         value->ui.font_atlas_width, value->ui.font_atlas_height,
         value->transparent_window, corner_alpha,
         value->ui.resize_cache_presentations, value->ui.resize_cache_failures,
+        value->live_resize_layout_frames,
         font_height(value->ui.caption_font), font_height(value->ui.body_font),
         font_height(value->ui.label_font), font_height(value->ui.heading_font),
         font_height(value->ui.hero_font), paint_count, paint_bytes);

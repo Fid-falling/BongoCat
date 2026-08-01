@@ -51,10 +51,17 @@ void bongo_cat_ui_shell_draw(struct nk_context *context, float width,
     float rounding = native_frame ? 0.0f : 24.0f;
     float sidebar_right = BONGO_CAT_UI_MARGIN + side;
     struct nk_rect surface = nk_rect(0, 0, width, height);
+    BongoCatUIBackend *backend = bongo_cat_ui_backend_for_context(context);
+    bool fast = backend && backend->live_resize_fast;
     if (native_frame) {
         nk_fill_rect(canvas, surface, 0, p.surface_glass);
         nk_fill_rect(canvas, nk_rect(0, 0, sidebar_right, height), 0,
             p.surface);
+    } else if (fast) {
+        nk_fill_rect(canvas, surface, rounding, p.surface_glass);
+        nk_push_scissor(canvas, nk_rect(0, 0, sidebar_right, height));
+        nk_fill_rect(canvas, surface, rounding, p.surface);
+        nk_push_scissor(canvas, surface);
     } else {
         bongo_cat_ui_paint_rounded_surface(context, surface, rounding,
             p.surface_glass);
@@ -63,7 +70,7 @@ void bongo_cat_ui_shell_draw(struct nk_context *context, float width,
             p.surface);
         nk_push_scissor(canvas, surface);
     }
-    if (p.effects)
+    if (p.effects && !fast)
         bongo_cat_ui_paint_sidebar_glow(context, surface, sidebar_right,
             rounding,
             nk_rgba(p.accent.r, p.accent.g, p.accent.b, 56));
