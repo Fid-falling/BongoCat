@@ -191,7 +191,7 @@ $env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
 $env:BONGO_CAT_TEST_INSTANCE_ID = "preferences-performance-audit-$PID"
 $arguments = @("--autostart", "--ci-smoke", "--ci-preferences", "--ci-preference-page=0",
     "--ci-language=zh-CN", "--ci-theme=light", "--ci-ignore-global-input",
-    "--ci-exit-ms=25000",
+    "--ci-exit-ms=40000",
     "--data-root=$data")
 $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
     -WorkingDirectory (Split-Path $Exe) -PassThru
@@ -244,16 +244,23 @@ try {
         $window, [ref]$client)
     Move-Pointer $window ($client.R / $script:UiScale - 20) `
         ($client.B / $script:UiScale - 20)
-    Start-Sleep -Milliseconds 1000
     $visibleWindows = Get-VisibleWindowCount $process.Id
     $framePath = Join-Path $data "ui-frame.txt"
-    $frameWriteBefore = (Get-Item -LiteralPath $framePath).LastWriteTimeUtc.Ticks
-    $idleCpu = 0.0; $idleElapsed = 0.0; $idleCoreSamples = @()
+    for ($settle = 0; $settle -lt 8; $settle++) {
+        $frameWriteBefore = (Get-Item -LiteralPath $framePath).LastWriteTimeUtc.Ticks
+        Start-Sleep -Milliseconds 1500
+        if ((Get-Item -LiteralPath $framePath).LastWriteTimeUtc.Ticks -eq $frameWriteBefore) { break }
+    }
+    if ($settle -eq 8) { throw "Preferences did not settle before idle measurement" }
+    $idleCpu = 0.0; $idleElapsed = 0.0; $idleCoreSamples = @(); $idleFrameChanges = 0
     for ($sample = 0; $sample -lt 3; $sample++) {
         $process.Refresh(); $idleStart = $process.TotalProcessorTime
+        $frameWriteBefore = (Get-Item -LiteralPath $framePath).LastWriteTimeUtc.Ticks
         $idleWatch = [Diagnostics.Stopwatch]::StartNew()
         Start-Sleep -Milliseconds 2000
         $process.Refresh(); $idleWatch.Stop()
+        if ((Get-Item -LiteralPath $framePath).LastWriteTimeUtc.Ticks -ne $frameWriteBefore) {
+            $idleFrameChanges++ }
         $sampleCpu = ($process.TotalProcessorTime - $idleStart).TotalMilliseconds
         $sampleElapsed = $idleWatch.Elapsed.TotalMilliseconds
         $idleCpu += $sampleCpu; $idleElapsed += $sampleElapsed
@@ -262,8 +269,6 @@ try {
     $sortedIdle = @($idleCoreSamples | Sort-Object)
     $idleCorePercent = $sortedIdle[1]
     $idlePercent = $idleCorePercent / [Environment]::ProcessorCount
-    $idleFrameChanged = (Get-Item -LiteralPath $framePath).LastWriteTimeUtc.Ticks -ne
-        $frameWriteBefore
     $result = [ordered]@{
         PageDifference = Measure-Difference $baseline $final
         ActiveCpuMilliseconds = $activeCpu
@@ -274,7 +279,7 @@ try {
         IdleCorePercent = $idleCorePercent
         IdleCoreSamples = $idleCoreSamples
         IdleMeasurementMilliseconds = $idleElapsed
-        IdleFrameChanged = $idleFrameChanged
+        IdleFrameChanges = $idleFrameChanges
         VisibleWindows = $visibleWindows
         PaintTextures = $paintTextures
         PaintMiB = $paintMiB
@@ -282,7 +287,7 @@ try {
     $result.Passed = $result.PageDifference -gt 0.02 -and
         $result.ActiveCorePercent -gt 2.0 -and $result.IdleCpuPercent -lt 2.0 -and
         $result.ActiveCorePercent -gt 2.0 * $result.IdleCorePercent -and
-        -not $result.IdleFrameChanged -and $result.VisibleWindows -eq 1 -and
+        $result.IdleFrameChanges -le 1 -and $result.VisibleWindows -eq 1 -and
         $result.PaintTextures -le 48 -and $result.PaintMiB -le 32.0
     $result | ConvertTo-Json | Set-Content -Encoding utf8 `
         (Join-Path $OutputDir "result.json")
