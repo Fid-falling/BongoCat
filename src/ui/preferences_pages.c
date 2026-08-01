@@ -57,7 +57,8 @@ void bongo_cat_preferences_page_cat(BongoCatApp *app, struct nk_context *context
         BONGO_CAT_DEFAULT_WINDOW_OPACITY_PERCENT);
     if (old_opacity != window->opacity_percent) bongo_cat_window_cancel_wheel_animation(app);
     if (old_opacity != window->opacity_percent && !app->hover_hidden)
-        SDL_SetWindowOpacity(app->window, window->opacity_percent / 100.0f);
+        bongo_cat_platform_set_opacity(&app->platform,
+            window->opacity_percent / 100.0f);
 
     section_gap(context, 10);
     bongo_cat_pref_section(context, tr(app, "pages.preference.cat.labels.modelSettings",

@@ -206,7 +206,7 @@ static void render(BongoCatApp *app) {
     bongo_cat_overlay_draw_keys(app->overlay, app->config.model.mirror);
     bongo_cat_overlay_draw_effect(app->overlay, app->config.model.mirror);
     bongo_cat_frame_audit(app, width, height);
-    if (!SDL_GL_SwapWindow(app->window)) {
+    if (!bongo_cat_platform_present(&app->platform, width, height)) {
         app->dirty = true;
         app->render_retry_ns = now + 1000000000ull;
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO,

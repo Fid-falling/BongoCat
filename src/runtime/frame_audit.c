@@ -47,7 +47,7 @@ static void record_frame(BongoCatApp *app, const unsigned char *pixels,
         (unsigned long long)SDL_GetTicksNS(), width, height,
         stats.visible, stats.alpha,
         app->config.window.scale_percent, app->config.window.opacity_percent,
-        SDL_GetWindowOpacity(app->window),
+        bongo_cat_platform_get_opacity(&app->platform),
         bongo_cat_mode_name(app->config.current_mode), model_consistent,
         app->model_selection_serial, app->config.window.visible, os_visible);
     fclose(file);

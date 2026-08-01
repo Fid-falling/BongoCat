@@ -118,17 +118,19 @@ bool bongo_cat_window_geometry_self_test(BongoCatApp *app) {
     int scaled_width = width, scaled_height = height;
     scaled = scaled && width == 400 && height == 300;
     bongo_cat_window_menu_action(app, BONGO_CAT_MENU_OPACITY_50);
-    bool opacity = SDL_fabsf(SDL_GetWindowOpacity(app->window) - 0.5f) < 0.02f;
+    bool opacity = SDL_fabsf(bongo_cat_platform_get_opacity(
+        &app->platform) - 0.5f) < 0.02f;
     app->config.window.hide_on_hover = true;
     app->config.window.hide_delay_seconds = 0.0f;
     app->config.window.pass_through = false;
     app->config.window.opacity_percent = 100.0f;
     bongo_cat_app_track_hover(app, x + 10, y + 10);
     bongo_cat_app_update_hover(app, SDL_GetTicksNS() + 1);
-    bool hidden = app->hover_hidden && SDL_GetWindowOpacity(app->window) < 0.02f;
+    bool hidden = app->hover_hidden &&
+        bongo_cat_platform_get_opacity(&app->platform) < 0.02f;
     bongo_cat_app_track_hover(app, bounds.x - 10, bounds.y - 10);
     bool restored = !app->hover_hidden &&
-        SDL_fabsf(SDL_GetWindowOpacity(app->window) - 1.0f) < 0.02f;
+        SDL_fabsf(bongo_cat_platform_get_opacity(&app->platform) - 1.0f) < 0.02f;
     float safe_scale;
     int safe_width, safe_height;
     bool bounded = bongo_cat_window_scaled_size(8000, 4000, 100.0f, 500.0f,
@@ -166,7 +168,8 @@ bool bongo_cat_window_geometry_self_test(BongoCatApp *app) {
     bongo_cat_window_apply_geometry(app, original_x, original_y,
         backup.scale_percent, original_width, original_height);
     app->config.window = backup;
-    SDL_SetWindowOpacity(app->window, backup.opacity_percent / 100.0f);
+    bongo_cat_platform_set_opacity(&app->platform,
+        backup.opacity_percent / 100.0f);
     bongo_cat_window_sync_click_through(app);
     SDL_SyncWindow(app->window);
     bool passed = clamped && scaled && opacity && hidden && restored && bounded && gesture;

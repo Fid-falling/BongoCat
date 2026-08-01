@@ -1,5 +1,6 @@
 #include "bongo_cat/platform.h"
 #include "windows_borderless.h"
+#include "windows_layered.h"
 
 #ifdef _WIN32
 #include <SDL3/SDL.h>
@@ -25,19 +26,6 @@ bool bongo_cat_platform_pointer_local(BongoCatPlatform *platform, double screen_
         point.y >= client.top && point.y < client.bottom;
 }
 
-static void update_style(BongoCatPlatform *platform, LONG_PTR add,
-    LONG_PTR remove, bool refresh_frame) {
-    HWND window = native_window(platform);
-    if (!window) return;
-    LONG_PTR style = GetWindowLongPtrW(window, GWL_EXSTYLE);
-    LONG_PTR next = (style | add) & ~remove;
-    if (next == style) return;
-    SetWindowLongPtrW(window, GWL_EXSTYLE, next);
-    UINT flags = SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE;
-    if (refresh_frame) flags |= SWP_FRAMECHANGED;
-    SetWindowPos(window, NULL, 0, 0, 0, 0, flags);
-}
-
 static void refresh_transparency(HWND window) {
     MARGINS margins = {-1, -1, -1, -1};
     DwmExtendFrameIntoClientArea(window, &margins);
@@ -53,11 +41,8 @@ static void refresh_transparency(HWND window) {
 
 void bongo_cat_platform_set_click_through(BongoCatPlatform *platform, bool enabled) {
     HWND window = native_window(platform);
-    atomic_store_explicit(&platform->mouse_passthrough, enabled,
-        memory_order_release);
     bongo_cat_windows_borderless_set_click_through(window, enabled);
-    update_style(platform, enabled ? WS_EX_TRANSPARENT : 0,
-        enabled ? 0 : WS_EX_TRANSPARENT, true);
+    bongo_cat_windows_layered_set_click_through(platform, enabled);
 }
 
 void bongo_cat_platform_set_taskbar(BongoCatPlatform *platform, bool visible) {
@@ -134,6 +119,7 @@ void bongo_cat_platform_raise_window(SDL_Window *window) {
     HWND handle = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window),
         SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
     if (!handle) { SDL_RaiseWindow(window); return; }
+    HWND proxy = bongo_cat_windows_layered_proxy(handle);
     if (IsIconic(handle)) ShowWindow(handle, SW_RESTORE);
     HWND foreground = GetForegroundWindow();
     DWORD foreground_thread = foreground ? GetWindowThreadProcessId(foreground, NULL) : 0;
@@ -141,6 +127,7 @@ void bongo_cat_platform_raise_window(SDL_Window *window) {
     bool attached = foreground_thread && foreground_thread != current_thread &&
         AttachThreadInput(current_thread, foreground_thread, TRUE);
     BringWindowToTop(handle); SetForegroundWindow(handle); SetActiveWindow(handle);
+    if (proxy) BringWindowToTop(proxy);
     if (attached) AttachThreadInput(current_thread, foreground_thread, FALSE);
 }
 

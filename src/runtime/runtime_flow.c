@@ -20,7 +20,7 @@ static void scale(BongoCatApp *app, float value) {
 
 static void opacity(BongoCatApp *app, float value) {
     app->config.window.opacity_percent = value;
-    SDL_SetWindowOpacity(app->window, value / 100.0f);
+    bongo_cat_platform_set_opacity(&app->platform, value / 100.0f);
 }
 
 static void model(BongoCatApp *app, size_t index) {

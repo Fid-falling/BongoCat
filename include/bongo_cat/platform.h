@@ -4,7 +4,6 @@
 #include "bongo_cat/config.h"
 #include "bongo_cat/input.h"
 
-#include <stdatomic.h>
 #include <stdint.h>
 
 typedef struct SDL_Window SDL_Window;
@@ -13,8 +12,9 @@ typedef struct BongoCatPlatform {
     SDL_Window *window;
     BongoCatInputState *input;
     void *native;
+    void *presenter;
     uint32_t wake_event_type;
-    atomic_bool mouse_passthrough;
+    float window_opacity;
 } BongoCatPlatform;
 
 typedef enum BongoCatMenuAction {
@@ -76,6 +76,10 @@ BongoCatResult bongo_cat_platform_init(BongoCatPlatform *platform, SDL_Window *w
     BongoCatInputState *input, BongoCatError *error);
 void bongo_cat_platform_shutdown(BongoCatPlatform *platform);
 void bongo_cat_platform_set_click_through(BongoCatPlatform *platform, bool enabled);
+bool bongo_cat_platform_set_opacity(BongoCatPlatform *platform, float opacity);
+float bongo_cat_platform_get_opacity(const BongoCatPlatform *platform);
+bool bongo_cat_platform_present(BongoCatPlatform *platform, int width, int height);
+void bongo_cat_platform_set_visible(BongoCatPlatform *platform, bool visible);
 bool bongo_cat_platform_pointer_local(BongoCatPlatform *platform, double screen_x,
     double screen_y, float *local_x, float *local_y);
 void bongo_cat_platform_set_always_on_top(BongoCatPlatform *platform, bool enabled);

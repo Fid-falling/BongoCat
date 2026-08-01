@@ -39,13 +39,13 @@ void bongo_cat_window_set_visible(BongoCatApp *app, bool visible) {
     if (!app || !app->window) return;
     app->config.window.visible = visible;
     if (!visible) {
-        SDL_HideWindow(app->window);
+        bongo_cat_platform_set_visible(&app->platform, false);
         return;
     }
     app->hover_hidden = false;
-    SDL_SetWindowOpacity(app->window,
+    bongo_cat_platform_set_opacity(&app->platform,
         app->config.window.opacity_percent / 100.0f);
-    SDL_ShowWindow(app->window);
+    bongo_cat_platform_set_visible(&app->platform, true);
     if (app->config.window.keep_in_screen) bongo_cat_window_clamp_to_display(app);
     else bongo_cat_window_recover_to_display(app);
     bongo_cat_window_mark_hit_dirty(app);

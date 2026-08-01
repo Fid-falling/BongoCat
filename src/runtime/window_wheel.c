@@ -142,7 +142,8 @@ void bongo_cat_window_update_wheel_animation(BongoCatApp *app, uint64_t now) {
         SDL_fabsf(scale - app->config.window.scale_percent) > 0.001f;
     if (SDL_fabsf(opacity - app->config.window.opacity_percent) > 0.001f) {
         app->config.window.opacity_percent = opacity;
-        if (!app->hover_hidden) SDL_SetWindowOpacity(app->window, opacity / 100.0f);
+        if (!app->hover_hidden) bongo_cat_platform_set_opacity(
+            &app->platform, opacity / 100.0f);
     }
     apply_scale(app, scale);
     bool reached =
@@ -245,7 +246,8 @@ bool bongo_cat_window_wheel_self_test(BongoCatApp *app) {
     SDL_SetModState(modifiers);
     app->config.window = backup;
     bongo_cat_window_cancel_wheel_animation(app);
-    SDL_SetWindowOpacity(app->window, backup.opacity_percent / 100.0f);
+    bongo_cat_platform_set_opacity(&app->platform,
+        backup.opacity_percent / 100.0f);
     bongo_cat_platform_set_geometry(&app->platform, original_x, original_y,
         original_width, original_height);
     bool passed = opacity && scale && burst && aggregated && reversal && flipped &&

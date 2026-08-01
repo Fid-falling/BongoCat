@@ -31,7 +31,8 @@ void bongo_cat_app_track_hover(BongoCatApp *app, double x, double y) {
     app->hover_deadline_ns = inside ? SDL_GetTicksNS() +
         (uint64_t)(app->config.window.hide_delay_seconds * 1000000000.0) : 0;
     if (!inside && app->hover_hidden) {
-        SDL_SetWindowOpacity(app->window, app->config.window.opacity_percent / 100.0f);
+        bongo_cat_platform_set_opacity(&app->platform,
+            app->config.window.opacity_percent / 100.0f);
         app->hover_hidden = false;
         bongo_cat_window_sync_click_through(app);
     }
@@ -40,7 +41,7 @@ void bongo_cat_app_track_hover(BongoCatApp *app, double x, double y) {
 void bongo_cat_app_update_hover(BongoCatApp *app, uint64_t now) {
     if (!app->config.window.hide_on_hover || !app->hover_inside || app->hover_hidden ||
         !app->hover_deadline_ns || now < app->hover_deadline_ns) return;
-    SDL_SetWindowOpacity(app->window, 0.0f);
+    bongo_cat_platform_set_opacity(&app->platform, 0.0f);
     app->hover_hidden = true;
     bongo_cat_window_sync_click_through(app);
 }

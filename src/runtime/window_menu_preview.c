@@ -64,7 +64,8 @@ void bongo_cat_window_menu_preview(void *userdata, BongoCatMenuAction action) {
         action <= BONGO_CAT_MENU_OPACITY_100) {
         app->config.window.opacity_percent =
             (float)(10 * (action - BONGO_CAT_MENU_OPACITY_10 + 1));
-        SDL_SetWindowOpacity(app->window, app->config.window.opacity_percent / 100.0f);
+        bongo_cat_platform_set_opacity(&app->platform,
+            app->config.window.opacity_percent / 100.0f);
     } else if (bongo_cat_window_behavior_action(app, action)) {
         // Native menu tracking pauses the main loop, so advance once here to
         // expose the first motion/expression frame while hovering.
@@ -107,7 +108,8 @@ void bongo_cat_window_menu_restore(void *userdata, BongoCatMenuAction selected) 
     if (!keep_opacity &&
         SDL_fabsf(app->config.window.opacity_percent - state->opacity) > .01f) {
         app->config.window.opacity_percent = state->opacity;
-        SDL_SetWindowOpacity(app->window, state->opacity / 100.0f);
+        bongo_cat_platform_set_opacity(&app->platform,
+            state->opacity / 100.0f);
         changed = true;
     }
     if (changed) bongo_cat_app_render_now(app);

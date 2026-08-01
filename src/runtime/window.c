@@ -84,14 +84,15 @@ BongoCatResult bongo_cat_window_create(BongoCatApp *app, BongoCatError *error) {
 
 void bongo_cat_window_apply(BongoCatApp *app) {
     BongoCatWindowOptions *value = &app->config.window;
-    SDL_SetWindowOpacity(app->window, value->opacity_percent / 100.0f);
+    bongo_cat_platform_set_opacity(&app->platform,
+        value->opacity_percent / 100.0f);
     SDL_SetWindowSize(app->window, value->width, value->height);
     if (value->x || value->y) SDL_SetWindowPosition(app->window, value->x, value->y);
     SDL_SyncWindow(app->window);
     if (value->keep_in_screen) bongo_cat_window_clamp_to_display(app);
     else bongo_cat_window_recover_to_display(app);
     SDL_SyncWindow(app->window);
-    value->visible ? SDL_ShowWindow(app->window) : SDL_HideWindow(app->window);
+    bongo_cat_platform_set_visible(&app->platform, value->visible);
     bongo_cat_window_sync_click_through(app);
     bongo_cat_platform_set_always_on_top(&app->platform, value->always_on_top);
     bongo_cat_platform_set_taskbar(&app->platform, value->taskbar_visible);
@@ -163,7 +164,8 @@ void bongo_cat_window_menu_action(BongoCatApp *app, BongoCatMenuAction action) {
     } else if (action >= BONGO_CAT_MENU_OPACITY_10 && action <= BONGO_CAT_MENU_OPACITY_100) {
         bongo_cat_window_cancel_wheel_animation(app);
         app->config.window.opacity_percent = (float)(10 * (action-BONGO_CAT_MENU_OPACITY_10+1));
-        SDL_SetWindowOpacity(app->window, app->config.window.opacity_percent / 100.0f);
+        bongo_cat_platform_set_opacity(&app->platform,
+            app->config.window.opacity_percent / 100.0f);
     } else if (bongo_cat_window_behavior_action(app, action)) {
         bongo_cat_app_render_now(app);
     } else if (action >= BONGO_CAT_MENU_MODEL_FIRST &&

@@ -68,6 +68,7 @@ BongoCatResult bongo_cat_platform_init(BongoCatPlatform *platform, SDL_Window *w
     memset(platform, 0, sizeof(*platform));
     platform->window = window;
     platform->input = input;
+    platform->window_opacity = 1.0f;
     platform->wake_event_type = SDL_RegisterEvents(1);
     if (platform->wake_event_type == (Uint32)-1) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM,
@@ -87,6 +88,23 @@ void bongo_cat_platform_shutdown(BongoCatPlatform *platform) {
 }
 void bongo_cat_platform_set_click_through(BongoCatPlatform *platform, bool enabled) {
     bongo_cat_linux_x11_click_through(platform, enabled);
+}
+bool bongo_cat_platform_set_opacity(BongoCatPlatform *platform, float opacity) {
+    if (!platform || !platform->window) return false;
+    if (!SDL_SetWindowOpacity(platform->window, opacity)) return false;
+    platform->window_opacity = opacity;
+    return true;
+}
+float bongo_cat_platform_get_opacity(const BongoCatPlatform *platform) {
+    return platform ? platform->window_opacity : 1.0f;
+}
+bool bongo_cat_platform_present(BongoCatPlatform *platform, int width, int height) {
+    (void)width; (void)height;
+    return platform && platform->window && SDL_GL_SwapWindow(platform->window);
+}
+void bongo_cat_platform_set_visible(BongoCatPlatform *platform, bool visible) {
+    if (!platform || !platform->window) return;
+    visible ? SDL_ShowWindow(platform->window) : SDL_HideWindow(platform->window);
 }
 bool bongo_cat_platform_pointer_local(BongoCatPlatform *platform, double screen_x,
     double screen_y, float *local_x, float *local_y) {

@@ -1,7 +1,7 @@
 #include "bongo_cat/platform.h"
 #include "windows_borderless.h"
 #include "windows_keys.h"
-#include "windows_mouse_passthrough.h"
+#include "windows_layered.h"
 #include "windows_startup.h"
 #include "../ui/ui_native_theme.h"
 #ifdef _WIN32
@@ -21,7 +21,6 @@ typedef struct WindowsState {
     DWORD thread_id;
     HHOOK keyboard;
     HHOOK mouse;
-    HWND window;
     bool key_down[BONGO_CAT_INPUT_KEY_STATE_CAP];
     bool hooks_ready;
 } WindowsState;
@@ -83,18 +82,10 @@ static const char *mouse_button(WPARAM message, DWORD mouse_data) {
 static LRESULT CALLBACK mouse_hook(int code, WPARAM message, LPARAM data) {
     if (code == HC_ACTION && global_state) {
         const MSLLHOOKSTRUCT *mouse = (const MSLLHOOKSTRUCT *)data;
-        WindowsState *state = global_state;
-        AcquireSRWLockShared(&state->platform_lock);
-        BongoCatPlatform *platform = state->platform;
-        bool passthrough = platform && atomic_load_explicit(
-            &platform->mouse_passthrough, memory_order_acquire);
-        HWND overlay = state->window;
-        ReleaseSRWLockShared(&state->platform_lock);
-        if (passthrough)
-            bongo_cat_windows_mouse_passthrough(overlay, message, mouse);
         if (message == WM_MOUSEMOVE) {
+            WindowsState *state = global_state;
             AcquireSRWLockShared(&state->platform_lock);
-            platform = state->platform;
+            BongoCatPlatform *platform = state->platform;
             if (platform && bongo_cat_input_mouse(platform->input,
                 mouse->pt.x, mouse->pt.y)) wake_main_thread();
             ReleaseSRWLockShared(&state->platform_lock);
@@ -132,17 +123,23 @@ BongoCatResult bongo_cat_platform_init(BongoCatPlatform *platform, SDL_Window *w
     BongoCatInputState *input, BongoCatError *error) {
     if (!platform || !window || !input) return BONGO_CAT_ERROR_ARGUMENT;
     memset(platform, 0, sizeof(*platform));
-    atomic_init(&platform->mouse_passthrough, false);
-    platform->window = window;
-    platform->input = input;
+    platform->window = window; platform->input = input;
+    platform->window_opacity = 1.0f; platform->presenter = bongo_cat_windows_layered_create();
+    if (!platform->presenter) {
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_MEMORY,
+            "Cannot allocate the Windows layered presenter");
+        return BONGO_CAT_ERROR_MEMORY;
+    }
     platform->wake_event_type = SDL_RegisterEvents(1);
     if (platform->wake_event_type == (Uint32)-1) {
+        bongo_cat_windows_layered_destroy(platform);
         bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM,
             "Cannot reserve the Windows input wake event");
         return BONGO_CAT_ERROR_PLATFORM;
     }
     WindowsState *state = calloc(1, sizeof(*state));
     if (!state) {
+        bongo_cat_windows_layered_destroy(platform);
         bongo_cat_error_set(error, BONGO_CAT_ERROR_MEMORY,
             "Cannot allocate Windows input state"); return BONGO_CAT_ERROR_MEMORY;
     }
@@ -159,7 +156,6 @@ BongoCatResult bongo_cat_platform_init(BongoCatPlatform *platform, SDL_Window *w
             "Global input hooks are unavailable; the window will continue without global input");
     }
     HWND hwnd = native_window(platform);
-    state->window = hwnd;
     SetWindowTextW(hwnd, bongo_cat_windows_instance_title());
     bongo_cat_windows_borderless_install(hwnd);
     if (!SDL_SetWindowResizable(window, true)) {
@@ -176,7 +172,8 @@ BongoCatResult bongo_cat_platform_init(BongoCatPlatform *platform, SDL_Window *w
 }
 void bongo_cat_platform_shutdown(BongoCatPlatform *platform) {
     WindowsState *state = platform ? platform->native : NULL;
-    if (!state) return;
+    if (!platform) return;
+    if (!state) { bongo_cat_windows_layered_destroy(platform); return; }
     HWND window = native_window(platform);
     if (window) bongo_cat_windows_borderless_uninstall(window);
     AcquireSRWLockExclusive(&state->platform_lock);
@@ -186,19 +183,25 @@ void bongo_cat_platform_shutdown(BongoCatPlatform *platform) {
     if (state->thread && WaitForSingleObject(state->thread, 3000) != WAIT_OBJECT_0) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
             "Windows input hook thread did not stop; its state will remain isolated until exit");
+        bongo_cat_windows_layered_destroy(platform);
         platform->native = NULL; return;
     }
     if (state->thread) CloseHandle(state->thread);
     if (state->ready) CloseHandle(state->ready);
     free(state);
+    bongo_cat_windows_layered_destroy(platform);
     platform->native = NULL;
 }
 void bongo_cat_platform_set_always_on_top(BongoCatPlatform *platform, bool enabled) {
     if (!platform || !platform->window) return;
-    if (SDL_SetWindowAlwaysOnTop(platform->window, enabled)) return;
+    if (SDL_SetWindowAlwaysOnTop(platform->window, enabled)) {
+        bongo_cat_windows_layered_set_always_on_top(platform, enabled);
+        return;
+    }
     HWND window = native_window(platform);
     if (window) SetWindowPos(window, enabled ? HWND_TOPMOST : HWND_NOTOPMOST,
         0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    bongo_cat_windows_layered_set_always_on_top(platform, enabled);
 }
 void bongo_cat_platform_begin_drag(BongoCatPlatform *platform) {
     HWND hwnd = native_window(platform);
