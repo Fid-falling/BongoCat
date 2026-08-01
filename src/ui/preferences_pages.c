@@ -41,7 +41,8 @@ void bongo_cat_preferences_page_cat(BongoCatApp *app, struct nk_context *context
     bongo_cat_pref_float(context, "window-size", tr(app,
         "pages.preference.cat.labels.windowSize", "Window Size"), tr(app,
         "composables.useAppMenu.labels.wheelSizeHint", "Wheel: resize"),
-        10.0f, &window->scale_percent, 500.0f, 1.0f);
+        10.0f, &window->scale_percent, 500.0f, 1.0f,
+        BONGO_CAT_DEFAULT_WINDOW_SCALE_PERCENT);
     if (old_scale != window->scale_percent && old_scale > 0.0f) {
         float requested_scale = window->scale_percent;
         window->scale_percent = old_scale;
@@ -52,7 +53,8 @@ void bongo_cat_preferences_page_cat(BongoCatApp *app, struct nk_context *context
     bongo_cat_pref_slider(context, "opacity", tr(app,
         "pages.preference.cat.labels.opacity", "Opacity"), tr(app,
         "composables.useAppMenu.labels.wheelOpacityHint", "Ctrl+Wheel: opacity"),
-        10.0f, &window->opacity_percent, 100.0f, 1.0f);
+        10.0f, &window->opacity_percent, 100.0f, 1.0f,
+        BONGO_CAT_DEFAULT_WINDOW_OPACITY_PERCENT);
     if (old_opacity != window->opacity_percent) bongo_cat_window_cancel_wheel_animation(app);
     if (old_opacity != window->opacity_percent && !app->hover_hidden)
         SDL_SetWindowOpacity(app->window, window->opacity_percent / 100.0f);
@@ -78,11 +80,12 @@ void bongo_cat_preferences_page_cat(BongoCatApp *app, struct nk_context *context
     bongo_cat_pref_float(context, "release-delay", tr(app,
         "pages.preference.cat.labels.autoReleaseDelay", "Auto Release Delay"), tr(app,
         "pages.preference.cat.hints.autoReleaseDelay", "Release system keys after timeout."),
-        .05f, &model->auto_release_seconds, 30.0f, .05f);
+        .05f, &model->auto_release_seconds, 30.0f, .05f,
+        BONGO_CAT_DEFAULT_AUTO_RELEASE_SECONDS);
     bongo_cat_pref_int(context, "max-fps", tr(app,
         "pages.preference.cat.labels.maxFPS", "Max Frame Rate"), tr(app,
         "pages.preference.cat.hints.maxFPS", "Lower values reduce resource usage."),
-        1, &model->max_fps, 240, 1);
+        1, &model->max_fps, 240, 1, BONGO_CAT_DEFAULT_MAX_FPS);
 }
 
 static void update_autostart(BongoCatApp *app, bool old_value) {

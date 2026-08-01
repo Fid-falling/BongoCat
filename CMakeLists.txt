@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(BongoCat VERSION 0.1.0 DESCRIPTION "BongoCat Live2D desktop pet" HOMEPAGE_URL "https://bongocat.pet" LANGUAGES C CXX)
+project(BongoCat VERSION 0.1.0 DESCRIPTION "BongoCat" HOMEPAGE_URL "https://bongocat.pet" LANGUAGES C CXX)
 include(FetchContent)
 include(CTest)
 option(BONGO_CAT_FETCH_DEPS "Download pinned open-source dependencies" ON)

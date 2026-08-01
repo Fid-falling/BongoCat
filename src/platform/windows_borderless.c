@@ -2,6 +2,7 @@
 
 #ifdef _WIN32
 static const wchar_t original_proc_property[] = L"BongoCat.BorderlessWindowProc";
+static const wchar_t click_through_property[] = L"BongoCat.ClickThrough";
 static BongoCatMenuPreview menu_preview;
 static void (*menu_preview_tick)(void *userdata);
 static void *menu_preview_userdata;
@@ -16,7 +17,9 @@ static LONG_PTR borderless_style(LONG_PTR style) {
 static LRESULT CALLBACK borderless_window_proc(HWND window, UINT message,
     WPARAM wparam, LPARAM lparam) {
     WNDPROC original = (WNDPROC)GetPropW(window, original_proc_property);
-    if (message == WM_STYLECHANGING && wparam == (WPARAM)GWL_STYLE && lparam) {
+    if (message == WM_NCHITTEST && GetPropW(window, click_through_property)) {
+        return HTTRANSPARENT;
+    } else if (message == WM_STYLECHANGING && wparam == (WPARAM)GWL_STYLE && lparam) {
         STYLESTRUCT *styles = (STYLESTRUCT *)lparam;
         styles->styleNew = (DWORD)borderless_style(styles->styleNew);
     } else if (message == WM_STYLECHANGED && wparam == (WPARAM)GWL_STYLE) {
@@ -73,5 +76,12 @@ void bongo_cat_windows_borderless_uninstall(HWND window) {
     if (!original) return;
     SetWindowLongPtrW(window, GWLP_WNDPROC, (LONG_PTR)original);
     RemovePropW(window, original_proc_property);
+    RemovePropW(window, click_through_property);
+}
+
+void bongo_cat_windows_borderless_set_click_through(HWND window, bool enabled) {
+    if (!window) return;
+    if (enabled) SetPropW(window, click_through_property, (HANDLE)(INT_PTR)1);
+    else RemovePropW(window, click_through_property);
 }
 #endif

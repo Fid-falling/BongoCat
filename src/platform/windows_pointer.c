@@ -1,4 +1,5 @@
 #include "bongo_cat/platform.h"
+#include "windows_borderless.h"
 
 #ifdef _WIN32
 #include <SDL3/SDL.h>
@@ -51,8 +52,10 @@ static void refresh_transparency(HWND window) {
 }
 
 void bongo_cat_platform_set_click_through(BongoCatPlatform *platform, bool enabled) {
+    HWND window = native_window(platform);
+    bongo_cat_windows_borderless_set_click_through(window, enabled);
     update_style(platform, enabled ? WS_EX_TRANSPARENT : 0,
-        enabled ? 0 : WS_EX_TRANSPARENT, false);
+        enabled ? 0 : WS_EX_TRANSPARENT, true);
 }
 
 void bongo_cat_platform_set_taskbar(BongoCatPlatform *platform, bool visible) {

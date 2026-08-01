@@ -33,7 +33,8 @@ static bool try_window(BongoCatApp *app, bool transparent, bool multisampling,
     SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS |
         SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_HIDDEN;
     if (transparent) flags |= SDL_WINDOW_TRANSPARENT;
-    app->window = SDL_CreateWindow(BONGO_CAT_NAME, app->config.window.width,
+    app->window = SDL_CreateWindow(BONGO_CAT_PET_WINDOW_TITLE,
+        app->config.window.width,
         app->config.window.height, flags);
     if (!app->window) {
         snprintf(failure, capacity, "Window creation: %s", SDL_GetError()); return false;

@@ -11,13 +11,15 @@ void bongo_cat_config_defaults(BongoCatConfig *config) {
     memset(config, 0, sizeof(*config));
     config->model.motion_sound = true;
     config->model.behavior = true;
-    config->model.auto_release_seconds = 3.0f;
-    config->model.max_fps = 60;
+    config->model.auto_release_seconds =
+        BONGO_CAT_DEFAULT_AUTO_RELEASE_SECONDS;
+    config->model.max_fps = BONGO_CAT_DEFAULT_MAX_FPS;
     config->window.visible = true;
     config->window.always_on_top = true;
     config->window.keep_in_screen = false;
-    config->window.scale_percent = 100.0f;
-    config->window.opacity_percent = 100.0f;
+    config->window.scale_percent = BONGO_CAT_DEFAULT_WINDOW_SCALE_PERCENT;
+    config->window.opacity_percent =
+        BONGO_CAT_DEFAULT_WINDOW_OPACITY_PERCENT;
     config->window.width = 612;
     config->window.height = 354;
     config->app.tray_visible = true;

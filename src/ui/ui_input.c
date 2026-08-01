@@ -1,5 +1,8 @@
 #include "ui_backend.h"
 
+#define DOUBLE_CLICK_NS 500000000ull
+#define DOUBLE_CLICK_RADIUS 6
+
 void bongo_cat_ui_input_begin(BongoCatUIBackend *ui) {
     if (ui) nk_input_begin(&ui->context);
 }
@@ -77,13 +80,40 @@ bool bongo_cat_ui_event(BongoCatUIBackend *ui, const SDL_Event *event) {
         bool down = event->button.down;
         enum nk_buttons button = event->button.button == SDL_BUTTON_LEFT ? NK_BUTTON_LEFT :
             event->button.button == SDL_BUTTON_MIDDLE ? NK_BUTTON_MIDDLE : NK_BUTTON_RIGHT;
-        nk_input_button(context, button, (int)(event->button.x / scale),
-            (int)(event->button.y / scale), down);
+        int x = (int)(event->button.x / scale);
+        int y = (int)(event->button.y / scale);
+        if (button == NK_BUTTON_LEFT && down) {
+            uint64_t now = SDL_GetTicksNS();
+            int dx = x - ui->last_left_click_x;
+            int dy = y - ui->last_left_click_y;
+            if (dx < 0) dx = -dx;
+            if (dy < 0) dy = -dy;
+            ui->double_click_down = event->button.clicks > 1 ||
+                (ui->last_left_click_ns &&
+                now - ui->last_left_click_ns <= DOUBLE_CLICK_NS &&
+                dx <= DOUBLE_CLICK_RADIUS && dy <= DOUBLE_CLICK_RADIUS);
+            if (ui->double_click_down) ui->last_left_click_ns = 0;
+            else {
+                ui->last_left_click_ns = now;
+                ui->last_left_click_x = x;
+                ui->last_left_click_y = y;
+            }
+            if (ui->double_click_down)
+                nk_input_button(context, NK_BUTTON_DOUBLE, x, y, nk_true);
+        } else if (button == NK_BUTTON_LEFT && ui->double_click_down) {
+            nk_input_button(context, NK_BUTTON_DOUBLE, x, y, nk_false);
+            ui->double_click_down = false;
+        }
+        nk_input_button(context, button, x, y, down);
         return true;
     }
     case SDL_EVENT_MOUSE_WHEEL:
         nk_input_scroll(context, nk_vec2(event->wheel.x, event->wheel.y));
         return true;
+    case SDL_EVENT_WINDOW_FOCUS_LOST:
+        ui->last_left_click_ns = 0;
+        ui->double_click_down = false;
+        return false;
     default: return false;
     }
 }

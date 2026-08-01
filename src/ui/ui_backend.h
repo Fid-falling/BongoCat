@@ -56,12 +56,16 @@ typedef struct BongoCatUIBackend {
     GLenum last_gl_error;
     unsigned nonzero_alpha_vertices;
     unsigned max_alpha;
+    uint64_t last_left_click_ns;
+    int last_left_click_x;
+    int last_left_click_y;
     bool custom_font_loaded;
     bool font_probe_loaded;
     bool font_path_found;
     bool font_file_loaded;
     bool dark_theme;
     bool live_resize_fast;
+    bool double_click_down;
     SDL_Cursor *default_cursor;
     SDL_Cursor *pointer_cursor;
     SDL_Cursor *text_cursor;

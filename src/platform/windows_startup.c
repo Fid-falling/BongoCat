@@ -9,7 +9,7 @@
 
 static HANDLE instance_mutex;
 static HANDLE instance_wake_event;
-static wchar_t instance_title[96] = BONGO_CAT_NAME_W;
+static wchar_t instance_title[96] = BONGO_CAT_PET_WINDOW_TITLE_W;
 static wchar_t instance_mutex_name[128] = L"Local\\BongoCat.SingleInstance";
 static wchar_t instance_wake_name[128] = L"Local\\BongoCat.WakeInstance";
 static bool identity_ready;
@@ -27,7 +27,7 @@ static void initialize_identity(void) {
     const char *value = SDL_getenv_unsafe("BONGO_CAT_TEST_INSTANCE_ID");
     if (!safe_identity(value)) return;
     swprintf(instance_title, sizeof(instance_title) / sizeof(instance_title[0]),
-        L"%ls [%hs]", BONGO_CAT_NAME_W, value);
+        L"%ls [%hs]", BONGO_CAT_PET_WINDOW_TITLE_W, value);
     swprintf(instance_mutex_name,
         sizeof(instance_mutex_name) / sizeof(instance_mutex_name[0]),
         L"Local\\BongoCat.SingleInstance.%hs", value);

@@ -9,13 +9,13 @@ bool bongo_cat_pref_toggle(struct nk_context *context, const char *id,
     const char *title, const char *description, bool *value);
 bool bongo_cat_pref_float(struct nk_context *context, const char *id,
     const char *title, const char *description, float minimum, float *value,
-    float maximum, float step);
+    float maximum, float step, float default_value);
 bool bongo_cat_pref_int(struct nk_context *context, const char *id,
     const char *title, const char *description, int minimum, int *value,
-    int maximum, int step);
+    int maximum, int step, int default_value);
 bool bongo_cat_pref_slider(struct nk_context *context, const char *id,
     const char *title, const char *description, float minimum, float *value,
-    float maximum, float step);
+    float maximum, float step, float default_value);
 int bongo_cat_pref_combo(struct nk_context *context, const char *id,
     const char *title, const char *description, const char *const *items,
     int count, int selected);

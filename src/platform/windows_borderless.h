@@ -7,6 +7,7 @@
 
 void bongo_cat_windows_borderless_install(HWND window);
 void bongo_cat_windows_borderless_uninstall(HWND window);
+void bongo_cat_windows_borderless_set_click_through(HWND window, bool enabled);
 void bongo_cat_windows_menu_preview(HWND window, BongoCatMenuPreview preview,
     void (*tick)(void *userdata), void *userdata);
 #endif

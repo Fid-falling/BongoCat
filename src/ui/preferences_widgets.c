@@ -154,36 +154,36 @@ bool bongo_cat_pref_toggle(struct nk_context *context, const char *id,
 
 bool bongo_cat_pref_float(struct nk_context *context, const char *id,
     const char *title, const char *detail, float minimum, float *value,
-    float maximum, float step) {
+    float maximum, float step, float default_value) {
     int lines = detail_lines(context, detail); FormStyle saved;
     if (!form_begin(context, id, lines, &saved)) return false;
     form_title(context, title);
     bool changed = bongo_cat_pref_control_float(context, id,
-        minimum, value, maximum, step);
+        minimum, value, maximum, step, default_value);
     nk_layout_row_end(context); description(context, detail, lines);
     form_end(context, &saved); return changed;
 }
 
 bool bongo_cat_pref_int(struct nk_context *context, const char *id,
     const char *title, const char *detail, int minimum, int *value,
-    int maximum, int step) {
+    int maximum, int step, int default_value) {
     int lines = detail_lines(context, detail); FormStyle saved;
     if (!form_begin(context, id, lines, &saved)) return false;
     form_title(context, title);
     bool changed = bongo_cat_pref_control_int(context, id,
-        minimum, value, maximum, step);
+        minimum, value, maximum, step, default_value);
     nk_layout_row_end(context); description(context, detail, lines);
     form_end(context, &saved); return changed;
 }
 
 bool bongo_cat_pref_slider(struct nk_context *context, const char *id,
     const char *title, const char *detail, float minimum, float *value,
-    float maximum, float step) {
+    float maximum, float step, float default_value) {
     int lines = detail_lines(context, detail); FormStyle saved;
     if (!form_begin(context, id, lines, &saved)) return false;
     form_title(context, title);
     bool changed = bongo_cat_pref_control_slider(context, id,
-        minimum, value, maximum, step);
+        minimum, value, maximum, step, default_value);
     nk_layout_row_end(context); description(context, detail, lines);
     form_end(context, &saved); return changed;
 }

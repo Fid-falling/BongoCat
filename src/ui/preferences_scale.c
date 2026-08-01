@@ -135,7 +135,8 @@ static void discard_window(BongoCatPreferences *value) {
 
 static bool create_window(BongoCatPreferences *value, int width, int height,
     SDL_WindowFlags flags, bool transparent) {
-    value->window = SDL_CreateWindow(BONGO_CAT_NAME, width, height,
+    value->window = SDL_CreateWindow(BONGO_CAT_SETTINGS_WINDOW_TITLE,
+        width, height,
         flags | (transparent ? SDL_WINDOW_TRANSPARENT : 0));
     value->transparent_window = value->window && transparent &&
         (SDL_GetWindowFlags(value->window) & SDL_WINDOW_TRANSPARENT) != 0;
