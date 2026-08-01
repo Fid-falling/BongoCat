@@ -22,7 +22,9 @@ if (Test-Path -LiteralPath $junit) {
         if (-not $test.failure) { continue }
         $detail = "$($test.failure.InnerText)".Trim()
         if (-not $detail) { $detail = "$($test.failure.message)" }
-        $message = "$($test.name): $detail"
+        $output = "$($test.'system-out')".Trim()
+        $message = "$($test.name): $detail (time=$($test.time)s)"
+        if ($output) { $message += "`n$output" }
         if ($message.Length -gt 6000) { $message = $message.Substring(0, 6000) }
         $message = $message.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
         Write-Output "::error title=Windows CTest failure::$message"
