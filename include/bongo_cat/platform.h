@@ -4,6 +4,7 @@
 #include "bongo_cat/config.h"
 #include "bongo_cat/input.h"
 
+#include <stdatomic.h>
 #include <stdint.h>
 
 typedef struct SDL_Window SDL_Window;
@@ -13,6 +14,7 @@ typedef struct BongoCatPlatform {
     BongoCatInputState *input;
     void *native;
     uint32_t wake_event_type;
+    atomic_bool mouse_passthrough;
 } BongoCatPlatform;
 
 typedef enum BongoCatMenuAction {

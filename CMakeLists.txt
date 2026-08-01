@@ -148,7 +148,7 @@ target_compile_definitions(bongo_cat_runtime PRIVATE
 
 if(WIN32)
   enable_language(RC)
-  target_sources(bongo_cat_runtime PRIVATE src/platform/windows.c src/platform/windows_startup.c src/platform/windows_borderless.c src/platform/windows_pointer.c)
+  target_sources(bongo_cat_runtime PRIVATE src/platform/windows.c src/platform/windows_startup.c src/platform/windows_borderless.c src/platform/windows_pointer.c src/platform/windows_mouse_passthrough.c)
   target_sources(bongo_cat_runtime PRIVATE src/platform/windows_assets.c)
   target_link_libraries(bongo_cat_runtime PRIVATE dwmapi ole32 shell32 user32 windowscodecs)
 elseif(APPLE)

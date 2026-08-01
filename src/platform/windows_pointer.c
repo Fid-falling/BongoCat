@@ -53,6 +53,8 @@ static void refresh_transparency(HWND window) {
 
 void bongo_cat_platform_set_click_through(BongoCatPlatform *platform, bool enabled) {
     HWND window = native_window(platform);
+    atomic_store_explicit(&platform->mouse_passthrough, enabled,
+        memory_order_release);
     bongo_cat_windows_borderless_set_click_through(window, enabled);
     update_style(platform, enabled ? WS_EX_TRANSPARENT : 0,
         enabled ? 0 : WS_EX_TRANSPARENT, true);

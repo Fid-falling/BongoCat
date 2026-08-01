@@ -1,6 +1,7 @@
 #include "bongo_cat/platform.h"
 #include "windows_borderless.h"
 #include "windows_keys.h"
+#include "windows_mouse_passthrough.h"
 #include "windows_startup.h"
 #include "../ui/ui_native_theme.h"
 #ifdef _WIN32
@@ -20,6 +21,7 @@ typedef struct WindowsState {
     DWORD thread_id;
     HHOOK keyboard;
     HHOOK mouse;
+    HWND window;
     bool key_down[BONGO_CAT_INPUT_KEY_STATE_CAP];
     bool hooks_ready;
 } WindowsState;
@@ -81,10 +83,18 @@ static const char *mouse_button(WPARAM message, DWORD mouse_data) {
 static LRESULT CALLBACK mouse_hook(int code, WPARAM message, LPARAM data) {
     if (code == HC_ACTION && global_state) {
         const MSLLHOOKSTRUCT *mouse = (const MSLLHOOKSTRUCT *)data;
+        WindowsState *state = global_state;
+        AcquireSRWLockShared(&state->platform_lock);
+        BongoCatPlatform *platform = state->platform;
+        bool passthrough = platform && atomic_load_explicit(
+            &platform->mouse_passthrough, memory_order_acquire);
+        HWND overlay = state->window;
+        ReleaseSRWLockShared(&state->platform_lock);
+        if (passthrough)
+            bongo_cat_windows_mouse_passthrough(overlay, message, mouse);
         if (message == WM_MOUSEMOVE) {
-            WindowsState *state = global_state;
             AcquireSRWLockShared(&state->platform_lock);
-            BongoCatPlatform *platform = state->platform;
+            platform = state->platform;
             if (platform && bongo_cat_input_mouse(platform->input,
                 mouse->pt.x, mouse->pt.y)) wake_main_thread();
             ReleaseSRWLockShared(&state->platform_lock);
@@ -122,6 +132,7 @@ BongoCatResult bongo_cat_platform_init(BongoCatPlatform *platform, SDL_Window *w
     BongoCatInputState *input, BongoCatError *error) {
     if (!platform || !window || !input) return BONGO_CAT_ERROR_ARGUMENT;
     memset(platform, 0, sizeof(*platform));
+    atomic_init(&platform->mouse_passthrough, false);
     platform->window = window;
     platform->input = input;
     platform->wake_event_type = SDL_RegisterEvents(1);
@@ -148,6 +159,7 @@ BongoCatResult bongo_cat_platform_init(BongoCatPlatform *platform, SDL_Window *w
             "Global input hooks are unavailable; the window will continue without global input");
     }
     HWND hwnd = native_window(platform);
+    state->window = hwnd;
     SetWindowTextW(hwnd, bongo_cat_windows_instance_title());
     bongo_cat_windows_borderless_install(hwnd);
     if (!SDL_SetWindowResizable(window, true)) {
