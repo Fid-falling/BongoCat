@@ -42,30 +42,19 @@ $script:UiScale = 1.0
 
 function Wait-Preferences([int]$ProcessId) {
     $deadline = [DateTime]::UtcNow.AddSeconds(30)
+    $path = Join-Path $data "preferences-window.txt"
     do {
-        $found = [Collections.Generic.List[object]]::new()
-        $script:visibleWindows = 0
-        [BongoCatNavigationNative]::EnumWindows({
-            param($handle, $unused)
+        $text = Get-Content -Raw -LiteralPath $path -ErrorAction SilentlyContinue
+        if ($text -match 'handle=(\d+)') {
+            $handle = [IntPtr][long]$Matches[1]
             [uint32]$owner = 0
             [void][BongoCatNavigationNative]::GetWindowThreadProcessId(
                 $handle, [ref]$owner)
             $rect = [BongoCatNavigationNative+Rect]::new()
             if ($owner -eq $ProcessId -and
-                [BongoCatNavigationNative]::IsWindowVisible($handle)) {
-                $script:visibleWindows++
+                [BongoCatNavigationNative]::GetClientRect($handle, [ref]$rect)) {
+                return $handle
             }
-            if ($owner -eq $ProcessId -and
-                [BongoCatNavigationNative]::IsWindowVisible($handle) -and
-                [BongoCatNavigationNative]::GetClientRect($handle, [ref]$rect) -and
-                $rect.Right -ge 400 -and $rect.Bottom -ge 300) {
-                $found.Add([pscustomobject]@{ Handle=$handle
-                    Area=$rect.Right * $rect.Bottom })
-            }
-            return $true
-        }, [IntPtr]::Zero) | Out-Null
-        if ($found.Count -and $script:visibleWindows -ge 2) {
-            return ($found | Sort-Object Area -Descending | Select-Object -First 1).Handle
         }
         Start-Sleep -Milliseconds 50
     } while ([DateTime]::UtcNow -lt $deadline)

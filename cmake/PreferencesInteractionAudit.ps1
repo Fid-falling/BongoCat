@@ -46,35 +46,21 @@ public static class BongoCatPreferencesNative {
 '@
 [void][BongoCatPreferencesNative]::SetProcessDPIAware()
 
-function Get-AppWindows([int]$ProcessId) {
-    $windows = [Collections.Generic.List[object]]::new()
-    [BongoCatPreferencesNative]::EnumWindows({
-        param($handle, $unused)
-        [uint32]$owner = 0
-        [void][BongoCatPreferencesNative]::GetWindowThreadProcessId($handle, [ref]$owner)
-        if ($owner -eq $ProcessId -and [BongoCatPreferencesNative]::IsWindowVisible($handle)) {
-            $rect = [BongoCatPreferencesNative+Rect]::new()
-            if ([BongoCatPreferencesNative]::GetWindowRect($handle, [ref]$rect)) {
-                    $width = $rect.R - $rect.L; $height = $rect.B - $rect.T
-                    $area = $width * $height
-                    if ($area -gt 400) { $windows.Add([pscustomobject]@{
-                        Handle=$handle; Area=$area; Width=$width; Height=$height }) }
-            }
-        }
-        return $true
-    }, [IntPtr]::Zero) | Out-Null
-    return $windows
-}
-
 function Wait-Preferences([int]$ProcessId) {
     $deadline = [DateTime]::UtcNow.AddSeconds(20)
+    $path = Join-Path $dataRoot "preferences-window.txt"
     do {
-        $windows = @(Get-AppWindows $ProcessId)
-        $preferences = @($windows | Where-Object {
-            $_.Width -ge 400 -and $_.Height -ge 300 })
-        if ($preferences.Count -and $windows.Count -ge 2) {
-            return ($preferences | Sort-Object Area -Descending |
-                Select-Object -First 1).Handle
+        $text = Get-Content -Raw -LiteralPath $path -ErrorAction SilentlyContinue
+        if ($text -match 'handle=(\d+)') {
+            $handle = [IntPtr][long]$Matches[1]
+            [uint32]$owner = 0
+            [void][BongoCatPreferencesNative]::GetWindowThreadProcessId(
+                $handle, [ref]$owner)
+            $rect = [BongoCatPreferencesNative+Rect]::new()
+            if ($owner -eq $ProcessId -and
+                [BongoCatPreferencesNative]::GetClientRect($handle, [ref]$rect)) {
+                return $handle
+            }
         }
         Start-Sleep -Milliseconds 50
     } while ([DateTime]::UtcNow -lt $deadline)

@@ -43,26 +43,21 @@ public static class BongoCatPreferencePerformanceNative {
 $script:UiScale = 1.0
 function Wait-Preferences([int]$ProcessId) {
     $deadline = [DateTime]::UtcNow.AddSeconds(20)
+    $path = Join-Path $data "preferences-window.txt"
     do {
-        $script:found=[IntPtr]::Zero; $script:bestArea=0
-        [BongoCatPreferencePerformanceNative]::EnumWindows({
-            param($handle, $unused)
+        $text = Get-Content -Raw -LiteralPath $path -ErrorAction SilentlyContinue
+        if ($text -match 'handle=(\d+)') {
+            $handle = [IntPtr][long]$Matches[1]
             [uint32]$owner = 0
             [void][BongoCatPreferencePerformanceNative]::GetWindowThreadProcessId($handle,
                 [ref]$owner)
-            if ($owner-eq $ProcessId-and [BongoCatPreferencePerformanceNative]::IsWindowVisible($handle)) {
-                $rect = [BongoCatPreferencePerformanceNative+Rect]::new()
-                if ([BongoCatPreferencePerformanceNative]::GetWindowRect($handle,
+            $rect = [BongoCatPreferencePerformanceNative+Rect]::new()
+            if ($owner -eq $ProcessId -and
+                [BongoCatPreferencePerformanceNative]::GetClientRect($handle,
                     [ref]$rect)) {
-                    $width=$rect.R-$rect.L; $height=$rect.B-$rect.T; $area=$width*$height
-                    if ($width-ge 400-and $height-ge 300-and $area-gt $script:bestArea) {
-                        $script:found=$handle; $script:bestArea=$area
-                    }
-                }
+                return $handle
             }
-            return $true
-        }, [IntPtr]::Zero) | Out-Null
-        if ($script:found-ne [IntPtr]::Zero) { return $script:found }
+        }
         Start-Sleep -Milliseconds 50
     } while ([DateTime]::UtcNow -lt $deadline)
     throw "Preferences window was not created"

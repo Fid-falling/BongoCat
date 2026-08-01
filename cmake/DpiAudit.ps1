@@ -36,29 +36,19 @@ public static class BongoCatDpiNative {
 
 function Wait-Preferences([int]$ProcessId) {
     $deadline = [DateTime]::UtcNow.AddSeconds(30)
+    $path = Join-Path $data "preferences-window.txt"
     do {
-        $found = [Collections.Generic.List[object]]::new()
-        $script:visibleWindows = 0
-        [BongoCatDpiNative]::EnumWindows({
-            param($handle, $unused)
+        $text = Get-Content -Raw -LiteralPath $path -ErrorAction SilentlyContinue
+        if ($text -match 'handle=(\d+)') {
+            $handle = [IntPtr][long]$Matches[1]
             [uint32]$owner = 0
             [void][BongoCatDpiNative]::GetWindowThreadProcessId(
                 $handle, [ref]$owner)
             $rect = [BongoCatDpiNative+Rect]::new()
             if ($owner -eq $ProcessId -and
-                [BongoCatDpiNative]::IsWindowVisible($handle)) {
-                $script:visibleWindows++
+                [BongoCatDpiNative]::GetClientRect($handle, [ref]$rect)) {
+                return $handle
             }
-            if ($owner -eq $ProcessId -and
-                [BongoCatDpiNative]::IsWindowVisible($handle) -and
-                [BongoCatDpiNative]::GetClientRect($handle, [ref]$rect) -and
-                $rect.R -ge 400 -and $rect.B -ge 300) {
-                $found.Add([pscustomobject]@{Handle=$handle;Area=$rect.R*$rect.B})
-            }
-            return $true
-        }, [IntPtr]::Zero) | Out-Null
-        if ($found.Count -and $script:visibleWindows -ge 2) {
-            return ($found | Sort-Object Area -Descending | Select-Object -First 1).Handle
         }
         Start-Sleep -Milliseconds 40
     } while ([DateTime]::UtcNow -lt $deadline)

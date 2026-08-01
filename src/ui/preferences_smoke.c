@@ -4,6 +4,7 @@
 #include "bongo_cat/path.h"
 
 #include <SDL3/SDL_opengl.h>
+#include <stdint.h>
 #include <stdio.h>
 
 static void send_key(BongoCatPreferences *value, Uint32 type, bool down) {
@@ -30,8 +31,28 @@ static float font_height(const struct nk_user_font *font) {
     return font ? font->height : 0.0f;
 }
 
+static void write_window_handle(BongoCatPreferences *value) {
+    if (!value->app->smoke_preferences) return;
+    uintptr_t native = 0;
+#ifdef _WIN32
+    native = (uintptr_t)SDL_GetPointerProperty(
+        SDL_GetWindowProperties(value->window),
+        SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
+#endif
+    char path[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_path_join(path, sizeof(path), value->app->data_root,
+        "preferences-window.txt")) return;
+    FILE *file = bongo_cat_file_open(path, "wb");
+    if (!file) return;
+    fprintf(file, "handle=%llu window_id=%u\n", (unsigned long long)native,
+        (unsigned)SDL_GetWindowID(value->window));
+    fclose(file);
+}
+
 void bongo_cat_preferences_smoke_frame(BongoCatPreferences *value) {
-    if (!value || !value->app->smoke) return;
+    if (!value) return;
+    write_window_handle(value);
+    if (!value->app->smoke) return;
     bool valid = bongo_cat_ui_frame_valid(&value->ui);
     if (!value->frame_checked) {
         value->frame_checked = true;
