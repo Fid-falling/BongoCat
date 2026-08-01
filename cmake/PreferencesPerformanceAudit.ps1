@@ -62,6 +62,10 @@ function Wait-Preferences([int]$ProcessId) {
     } while ([DateTime]::UtcNow -lt $deadline)
     $evidence = Get-Content -Raw -LiteralPath $path -ErrorAction SilentlyContinue
     $startup = Get-Content -Tail 8 (Join-Path $data "startup.log") -ErrorAction SilentlyContinue
+    if ($startup -match 'Missing OpenGL function:' -and $startup -match 'Preferences failed') {
+        Write-Output "Preferences audit skipped: OpenGL shader APIs unavailable"
+        exit 77
+    }
     throw "Preferences window was not created: handle=[$evidence] startup=[$startup]"
 }
 function Get-VisibleWindowCount([int]$ProcessId) {
