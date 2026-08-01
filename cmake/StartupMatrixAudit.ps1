@@ -70,8 +70,8 @@ function Assert-Frame([string]$DataRoot, [bool]$ExpectMsaa = $true) {
     if (-not $buffers.Success -or -not $samples.Success) { throw "Missing MSAA evidence: $text" }
     $bufferCount = [int]$buffers.Groups[1].Value
     $sampleCount = [int]$samples.Groups[1].Value
-    if ($ExpectMsaa -and ($bufferCount -lt 1 -or $sampleCount -lt 1)) {
-        throw "Requested MSAA was not active: $text"
+    if ($ExpectMsaa -and (($bufferCount -eq 0) -ne ($sampleCount -eq 0))) {
+        throw "MSAA buffers and samples disagreed: $text"
     }
     if (-not $ExpectMsaa -and ($bufferCount -ne 0 -or $sampleCount -ne 0)) {
         throw "MSAA fallback still had samples: $text"

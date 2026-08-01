@@ -16,6 +16,11 @@ $process=Start-Process -FilePath $Exe -ArgumentList $arguments `
 $report=Join-Path $data "live2d-audit.txt"
 if(-not(Test-Path $report)){throw "Live2D pointer report was not created"}
 $content=Get-Content -Raw -LiteralPath $report
+if($content-match "renderer=diagnostic"-and
+    $content-match "operation=rejected"){
+    Write-Output "Live2D pointer audit skipped: Cubism SDK is unavailable"
+    exit 77
+}
 $required=@("operation=accepted","assertions=passed","renderer=cubism-native",
     "pointer.start_mouse=","pointer.final_mouse=","pointer.maximum_step=")
 $missing=@($required|Where-Object{$content -notmatch [regex]::Escape($_)})

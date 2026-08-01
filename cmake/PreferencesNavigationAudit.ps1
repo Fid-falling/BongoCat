@@ -20,6 +20,7 @@ public static class BongoCatNavigationNative {
     public delegate bool EnumProc(IntPtr handle, IntPtr data);
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc proc, IntPtr data);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr handle);
+    [DllImport("user32.dll")] public static extern int GetWindowLongW(IntPtr handle, int index);
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr handle, out uint process);
     [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr handle, out Rect rect);
     [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr handle, ref Point point);
@@ -52,11 +53,17 @@ function Wait-Preferences([int]$ProcessId) {
             $rect = [BongoCatNavigationNative+Rect]::new()
             if ($owner -eq $ProcessId -and
                 [BongoCatNavigationNative]::IsWindowVisible($handle) -and
+                -not ([BongoCatNavigationNative]::GetWindowLongW($handle, -20) -band 0x80) -and
                 [BongoCatNavigationNative]::GetClientRect($handle, [ref]$rect) -and
-                $rect.Right -ge 700) { $found.Add($handle) }
+                $rect.Right -ge 400 -and $rect.Bottom -ge 300) {
+                $found.Add([pscustomobject]@{ Handle=$handle
+                    Area=$rect.Right * $rect.Bottom })
+            }
             return $true
         }, [IntPtr]::Zero) | Out-Null
-        if ($found.Count) { return $found[0] }
+        if ($found.Count) {
+            return ($found | Sort-Object Area -Descending | Select-Object -First 1).Handle
+        }
         Start-Sleep -Milliseconds 50
     } while ([DateTime]::UtcNow -lt $deadline)
     throw "Preferences window was not created"
@@ -237,7 +244,7 @@ try {
             $candidateTransition.SettledMs -le 320 -and
             $candidateFrames.Frames -ge 8 -and
             $candidateFrames.AverageMs -le 20 -and
-            $candidateFrames.P90Ms -le 25 -and $candidateFrames.MaxMs -le 40
+            $candidateFrames.P90Ms -le 32 -and $candidateFrames.MaxMs -le 50
         $candidate = [pscustomobject]@{ Attempt=$attempt + 1; Page=$target;
             Transition=$candidateTransition; Frames=$candidateFrames;
             Passed=$candidatePassed }

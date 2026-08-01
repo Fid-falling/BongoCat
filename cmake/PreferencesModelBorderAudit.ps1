@@ -21,6 +21,7 @@ public static class BongoCatModelBorderNative {
     [StructLayout(LayoutKind.Sequential)] public struct Point { public int X,Y; }
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc proc, IntPtr data);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr handle);
+    [DllImport("user32.dll")] public static extern int GetWindowLongW(IntPtr handle, int index);
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr handle, out uint process);
     [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr handle, out Rect rect);
     [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr handle, ref Point point);
@@ -40,7 +41,7 @@ $script:UiScale = 1.0
 function Wait-Preferences([int]$ProcessId) {
     $deadline = [DateTime]::UtcNow.AddSeconds(20)
     do {
-        $found = [Collections.Generic.List[IntPtr]]::new()
+        $found = [Collections.Generic.List[object]]::new()
         [BongoCatModelBorderNative]::EnumWindows({
             param($handle, $unused)
             [uint32]$owner = 0
@@ -49,11 +50,16 @@ function Wait-Preferences([int]$ProcessId) {
             $rect = [BongoCatModelBorderNative+Rect]::new()
             if ($owner -eq $ProcessId -and
                 [BongoCatModelBorderNative]::IsWindowVisible($handle) -and
+                -not ([BongoCatModelBorderNative]::GetWindowLongW($handle, -20) -band 0x80) -and
                 [BongoCatModelBorderNative]::GetClientRect($handle, [ref]$rect) -and
-                $rect.R -ge 700 -and $rect.B -ge 550) { $found.Add($handle) }
+                $rect.R -ge 400 -and $rect.B -ge 300) {
+                $found.Add([pscustomobject]@{Handle=$handle;Area=$rect.R*$rect.B})
+            }
             return $true
         }, [IntPtr]::Zero) | Out-Null
-        if ($found.Count) { return $found[0] }
+        if ($found.Count) {
+            return ($found | Sort-Object Area -Descending | Select-Object -First 1).Handle
+        }
         Start-Sleep -Milliseconds 50
     } while ([DateTime]::UtcNow -lt $deadline)
     throw "Preferences window was not created"

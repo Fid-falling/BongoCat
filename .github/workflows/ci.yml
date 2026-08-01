@@ -164,11 +164,16 @@ jobs:
           if (-not (Test-Path -LiteralPath "$($archives[0].FullName).sha256")) {
             throw "Release archive checksum is missing"
           }
+          @'
+          This CI artifact uses the diagnostic renderer because the licensed
+          Cubism SDK is not present in the public source checkout. It is for
+          startup and platform diagnostics, not end-user distribution.
+          '@ | Set-Content build/dist/DIAGNOSTIC-NO-CUBISM.txt -Encoding ascii
 
-      - name: Upload downloadable build
+      - name: Upload diagnostic build
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ steps.package.outputs.name }}
+          name: diagnostic-no-cubism-${{ steps.package.outputs.name }}
           path: build/dist/*
           if-no-files-found: error
           retention-days: 30

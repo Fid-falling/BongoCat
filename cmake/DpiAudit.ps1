@@ -21,6 +21,7 @@ public static class BongoCatDpiNative {
     [StructLayout(LayoutKind.Sequential)] public struct Point { public int X,Y; }
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc proc, IntPtr data);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr handle);
+    [DllImport("user32.dll")] public static extern int GetWindowLongW(IntPtr handle, int index);
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr handle, out uint process);
     [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr handle, out Rect rect);
     [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr handle, ref Point point);
@@ -37,7 +38,7 @@ public static class BongoCatDpiNative {
 function Wait-Preferences([int]$ProcessId) {
     $deadline = [DateTime]::UtcNow.AddSeconds(30)
     do {
-        $found = [Collections.Generic.List[IntPtr]]::new()
+        $found = [Collections.Generic.List[object]]::new()
         [BongoCatDpiNative]::EnumWindows({
             param($handle, $unused)
             [uint32]$owner = 0
@@ -46,11 +47,16 @@ function Wait-Preferences([int]$ProcessId) {
             $rect = [BongoCatDpiNative+Rect]::new()
             if ($owner -eq $ProcessId -and
                 [BongoCatDpiNative]::IsWindowVisible($handle) -and
+                -not ([BongoCatDpiNative]::GetWindowLongW($handle, -20) -band 0x80) -and
                 [BongoCatDpiNative]::GetClientRect($handle, [ref]$rect) -and
-                $rect.R -ge 700 -and $rect.B -ge 500) { $found.Add($handle) }
+                $rect.R -ge 400 -and $rect.B -ge 300) {
+                $found.Add([pscustomobject]@{Handle=$handle;Area=$rect.R*$rect.B})
+            }
             return $true
         }, [IntPtr]::Zero) | Out-Null
-        if ($found.Count) { return $found[0] }
+        if ($found.Count) {
+            return ($found | Sort-Object Area -Descending | Select-Object -First 1).Handle
+        }
         Start-Sleep -Milliseconds 40
     } while ([DateTime]::UtcNow -lt $deadline)
     throw "Preferences window was not created"
@@ -109,6 +115,7 @@ function Click-Support([IntPtr]$Window, [double]$Scale,
     [void][BongoCatDpiNative]::ClientToScreen($Window, [ref]$screen)
     [void][BongoCatDpiNative]::SetForegroundWindow($Window)
     [void][BongoCatDpiNative]::SetCursorPos($screen.X, $screen.Y)
+    Start-Sleep -Milliseconds 30
     $clip = [BongoCatDpiNative+Rect]::new()
     $clip.L = $screen.X; $clip.T = $screen.Y
     $clip.R = $screen.X + 1; $clip.B = $screen.Y + 1
@@ -120,6 +127,7 @@ function Click-Support([IntPtr]$Window, [double]$Scale,
         [void][BongoCatDpiNative]::SendMessageW(
             $Window, 0x0201, [UIntPtr]::new(1), $packed)
         Start-Sleep -Milliseconds 5
+        [void][BongoCatDpiNative]::SetCursorPos($screen.X, $screen.Y)
         [void][BongoCatDpiNative]::SendMessageW(
             $Window, 0x0202, [UIntPtr]::Zero, $packed)
     } finally { [void][BongoCatDpiNative]::ReleaseCursor([IntPtr]::Zero) }
@@ -146,6 +154,9 @@ foreach ($scale in $Scales) {
     try {
         $window = Wait-Preferences $process.Id
         $metrics = Wait-Metrics $frame
+        $window = Wait-Preferences $process.Id
+        [void][BongoCatDpiNative]::SetForegroundWindow($window)
+        Start-Sleep -Milliseconds 500
         $windowSize = Pair $metrics.window
         $pixelSize = Pair $metrics.pixels
         $logicalSize = Pair $metrics.logical
@@ -171,6 +182,7 @@ foreach ($scale in $Scales) {
             $atlasArea -ge $previousAtlasArea
         $after = $null
         for ($attempt = 0; $attempt -lt 3; $attempt++) {
+            $window = Wait-Preferences $process.Id
             Click-Support $window $scale $logicalSize[0] $logicalSize[1]
             try { $after = Wait-Metrics $frame 4 4; break }
             catch { if ($attempt -eq 2) { throw } }

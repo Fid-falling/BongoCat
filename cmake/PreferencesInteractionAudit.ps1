@@ -27,6 +27,7 @@ public static class BongoCatPreferencesNative {
     [StructLayout(LayoutKind.Sequential)] public struct Point { public int X,Y; }
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc proc, IntPtr data);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr handle);
+    [DllImport("user32.dll")] public static extern int GetWindowLongW(IntPtr handle, int index);
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr handle, out uint process);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr handle, out Rect rect);
     [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr handle, out Rect rect);
@@ -52,7 +53,8 @@ function Get-AppWindows([int]$ProcessId) {
         param($handle, $unused)
         [uint32]$owner = 0
         [void][BongoCatPreferencesNative]::GetWindowThreadProcessId($handle, [ref]$owner)
-        if ($owner -eq $ProcessId -and [BongoCatPreferencesNative]::IsWindowVisible($handle)) {
+        if ($owner -eq $ProcessId -and [BongoCatPreferencesNative]::IsWindowVisible($handle) -and
+            -not ([BongoCatPreferencesNative]::GetWindowLongW($handle, -20) -band 0x80)) {
             $rect = [BongoCatPreferencesNative+Rect]::new()
             if ([BongoCatPreferencesNative]::GetWindowRect($handle, [ref]$rect)) {
                     $width = $rect.R - $rect.L; $height = $rect.B - $rect.T
@@ -71,7 +73,7 @@ function Wait-Preferences([int]$ProcessId) {
     do {
         $windows = @(Get-AppWindows $ProcessId)
         $preferences = @($windows | Where-Object {
-            $_.Width -ge 700 -and $_.Height -ge 550 })
+            $_.Width -ge 400 -and $_.Height -ge 300 })
         if ($preferences.Count) {
             return ($preferences | Sort-Object Area -Descending |
                 Select-Object -First 1).Handle

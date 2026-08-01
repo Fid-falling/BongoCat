@@ -65,4 +65,5 @@ add_test(NAME live2d-pointer-motion COMMAND powershell.exe -NoProfile
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Live2DPointerAudit.ps1
   -Exe $<TARGET_FILE:bongo_cat>
   -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/live2d-pointer-test)
-set_tests_properties(live2d-pointer-motion PROPERTIES TIMEOUT 15 RUN_SERIAL TRUE)
+set_tests_properties(live2d-pointer-motion PROPERTIES TIMEOUT 15 RUN_SERIAL TRUE
+  SKIP_RETURN_CODE 77)
