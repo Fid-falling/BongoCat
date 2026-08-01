@@ -87,8 +87,14 @@ void bongo_cat_ui_native_theme_apply(SDL_Window *window, bool dark) {
         sizeof(enabled));
     if (FAILED(result)) DwmSetWindowAttribute(handle, 19, &enabled,
         sizeof(enabled));
-    int corner = 2;
+    bool transparent = (SDL_GetWindowFlags(window) &
+        SDL_WINDOW_TRANSPARENT) != 0;
+    int corner = transparent ? 1 : 2;
     DwmSetWindowAttribute(handle, 33, &corner, sizeof(corner));
+    if (transparent) {
+        DWORD border = 0xfffffffeu;
+        DwmSetWindowAttribute(handle, 34, &border, sizeof(border));
+    }
     if (set_window_theme) set_window_theme(handle,
         enabled ? L"DarkMode_Explorer" : NULL, NULL);
     bongo_cat_ui_native_menu_prepare(window, dark);

@@ -44,28 +44,31 @@ float bongo_cat_ui_sidebar_width(float window_width) {
 }
 
 void bongo_cat_ui_shell_draw(struct nk_context *context, float width,
-    float height, bool dark) {
+    float height, bool dark, bool native_frame) {
     BongoCatUIPalette p = bongo_cat_ui_palette(dark);
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     float side = bongo_cat_ui_sidebar_width(width);
-    struct nk_rect surface = nk_rect(8, 8, width - 16, height - 16);
-    if (p.effects) {
-        bongo_cat_ui_paint_shadow(context, surface, 20, 0, 12, 36, 0,
-            nk_rgba(p.text.r, p.text.g, p.text.b, 20));
-        bongo_cat_ui_paint_shadow(context, surface, 20, 0, 4, 12, 0,
-            nk_rgba(p.accent.r, p.accent.g, p.accent.b, 31));
+    float rounding = native_frame ? 0.0f : 24.0f;
+    float sidebar_right = BONGO_CAT_UI_MARGIN + side;
+    struct nk_rect surface = nk_rect(0, 0, width, height);
+    if (native_frame) {
+        nk_fill_rect(canvas, surface, 0, p.surface_glass);
+        nk_fill_rect(canvas, nk_rect(0, 0, sidebar_right, height), 0,
+            p.surface);
+    } else {
+        bongo_cat_ui_paint_rounded_surface(context, surface, rounding,
+            p.surface_glass);
+        nk_push_scissor(canvas, nk_rect(0, 0, sidebar_right, height));
+        bongo_cat_ui_paint_rounded_surface(context, surface, rounding,
+            p.surface);
+        nk_push_scissor(canvas, surface);
     }
-    nk_fill_rect(canvas, surface, 20, p.surface_glass);
-    nk_stroke_rect(canvas, surface, 20, 1, p.border);
-    nk_fill_rect(canvas, nk_rect(8, 8, side, height - 16), 20,
-        p.surface);
-    nk_fill_rect(canvas, nk_rect(8 + side - 20, 8, 20, height - 16), 0,
-        p.surface);
     if (p.effects)
-        bongo_cat_ui_paint_sidebar_glow(context, surface, side, 20,
+        bongo_cat_ui_paint_sidebar_glow(context, surface, sidebar_right,
+            rounding,
             nk_rgba(p.accent.r, p.accent.g, p.accent.b, 56));
-    nk_stroke_rect(canvas, surface, 20, 1, p.border);
-    nk_stroke_line(canvas, 8 + side, 8, 8 + side, height - 8, 1,
+    nk_stroke_line(canvas, sidebar_right, BONGO_CAT_UI_MARGIN, sidebar_right,
+        height - BONGO_CAT_UI_MARGIN, 1,
         p.border_subtle);
 }
 

@@ -88,7 +88,8 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
     bool modal = bongo_cat_preferences_remove_dialog_active(value->app) ||
         bongo_cat_preferences_behavior_dialog_active(value);
     BongoCatUIPalette p = bongo_cat_ui_palette(dark);
-    bongo_cat_ui_shell_draw(context, width, height, dark);
+    bongo_cat_ui_shell_draw(context, width, height, dark,
+        !value->transparent_window);
     float sidebar = bongo_cat_ui_sidebar_width(width);
     float interior_height = height - BONGO_CAT_UI_MARGIN * 2.0f;
     nk_layout_row_begin(context, NK_STATIC, interior_height, 2);
@@ -209,7 +210,7 @@ static bool draw_frame(BongoCatPreferences *value, float width, float height,
     return close_requested;
 }
 
-static void record_frame(BongoCatPreferences *value) {
+void bongo_cat_preferences_record_frame(BongoCatPreferences *value) {
     if (!value->app->smoke_frame_series) return;
     char path[BONGO_CAT_PATH_CAP];
     bongo_cat_path_join(path, sizeof(path), value->app->data_root,
@@ -264,7 +265,7 @@ void bongo_cat_preferences_render(BongoCatPreferences *value) {
         SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
             "Preferences frame presentation failed: %s", SDL_GetError());
     }
-    record_frame(value);
+    bongo_cat_preferences_record_frame(value);
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
     bongo_cat_ui_cursor_apply(&value->ui);
     if (close_requested) {

@@ -101,6 +101,7 @@ void bongo_cat_ui_destroy(BongoCatUIBackend *ui) {
     if (!ui) return;
     if (context_backend == ui) context_backend = NULL;
     bongo_cat_ui_paint_destroy(ui);
+    bongo_cat_ui_resize_cache_destroy(ui);
     if (ui->atlas.permanent.alloc) bongo_cat_ui_font_atlas_destroy(ui);
     nk_buffer_free(&ui->commands);
     nk_free(&ui->context);

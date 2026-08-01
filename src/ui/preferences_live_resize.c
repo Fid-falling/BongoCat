@@ -25,20 +25,45 @@ static void render_live(BongoCatPreferences *value) {
     value->live_resize_rendering = false;
 }
 
+static bool capture_live(BongoCatPreferences *value) {
+    if (!value || !SDL_GL_MakeCurrent(value->window, value->gl_context))
+        return false;
+    bool result = bongo_cat_ui_resize_cache_capture(&value->ui);
+    SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
+    return result;
+}
+
+static bool present_live(BongoCatPreferences *value) {
+    if (!value || !SDL_GL_MakeCurrent(value->window, value->gl_context))
+        return false;
+    bool result = bongo_cat_ui_resize_cache_present(&value->ui) &&
+        SDL_GL_SwapWindow(value->window);
+    SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
+    if (result) bongo_cat_preferences_record_frame(value);
+    return result;
+}
+
 static LRESULT CALLBACK live_resize_proc(HWND window, UINT message,
     WPARAM wparam, LPARAM lparam) {
     WNDPROC original = (WNDPROC)GetPropW(window, original_property);
     BongoCatPreferences *value = (BongoCatPreferences *)GetPropW(
         window, value_property);
-    if (value && message == WM_ENTERSIZEMOVE)
-        value->live_resize_active = true;
-    bool render = value && value->live_resize_active && message == WM_SIZE;
+    bool enter = value && message == WM_ENTERSIZEMOVE;
+    bool resize = value && value->live_resize_active && message == WM_SIZE;
     LRESULT result = CallWindowProcW(original ? original : DefWindowProcW,
         window, message, wparam, lparam);
-    if (render) render_live(value);
+    if (enter) {
+        value->live_resize_active = true;
+        capture_live(value);
+    }
+    if (resize && !present_live(value)) render_live(value);
     if (value && message == WM_EXITSIZEMOVE) {
         value->live_resize_active = false;
         render_live(value);
+        if (SDL_GL_MakeCurrent(value->window, value->gl_context)) {
+            bongo_cat_ui_resize_cache_destroy(&value->ui);
+            SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
+        }
     }
     return result;
 }

@@ -29,6 +29,11 @@ typedef struct BongoCatUIBackend {
     GLuint vbo;
     GLuint ebo;
     GLuint font_texture;
+    GLuint resize_cache_texture;
+    int resize_cache_width;
+    int resize_cache_height;
+    unsigned resize_cache_presentations;
+    unsigned resize_cache_failures;
     int font_atlas_width;
     int font_atlas_height;
     const struct nk_user_font *caption_font;
@@ -73,6 +78,9 @@ void bongo_cat_ui_input_begin(BongoCatUIBackend *ui);
 void bongo_cat_ui_input_end(BongoCatUIBackend *ui);
 bool bongo_cat_ui_event(BongoCatUIBackend *ui, const SDL_Event *event);
 void bongo_cat_ui_render(BongoCatUIBackend *ui);
+bool bongo_cat_ui_resize_cache_capture(BongoCatUIBackend *ui);
+bool bongo_cat_ui_resize_cache_present(BongoCatUIBackend *ui);
+void bongo_cat_ui_resize_cache_destroy(BongoCatUIBackend *ui);
 bool bongo_cat_ui_frame_valid(const BongoCatUIBackend *ui);
 BongoCatUIBackend *bongo_cat_ui_backend_for_context(
     const struct nk_context *context);

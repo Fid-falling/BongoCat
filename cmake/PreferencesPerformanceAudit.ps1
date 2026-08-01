@@ -17,6 +17,7 @@ New-Item -ItemType Directory -Force -Path $data | Out-Null
     '{"format":"bongo-cat/session","version":2,"window":{"visible":false}}')
 
 Add-Type -AssemblyName System.Drawing
+. (Join-Path $PSScriptRoot "PreferencesPerformanceVisual.ps1")
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
@@ -167,31 +168,11 @@ function Save-Screen([IntPtr]$Window, [string]$Name) {
     return $path
 }
 
-function Measure-Difference([string]$First, [string]$Second) {
-    $a = [Drawing.Bitmap]::new($First); $b = [Drawing.Bitmap]::new($Second)
-    try {
-        $changed = 0; $samples = 0
-        $step = [Math]::Max(1, [int][Math]::Round(4 * $script:UiScale))
-        $top = [int][Math]::Round(60 * $script:UiScale)
-        $left = [int][Math]::Round(155 * $script:UiScale)
-        $right = [Math]::Min($a.Width, $b.Width) - $step
-        $bottom = [Math]::Min($a.Height, $b.Height) - $step
-        for ($y = $top; $y -lt $bottom; $y += $step) {
-            for ($x = $left; $x -lt $right; $x += $step) {
-                if ($a.GetPixel($x, $y).ToArgb() -ne $b.GetPixel($x, $y).ToArgb()) {
-                    $changed++
-                }
-                $samples++
-            }
-        }
-        return $changed / [double]$samples
-    } finally { $a.Dispose(); $b.Dispose() }
-}
-
 $env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
 $env:BONGO_CAT_TEST_INSTANCE_ID = "preferences-performance-audit-$PID"
 $arguments = @("--autostart", "--ci-smoke", "--ci-preferences", "--ci-preference-page=0",
-    "--ci-language=zh-CN", "--ci-theme=light", "--ci-ignore-global-input",
+    "--ci-language=zh-CN", "--ci-theme=light", "--ci-frame-series",
+    "--ci-ignore-global-input",
     "--ci-exit-ms=40000",
     "--data-root=$data")
 $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
@@ -222,14 +203,10 @@ try {
         $activeWatch.Elapsed.TotalMilliseconds
     $activePercent = $activeCorePercent / [Environment]::ProcessorCount
     $final = Save-Screen $window "page-after.png"
-    for ($index = 0; $index -lt 24; $index++) {
-        $width = [int][Math]::Round((720 + ($index % 8) * 32) * $script:UiScale)
-        $height = [int][Math]::Round((560 + ($index % 6) * 18) * $script:UiScale)
-        [void][BongoCatPreferencePerformanceNative]::SetWindowPos($window,
-            [IntPtr](-1), 40, 40, $width, $height, 0x0040)
-        Start-Sleep -Milliseconds 25
-    }
-    Start-Sleep -Milliseconds 300
+    $preferenceFrames = Join-Path $data "preferences-frames.csv"
+    $resize = Invoke-LiveResizeAudit $window $preferenceFrames
+    $resizeFrames = $resize.Frames
+    $resizeBlackBottom = Measure-BlackBottom $resize.Capture
     $frameContent = Get-Content -Raw -LiteralPath (Join-Path $data "ui-frame.txt")
     if ($frameContent -notmatch 'valid=1') {
         throw "Preferences frame became invalid during resize"
@@ -241,6 +218,11 @@ try {
     }
     $paintTextures = [int]$paintMatch.Groups[1].Value
     $paintMiB = [double]$paintMatch.Groups[2].Value / 1MB
+    $resizeMatch = [regex]::Match($frameContent,
+        'resize_cached=(\d+) resize_failures=(\d+)')
+    if (-not $resizeMatch.Success) { throw "Resize cache metrics were not reported" }
+    $resizeCached = [int]$resizeMatch.Groups[1].Value
+    $resizeFailures = [int]$resizeMatch.Groups[2].Value
     $client = [BongoCatPreferencePerformanceNative+Rect]::new()
     [void][BongoCatPreferencePerformanceNative]::GetClientRect(
         $window, [ref]$client)
@@ -282,6 +264,10 @@ try {
         IdleCoreSamples = $idleCoreSamples
         IdleMeasurementMilliseconds = $idleElapsed
         IdleFrameChanges = $idleFrameChanges
+        ResizeFrames = $resizeFrames
+        ResizeBlackBottom = $resizeBlackBottom
+        ResizeCached = $resizeCached
+        ResizeFailures = $resizeFailures
         VisibleWindows = $visibleWindows
         PaintTextures = $paintTextures
         PaintMiB = $paintMiB
@@ -289,7 +275,10 @@ try {
     $result.Passed = $result.PageDifference -gt 0.02 -and
         $result.ActiveCorePercent -gt 2.0 -and $result.IdleCpuPercent -lt 2.0 -and
         $result.ActiveCorePercent -gt 2.0 * $result.IdleCorePercent -and
-        $result.IdleFrameChanges -le 1 -and $result.VisibleWindows -eq 1 -and
+        $result.IdleFrameChanges -le 1 -and $result.ResizeFrames -ge 4 -and
+        $result.ResizeBlackBottom -le 2 -and
+        $result.ResizeCached -ge 4 -and $result.ResizeFailures -eq 0 -and
+        $result.VisibleWindows -eq 1 -and
         $result.PaintTextures -le 48 -and $result.PaintMiB -le 32.0
     $result | ConvertTo-Json | Set-Content -Encoding utf8 `
         (Join-Path $OutputDir "result.json")

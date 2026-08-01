@@ -35,7 +35,7 @@ BongoCatUIPalette bongo_cat_ui_palette(bool dark);
 bool bongo_cat_ui_dark(const struct nk_context *context);
 void bongo_cat_ui_apply_theme(struct nk_context *context, bool dark);
 void bongo_cat_ui_shell_draw(struct nk_context *context, float width,
-    float height, bool dark);
+    float height, bool dark, bool native_frame);
 typedef void (*BongoCatUIIconDraw)(void *userdata,
     struct nk_command_buffer *canvas, int icon, struct nk_rect bounds,
     struct nk_color color);

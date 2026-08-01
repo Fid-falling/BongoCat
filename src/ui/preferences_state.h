@@ -84,6 +84,7 @@ bool bongo_cat_preferences_reload_fonts(BongoCatPreferences *value);
 bool bongo_cat_preferences_reload_language(BongoCatPreferences *value);
 void bongo_cat_preferences_live_resize_install(BongoCatPreferences *value);
 void bongo_cat_preferences_live_resize_uninstall(BongoCatPreferences *value);
+void bongo_cat_preferences_record_frame(BongoCatPreferences *value);
 void bongo_cat_preferences_assets_load(BongoCatPreferences *value);
 void bongo_cat_preferences_support_assets_load(BongoCatPreferences *value);
 void bongo_cat_preferences_assets_clear(BongoCatPreferences *value);
