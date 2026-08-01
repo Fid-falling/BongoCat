@@ -10,11 +10,14 @@ bool bongo_cat_pref_control_toggle(struct nk_context *context,
     const char *id, bool *value) {
     struct nk_rect cell;
     if (nk_widget(&cell, context) == NK_WIDGET_INVALID) return false;
-    struct nk_rect track = nk_rect(cell.x + cell.w - 46,
+    const float effect_margin = 18.0f;
+    struct nk_rect track = nk_rect(cell.x + cell.w - 46 - effect_margin,
         cell.y + (cell.h - 24) * .5f, 46, 24);
-    bool hover = nk_input_is_mouse_hovering_rect(&context->input, track);
+    struct nk_rect interaction = nk_rect(track.x, track.y,
+        track.w + effect_margin, track.h);
+    bool hover = nk_input_is_mouse_hovering_rect(&context->input, interaction);
     bool changed = hover && nk_input_is_mouse_click_in_rect(&context->input,
-        NK_BUTTON_LEFT, track);
+        NK_BUTTON_LEFT, interaction);
     if (changed) *value = !*value;
     float progress = bongo_cat_ui_animate_eased(context, id,
         *value ? 1.0f : 0.0f, 250.0f, BONGO_CAT_UI_EASE_SPRING);
@@ -46,7 +49,7 @@ bool bongo_cat_pref_control_toggle(struct nk_context *context,
     if (p.effects) bongo_cat_ui_paint_shadow(context, knob,
         knob_size * .5f, 0, 2, 5, 0, nk_rgba(0, 0, 0, 51));
     nk_fill_circle(canvas, knob, nk_rgb(255, 255, 255));
-    if (hover) bongo_cat_ui_cursor_hover_rect(context, track,
+    if (hover) bongo_cat_ui_cursor_hover_rect(context, interaction,
         BONGO_CAT_UI_CURSOR_POINTER);
     return changed;
 }

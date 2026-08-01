@@ -93,7 +93,7 @@ static void coffee(BongoCatPreferences *value, struct nk_context *context,
     struct nk_command_buffer *canvas, struct nk_rect bounds,
     BongoCatUIPalette p) {
     const char *label = tr(value, "native.support.coffee",
-        "Buy the author a coffee? Ovo");
+        "Buy the development team a coffee?");
     float width = value->ui.caption_font->width(value->ui.caption_font->userdata,
         value->ui.caption_font->height, label, nk_strlen(label)) + 48.0f;
     struct nk_rect pill = nk_rect(bounds.x + (bounds.w - width) * .5f,
