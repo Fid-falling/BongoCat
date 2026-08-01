@@ -60,7 +60,9 @@ function Wait-Preferences([int]$ProcessId) {
         }
         Start-Sleep -Milliseconds 50
     } while ([DateTime]::UtcNow -lt $deadline)
-    throw "Preferences window was not created"
+    $evidence = Get-Content -Raw -LiteralPath $path -ErrorAction SilentlyContinue
+    $startup = Get-Content -Tail 8 (Join-Path $data "startup.log") -ErrorAction SilentlyContinue
+    throw "Preferences window was not created: handle=[$evidence] startup=[$startup]"
 }
 function Get-VisibleWindowCount([int]$ProcessId) {
     $script:visibleWindowCount = 0

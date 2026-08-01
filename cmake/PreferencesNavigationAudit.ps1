@@ -41,7 +41,7 @@ public static class BongoCatNavigationNative {
 $script:UiScale = 1.0
 
 function Wait-Preferences([int]$ProcessId) {
-    $deadline = [DateTime]::UtcNow.AddSeconds(30)
+    $deadline = [DateTime]::UtcNow.AddSeconds(20)
     $path = Join-Path $data "preferences-window.txt"
     do {
         $text = Get-Content -Raw -LiteralPath $path -ErrorAction SilentlyContinue
@@ -58,7 +58,9 @@ function Wait-Preferences([int]$ProcessId) {
         }
         Start-Sleep -Milliseconds 50
     } while ([DateTime]::UtcNow -lt $deadline)
-    throw "Preferences window was not created"
+    $evidence = Get-Content -Raw -LiteralPath $path -ErrorAction SilentlyContinue
+    $startup = Get-Content -Tail 8 (Join-Path $data "startup.log") -ErrorAction SilentlyContinue
+    throw "Preferences window was not created: handle=[$evidence] startup=[$startup]"
 }
 
 function Move-Client([IntPtr]$Window, [int]$X, [int]$Y) {
