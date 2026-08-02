@@ -21,10 +21,10 @@ typedef struct WindowsState {
     DWORD thread_id;
     HHOOK keyboard;
     HHOOK mouse;
-    bool key_down[BONGO_CAT_INPUT_KEY_STATE_CAP];
+    BongoCatWindowsKeyboard keyboard_state;
+    UINT test_drop_key_up;
     bool hooks_ready;
 } WindowsState;
-
 static WindowsState *global_state;
 static void wake_main_thread(void) {
     WindowsState *state = global_state;
@@ -52,22 +52,18 @@ static void push_event(BongoCatInputKind kind, const char *name, float value) {
         wake_main_thread();
     ReleaseSRWLockShared(&state->platform_lock);
 }
+static void emit_key(bool down, const char *name, void *userdata) {
+    (void)userdata;
+    push_event(down ? BONGO_CAT_INPUT_KEY_DOWN : BONGO_CAT_INPUT_KEY_UP,
+        name, down ? 1.0f : 0.0f);
+}
 static LRESULT CALLBACK keyboard_hook(int code, WPARAM message, LPARAM data) {
-    if (code == HC_ACTION) {
-        WindowsState *state = global_state;
-        const KBDLLHOOKSTRUCT *key = (const KBDLLHOOKSTRUCT *)data;
-        bool down = message == WM_KEYDOWN || message == WM_SYSKEYDOWN;
-        bool up = message == WM_KEYUP || message == WM_SYSKEYUP;
-        char buffer[16];
-        const char *name = bongo_cat_windows_key_name(key, buffer);
-        if (state && name && (down || up) && bongo_cat_input_edge(
-            state->key_down, key->vkCode, down))
-            push_event(down ? BONGO_CAT_INPUT_KEY_DOWN :
-                BONGO_CAT_INPUT_KEY_UP, name, down ? 1.0f : 0.0f);
-    }
+    WindowsState *state = global_state;
+    if (code == HC_ACTION && state) bongo_cat_windows_keyboard_event(
+        &state->keyboard_state, (const KBDLLHOOKSTRUCT *)data, message,
+        &state->test_drop_key_up, emit_key, NULL);
     return CallNextHookEx(NULL, code, message, data);
 }
-
 static const char *mouse_button(WPARAM message, DWORD mouse_data) {
     switch (message) {
     case WM_LBUTTONDOWN: case WM_LBUTTONUP: return "Left";
@@ -99,7 +95,6 @@ static LRESULT CALLBACK mouse_hook(int code, WPARAM message, LPARAM data) {
     }
     return CallNextHookEx(NULL, code, message, data);
 }
-
 static DWORD WINAPI hook_thread(void *context) {
     WindowsState *state = context;
     global_state = state;
@@ -107,18 +102,25 @@ static DWORD WINAPI hook_thread(void *context) {
     PeekMessageW(&message, NULL, WM_USER, WM_USER, PM_NOREMOVE);
     state->keyboard = SetWindowsHookExW(WH_KEYBOARD_LL, keyboard_hook, NULL, 0);
     state->mouse = SetWindowsHookExW(WH_MOUSE_LL, mouse_hook, NULL, 0);
+    UINT_PTR reconcile_timer = SetTimer(NULL, 0, 25, NULL);
     state->hooks_ready = state->keyboard && state->mouse;
     SetEvent(state->ready);
     while (GetMessageW(&message, NULL, 0, 0) > 0) {
-        TranslateMessage(&message);
-        DispatchMessageW(&message);
+        if (reconcile_timer && message.message == WM_TIMER &&
+            message.wParam == reconcile_timer)
+            bongo_cat_windows_keyboard_reconcile(&state->keyboard_state,
+                GetTickCount64(), emit_key, NULL);
+        else {
+            TranslateMessage(&message);
+            DispatchMessageW(&message);
+        }
     }
+    if (reconcile_timer) KillTimer(NULL, reconcile_timer);
     if (state->keyboard) UnhookWindowsHookEx(state->keyboard);
     if (state->mouse) UnhookWindowsHookEx(state->mouse);
     global_state = NULL;
     return 0;
 }
-
 BongoCatResult bongo_cat_platform_init(BongoCatPlatform *platform, SDL_Window *window,
     BongoCatInputState *input, BongoCatError *error) {
     if (!platform || !window || !input) return BONGO_CAT_ERROR_ARGUMENT;
@@ -145,6 +147,9 @@ BongoCatResult bongo_cat_platform_init(BongoCatPlatform *platform, SDL_Window *w
     }
     InitializeSRWLock(&state->platform_lock);
     state->platform = platform;
+    const char *drop_key_up = SDL_getenv("BONGO_CAT_TEST_DROP_KEY_UP");
+    if (drop_key_up) state->test_drop_key_up =
+        (UINT)strtoul(drop_key_up, NULL, 10);
     bool test_failure = SDL_getenv("BONGO_CAT_TEST_HOOK_FAILURE") != NULL;
     state->ready = test_failure ? NULL : CreateEventW(NULL, TRUE, FALSE, NULL);
     state->thread = state->ready
@@ -208,9 +213,7 @@ void bongo_cat_platform_begin_drag(BongoCatPlatform *platform) {
     ReleaseCapture();
     SendMessageW(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
 }
-
 bool bongo_cat_platform_dynamic_hit_supported(void) { return true; }
-
 static wchar_t *wide(const char *text) {
     if (!text) return NULL;
     int length = MultiByteToWideChar(CP_UTF8, 0, text, -1, NULL, 0);
@@ -218,13 +221,11 @@ static wchar_t *wide(const char *text) {
     if (value) MultiByteToWideChar(CP_UTF8, 0, text, -1, value, length);
     return value;
 }
-
 static void menu_text(HMENU menu, UINT flags, UINT_PTR id, const char *text) {
     wchar_t *label = wide(text);
     AppendMenuW(menu, flags, id, label ? label : L"");
     free(label);
 }
-
 BongoCatMenuAction bongo_cat_platform_context_menu(BongoCatPlatform *platform,
     const BongoCatMenuLabels *labels) {
     if (!platform || !labels) return BONGO_CAT_MENU_NONE;

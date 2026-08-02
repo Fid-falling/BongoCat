@@ -28,6 +28,24 @@ void test_config(void) {
     CHECK(value.window.scale_percent == 10.0f);
     CHECK(value.window.opacity_percent == 100.0f);
 
+    BongoCatConfig duplicates;
+    bongo_cat_config_defaults(&duplicates);
+    memcpy(duplicates.shortcuts.visible_cat, "Control+B", sizeof("Control+B"));
+    memcpy(duplicates.shortcuts.visible_preferences, "control+b", sizeof("control+b"));
+    duplicates.behavior_shortcut_count = 2;
+    memcpy(duplicates.behavior_shortcuts[0].id, "motion:0", sizeof("motion:0"));
+    memcpy(duplicates.behavior_shortcuts[0].shortcut, "CONTROL+B", sizeof("CONTROL+B"));
+    memcpy(duplicates.behavior_shortcuts[1].id, "motion:1", sizeof("motion:1"));
+    memcpy(duplicates.behavior_shortcuts[1].shortcut, "Control+M", sizeof("Control+M"));
+    bongo_cat_config_validate(&duplicates);
+    CHECK(strcmp(duplicates.shortcuts.visible_cat, "Control+B") == 0);
+    CHECK(!duplicates.shortcuts.visible_preferences[0]);
+    CHECK(!duplicates.behavior_shortcuts[0].shortcut[0]);
+    CHECK(strcmp(duplicates.behavior_shortcuts[1].shortcut, "Control+M") == 0);
+    CHECK(bongo_cat_config_shortcut_conflicts(&duplicates, "control+b", NULL));
+    CHECK(!bongo_cat_config_shortcut_conflicts(&duplicates, "control+b",
+        duplicates.shortcuts.visible_cat));
+
     value.model.max_fps = 30;
     value.model.mirror = true;
     value.window.pass_through = true;

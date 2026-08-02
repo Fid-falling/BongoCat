@@ -79,13 +79,11 @@ void bongo_cat_preferences_page_cat(BongoCatApp *app, struct nk_context *context
         "pages.preference.cat.labels.behavior", "Motions and Expressions"), "",
         &model->behavior);
     bongo_cat_pref_float(context, "release-delay", tr(app,
-        "pages.preference.cat.labels.autoReleaseDelay", "Auto Release Delay"), tr(app,
-        "pages.preference.cat.hints.autoReleaseDelay", "Release system keys after timeout."),
+        "pages.preference.cat.labels.autoReleaseDelay", "Auto Release Delay"), "",
         .05f, &model->auto_release_seconds, 30.0f, .05f,
         BONGO_CAT_DEFAULT_AUTO_RELEASE_SECONDS);
     bongo_cat_pref_int(context, "max-fps", tr(app,
-        "pages.preference.cat.labels.maxFPS", "Max Frame Rate"), tr(app,
-        "pages.preference.cat.hints.maxFPS", "Lower values reduce resource usage."),
+        "pages.preference.cat.labels.maxFPS", "Max Frame Rate"), "",
         1, &model->max_fps, 240, 1, BONGO_CAT_DEFAULT_MAX_FPS);
 }
 

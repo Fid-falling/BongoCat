@@ -129,8 +129,14 @@ int bongo_cat_pref_control_combo(struct nk_context *context, const char *id,
     context->style.window.padding = nk_vec2(6, 14);
     context->style.window.spacing = nk_vec2(0, 0);
     float menu_height = NK_MIN(236.0f, 12.0f + count * 36.0f);
+    struct nk_panel *root = context->current->layout;
+    while (root->parent) root = root->parent;
+    struct nk_rect clip = root->clip;
+    float visible_below = clip.y + clip.h - (bounds.y + bounds.h) - 6.0f;
+    float popup_height = NK_MIN(menu_height + 8.0f,
+        NK_MAX(72.0f, visible_below));
     bool open = nk_combo_begin_label(context, items[selected],
-        nk_vec2(widget.w, menu_height + 8.0f));
+        nk_vec2(widget.w, popup_height));
     if (open) {
         struct nk_rect popup = nk_window_get_bounds(context);
         float scale = .98f + .02f * open_amount;

@@ -247,12 +247,12 @@ add_custom_target(check-lines ALL
   COMMAND ${CMAKE_COMMAND} -DROOT=${CMAKE_CURRENT_SOURCE_DIR}
     -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CheckLines.cmake
   VERBATIM)
-
 if(BUILD_TESTING)
   add_executable(bongo_cat_core_tests
     tests/test_main.c tests/test_config.c tests/test_input.c tests/test_models.c
     tests/test_shortcut.c src/platform/windows_keys.c)
-  target_link_libraries(bongo_cat_core_tests PRIVATE bongo_cat_core bongo_cat_warnings)
+  target_link_libraries(bongo_cat_core_tests PRIVATE bongo_cat_core
+    bongo_cat_warnings $<$<PLATFORM_ID:Windows>:user32>)
   target_compile_definitions(bongo_cat_core_tests PRIVATE
     BONGO_CAT_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   add_test(NAME core COMMAND bongo_cat_core_tests)

@@ -20,13 +20,11 @@ static const char *tr(BongoCatPreferences *value, const char *key,
 static struct nk_color alpha(struct nk_color color, float amount) {
     return bongo_cat_preferences_overlay_alpha(color, amount);
 }
-
 static void text(struct nk_command_buffer *canvas, struct nk_rect bounds,
     const char *value, const struct nk_user_font *font, struct nk_color color) {
     nk_draw_text(canvas, bounds, value, nk_strlen(value), font,
         nk_rgba(0, 0, 0, 0), color);
 }
-
 static void centered(struct nk_command_buffer *canvas, struct nk_rect bounds,
     const char *value, const struct nk_user_font *font, struct nk_color color) {
     float width = font->width(font->userdata, font->height, value,
@@ -40,7 +38,6 @@ static bool hit(struct nk_context *context, struct nk_rect bounds, bool enabled)
     return enabled && nk_input_is_mouse_hovering_rect(&context->input, bounds) &&
         nk_input_is_mouse_click_in_rect(&context->input, NK_BUTTON_LEFT, bounds);
 }
-
 static BongoCatBehaviorShortcut *shortcut_for(BongoCatConfig *config,
     const char *id) {
     for (size_t i = 0; i < config->behavior_shortcut_count; ++i)
@@ -99,10 +96,10 @@ static bool draw_header(BongoCatPreferences *value, struct nk_context *context,
         "Motions and expressions"), value->ui.label_font, alpha(p.text, opacity));
     struct nk_rect close = nk_rect(panel.x + panel.w - 52, panel.y + 17, 32, 32);
     bool hover = enabled && nk_input_is_mouse_hovering_rect(&context->input, close);
-    nk_fill_rect(canvas, close, 8, alpha(hover ? p.hover_pink : p.field, opacity));
+    nk_fill_rect(canvas, close, 8, alpha(hover ? p.hover : p.field, opacity));
     bongo_cat_preferences_icon_draw(value, canvas, BONGO_CAT_UI_ICON_CLOSE,
         nk_rect(close.x + 7, close.y + 7, 18, 18),
-        alpha(hover ? p.pink : p.muted, opacity));
+        alpha(hover ? p.accent : p.muted, opacity));
     if (hover) bongo_cat_ui_cursor_hover_rect(context, close,
         BONGO_CAT_UI_CURSOR_POINTER);
     return hit(context, close, enabled);
@@ -164,15 +161,18 @@ static bool editor(BongoCatPreferences *value, struct nk_context *context,
         (hover ? p.hover : p.field), opacity));
     nk_stroke_rect(canvas, bounds, 10, 1, alpha(active ? p.pink :
         (hover ? p.accent : p.border_subtle), opacity));
-    bongo_cat_preferences_icon_draw(value, canvas,
-        BONGO_CAT_UI_ICON_KEYBOARD, nk_rect(bounds.x + 13,
-        bounds.y + 9, 18, 18), alpha(active ? p.pink : p.muted, opacity));
     const char *shown = active ? tr(value,
         "components.shortcut.hints.pressRecordShortcut", "Press shortcut") :
         (shortcut->shortcut[0] ? shortcut->shortcut : tr(value,
         "components.shortcut.hints.clickRecordShortcut", "Click to record shortcut"));
-    text(canvas, nk_rect(bounds.x + 39, bounds.y + 8,
-        bounds.w - (shortcut->shortcut[0] && !active ? 70 : 48), 21), shown,
+    bool show_keyboard = active || !shortcut->shortcut[0];
+    float text_x = bounds.x + (show_keyboard ? 39.0f : 13.0f);
+    if (show_keyboard) bongo_cat_preferences_icon_draw(value, canvas,
+        BONGO_CAT_UI_ICON_KEYBOARD, nk_rect(bounds.x + 13,
+        bounds.y + 9, 18, 18), alpha(active ? p.pink : p.muted, opacity));
+    text(canvas, nk_rect(text_x, bounds.y + 8,
+        bounds.x + bounds.w - text_x -
+        (shortcut->shortcut[0] && !active ? 31.0f : 9.0f), 21), shown,
         value->ui.caption_font,
         alpha(active ? p.pink : (hover ? p.accent : p.muted), opacity));
     struct nk_rect clear = nk_rect(bounds.x + bounds.w - 25,
@@ -266,7 +266,7 @@ void bongo_cat_preferences_behavior_dialog_draw(
     BongoCatPreferences *value, struct nk_context *context) {
     if (!bongo_cat_preferences_behavior_dialog_active(value)) return;
     bongo_cat_ui_cursor_reset(context);
-    struct nk_rect region = nk_window_get_content_region(context);
+    struct nk_rect region = nk_window_get_bounds(context);
     size_t count = row_count(value);
     float width = NK_MIN(540.0f, region.w - 48.0f);
     float height = NK_MIN(165.0f + count * 56.0f, region.h - 48.0f);

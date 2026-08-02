@@ -1,9 +1,56 @@
 #include "bongo_cat/config.h"
 
+#include <ctype.h>
 #include <string.h>
 
 static float clampf(float value, float low, float high) {
     return value < low ? low : value > high ? high : value;
+}
+
+static bool shortcut_equal(const char *left, const char *right) {
+    if (!left || !right || !left[0] || !right[0]) return false;
+    while (*left && *right) {
+        if (tolower((unsigned char)*left++) != tolower((unsigned char)*right++))
+            return false;
+    }
+    return *left == *right;
+}
+
+bool bongo_cat_config_shortcut_conflicts(const BongoCatConfig *config,
+    const char *shortcut, const char *exclude) {
+    if (!config || !shortcut || !shortcut[0]) return false;
+    const char *global[] = {config->shortcuts.visible_cat,
+        config->shortcuts.visible_preferences, config->shortcuts.mirror,
+        config->shortcuts.pass_through, config->shortcuts.always_on_top};
+    for (size_t i = 0; i < sizeof(global) / sizeof(global[0]); ++i)
+        if (global[i] != exclude && shortcut_equal(global[i], shortcut))
+            return true;
+    for (size_t i = 0; i < config->behavior_shortcut_count; ++i) {
+        const char *bound = config->behavior_shortcuts[i].shortcut;
+        if (bound != exclude && shortcut_equal(bound, shortcut)) return true;
+    }
+    return false;
+}
+
+static void validate_shortcuts(BongoCatConfig *config) {
+    char *global[] = {config->shortcuts.visible_cat,
+        config->shortcuts.visible_preferences, config->shortcuts.mirror,
+        config->shortcuts.pass_through, config->shortcuts.always_on_top};
+    for (size_t i = 0; i < sizeof(global) / sizeof(global[0]); ++i) {
+        global[i][BONGO_CAT_SHORTCUT_CAP - 1] = '\0';
+        for (size_t j = 0; j < i; ++j)
+            if (shortcut_equal(global[i], global[j])) global[i][0] = '\0';
+    }
+    for (size_t i = 0; i < config->behavior_shortcut_count; ++i) {
+        char *shortcut = config->behavior_shortcuts[i].shortcut;
+        bool duplicate = false;
+        for (size_t j = 0; j < sizeof(global) / sizeof(global[0]); ++j)
+            duplicate = duplicate || shortcut_equal(shortcut, global[j]);
+        for (size_t j = 0; j < i; ++j)
+            duplicate = duplicate || shortcut_equal(shortcut,
+                config->behavior_shortcuts[j].shortcut);
+        if (duplicate) shortcut[0] = '\0';
+    }
 }
 
 void bongo_cat_config_defaults(BongoCatConfig *config) {
@@ -51,6 +98,7 @@ void bongo_cat_config_validate(BongoCatConfig *config) {
         config->behavior_shortcuts[i].id[BONGO_CAT_PATH_CAP - 1] = '\0';
         config->behavior_shortcuts[i].shortcut[BONGO_CAT_SHORTCUT_CAP - 1] = '\0';
     }
+    validate_shortcuts(config);
 }
 
 const char *bongo_cat_theme_name(BongoCatTheme value) {

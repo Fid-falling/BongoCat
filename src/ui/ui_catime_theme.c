@@ -71,7 +71,7 @@ static void geometry(struct nk_style *style) {
     style->window.padding = nk_vec2(18, 14);
     style->window.group_padding = nk_vec2(18, 12);
     style->window.spacing = nk_vec2(10, 10);
-    style->window.scrollbar_size = nk_vec2(6, 6);
+    style->window.scrollbar_size = nk_vec2(10, 10);
     style->window.border = 0;
     style->window.group_border = 0;
     style->window.rounding = 12;
@@ -88,6 +88,7 @@ static void geometry(struct nk_style *style) {
     style->selectable.rounding = 9;
     style->scrollv.rounding = 3;
     style->scrollv.rounding_cursor = 3;
+    style->scrollv.padding = nk_vec2(2, 2);
     style->scrollh = style->scrollv;
 }
 
@@ -119,7 +120,7 @@ void bongo_cat_ui_apply_theme(struct nk_context *context, bool dark) {
     table[NK_COLOR_CHART_COLOR_HIGHLIGHT] = p.accent_hover;
     table[NK_COLOR_SCROLLBAR] = p.background;
     table[NK_COLOR_SCROLLBAR_CURSOR] = p.border_subtle;
-    table[NK_COLOR_SCROLLBAR_CURSOR_HOVER] = p.muted;
+    table[NK_COLOR_SCROLLBAR_CURSOR_HOVER] = p.accent;
     table[NK_COLOR_SCROLLBAR_CURSOR_ACTIVE] = p.accent;
     table[NK_COLOR_TAB_HEADER] = p.surface;
     table[NK_COLOR_KNOB] = p.field;

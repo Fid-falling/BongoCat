@@ -21,7 +21,8 @@ static void send_key(BongoCatPreferences *value, Uint32 type, bool down) {
 
 void bongo_cat_preferences_shortcut_smoke(BongoCatPreferences *value) {
     if (!value || !value->window || !value->app->smoke_preference_shortcut ||
-        !value->shortcut_recording) return;
+        !value->shortcut_recording ||
+        value->ui.context.input.mouse.buttons[NK_BUTTON_LEFT].down) return;
     value->app->smoke_preference_shortcut = false;
     send_key(value, SDL_EVENT_KEY_DOWN, true);
     send_key(value, SDL_EVENT_KEY_UP, false);
@@ -44,8 +45,10 @@ static void write_window_handle(BongoCatPreferences *value) {
         "preferences-window.txt")) return;
     FILE *file = bongo_cat_file_open(path, "wb");
     if (!file) return;
-    fprintf(file, "handle=%llu window_id=%u\n", (unsigned long long)native,
-        (unsigned)SDL_GetWindowID(value->window));
+    fprintf(file, "handle=%llu window_id=%u page=%d recording=%d shortcut_smoke=%d\n",
+        (unsigned long long)native, (unsigned)SDL_GetWindowID(value->window),
+        value->page, value->shortcut_recording,
+        value->app->smoke_preference_shortcut);
     fclose(file);
 }
 

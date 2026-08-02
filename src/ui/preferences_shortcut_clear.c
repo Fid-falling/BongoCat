@@ -15,7 +15,7 @@ bool bongo_cat_pref_shortcut_clear(struct nk_context *context,
     float amount = bongo_cat_ui_animate_eased(context, animation_id,
         hover ? 1.0f : 0.0f, 150, BONGO_CAT_UI_EASE_STANDARD);
     struct nk_color color = bongo_cat_ui_color_alpha(
-        bongo_cat_ui_color_mix(p.muted, p.pink, amount), opacity);
+        bongo_cat_ui_color_mix(p.muted, p.accent, amount), opacity);
     float x = bounds.x + bounds.w * .5f, y = bounds.y + bounds.h * .5f;
     nk_stroke_line(canvas, x - 4, y - 4, x + 4, y + 4, 1.5f, color);
     nk_stroke_line(canvas, x + 4, y - 4, x - 4, y + 4, 1.5f, color);

@@ -45,8 +45,12 @@ void bongo_cat_preferences_overlay_draw(struct nk_context *context,
     struct nk_rect region, const BongoCatOverlayFrame *frame,
     BongoCatUIPalette palette) {
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
-    nk_fill_rect(canvas, region, 0, nk_rgba(0, 0, 0,
-        (nk_byte)(115.0f * frame->visibility + .5f)));
+    bool dark = bongo_cat_ui_dark(context);
+    struct nk_color veil = dark ? nk_rgba(7, 10, 15,
+        (nk_byte)(92.0f * frame->visibility + .5f)) : nk_rgba(255, 255, 255,
+        (nk_byte)(148.0f * frame->visibility + .5f));
+    nk_push_scissor(canvas, region);
+    nk_fill_rect(canvas, region, 24, veil);
     if (palette.effects) bongo_cat_ui_paint_shadow(context, frame->panel,
         18, 0, 20, 50, 0, nk_rgba(0, 0, 0,
         (nk_byte)(77.0f * frame->visibility + .5f)));

@@ -65,6 +65,18 @@ bool bongo_cat_window_wait_timeout_self_test(void) {
     app->config.window.visible = true;
     app->config.model.max_fps = 60;
     app->last_frame_ns = now;
+#ifdef BONGO_CAT_HAS_CUBISM
+    app->config.model.max_fps = 30;
+    uint64_t interval_30 = frame_interval_ns(app);
+    app->config.model.max_fps = 60;
+    uint64_t interval_60 = frame_interval_ns(app);
+    app->config.model.max_fps = 120;
+    uint64_t interval_120 = frame_interval_ns(app);
+    if (!(interval_30 > interval_60 && interval_60 > interval_120) ||
+        bongo_cat_model_frame_due(app, now + interval_120 - 1) ||
+        !bongo_cat_model_frame_due(app, now + interval_120)) goto done;
+    app->config.model.max_fps = 60;
+#endif
     int frame_wait = remaining_ms(now + frame_interval_ns(app), now);
     if (bongo_cat_window_wait_timeout(app, now) != frame_wait ||
         bongo_cat_model_frame_due(app, now)) goto done;

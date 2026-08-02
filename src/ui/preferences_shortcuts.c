@@ -1,4 +1,5 @@
 #include "preferences_state.h"
+#include "preferences_notice.h"
 #include "preferences_widgets.h"
 #include "bongo_cat/i18n.h"
 #include "bongo_cat/shortcut.h"
@@ -126,6 +127,16 @@ static bool capture_key(BongoCatPreferences *value,
     if (event->mod & SDL_KMOD_ALT) append(shortcut, sizeof(shortcut), "Alt");
     if (event->mod & SDL_KMOD_GUI) append(shortcut, sizeof(shortcut), "Meta");
     append(shortcut, sizeof(shortcut), key);
+    if (bongo_cat_config_shortcut_conflicts(&value->app->config, shortcut,
+        value->shortcut_target)) {
+        snprintf(value->shortcut_target, (size_t)value->shortcut_capacity, "%s",
+            value->shortcut_original);
+        bongo_cat_preferences_notice_show(value->app, tr(value,
+            "components.shortcut.hints.alreadyUsed",
+            "This shortcut is already in use."), true);
+        finish(value);
+        return true;
+    }
     snprintf(value->shortcut_target, (size_t)value->shortcut_capacity, "%s", shortcut);
     value->shortcut_key = event->key;
     value->render_dirty = true;

@@ -46,6 +46,13 @@ add_test(NAME preferences-interaction COMMAND powershell.exe -NoProfile
   -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/preferences-interaction-test)
 set_tests_properties(preferences-interaction PROPERTIES TIMEOUT 45 RUN_SERIAL TRUE)
 
+add_test(NAME preferences-robustness COMMAND powershell.exe -NoProfile
+  -ExecutionPolicy Bypass -File
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/PreferencesRobustnessAudit.ps1
+  -Exe $<TARGET_FILE:bongo_cat>
+  -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/preferences-robustness-test)
+set_tests_properties(preferences-robustness PROPERTIES TIMEOUT 45 RUN_SERIAL TRUE)
+
 add_test(NAME preferences-dpi COMMAND powershell.exe -NoProfile
   -ExecutionPolicy Bypass -File
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/DpiAudit.ps1
@@ -75,6 +82,13 @@ add_test(NAME windows-click-through COMMAND powershell.exe -NoProfile
   -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/click-through-test)
 set_tests_properties(windows-click-through PROPERTIES TIMEOUT 45 RUN_SERIAL TRUE)
 
+add_test(NAME windows-key-release COMMAND powershell.exe -NoProfile
+  -ExecutionPolicy Bypass -File
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/WindowsKeyReleaseAudit.ps1
+  -Exe $<TARGET_FILE:bongo_cat>
+  -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/key-release-test)
+set_tests_properties(windows-key-release PROPERTIES TIMEOUT 15 RUN_SERIAL TRUE)
+
 set_tests_properties(preferences-navigation preferences-slider-drag
-  preferences-model-border preferences-interaction preferences-dpi
-  preferences-performance PROPERTIES SKIP_RETURN_CODE 77)
+  preferences-model-border preferences-interaction preferences-robustness
+  preferences-dpi preferences-performance PROPERTIES SKIP_RETURN_CODE 77)

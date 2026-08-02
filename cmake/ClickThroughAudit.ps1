@@ -36,7 +36,6 @@ public static class BongoCatClickNative {
 '@
 [void][BongoCatClickNative]::SetProcessDpiAwarenessContext([IntPtr](-4))
 Add-Type -AssemblyName System.Drawing
-
 function Save-Shot($Window, [string]$Path) {
     $bitmap = [Drawing.Bitmap]::new($Window.R - $Window.L, $Window.B - $Window.T)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
@@ -101,18 +100,22 @@ function Wait-LowFpsBoundary([string]$Path) {
     } while ([DateTime]::UtcNow -lt $deadline)
     return 0
 }
-
 function Send-Key([byte]$Key) {
     [BongoCatClickNative]::keybd_event($Key, 0, 0, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 10
     [BongoCatClickNative]::keybd_event($Key, 0, 2, [UIntPtr]::Zero)
 }
-
+function Release-Modifiers {
+    foreach ($key in @(0x10, 0x11, 0x12))
+        { [BongoCatClickNative]::keybd_event($key, 0, 2, [UIntPtr]::Zero) }
+    foreach ($key in @(0x5b, 0x5c))
+        { [BongoCatClickNative]::keybd_event($key, 0, 3, [UIntPtr]::Zero) }
+    Start-Sleep -Milliseconds 50
+}
 function Same-Rect($Left, $Right) {
     return $Left -and $Right -and $Left.L -eq $Right.L -and $Left.T -eq $Right.T -and
         $Left.R -eq $Right.R -and $Left.B -eq $Right.B
 }
-
 $data = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
 New-Item -ItemType Directory -Force -Path $data | Out-Null
 $preferences = @{ format="bongo-cat/preferences"; version=2
@@ -154,6 +157,7 @@ try {
         throw "Could not synchronize with the 1 FPS frame boundary"
     }
 
+    Release-Modifiers
     $timer = [Diagnostics.Stopwatch]::StartNew()
     Send-Key 0x87 # F24: forced click-through
     $proxy = Wait-Until {
@@ -283,12 +287,12 @@ try {
     $snapshots.Add([pscustomobject]@{ Stage="lifecycle"; MinimizedFrames=$minimizedFrames
         DynamicProxy=($null -ne $dynamicProxy); FinalFrames=(Frame-Count $framePath) })
 } finally {
+    Release-Modifiers
     [void][BongoCatClickNative]::SetCursorPos($cursor.X, $cursor.Y)
     if ($process -and -not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
     Remove-Item Env:BONGO_CAT_ALLOW_TEST_INSTANCES -ErrorAction SilentlyContinue
     Remove-Item Env:BONGO_CAT_TEST_INSTANCE_ID -ErrorAction SilentlyContinue
 }
-
 $passed = $failures.Count -eq 0
 $result = [ordered]@{ Passed=$passed; Failures=$failures; Snapshots=$snapshots; Data=$data }
 $result | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 (Join-Path $OutputDir "result.json")

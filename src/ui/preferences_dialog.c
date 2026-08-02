@@ -98,10 +98,10 @@ static bool close_button(BongoCatApp *app, struct nk_context *context,
     struct nk_rect bounds = nk_rect(panel.x + panel.w - 52,
         panel.y + 17, 32, 32);
     bool hover = enabled && nk_input_is_mouse_hovering_rect(&context->input, bounds);
-    nk_fill_rect(canvas, bounds, 8, alpha(hover ? p.hover_pink : p.field, opacity));
+    nk_fill_rect(canvas, bounds, 8, alpha(hover ? p.hover : p.field, opacity));
     bongo_cat_preferences_icon_draw(app->preferences, canvas,
         BONGO_CAT_UI_ICON_CLOSE, nk_rect(bounds.x + 7,
-        bounds.y + 7, 18, 18), alpha(hover ? p.pink : p.muted, opacity));
+        bounds.y + 7, 18, 18), alpha(hover ? p.accent : p.muted, opacity));
     if (hover) bongo_cat_ui_cursor_hover_rect(context, bounds,
         BONGO_CAT_UI_CURSOR_POINTER);
     return hit(context, bounds, enabled);
@@ -124,7 +124,7 @@ void bongo_cat_preferences_remove_dialog_draw(BongoCatApp *app,
     struct nk_context *context) {
     if (!bongo_cat_preferences_remove_dialog_active(app)) return;
     bongo_cat_ui_cursor_reset(context);
-    struct nk_rect region = nk_window_get_content_region(context);
+    struct nk_rect region = nk_window_get_bounds(context);
     float width = NK_MIN(420.0f, region.w - 48.0f), height = 202.0f;
     BongoCatOverlayFrame frame = bongo_cat_preferences_overlay_frame(
         region, width, height, remove_dialog.opened_ns, remove_dialog.closing_ns);

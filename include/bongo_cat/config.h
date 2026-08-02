@@ -85,6 +85,8 @@ extern "C" {
 
 void bongo_cat_config_defaults(BongoCatConfig *config);
 void bongo_cat_config_validate(BongoCatConfig *config);
+bool bongo_cat_config_shortcut_conflicts(const BongoCatConfig *config,
+    const char *shortcut, const char *exclude);
 BongoCatResult bongo_cat_preferences_load(const char *path,
     BongoCatConfig *config, BongoCatError *error);
 BongoCatResult bongo_cat_preferences_save(const char *path,

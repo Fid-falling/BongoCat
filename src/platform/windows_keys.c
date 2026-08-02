@@ -2,6 +2,7 @@
 
 #ifdef _WIN32
 #include <stdio.h>
+#include <string.h>
 
 const char *bongo_cat_windows_key_name(const KBDLLHOOKSTRUCT *key, char output[16]) {
     DWORD code = key->vkCode;
@@ -77,6 +78,46 @@ const char *bongo_cat_windows_key_name(const KBDLLHOOKSTRUCT *key, char output[1
     case VK_OEM_PERIOD: return "Period";
     case VK_OEM_2: return "Slash";
     default: return NULL;
+    }
+}
+
+bool bongo_cat_windows_keyboard_event(BongoCatWindowsKeyboard *state,
+    const KBDLLHOOKSTRUCT *key, WPARAM message, UINT *drop_key_up,
+    BongoCatWindowsKeyEmit emit, void *userdata) {
+    if (!state || !key || !emit) return false;
+    bool down = message == WM_KEYDOWN || message == WM_SYSKEYDOWN;
+    bool up = message == WM_KEYUP || message == WM_SYSKEYUP;
+    if (!down && !up) return false;
+    if (up && drop_key_up && *drop_key_up == key->vkCode) {
+        *drop_key_up = 0; return true;
+    }
+    char buffer[16];
+    const char *name = bongo_cat_windows_key_name(key, buffer);
+    if (!name || !bongo_cat_input_edge(state->down, key->vkCode, down))
+        return false;
+    if (key->vkCode < BONGO_CAT_INPUT_KEY_STATE_CAP) {
+        state->changed_ms[key->vkCode] = GetTickCount64();
+        if (down) snprintf(state->name[key->vkCode],
+            sizeof(state->name[key->vkCode]), "%s", name);
+        else state->name[key->vkCode][0] = '\0';
+    }
+    emit(down, name, userdata);
+    return true;
+}
+
+void bongo_cat_windows_keyboard_reconcile(BongoCatWindowsKeyboard *state,
+    uint64_t now_ms, BongoCatWindowsKeyEmit emit, void *userdata) {
+    if (!state || !emit) return;
+    for (unsigned code = 0; code < BONGO_CAT_INPUT_KEY_STATE_CAP; ++code) {
+        if (!state->down[code] || !state->name[code][0] ||
+            now_ms - state->changed_ms[code] < 50 ||
+            (GetAsyncKeyState((int)code) & 0x8000)) continue;
+        char name[BONGO_CAT_ID_CAP];
+        snprintf(name, sizeof(name), "%s", state->name[code]);
+        state->down[code] = false;
+        state->name[code][0] = '\0';
+        state->changed_ms[code] = now_ms;
+        emit(false, name, userdata);
     }
 }
 #endif

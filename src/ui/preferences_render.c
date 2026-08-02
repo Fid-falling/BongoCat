@@ -11,7 +11,6 @@
 #include <SDL3/SDL_opengl.h>
 #include <math.h>
 #include <stdio.h>
-
 typedef struct RootStyle {
     struct nk_vec2 padding;
     struct nk_vec2 group_padding;
@@ -20,17 +19,14 @@ typedef struct RootStyle {
     struct nk_color background;
     float group_border;
 } RootStyle;
-
 static const char *tr(const BongoCatPreferences *value, const char *key,
     const char *fallback) {
     return bongo_cat_i18n_get(value->app->i18n, key, fallback);
 }
-
 static void draw_icon(void *userdata, struct nk_command_buffer *canvas,
     int icon, struct nk_rect bounds, struct nk_color color) {
     bongo_cat_preferences_icon_draw(userdata, canvas, icon, bounds, color);
 }
-
 static void draw_page(BongoCatPreferences *value, struct nk_context *context) {
     switch (value->page) {
     case 0: bongo_cat_preferences_page_cat(value->app, context); break;
@@ -40,7 +36,6 @@ static void draw_page(BongoCatPreferences *value, struct nk_context *context) {
     default: bongo_cat_preferences_page_about(value, context); break;
     }
 }
-
 static RootStyle root_style_save(struct nk_context *context) {
     RootStyle saved;
     saved.padding = context->style.window.padding;
@@ -51,7 +46,6 @@ static RootStyle root_style_save(struct nk_context *context) {
     saved.group_border = context->style.window.group_border;
     return saved;
 }
-
 static void root_style_apply(struct nk_context *context,
     BongoCatUIPalette palette, bool transparent) {
     context->style.window.padding = nk_vec2(BONGO_CAT_UI_MARGIN,
@@ -64,7 +58,6 @@ static void root_style_apply(struct nk_context *context,
     context->style.window.background = background;
     context->style.window.group_border = 0;
 }
-
 static void root_style_restore(struct nk_context *context,
     const RootStyle *saved) {
     context->style.window.padding = saved->padding;
@@ -74,7 +67,6 @@ static void root_style_restore(struct nk_context *context,
     context->style.window.background = saved->background;
     context->style.window.group_border = saved->group_border;
 }
-
 static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
     float width, float height, bool dark) {
     static const char *page_ids[] = {
@@ -139,6 +131,18 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
         16 + 6.0f * (1.0f - page_progress));
     context->style.window.spacing = nk_vec2(10, 10);
     int scroll_page = NK_CLAMP(0, value->page, 4);
+    bool scroll_animating = fabsf(value->scroll_current[scroll_page] -
+        value->scroll_target[scroll_page]) > .5f;
+    struct nk_style_scrollbar saved_scrollv = context->style.scrollv;
+    struct nk_rect scrollbar_hit = nk_rect(body_bounds.x + body_bounds.w - 14,
+        body_bounds.y, 14, body_bounds.h);
+    bool scrollbar_hover = !modal && nk_input_is_mouse_hovering_rect(
+        &context->input, scrollbar_hit);
+    context->style.scrollv.padding.x = scrollbar_hover ? 0.0f : 2.0f;
+    context->style.scrollv.cursor_hover = nk_style_item_color(p.accent);
+    context->style.scrollv.cursor_active = nk_style_item_color(p.accent);
+    if (scroll_animating)
+        context->style.scrollv.cursor_normal = nk_style_item_color(p.accent);
     if (value->scroll_ready[scroll_page])
         nk_group_set_scroll(context, page_ids[scroll_page], 0,
             (nk_uint)NK_MAX(0.0f, value->scroll_current[scroll_page]));
@@ -152,8 +156,14 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
     if (nk_group_begin(context, page_ids[value->page], 0)) {
         draw_page(value, context);
         float wheel = context->input.mouse.scroll_delta.y;
+        struct nk_panel *layout = context->current->layout;
+        float maximum = layout ? NK_MAX(0.0f,
+            layout->at_y + layout->row.height - layout->bounds.y - layout->bounds.h) : 0.0f;
+        if (wheel != 0.0f)
+            context->style.scrollv.cursor_normal = nk_style_item_color(p.accent);
         context->input.mouse.scroll_delta.y = 0;
         nk_group_end(context);
+        context->style.scrollv = saved_scrollv;
         nk_uint group_x = 0, group_y = 0;
         nk_group_get_scroll(context, page_ids[value->page], &group_x, &group_y);
         float actual = (float)group_y;
@@ -162,18 +172,24 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
             value->scroll_current[scroll_page] = actual;
             value->scroll_target[scroll_page] = actual;
         }
+        value->scroll_target[scroll_page] = NK_CLAMP(0.0f,
+            value->scroll_target[scroll_page], maximum);
         if (wheel != 0.0f)
-            value->scroll_target[scroll_page] = NK_MAX(0.0f,
-                actual - wheel * 72.0f);
+            value->scroll_target[scroll_page] = NK_CLAMP(0.0f,
+                actual - wheel * 72.0f, maximum);
         else if (fabsf(actual - value->scroll_current[scroll_page]) > 2.0f)
-            value->scroll_target[scroll_page] = actual;
+            value->scroll_target[scroll_page] = NK_CLAMP(0.0f,
+                actual, maximum);
         float next = actual + (value->scroll_target[scroll_page] - actual) * .24f;
         if (fabsf(next - value->scroll_target[scroll_page]) < .5f)
             next = value->scroll_target[scroll_page];
-        value->scroll_current[scroll_page] = next;
-        if (wheel != 0.0f || fabsf(next - value->scroll_target[scroll_page]) > .5f)
+        value->scroll_current[scroll_page] = NK_CLAMP(0.0f, next, maximum);
+        bool still_animating = fabsf(value->scroll_current[scroll_page] -
+            value->scroll_target[scroll_page]) > .5f;
+        if (wheel != 0.0f || still_animating ||
+            (scroll_animating && !still_animating))
             value->render_dirty = true;
-    }
+    } else context->style.scrollv = saved_scrollv;
     if (modal) {
         context->input.mouse.buttons[NK_BUTTON_LEFT] = saved_left;
         context->input.mouse.scroll_delta = saved_wheel;
@@ -194,7 +210,6 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
     bongo_cat_preferences_behavior_dialog_draw(value, context);
     return close_requested;
 }
-
 static bool draw_frame(BongoCatPreferences *value, float width, float height,
     bool dark) {
     struct nk_context *context = &value->ui.context;

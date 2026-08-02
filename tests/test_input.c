@@ -142,4 +142,16 @@ void test_input(void) {
     event.kind = BONGO_CAT_INPUT_KEY_UP;
     bongo_cat_input_auto_release(&state, &event, 0);
     CHECK(!bongo_cat_input_take_release(&state, 9999, &output));
+
+    bongo_cat_input_init(&state);
+    event.kind = BONGO_CAT_INPUT_KEY_DOWN;
+    event.timestamp_ms = 1000;
+    memcpy(event.name, "KeyB", sizeof("KeyB"));
+    bongo_cat_input_auto_release(&state, &event, 50);
+    CHECK(!bongo_cat_input_take_release(&state, 1049, &output));
+    CHECK(bongo_cat_input_take_release(&state, 1050, &output));
+    event.timestamp_ms = 2000;
+    bongo_cat_input_auto_release(&state, &event, 500);
+    CHECK(!bongo_cat_input_take_release(&state, 2499, &output));
+    CHECK(bongo_cat_input_take_release(&state, 2500, &output));
 }
