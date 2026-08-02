@@ -45,7 +45,7 @@ static void trigger(struct nk_context *context, struct nk_command_buffer *canvas
 static struct nk_rect transform_item(struct nk_rect item,
     struct nk_rect popup, struct nk_rect menu, float scale) {
     item.x = menu.x + (item.x - popup.x) * scale;
-    item.y = menu.y + (item.y - popup.y - 4.0f) * scale;
+    item.y = menu.y + (item.y - popup.y) * scale;
     item.w *= scale; item.h *= scale;
     return item;
 }
@@ -127,7 +127,7 @@ int bongo_cat_pref_control_combo(struct nk_context *context, const char *id,
     context->style.window.background = context->style.window.border_color = clear;
     context->style.window.combo_border_color = clear;
     context->style.window.combo_border = 0;
-    context->style.window.padding = nk_vec2(6, 14);
+    context->style.window.combo_padding = nk_vec2(6, 6);
     context->style.window.spacing = nk_vec2(0, 0);
     float menu_height = NK_MIN(236.0f, 12.0f + count * 36.0f);
     struct nk_panel *root = context->current->layout;
