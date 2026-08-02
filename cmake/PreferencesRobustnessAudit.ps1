@@ -28,6 +28,8 @@ public static class BongoCatRobustNative {
     [DllImport("user32.dll", EntryPoint="ClipCursor")] public static extern bool ReleaseCursor(IntPtr r);
     [DllImport("user32.dll")] public static extern IntPtr SendMessageW(IntPtr h, uint m, IntPtr w, IntPtr l);
     [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr dc, uint flags);
+    [DllImport("user32.dll", EntryPoint="GetWindowLongPtrW")]
+    public static extern IntPtr GetWindowLongPtr(IntPtr h, int index);
     [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
     [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
     [DllImport("user32.dll")] public static extern void keybd_event(byte key, byte scan, uint flags, UIntPtr extra);
@@ -192,6 +194,8 @@ $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
 try {
     $window = Wait-Window
     Wait-StartupReady
+    $settingsTopmost =
+        ([BongoCatRobustNative]::GetWindowLongPtr($window, -20).ToInt64() -band 0x8) -ne 0
     $client = [BongoCatRobustNative+Rect]::new()
     [void][BongoCatRobustNative]::GetClientRect($window, [ref]$client)
     $script:dpiScale = ($client.R - $client.L) / 900.0
@@ -229,10 +233,12 @@ try {
     Move-At $window 822 141
     [void](Save-Window $window "shortcut-clear-hover.png")
     $result = [ordered]@{
+        SettingsNotTopmost=(-not $settingsTopmost)
         LanguageScrollable=$languageScrollable
         BehaviorModalBlocksSidebar=$behaviorModalBlocksSidebar
         DuplicateShortcutRejected=$duplicateRejected
-        Passed=$languageScrollable -and $behaviorModalBlocksSidebar -and $duplicateRejected
+        Passed=(-not $settingsTopmost) -and $languageScrollable -and
+            $behaviorModalBlocksSidebar -and $duplicateRejected
     }
     $result | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $OutputDir "result.json")
     [pscustomobject]$result | Format-List

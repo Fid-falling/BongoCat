@@ -17,9 +17,6 @@ int bongo_cat_preferences_resolved_theme(const BongoCatPreferences *value) {
     return SDL_GetSystemTheme() == SDL_SYSTEM_THEME_DARK;
 }
 void bongo_cat_preferences_apply_theme(BongoCatPreferences *value) {
-    bool topmost = value->app->config.window.always_on_top;
-    if (((SDL_GetWindowFlags(value->window) & SDL_WINDOW_ALWAYS_ON_TOP) != 0) != topmost)
-        SDL_SetWindowAlwaysOnTop(value->window, topmost);
     int dark = bongo_cat_preferences_resolved_theme(value);
     if (dark == value->style_theme) return;
     value->style_theme = dark;
