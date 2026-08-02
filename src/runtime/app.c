@@ -217,7 +217,8 @@ static void render(BongoCatApp *app) {
     app->dirty = false;
     bongo_cat_window_sync_click_through(app); bongo_cat_window_schedule_hit_check(app);
 }
-void bongo_cat_app_render_now(BongoCatApp *app) { if (app && app->window && app->config.window.visible) render(app); }
+void bongo_cat_app_render_now(BongoCatApp *app) { if (app && app->window &&
+    app->config.window.visible && !app->window_minimized) render(app); }
 static void take_instance_wake(BongoCatApp *app) {
     if (!bongo_cat_platform_single_instance_take_wake()) return;
     bongo_cat_window_set_visible(app, true);
@@ -248,10 +249,10 @@ static void loop(BongoCatApp *app) {
         bongo_cat_window_apply_pending_resize(app);
         bongo_cat_app_update_hover(app, now);
         if (bongo_cat_model_frame_due(app, now)) update_model(app, now);
-        else if (!app->config.window.visible) app->last_frame_ns = now;
-        if (app->config.window.visible && app->dirty) render(app);
+        else if (!app->config.window.visible || app->window_minimized) app->last_frame_ns = now;
+        if (app->config.window.visible && !app->window_minimized && app->dirty) render(app);
         bongo_cat_preferences_render(app->preferences);
-        if (app->config.window.visible && app->dirty) render(app);
+        if (app->config.window.visible && !app->window_minimized && app->dirty) render(app);
         bongo_cat_tray_sync(app->tray);
         bongo_cat_config_store_update(app, now);
         if (app->smoke_deadline_ns && now >= app->smoke_deadline_ns) app->running = false;

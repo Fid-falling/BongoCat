@@ -79,6 +79,8 @@ void bongo_cat_platform_set_click_through(BongoCatPlatform *platform, bool enabl
 bool bongo_cat_platform_set_opacity(BongoCatPlatform *platform, float opacity);
 float bongo_cat_platform_get_opacity(const BongoCatPlatform *platform);
 bool bongo_cat_platform_present(BongoCatPlatform *platform, int width, int height);
+bool bongo_cat_platform_frame_alpha(const BongoCatPlatform *platform,
+    int width, int height, int x, int y, uint8_t *alpha);
 void bongo_cat_platform_set_visible(BongoCatPlatform *platform, bool visible);
 bool bongo_cat_platform_pointer_local(BongoCatPlatform *platform, double screen_x,
     double screen_y, float *local_x, float *local_y);

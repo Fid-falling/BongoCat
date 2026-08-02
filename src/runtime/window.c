@@ -210,6 +210,10 @@ bool bongo_cat_window_event(BongoCatApp *app, const SDL_Event *event) {
         app->config.window.visible = false;
         bongo_cat_window_drag_end(app);
     }
+    if (event->type == SDL_EVENT_WINDOW_MINIMIZED) {
+        app->window_minimized = true;
+        bongo_cat_window_drag_end(app);
+    }
     if (event->type == SDL_EVENT_WINDOW_RESIZED) {
         app->config.window.width = event->window.data1;
         app->config.window.height = event->window.data2;
@@ -220,6 +224,7 @@ bool bongo_cat_window_event(BongoCatApp *app, const SDL_Event *event) {
         event->type == SDL_EVENT_WINDOW_SHOWN ||
         event->type == SDL_EVENT_WINDOW_RESTORED) {
         if (event->type != SDL_EVENT_WINDOW_EXPOSED) app->config.window.visible = true;
+        if (event->type != SDL_EVENT_WINDOW_EXPOSED) app->window_minimized = false;
         app->dirty = true;
     }
     if (event->type == SDL_EVENT_WINDOW_RESIZED ||

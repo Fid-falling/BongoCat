@@ -21,7 +21,7 @@ static int remaining_ms(uint64_t deadline, uint64_t now) {
 }
 
 bool bongo_cat_model_frame_due(const BongoCatApp *app, uint64_t now) {
-    return app && app->config.window.visible &&
+    return app && app->config.window.visible && !app->window_minimized &&
         (!app->last_frame_ns || now >= app->last_frame_ns +
             frame_interval_ns(app));
 }
@@ -29,12 +29,13 @@ bool bongo_cat_model_frame_due(const BongoCatApp *app, uint64_t now) {
 int bongo_cat_window_wait_timeout(const BongoCatApp *app, uint64_t now) {
     if (!app) return 250;
     uint64_t frame_deadline = app->last_frame_ns + frame_interval_ns(app);
-    int wait_ms = app->config.window.visible ? remaining_ms(
+    int wait_ms = app->config.window.visible && !app->window_minimized ? remaining_ms(
         frame_deadline, now) : 250;
     if (bongo_cat_preferences_needs_frame(app->preferences) && wait_ms > 4)
         wait_ms = 4;
     if (app->wheel_animation_active && wait_ms > 8) wait_ms = 8;
-    bool pending_hit = app->config.window.visible && app->pointer_hit_dirty &&
+    bool pending_hit = app->config.window.visible && !app->window_minimized &&
+        app->pointer_hit_dirty &&
         app->pointer_hit_deadline_ns && !app->config.window.pass_through &&
         !app->hover_hidden && !app->left_mouse_down && !app->right_mouse_down;
     if (!pending_hit) return wait_ms;
@@ -75,6 +76,10 @@ bool bongo_cat_window_wait_timeout_self_test(void) {
     app->pointer_hit_dirty = false;
     if (!bongo_cat_model_frame_due(app,
         now + frame_interval_ns(app))) goto done;
+    app->window_minimized = true;
+    if (bongo_cat_model_frame_due(app, now + frame_interval_ns(app)) ||
+        bongo_cat_window_wait_timeout(app, now) != 250) goto done;
+    app->window_minimized = false;
     app->config.window.visible = false;
     if (bongo_cat_window_wait_timeout(app, now) != 250) goto done;
     app->wheel_animation_active = true;

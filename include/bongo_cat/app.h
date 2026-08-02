@@ -86,6 +86,7 @@ typedef struct BongoCatApp {
     bool click_through_applied;
     bool left_mouse_down;
     bool right_mouse_down;
+    bool window_minimized;
     double pointer_x, pointer_y;
     bool resize_gesture;
     float resize_scale_start, resize_scale_target;

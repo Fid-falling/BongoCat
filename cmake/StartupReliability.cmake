@@ -68,6 +68,13 @@ add_test(NAME live2d-pointer-motion COMMAND powershell.exe -NoProfile
 set_tests_properties(live2d-pointer-motion PROPERTIES TIMEOUT 15 RUN_SERIAL TRUE
   SKIP_RETURN_CODE 77)
 
+add_test(NAME windows-click-through COMMAND powershell.exe -NoProfile
+  -ExecutionPolicy Bypass -File
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/ClickThroughAudit.ps1
+  -Exe $<TARGET_FILE:bongo_cat>
+  -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/click-through-test)
+set_tests_properties(windows-click-through PROPERTIES TIMEOUT 45 RUN_SERIAL TRUE)
+
 set_tests_properties(preferences-navigation preferences-slider-drag
   preferences-model-border preferences-interaction preferences-dpi
   preferences-performance PROPERTIES SKIP_RETURN_CODE 77)

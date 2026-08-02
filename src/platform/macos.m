@@ -125,6 +125,11 @@ bool bongo_cat_platform_present(BongoCatPlatform *platform, int width, int heigh
     (void)width; (void)height;
     return platform && platform->window && SDL_GL_SwapWindow(platform->window);
 }
+bool bongo_cat_platform_frame_alpha(const BongoCatPlatform *platform,
+    int width, int height, int x, int y, uint8_t *alpha) {
+    (void)platform; (void)width; (void)height; (void)x; (void)y; (void)alpha;
+    return false;
+}
 void bongo_cat_platform_set_visible(BongoCatPlatform *platform, bool visible) {
     if (!platform || !platform->window) return;
     visible ? SDL_ShowWindow(platform->window) : SDL_HideWindow(platform->window);

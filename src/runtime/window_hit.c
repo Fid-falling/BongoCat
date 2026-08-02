@@ -11,6 +11,9 @@ bool bongo_cat_window_visible_at_pointer(BongoCatApp *app, float x, float y) {
     int pixel_x = SDL_clamp((int)(x * pixel_width / width), 0, pixel_width - 1);
     int pixel_y = pixel_height - 1 -
         SDL_clamp((int)(y * pixel_height / height), 0, pixel_height - 1);
+    uint8_t presented_alpha = 0;
+    if (bongo_cat_platform_frame_alpha(&app->platform, pixel_width, pixel_height,
+        pixel_x, pixel_y, &presented_alpha)) return presented_alpha > 8;
     SDL_Window *previous_window = SDL_GL_GetCurrentWindow();
     SDL_GLContext previous_context = SDL_GL_GetCurrentContext();
     if (!SDL_GL_MakeCurrent(app->window, app->gl_context)) return false;
@@ -42,6 +45,9 @@ void bongo_cat_window_set_visible(BongoCatApp *app, bool visible) {
         bongo_cat_platform_set_visible(&app->platform, false);
         return;
     }
+    if (SDL_GetWindowFlags(app->window) & SDL_WINDOW_MINIMIZED)
+        SDL_RestoreWindow(app->window);
+    app->window_minimized = false;
     app->hover_hidden = false;
     bongo_cat_platform_set_opacity(&app->platform,
         app->config.window.opacity_percent / 100.0f);
@@ -94,6 +100,7 @@ void bongo_cat_window_sync_click_through(BongoCatApp *app) {
     bongo_cat_platform_set_click_through(&app->platform, enabled);
     app->click_through_applied = enabled;
     app->click_through_valid = true;
+    app->dirty = true;
 }
 
 void bongo_cat_window_apply_pending_resize(BongoCatApp *app) {

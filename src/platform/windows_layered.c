@@ -23,6 +23,7 @@ typedef struct BongoCatWindowsLayered {
     bool has_frame;
     bool source_transparent;
     bool visible;
+    bool topmost;
 } BongoCatWindowsLayered;
 
 static HWND native_window(BongoCatPlatform *platform) {
@@ -99,8 +100,10 @@ static bool ensure_proxy(BongoCatPlatform *platform) {
     if (!register_proxy_class()) return false;
     wchar_t title[128] = L"BongoCat - Pet";
     GetWindowTextW(source, title, (int)(sizeof(title) / sizeof(title[0])));
-    value->proxy = CreateWindowExW(WS_EX_LAYERED | WS_EX_TRANSPARENT |
-        WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE, proxy_class, title, WS_POPUP,
+    DWORD style = WS_EX_LAYERED | WS_EX_TRANSPARENT |
+        WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE;
+    if (value->topmost) style |= WS_EX_TOPMOST;
+    value->proxy = CreateWindowExW(style, proxy_class, title, WS_POPUP,
         0, 0, 1, 1, source, NULL, GetModuleHandleW(NULL), NULL);
     if (!value->proxy) return false;
     HICON large = (HICON)SendMessageW(source, WM_GETICON, ICON_BIG, 0);
@@ -159,6 +162,7 @@ void bongo_cat_windows_layered_set_click_through(
     if (!value || value->active == enabled) return;
     value->active = enabled;
     if (enabled) {
+        value->has_frame = false;
         ensure_proxy(platform);
         if (value->proxy) ShowWindow(value->proxy, SW_HIDE);
     } else {
@@ -170,7 +174,9 @@ void bongo_cat_windows_layered_set_click_through(
 void bongo_cat_windows_layered_set_always_on_top(
     BongoCatPlatform *platform, bool enabled) {
     BongoCatWindowsLayered *value = platform ? platform->presenter : NULL;
-    if (!value || !value->proxy) return;
+    if (!value) return;
+    value->topmost = enabled;
+    if (!value->proxy) return;
     SetWindowPos(value->proxy, enabled ? HWND_TOPMOST : HWND_NOTOPMOST,
         0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 }
@@ -192,14 +198,22 @@ float bongo_cat_platform_get_opacity(const BongoCatPlatform *platform) {
     return platform ? platform->window_opacity : 1.0f;
 }
 
+bool bongo_cat_platform_frame_alpha(const BongoCatPlatform *platform,
+    int width, int height, int x, int y, uint8_t *alpha) {
+    const BongoCatWindowsLayered *value = platform ? platform->presenter : NULL;
+    if (!value || !value->active || !value->has_frame || !value->pixels ||
+        value->width != width || value->height != height || !alpha ||
+        x < 0 || y < 0 || x >= width || y >= height) return false;
+    *alpha = value->pixels[((size_t)y * (size_t)width + (size_t)x) * 4 + 3];
+    return true;
+}
+
 void bongo_cat_platform_set_visible(BongoCatPlatform *platform, bool visible) {
     if (!platform || !platform->window) return;
     BongoCatWindowsLayered *value = platform->presenter;
     if (value) value->visible = visible;
     if (!visible && value && value->proxy) ShowWindow(value->proxy, SW_HIDE);
     visible ? SDL_ShowWindow(platform->window) : SDL_HideWindow(platform->window);
-    if (visible && value && value->active && value->has_frame && value->proxy)
-        ShowWindow(value->proxy, SW_SHOWNOACTIVATE);
 }
 
 static bool resize_bitmap(BongoCatWindowsLayered *value, int width, int height) {
@@ -231,15 +245,22 @@ bool bongo_cat_platform_present(BongoCatPlatform *platform, int width, int heigh
     if (!platform || !platform->window) return false;
     BongoCatWindowsLayered *value = platform->presenter;
     if (!value || !value->active) return SDL_GL_SwapWindow(platform->window);
+    HWND source = native_window(platform);
+    if (!source || !value->visible || !IsWindowVisible(source) || IsIconic(source)) {
+        if (value->proxy) ShowWindow(value->proxy, SW_HIDE);
+        return source != NULL;
+    }
     if (!ensure_proxy(platform) || width <= 0 || height <= 0 ||
-        !resize_bitmap(value, width, height))
+        !resize_bitmap(value, width, height)) {
+        value->has_frame = false;
         return SDL_SetError("Cannot allocate the Windows layered frame");
+    }
     glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, value->pixels);
-    if (!update_proxy(platform, value)) return false;
+    if (!update_proxy(platform, value)) { value->has_frame = false; return false; }
     value->has_frame = true;
     if (!make_source_transparent(platform))
         return SDL_SetError("Cannot suppress the OpenGL source window");
-    if (value->visible) ShowWindow(value->proxy, SW_SHOWNOACTIVATE);
+    ShowWindow(value->proxy, SW_SHOWNOACTIVATE);
     return true;
 }
 #endif
