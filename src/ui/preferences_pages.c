@@ -1,4 +1,5 @@
 #include "preferences_internal.h"
+#include "preferences_theme.h"
 #include "preferences_widgets.h"
 #include "preferences_notice.h"
 #include "bongo_cat/audio.h"
@@ -126,4 +127,11 @@ void bongo_cat_preferences_page_general(BongoCatApp *app, struct nk_context *con
         "language", tr(app, "pages.preference.general.labels.language",
         "Language"), "", ui_languages, 5, language_to_ui[options->language]);
     options->language = ui_to_language[selected];
+    const char *themes[] = {
+        tr(app, "pages.preference.general.options.auto", "System"),
+        tr(app, "pages.preference.general.options.lightMode", "Light"),
+        tr(app, "pages.preference.general.options.darkMode", "Dark")};
+    options->theme = (BongoCatTheme)bongo_cat_pref_theme(context,
+        "theme", tr(app, "pages.preference.general.labels.themeMode",
+        "Theme Mode"), themes, options->theme);
 }

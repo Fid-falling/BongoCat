@@ -169,6 +169,7 @@ Capture-Scenario "shortcut-cleared" 3 { param($window)
 Capture-Scenario "language-changed" 1 { param($window)
     Click-At $window 765 350; Click-At $window 765 435 }
 Capture-Scenario "language-open" 1 { param($window) Click-At $window 765 350 }
+Capture-Scenario "theme-dark" 1 { param($window) Click-At $window 826 430 }
 Capture-Scenario "toggle-changed" 0 { param($window) Click-At $window 820 141 }
 Capture-Scenario "stepper-changed" 0 { param($window) Click-At $window 833 293 }
 Capture-Scenario "slider-changed" 0 { param($window) Click-At $window 700 388 }

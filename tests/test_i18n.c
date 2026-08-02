@@ -16,6 +16,11 @@ static bool same_shape(yyjson_val *reference, yyjson_val *candidate,
         fprintf(stderr, "Locale mismatch at %s\n", path);
         return false;
     }
+    if (yyjson_is_obj(reference) &&
+        yyjson_obj_size(reference) != yyjson_obj_size(candidate)) {
+        fprintf(stderr, "Locale key count mismatch at %s\n", path);
+        return false;
+    }
     if (!yyjson_is_obj(reference)) return true;
     size_t index, count; yyjson_val *key, *value;
     yyjson_obj_foreach(reference, index, count, key, value) {
@@ -73,7 +78,7 @@ static bool covers_value(const uint32_t *ranges, yyjson_val *value) {
 int main(void) {
     char root[BONGO_CAT_PATH_CAP];
     snprintf(root, sizeof(root), "%s/resources/assets/locales", BONGO_CAT_NATIVE_SOURCE_DIR);
-    yyjson_doc *reference = load(root, "en-US");
+    yyjson_doc *reference = load(root, "zh-CN");
     if (!reference) return 1;
     const uint32_t expected[] = {'A', 0x4e2d, 0x8a2d, 0x00ea, 0x1ebf};
     for (int language = 0; language <= BONGO_CAT_LANG_VI_VN; ++language) {

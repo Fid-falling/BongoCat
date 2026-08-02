@@ -160,7 +160,8 @@
         "expression": "表情",
         "wheelSizeHint": "滾輪調整大小",
         "wheelOpacityHint": "Ctrl+滾輪調整透明度",
-        "quitApp": "退出應用程式"
+        "quitApp": "退出應用程式",
+        "model": "模型"
       }
     }
   },
@@ -173,6 +174,7 @@
   },
   "native": {
     "modelLoadFailed": "\u6a21\u578b\u7121\u6cd5\u986f\u793a",
+    "noBehaviors": "暫無可用項目",
     "support": {
       "title": "支援開發團隊",
       "heroText": "感謝你的支持。每一次使用與分享，都讓 BongoCat 持續成長。",
@@ -186,6 +188,13 @@
       "community": "社群",
       "qqGroup": "QQ 群",
       "coffee": "請開發團隊喝杯咖啡？"
+    },
+    "shortcut": {
+      "toggleCat": "顯示/隱藏",
+      "preferences": "設定",
+      "mirror": "鏡像",
+      "passThrough": "滑鼠穿透",
+      "alwaysOnTop": "置頂"
     },
     "hoverDelay": "懸停隱藏延遲（秒）",
     "modeStandard": "標準模式",

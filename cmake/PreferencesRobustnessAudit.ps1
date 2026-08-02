@@ -129,8 +129,15 @@ function Wheel-Down([IntPtr]$Window, [double]$X, [double]$Y) {
 }
 
 function Save-Window([IntPtr]$Window, [string]$Name) {
-    $rect = [BongoCatRobustNative+Rect]::new()
-    [void][BongoCatRobustNative]::GetClientRect($Window, [ref]$rect)
+    $deadline = [DateTime]::UtcNow.AddSeconds(2)
+    do {
+        $rect = [BongoCatRobustNative+Rect]::new()
+        $valid = [BongoCatRobustNative]::GetClientRect($Window, [ref]$rect) -and
+            $rect.R -gt 0 -and $rect.B -gt 0
+        if ($valid) { break }
+        Start-Sleep -Milliseconds 50
+    } while ([DateTime]::UtcNow -lt $deadline)
+    if (-not $valid) { throw "Preferences client area was unavailable for $Name" }
     $bitmap = [Drawing.Bitmap]::new($rect.R, $rect.B)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
     $dc = $graphics.GetHdc()

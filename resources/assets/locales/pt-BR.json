@@ -160,7 +160,8 @@
         "expression": "Expressões",
         "wheelSizeHint": "Roda: tamanho",
         "wheelOpacityHint": "Ctrl+roda: opacidade",
-        "quitApp": "Sair"
+        "quitApp": "Sair",
+        "model": "Modelo"
       }
     }
   },
@@ -173,6 +174,7 @@
   },
   "native": {
     "modelLoadFailed": "N\u00e3o foi poss\u00edvel exibir este modelo",
+    "noBehaviors": "Nenhum item",
     "support": {
       "title": "Apoiar a equipe de desenvolvimento",
       "heroText": "Obrigado pelo apoio. Cada uso e compartilhamento ajuda o BongoCat a continuar crescendo.",
@@ -186,6 +188,13 @@
       "community": "Comunidade",
       "qqGroup": "Grupo QQ",
       "coffee": "Pagar um café para a equipe de desenvolvimento?"
+    },
+    "shortcut": {
+      "toggleCat": "Mostrar/Ocultar",
+      "preferences": "Preferências",
+      "mirror": "Espelho",
+      "passThrough": "Clique através",
+      "alwaysOnTop": "No topo"
     },
     "hoverDelay": "Atraso ao ocultar ao passar o mouse (segundos)",
     "modeStandard": "Padrão",

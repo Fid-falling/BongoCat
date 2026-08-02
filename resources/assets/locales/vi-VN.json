@@ -160,7 +160,8 @@
         "expression": "Biểu cảm",
         "wheelSizeHint": "Cuộn: kích thước",
         "wheelOpacityHint": "Ctrl+cuộn: độ mờ",
-        "quitApp": "Thoát"
+        "quitApp": "Thoát",
+        "model": "Mô hình"
       }
     }
   },
@@ -173,6 +174,7 @@
   },
   "native": {
     "modelLoadFailed": "Kh\u00f4ng th\u1ec3 hi\u1ec3n th\u1ecb m\u00f4 h\u00ecnh n\u00e0y",
+    "noBehaviors": "Không có mục nào",
     "support": {
       "title": "Ủng hộ đội ngũ phát triển",
       "heroText": "Cảm ơn sự ủng hộ của bạn. Mỗi lần sử dụng và chia sẻ đều giúp BongoCat tiếp tục phát triển.",
@@ -186,6 +188,13 @@
       "community": "Cộng đồng",
       "qqGroup": "Nhóm QQ",
       "coffee": "Mời đội ngũ phát triển một ly cà phê?"
+    },
+    "shortcut": {
+      "toggleCat": "Hiện/Ẩn",
+      "preferences": "Tùy chỉnh",
+      "mirror": "Gương",
+      "passThrough": "Click xuyên",
+      "alwaysOnTop": "Trên cùng"
     },
     "hoverDelay": "Độ trễ ẩn khi rê chuột (giây)",
     "modeStandard": "Tiêu chuẩn",

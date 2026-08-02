@@ -122,7 +122,7 @@ add_library(bongo_cat_runtime STATIC
   src/ui/preferences_behavior_dialog.c
   src/ui/preferences_notice.c
   src/ui/preferences_model.c src/ui/preferences_model_cover.c
-  src/ui/preferences_pages.c
+  src/ui/preferences_pages.c src/ui/preferences_theme.c
   src/ui/preferences_shortcuts.c src/ui/preferences_shortcut_clear.c src/ui/preferences_smoke.c
   src/ui/preferences_widgets.c src/ui/preferences_controls.c src/ui/preferences_combo.c src/ui/preferences_toggle.c
   ${BONGO_CAT_LIVE2D_SOURCES})

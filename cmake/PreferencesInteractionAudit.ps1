@@ -224,6 +224,8 @@ try {
         } catch {}
     }
     $language = Save-Window $window "05c-language-live.png"
+    Invoke-PhysicalClick $window 826 430
+    $theme = Save-Window $window "05d-theme-dark.png"
     Invoke-PhysicalClick $window 82 418
     $shortcuts = Save-Window $window "06-shortcuts.png"
     Invoke-PhysicalClick $window 756 141
@@ -244,6 +246,7 @@ try {
         PageDifference = Measure-Difference $scrolled $general
         ComboDifference = Measure-Difference $general $combo
         LanguageDifference = Measure-Difference $general $language
+        ThemeDifference = Measure-Difference $language $theme
         EditDifference = Measure-Difference $shortcuts $edited
         DebouncePersisted = $debouncePersisted
         PreferencesFormatValid = $config.format -eq "bongo-cat/preferences" -and
@@ -251,6 +254,7 @@ try {
         SessionFormatValid = $session.format -eq "bongo-cat/session" -and
             $session.version -eq 2
         LanguagePersisted = $config.app.language -eq "zh-TW"
+        ThemePersisted = $config.app.theme -eq "dark"
         TogglePersisted = $config.window.passThrough -eq $true
         ScreenPolicyPersisted = $config.window.keepInScreen -eq $true
         StepperPersisted = $session.window.scale -eq 101
@@ -260,7 +264,8 @@ try {
     [pscustomobject]$result | Format-List
     $passed = $result.ToggleDifference -gt 0.0001 -and $result.ScrollDifference -gt 0.02 -and
         $result.PageDifference -gt 0.02 -and $result.ComboDifference -gt 0.002 -and
-        $result.EditDifference -gt 0.0001 -and $result.DebouncePersisted -and
+        $result.ThemeDifference -gt 0.02 -and $result.EditDifference -gt 0.0001 -and
+        $result.DebouncePersisted -and $result.ThemePersisted -and
         $result.PreferencesFormatValid -and $result.SessionFormatValid -and
         $result.LanguagePersisted -and $result.TogglePersisted -and
         $result.ScreenPolicyPersisted -and

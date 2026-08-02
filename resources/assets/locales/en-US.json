@@ -160,7 +160,8 @@
         "expression": "Expressions",
         "wheelSizeHint": "Wheel: resize",
         "wheelOpacityHint": "Ctrl+Wheel: opacity",
-        "quitApp": "Quit App"
+        "quitApp": "Quit App",
+        "model": "Model"
       }
     }
   },
@@ -173,6 +174,7 @@
   },
   "native": {
     "modelLoadFailed": "Unable to display this model",
+    "noBehaviors": "No items",
     "support": {
       "title": "Support the Dev Team",
       "heroText": "Thank you for your support. Every use and share helps BongoCat continue to grow.",
@@ -186,6 +188,13 @@
       "community": "Community",
       "qqGroup": "QQ Group",
       "coffee": "Buy the development team a coffee?"
+    },
+    "shortcut": {
+      "toggleCat": "Show/Hide",
+      "preferences": "Preferences",
+      "mirror": "Mirror",
+      "passThrough": "Pass Through",
+      "alwaysOnTop": "Always on Top"
     },
     "hoverDelay": "Hover delay (seconds)",
     "modeStandard": "Standard",

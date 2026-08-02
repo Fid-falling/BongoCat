@@ -181,20 +181,19 @@ void bongo_cat_preferences_page_shortcuts(BongoCatPreferences *value,
     BongoCatShortcutOptions *keys = &value->app->config.shortcuts;
     bongo_cat_pref_section(context, tr(value,
         "pages.preference.shortcut.title", "Shortcuts"));
-    bool zh = value->app->config.app.language == BONGO_CAT_LANG_ZH_CN;
-    shortcut_row(value, context, "shortcut-cat", zh ? "native.shortcut.toggleCat" :
-        "pages.preference.shortcut.labels.toggleCat", "Toggle Cat",
+    shortcut_row(value, context, "shortcut-cat", "native.shortcut.toggleCat",
+        "Show/Hide",
         keys->visible_cat, sizeof(keys->visible_cat));
-    shortcut_row(value, context, "shortcut-pref", zh ? "native.shortcut.preferences" :
-        "pages.preference.shortcut.labels.togglePreferences", "Toggle Preferences",
+    shortcut_row(value, context, "shortcut-pref", "native.shortcut.preferences",
+        "Preferences",
         keys->visible_preferences, sizeof(keys->visible_preferences));
-    shortcut_row(value, context, "shortcut-mirror", zh ? "native.shortcut.mirror" :
-        "pages.preference.shortcut.labels.mirrorMode", "Mirror Mode",
+    shortcut_row(value, context, "shortcut-mirror", "native.shortcut.mirror",
+        "Mirror",
         keys->mirror, sizeof(keys->mirror));
-    shortcut_row(value, context, "shortcut-pass", zh ? "native.shortcut.passThrough" :
-        "pages.preference.shortcut.labels.passThrough", "Pass Through",
+    shortcut_row(value, context, "shortcut-pass", "native.shortcut.passThrough",
+        "Pass Through",
         keys->pass_through, sizeof(keys->pass_through));
-    shortcut_row(value, context, "shortcut-top", zh ? "native.shortcut.alwaysOnTop" :
-        "pages.preference.shortcut.labels.alwaysOnTop", "Always on Top",
+    shortcut_row(value, context, "shortcut-top", "native.shortcut.alwaysOnTop",
+        "Always on Top",
         keys->always_on_top, sizeof(keys->always_on_top));
 }
