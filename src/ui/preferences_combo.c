@@ -45,7 +45,7 @@ static void trigger(struct nk_context *context, struct nk_command_buffer *canvas
 static struct nk_rect transform_item(struct nk_rect item,
     struct nk_rect popup, struct nk_rect menu, float scale) {
     item.x = menu.x + (item.x - popup.x) * scale;
-    item.y = menu.y + (item.y - popup.y - 8.0f) * scale;
+    item.y = menu.y + (item.y - popup.y - 4.0f) * scale;
     item.w *= scale; item.h *= scale;
     return item;
 }
@@ -94,7 +94,8 @@ int bongo_cat_pref_control_combo(struct nk_context *context, const char *id,
     selected = NK_CLAMP(0, selected, count - 1);
     BongoCatUIPalette p = bongo_cat_ui_palette(bongo_cat_ui_dark(context));
     struct nk_rect widget = nk_widget_bounds(context);
-    struct nk_rect bounds = nk_rect(widget.x + NK_MAX(0.0f, widget.w - 156.0f),
+    struct nk_rect bounds = nk_rect(widget.x + NK_MAX(0.0f,
+        widget.w - 156.0f - 6.0f),
         widget.y - 1, NK_MIN(156.0f, widget.w), 38);
     struct nk_command_buffer *parent = nk_window_get_canvas(context);
     bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
