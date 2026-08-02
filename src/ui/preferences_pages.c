@@ -133,5 +133,5 @@ void bongo_cat_preferences_page_general(BongoCatApp *app, struct nk_context *con
         tr(app, "pages.preference.general.options.darkMode", "Dark")};
     options->theme = (BongoCatTheme)bongo_cat_pref_theme(context,
         "theme", tr(app, "pages.preference.general.labels.themeMode",
-        "Theme Mode"), themes, options->theme);
+        "Theme"), themes, options->theme);
 }

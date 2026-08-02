@@ -45,7 +45,7 @@
           "showTaskbarIcon": "显示任务栏图标",
           "showTrayIcon": "显示托盘图标",
           "appearanceSettings": "外观设置",
-          "themeMode": "主题模式",
+          "themeMode": "主题",
           "language": "语言",
           "permissionsSettings": "权限设置",
           "inputMonitoringPermission": "输入监控权限",

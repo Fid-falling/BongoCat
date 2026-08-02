@@ -75,19 +75,21 @@ static void draw_sun(struct nk_command_buffer *canvas,
 }
 
 static void draw_moon(struct nk_command_buffer *canvas,
-    struct nk_rect bounds, struct nk_color color) {
-    float x = bounds.x + bounds.w * .5f, y = bounds.y + bounds.h * .5f;
-    nk_stroke_curve(canvas, x + 2, y - 8, x - 7, y - 7,
-        x - 7, y + 7, x + 2, y + 8, 1.8f, color);
-    nk_stroke_curve(canvas, x + 2, y + 8, x - 1, y + 5,
-        x - 1, y - 5, x + 2, y - 8, 1.8f, color);
+    struct nk_rect bounds, struct nk_color color,
+    struct nk_color background) {
+    float x = bounds.x + bounds.w * .5f;
+    float y = bounds.y + bounds.h * .5f;
+    nk_fill_circle(canvas, nk_rect(x - 7.5f, y - 7.5f, 15, 15), color);
+    nk_fill_circle(canvas, nk_rect(x - 3.4f, y - 8.3f, 12.4f, 12.4f),
+        background);
 }
 
 static void draw_icon(struct nk_command_buffer *canvas, int icon,
-    struct nk_rect bounds, struct nk_color color) {
+    struct nk_rect bounds, struct nk_color color,
+    struct nk_color background) {
     if (icon == 0) draw_computer(canvas, bounds, color);
     else if (icon == 1) draw_sun(canvas, bounds, color);
-    else draw_moon(canvas, bounds, color);
+    else draw_moon(canvas, bounds, color, background);
 }
 
 static int capsule(struct nk_context *context, const char *id,
@@ -136,14 +138,20 @@ static int capsule(struct nk_context *context, const char *id,
         snprintf(animation_id, sizeof(animation_id), "theme-hover-%s-%d", id, i);
         float amount = bongo_cat_ui_animate_eased(context, animation_id,
             hovered == i ? 1.0f : 0.0f, 160, BONGO_CAT_UI_EASE_STANDARD);
-        float active_weight = 1.0f - NK_CLAMP(0.0f, fabsf(position - i), 1.0f);
+        float distance = fabsf(position - i);
+        float active_weight = 1.0f - NK_CLAMP(0.0f,
+            (distance - .28f) / .20f, 1.0f);
         struct nk_color base = bongo_cat_ui_color_mix(p.muted, p.accent, amount);
         struct nk_color color = bongo_cat_ui_color_mix(base,
             nk_rgb(255, 255, 255), active_weight);
+        struct nk_color segment_background = bongo_cat_ui_color_mix(
+            p.field, p.selection, amount);
+        segment_background = bongo_cat_ui_color_mix(segment_background,
+            p.accent, active_weight);
         float size = 20.0f + amount;
         struct nk_rect icon = nk_rect(bounds.x + segment * (i + .5f) - size * .5f,
             bounds.y + (bounds.h - size) * .5f, size, size);
-        draw_icon(canvas, i, icon, color);
+        draw_icon(canvas, i, icon, color, segment_background);
     }
     if (hover) {
         bongo_cat_ui_cursor_hover_rect(context, bounds,
