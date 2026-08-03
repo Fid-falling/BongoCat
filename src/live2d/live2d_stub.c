@@ -59,3 +59,10 @@ bool bongo_cat_live2d_start_motion(BongoCatLive2D *value, const char *group, int
 bool bongo_cat_live2d_set_expression(BongoCatLive2D *value, int index) {
     (void)value; (void)index; return false;
 }
+int bongo_cat_live2d_expression(const BongoCatLive2D *value) {
+    (void)value; return -1;
+}
+bool bongo_cat_live2d_visual_state(const BongoCatLive2D *value,
+    BongoCatLive2DVisualState *state) {
+    (void)value; (void)state; return false;
+}

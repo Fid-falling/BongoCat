@@ -94,6 +94,8 @@ static bool reverse_pointer(BongoCatApp *app) {
 static bool apply(BongoCatApp *app, const char *scenario) {
     if (strncmp(scenario, "switch:", 7) == 0)
         return bongo_cat_app_select_model(app, scenario + 7);
+    if (strcmp(scenario, "visual-consistency") == 0)
+        return bongo_cat_live2d_visual_audit_run(app);
     if (strcmp(scenario, "mirror") == 0) app->config.model.mirror = true;
     else if (strcmp(scenario, "mouse-move") == 0) return pointer(app, false);
     else if (strcmp(scenario, "mouse-move-mirror") == 0) return pointer(app, true);
@@ -166,11 +168,13 @@ static bool assertions(BongoCatApp *app, const char *scenario, bool operation) {
     if (strncmp(scenario, "switch:", 7) == 0)
         return strcmp(app->config.current_model, scenario + 7) == 0;
     if (strcmp(scenario, "idle") == 0 || strcmp(scenario, "mirror") == 0 ||
+        strcmp(scenario, "visual-consistency") == 0 ||
         strcmp(scenario, "key-left-release") == 0 ||
         strcmp(scenario, "keys-both-release") == 0 ||
         strcmp(scenario, "key-stress") == 0 ||
-        strncmp(scenario, "motion-", 7) == 0 ||
-        strncmp(scenario, "expression-", 11) == 0) return true;
+        strncmp(scenario, "motion-", 7) == 0) return true;
+    if (strncmp(scenario, "expression-", 11) == 0)
+        return bongo_cat_live2d_expression(app->live2d) == atoi(scenario + 11);
     if (strcmp(scenario, "key-left") == 0 || strcmp(scenario, "key-tab-left") == 0)
         return active(app, "CatParamLeftHandDown");
     if (strcmp(scenario, "key-right") == 0)

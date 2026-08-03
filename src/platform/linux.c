@@ -86,8 +86,9 @@ void bongo_cat_platform_shutdown(BongoCatPlatform *platform) {
     bongo_cat_linux_x11_stop(platform);
     if (active_platform == platform) active_platform = NULL;
 }
-void bongo_cat_platform_set_click_through(BongoCatPlatform *platform, bool enabled) {
-    bongo_cat_linux_x11_click_through(platform, enabled);
+void bongo_cat_platform_set_click_through(BongoCatPlatform *platform,
+    bool forced, bool pointer_transparent) {
+    bongo_cat_linux_x11_click_through(platform, forced || pointer_transparent);
 }
 bool bongo_cat_platform_set_opacity(BongoCatPlatform *platform, float opacity) {
     if (!platform || !platform->window) return false;

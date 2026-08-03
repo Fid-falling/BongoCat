@@ -218,8 +218,6 @@ try {
     [void](Save-Window $window "behavior-modal-close-hover.png")
     Click-At $window 82 418
     $behaviorModalBlocksSidebar = Page-Is 2
-    [BongoCatRobustNative]::keybd_event(0x1b, 0, 0, [UIntPtr]::Zero)
-    [BongoCatRobustNative]::keybd_event(0x1b, 0, 2, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 350
     Click-At $window 82 418
     Click-At $window 756 215

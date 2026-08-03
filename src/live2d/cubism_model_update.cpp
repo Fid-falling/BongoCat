@@ -88,6 +88,11 @@ void NativeModel::draw() {
         projection.Scale((mirror_ ? -1.0f : 1.0f) * (float)height_ / (float)width_, 1.0f);
     }
     projection.MultiplyByMatrix(_modelMatrix);
+    visual_state_ = BongoCatLive2DVisualState{};
+    visual_state_.fit_scale = 1.0f;
+    fit_projection(&projection);
+    record_visible_state(projection);
+    visual_state_ready_ = true;
     auto *renderer = GetRenderer<Csm::Rendering::CubismRenderer_OpenGLES2>();
     renderer->SetMvpMatrix(&projection);
     renderer->DrawModel();
@@ -179,10 +184,19 @@ bool NativeModel::toggle_lock_motion(const std::string &key,
 }
 
 bool NativeModel::set_expression(int index) {
+    if (index == -1) {
+        _expressionManager->StopAllMotions();
+        expression_index_ = -1;
+        active_bounds_ = ModelBounds{};
+        return true;
+    }
     if (index < 0 || (size_t)index >= expression_names_.size()) return false;
     auto found = expressions_.find(expression_names_[(size_t)index]);
     if (found == expressions_.end()) return false;
-    _expressionManager->StartMotion(found->second, false);
+    if (_expressionManager->StartMotion(found->second, false) ==
+        Csm::InvalidMotionQueueEntryHandleValue) return false;
+    expression_index_ = index;
+    active_bounds_ = expression_bounds_[(size_t)index];
     return true;
 }
 

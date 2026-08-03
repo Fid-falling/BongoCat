@@ -31,10 +31,11 @@ static int preview_group(const BongoCatApp *app, BongoCatMenuAction action) {
 void bongo_cat_window_menu_preview_init(BongoCatWindowMenuPreview *state,
     BongoCatApp *app) {
     if (!state) return;
-    *state = (BongoCatWindowMenuPreview){app, "",
-        app ? app->config.window.scale_percent : 100.0f,
-        app ? app->config.window.opacity_percent : 100.0f,
-        BONGO_CAT_MENU_NONE, SDL_GetTicksNS()};
+    *state = (BongoCatWindowMenuPreview){.app = app,
+        .scale = app ? app->config.window.scale_percent : 100.0f,
+        .opacity = app ? app->config.window.opacity_percent : 100.0f,
+        .expression = app ? bongo_cat_live2d_expression(app->live2d) : -1,
+        .last = BONGO_CAT_MENU_NONE, .last_tick_ns = SDL_GetTicksNS()};
     if (app) snprintf(state->model, sizeof(state->model), "%.*s",
         (int)sizeof(state->model) - 1, app->config.current_model);
 }
@@ -96,6 +97,8 @@ void bongo_cat_window_menu_restore(void *userdata, BongoCatMenuAction selected) 
         selected <= BONGO_CAT_MENU_SCALE_200;
     bool keep_opacity = selected >= BONGO_CAT_MENU_OPACITY_10 &&
         selected <= BONGO_CAT_MENU_OPACITY_100;
+    bool keep_expression = selected >= BONGO_CAT_MENU_EXPRESSION_FIRST &&
+        selected < BONGO_CAT_MENU_EXPRESSION_FIRST + BONGO_CAT_BEHAVIOR_CAP;
     if (!keep_model && strcmp(app->config.current_model, state->model) != 0) {
         bongo_cat_app_select_model(app, state->model);
         changed = true;
@@ -110,6 +113,12 @@ void bongo_cat_window_menu_restore(void *userdata, BongoCatMenuAction selected) 
         app->config.window.opacity_percent = state->opacity;
         bongo_cat_platform_set_opacity(&app->platform,
             state->opacity / 100.0f);
+        changed = true;
+    }
+    if (!keep_expression &&
+        bongo_cat_live2d_expression(app->live2d) != state->expression &&
+        bongo_cat_live2d_set_expression(app->live2d, state->expression)) {
+        bongo_cat_live2d_update(app->live2d, 1.0f / 60.0f);
         changed = true;
     }
     if (changed) bongo_cat_app_render_now(app);

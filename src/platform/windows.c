@@ -263,8 +263,8 @@ BongoCatMenuAction bongo_cat_platform_context_menu(BongoCatPlatform *platform,
         menu_text(motions, MF_STRING, BONGO_CAT_MENU_MOTION_FIRST + i,
             labels->motion_names[i]);
     for (size_t i = 0; i < labels->expression_count; ++i)
-        menu_text(expressions, MF_STRING, BONGO_CAT_MENU_EXPRESSION_FIRST + i,
-            labels->expression_names[i]);
+        menu_text(expressions, MF_STRING | (i == labels->current_expression ? MF_CHECKED : 0),
+            BONGO_CAT_MENU_EXPRESSION_FIRST + i, labels->expression_names[i]);
     for (size_t i = 0; i < labels->model_count; ++i)
         menu_text(models, MF_STRING | (i == labels->current_model ? MF_CHECKED : 0),
             BONGO_CAT_MENU_MODEL_FIRST + i, labels->model_names[i]);

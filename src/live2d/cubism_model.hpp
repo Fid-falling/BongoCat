@@ -1,11 +1,13 @@
 #ifndef BONGO_CAT_CUBISM_MODEL_HPP
 #define BONGO_CAT_CUBISM_MODEL_HPP
 
-#include "bongo_cat/common.h"
+#include "bongo_cat/model.h"
+#include "bongo_cat/image.h"
 
 #include <Model/CubismUserModel.hpp>
 #include <CubismModelSettingJson.hpp>
 #include <Motion/ACubismMotion.hpp>
+#include <Math/CubismMatrix44.hpp>
 #include <Rendering/OpenGL/CubismRenderer_OpenGLES2.hpp>
 #include <SDL3/SDL_opengl.h>
 #include <map>
@@ -35,9 +37,18 @@ public:
     bool parameter(const char *id, float *minimum, float *maximum, float *value);
     bool start_motion(const char *group, int index);
     bool set_expression(int index);
+    int expression() const { return expression_index_; }
+    bool visual_state(BongoCatLive2DVisualState *state) const;
 
 private:
     using MotionMap = std::map<std::string, Csm::ACubismMotion *>;
+    struct ModelBounds {
+        float min_x = 0.0f;
+        float min_y = 0.0f;
+        float max_x = 0.0f;
+        float max_y = 0.0f;
+        bool valid = false;
+    };
     struct LockMotion {
         std::vector<int> parameters;
         std::vector<float> initial_values;
@@ -48,6 +59,10 @@ private:
     void load_effects();
     void load_motions();
     void start_idle_motion();
+    ModelBounds capture_visible_bounds() const;
+    void prepare_expression_bounds();
+    void fit_projection(Csm::CubismMatrix44 *projection);
+    void record_visible_state(Csm::CubismMatrix44 &projection);
     void load_lock_motion(const std::string &key,
         const std::vector<unsigned char> &bytes);
     bool toggle_lock_motion(const std::string &key, Csm::ACubismMotion *motion);
@@ -64,6 +79,7 @@ private:
     MotionMap expressions_;
     std::vector<std::string> expression_names_;
     std::vector<GLuint> textures_;
+    std::vector<BongoCatImageAlphaMask> texture_alpha_;
     std::vector<float> parameter_snapshot_;
     std::vector<float> part_snapshot_;
     std::vector<float> pending_parameter_values_;
@@ -75,6 +91,11 @@ private:
     int height_ = 354;
     int renderer_width_ = 0;
     int renderer_height_ = 0;
+    int expression_index_ = -1;
+    std::vector<ModelBounds> expression_bounds_;
+    ModelBounds active_bounds_;
+    BongoCatLive2DVisualState visual_state_{};
+    bool visual_state_ready_ = false;
     bool motion_updated_ = false;
     bool mirror_ = false;
     bool direct_textures_ = false;

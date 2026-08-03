@@ -84,6 +84,7 @@ typedef struct BongoCatApp {
     bool pointer_transparent;
     bool click_through_valid;
     bool click_through_applied;
+    bool click_through_forced_applied;
     bool left_mouse_down;
     bool right_mouse_down;
     bool window_minimized;

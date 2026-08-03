@@ -45,9 +45,9 @@ if(EXISTS "${CUBISM_CORE_HEADER}")
   else()
     include(cmake/Cubism.cmake)
     set(BONGO_CAT_LIVE2D_SOURCES
-      src/live2d/cubism_bridge.cpp
-      src/live2d/cubism_model_load.cpp
-      src/live2d/cubism_model_update.cpp src/live2d/cubism_model_validate.cpp)
+      src/live2d/cubism_bridge.cpp src/live2d/cubism_model_load.cpp
+      src/live2d/cubism_model_update.cpp src/live2d/cubism_model_bounds.cpp
+      src/live2d/cubism_model_validate.cpp)
     set(BONGO_CAT_CUBISM_ENABLED ON)
   endif()
 elseif(BONGO_CAT_REQUIRE_CUBISM)
@@ -79,7 +79,7 @@ endif()
 add_library(bongo_cat_runtime STATIC
   src/core/app_state.c
   src/media/audio.c
-  src/media/image.c src/media/image_resize.c
+  src/media/image.c src/media/image_resize.c src/media/image_alpha.c
   src/media/stb_image_impl.c
   src/platform/memory.c src/render/gl_api.c
   src/render/overlay.c
@@ -87,7 +87,7 @@ add_library(bongo_cat_runtime STATIC
   src/runtime/assets.c src/runtime/startup.c
   src/runtime/frame_audit.c src/runtime/frame_clock.c
   src/runtime/gamepad.c
-  src/runtime/live2d_audit.c
+  src/runtime/live2d_audit.c src/runtime/live2d_visual_audit.c
   src/runtime/mouse.c
   src/runtime/model_files.c src/runtime/model_update.c
   src/runtime/model_storage.c

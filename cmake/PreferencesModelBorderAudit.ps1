@@ -22,6 +22,7 @@ public static class BongoCatModelBorderNative {
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc proc, IntPtr data);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr handle);
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr handle, out uint process);
+    [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr handle, int command);
     [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr handle, out Rect rect);
     [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr handle, ref Point point);
     [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr handle, IntPtr after, int x, int y, int width, int height, uint flags);
@@ -62,6 +63,20 @@ function Wait-Preferences([int]$ProcessId) {
         exit 77
     }
     throw "Preferences window was not created: handle=[$evidence] startup=[$startup]"
+}
+
+function Hide-OtherWindows([int]$ProcessId, [IntPtr]$Preferences) {
+    [BongoCatModelBorderNative]::EnumWindows({
+        param($handle, $unused)
+        [uint32]$owner = 0
+        [void][BongoCatModelBorderNative]::GetWindowThreadProcessId(
+            $handle, [ref]$owner)
+        if ($owner -eq $ProcessId -and $handle -ne $Preferences -and
+            [BongoCatModelBorderNative]::IsWindowVisible($handle)) {
+            [void][BongoCatModelBorderNative]::ShowWindow($handle, 0)
+        }
+        return $true
+    }, [IntPtr]::Zero) | Out-Null
 }
 
 function Move-Client([IntPtr]$Window, [int]$X, [int]$Y) {
@@ -204,6 +219,7 @@ try {
         [IntPtr](-1), 40, 40, [int](900 * $script:UiScale),
         [int](680 * $script:UiScale), 0x0040)
     [void][BongoCatModelBorderNative]::SetForegroundWindow($window)
+    Hide-OtherWindows $process.Id $window
     $frame = Join-Path $data "ui-frame.txt"
     Select-ModelPage $window $frame
     Move-Client $window 100 500

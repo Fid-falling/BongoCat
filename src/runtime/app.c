@@ -109,8 +109,8 @@ static bool initialize(BongoCatApp *app, int argc, char **argv, BongoCatError *e
     if (!app->tray && !app->config.window.visible) {
         bongo_cat_window_set_visible(app, true);
     }
-    if (app->smoke_context_menu) bongo_cat_window_show_context_menu(app);
     bongo_cat_live2d_audit_run(app);
+    if (app->smoke_context_menu) bongo_cat_window_show_context_menu(app);
     if (app->smoke_shortcuts && !bongo_cat_app_shortcuts_self_test(app)) {
         BongoCatError shortcut_error = {0};
         bongo_cat_error_set(&shortcut_error, BONGO_CAT_ERROR_PLATFORM, "Shortcut action self-test failed");
@@ -206,6 +206,7 @@ static void render(BongoCatApp *app) {
     bongo_cat_overlay_draw_keys(app->overlay, app->config.model.mirror);
     bongo_cat_overlay_draw_effect(app->overlay, app->config.model.mirror);
     bongo_cat_frame_audit(app, width, height);
+    bongo_cat_window_capture_pointer_hit(app);
     if (!bongo_cat_platform_present(&app->platform, width, height)) {
         app->dirty = true;
         app->render_retry_ns = now + 1000000000ull;

@@ -65,14 +65,15 @@ static void add_scale_menu(NSMenu *menu, BongoCatMenuTarget *target,
 }
 
 static void add_named_menu(NSMenu *menu, BongoCatMenuTarget *target,
-    const char *label, const char *const *names, size_t count, NSInteger first) {
+    const char *label, const char *const *names, size_t count, NSInteger first,
+    size_t selected) {
     if (!count) return;
     NSMenuItem *root = [[NSMenuItem alloc] initWithTitle:text(label)
         action:nil keyEquivalent:@""];
     NSMenu *submenu = [[NSMenu alloc] initWithTitle:text(label)];
     [submenu setDelegate:target];
     for (size_t i = 0; i < count; ++i)
-        add_item(submenu, target, names[i], first + (NSInteger)i, false);
+        add_item(submenu, target, names[i], first + (NSInteger)i, i == selected);
     [root setSubmenu:submenu]; [menu addItem:root];
     [submenu release]; [root release];
 }
@@ -94,9 +95,10 @@ BongoCatMenuAction bongo_cat_macos_context_menu(BongoCatPlatform *platform,
     add_scale_menu(menu, target, labels->window_size, labels->wheel_size_hint, false);
     add_scale_menu(menu, target, labels->opacity, labels->wheel_opacity_hint, true);
     add_named_menu(menu, target, labels->motion, labels->motion_names,
-        labels->motion_count, BONGO_CAT_MENU_MOTION_FIRST);
+        labels->motion_count, BONGO_CAT_MENU_MOTION_FIRST, (size_t)-1);
     add_named_menu(menu, target, labels->expression, labels->expression_names,
-        labels->expression_count, BONGO_CAT_MENU_EXPRESSION_FIRST);
+        labels->expression_count, BONGO_CAT_MENU_EXPRESSION_FIRST,
+        labels->current_expression);
     NSMenuItem *modelRoot = [[NSMenuItem alloc] initWithTitle:text(labels->model)
         action:nil keyEquivalent:@""];
     NSMenu *models = [[NSMenu alloc] initWithTitle:text(labels->model)];

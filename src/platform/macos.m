@@ -109,8 +109,9 @@ void bongo_cat_platform_shutdown(BongoCatPlatform *platform) {
     bongo_cat_macos_input_stop(platform);
     if (active_platform == platform) active_platform = NULL;
 }
-void bongo_cat_platform_set_click_through(BongoCatPlatform *platform, bool enabled) {
-    [native_window(platform) setIgnoresMouseEvents:enabled];
+void bongo_cat_platform_set_click_through(BongoCatPlatform *platform,
+    bool forced, bool pointer_transparent) {
+    [native_window(platform) setIgnoresMouseEvents:forced || pointer_transparent];
 }
 bool bongo_cat_platform_set_opacity(BongoCatPlatform *platform, float opacity) {
     if (!platform || !platform->window) return false;

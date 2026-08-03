@@ -56,6 +56,11 @@ BongoCatResult bongo_cat_behaviors_load(BongoCatBehaviorCatalog *catalog,
 
 typedef struct BongoCatLive2D BongoCatLive2D;
 typedef struct BongoCatParameterRange { float minimum, maximum, value; } BongoCatParameterRange;
+typedef struct BongoCatLive2DVisualState {
+    float fit_scale, fit_translate_x, fit_translate_y;
+    float visible_min_x, visible_min_y, visible_max_x, visible_max_y;
+    bool fitted, visible;
+} BongoCatLive2DVisualState;
 
 BongoCatLive2D *bongo_cat_live2d_create(const char *asset_root, BongoCatError *error);
 void bongo_cat_live2d_destroy(BongoCatLive2D *live2d);
@@ -73,6 +78,9 @@ bool bongo_cat_live2d_parameter(BongoCatLive2D *live2d, const char *id,
     BongoCatParameterRange *range);
 bool bongo_cat_live2d_start_motion(BongoCatLive2D *live2d, const char *group, int index);
 bool bongo_cat_live2d_set_expression(BongoCatLive2D *live2d, int index);
+int bongo_cat_live2d_expression(const BongoCatLive2D *live2d);
+bool bongo_cat_live2d_visual_state(const BongoCatLive2D *live2d,
+    BongoCatLive2DVisualState *state);
 
 #ifdef __cplusplus
 }

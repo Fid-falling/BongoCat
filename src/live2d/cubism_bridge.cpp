@@ -278,3 +278,10 @@ extern "C" bool bongo_cat_live2d_start_motion(BongoCatLive2D *runtime, const cha
 extern "C" bool bongo_cat_live2d_set_expression(BongoCatLive2D *runtime, int index) {
     return runtime && runtime->model && runtime->model->set_expression(index);
 }
+extern "C" int bongo_cat_live2d_expression(const BongoCatLive2D *runtime) {
+    return runtime && runtime->model ? runtime->model->expression() : -1;
+}
+extern "C" bool bongo_cat_live2d_visual_state(const BongoCatLive2D *runtime,
+    BongoCatLive2DVisualState *state) {
+    return runtime && runtime->model && runtime->model->visual_state(state);
+}

@@ -221,9 +221,8 @@ unsigned int bongo_cat_image_texture_thumbnail(const char *path, int max_width,
     bongo_cat_image_free(&image);
     return texture;
 }
-
 unsigned int bongo_cat_image_texture_model(const char *path, bool direct_decode,
-    int *width, int *height, BongoCatError *error) {
+    int *width, int *height, BongoCatImageAlphaMask *alpha, BongoCatError *error) {
     BongoCatImage image;
 #ifdef _WIN32
     /* Preset atlases are verified byte-identical in WIC and stb. Keep WIC for
@@ -237,6 +236,7 @@ unsigned int bongo_cat_image_texture_model(const char *path, bool direct_decode,
     (void)direct_decode;
     if (bongo_cat_image_load(path, &image, error) != BONGO_CAT_OK) return 0;
 #endif
+    bongo_cat_image_make_alpha_mask(&image, alpha);
     bongo_cat_gl_clear_errors();
     GLuint texture = upload(&image, 0, true);
     GLenum upload_error = glGetError();

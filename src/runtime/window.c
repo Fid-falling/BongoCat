@@ -114,9 +114,9 @@ static void context_menu(BongoCatApp *app) {
     }
     const char *motion_names[BONGO_CAT_BEHAVIOR_CAP];
     const char *expression_names[BONGO_CAT_BEHAVIOR_CAP];
-    size_t motion_count, expression_count;
+    size_t motion_count, expression_count, current_expression;
     bongo_cat_window_behavior_labels(app, motion_names, &motion_count,
-        expression_names, &expression_count);
+        expression_names, &expression_count, &current_expression);
     bool dark_theme = app->config.app.theme == BONGO_CAT_THEME_DARK ||
         (app->config.app.theme == BONGO_CAT_THEME_AUTO &&
             SDL_GetSystemTheme() == SDL_SYSTEM_THEME_DARK);
@@ -135,6 +135,7 @@ static void context_menu(BongoCatApp *app) {
         tr(app, "composables.useAppMenu.labels.expression", "Expressions"),
         model_names, motion_names, expression_names,
         app->models.count, current_model, motion_count, expression_count,
+        current_expression,
         app->config.window.scale_percent, app->config.window.opacity_percent,
         app->config.window.pass_through, app->config.window.always_on_top,
         dark_theme,

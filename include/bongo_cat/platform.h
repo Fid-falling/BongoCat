@@ -61,7 +61,7 @@ typedef struct BongoCatMenuLabels {
     const char *window_size, *opacity, *model, *exit;
     const char *wheel_size_hint, *wheel_opacity_hint, *motion, *expression;
     const char *const *model_names, *const *motion_names, *const *expression_names;
-    size_t model_count, current_model, motion_count, expression_count;
+    size_t model_count, current_model, motion_count, expression_count, current_expression;
     float scale_percent, opacity_percent;
     bool pass_through_checked, always_on_top_checked, dark_theme;
     BongoCatMenuPreview preview;
@@ -75,7 +75,8 @@ typedef void (*BongoCatTrayClick)(void *userdata);
 BongoCatResult bongo_cat_platform_init(BongoCatPlatform *platform, SDL_Window *window,
     BongoCatInputState *input, BongoCatError *error);
 void bongo_cat_platform_shutdown(BongoCatPlatform *platform);
-void bongo_cat_platform_set_click_through(BongoCatPlatform *platform, bool enabled);
+void bongo_cat_platform_set_click_through(BongoCatPlatform *platform,
+    bool forced, bool pointer_transparent);
 bool bongo_cat_platform_set_opacity(BongoCatPlatform *platform, float opacity);
 float bongo_cat_platform_get_opacity(const BongoCatPlatform *platform);
 bool bongo_cat_platform_present(BongoCatPlatform *platform, int width, int height);

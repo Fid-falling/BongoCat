@@ -26,6 +26,7 @@ public static class BongoCatClickNative {
     [DllImport("user32.dll", EntryPoint="GetWindowLongPtrW")] public static extern IntPtr GetWindowLongPtr(IntPtr handle, int index);
     [DllImport("user32.dll")] public static extern bool GetCursorPos(out Point point);
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] public static extern short GetAsyncKeyState(int key);
     [DllImport("user32.dll")] public static extern void keybd_event(byte key, byte scan, uint flags, UIntPtr extra);
     [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(Point point);
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr handle, int command);
@@ -100,17 +101,13 @@ function Wait-LowFpsBoundary([string]$Path) {
     } while ([DateTime]::UtcNow -lt $deadline)
     return 0
 }
-function Send-Key([byte]$Key) {
+function Send-Key([byte]$Key, [byte[]]$Modifiers) {
+    foreach ($modifier in $Modifiers)
+        { [BongoCatClickNative]::keybd_event($modifier, 0, 0, [UIntPtr]::Zero) }
+    if ($Modifiers.Count) { Start-Sleep -Milliseconds 20 }
     [BongoCatClickNative]::keybd_event($Key, 0, 0, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 10
     [BongoCatClickNative]::keybd_event($Key, 0, 2, [UIntPtr]::Zero)
-}
-function Release-Modifiers {
-    foreach ($key in @(0x10, 0x11, 0x12))
-        { [BongoCatClickNative]::keybd_event($key, 0, 2, [UIntPtr]::Zero) }
-    foreach ($key in @(0x5b, 0x5c))
-        { [BongoCatClickNative]::keybd_event($key, 0, 3, [UIntPtr]::Zero) }
-    Start-Sleep -Milliseconds 50
 }
 function Same-Rect($Left, $Right) {
     return $Left -and $Right -and $Left.L -eq $Right.L -and $Left.T -eq $Right.T -and
@@ -118,11 +115,29 @@ function Same-Rect($Left, $Right) {
 }
 $data = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
 New-Item -ItemType Directory -Force -Path $data | Out-Null
+$modifierKeys = [Collections.Generic.List[byte]]::new()
+$modifierNames = [Collections.Generic.List[string]]::new()
+$modifierGroups = @(
+    @{ Name="Control"; Keys=@(0xA2, 0xA3, 0x11) },
+    @{ Name="Shift"; Keys=@(0xA0, 0xA1, 0x10) },
+    @{ Name="Alt"; Keys=@(0xA4, 0xA5, 0x12) },
+    @{ Name="Meta"; Keys=@(0x5B, 0x5C) })
+foreach ($group in $modifierGroups) {
+    $activeKey = $group.Keys | Where-Object {
+        ([BongoCatClickNative]::GetAsyncKeyState($_) -band 0x8000) -ne 0
+    } | Select-Object -First 1
+    if ($null -ne $activeKey) {
+        $modifierKeys.Add([byte]$activeKey)
+        $modifierNames.Add($group.Name)
+    }
+}
+$shortcutPrefix = if ($modifierNames.Count) { ($modifierNames -join "+") + "+" } else { "" }
 $preferences = @{ format="bongo-cat/preferences"; version=2
-    model=@{ maxFPS=1; ignoreMouse=$false }
+    model=@{ maxFPS=1; ignoreMouse=$false; autoReleaseDelay=0.05 }
     window=@{ passThrough=$false; alwaysOnTop=$true; taskbarVisible=$false; keepInScreen=$true }
     app=@{ trayVisible=$false }
-    shortcuts=@{ visibleCat="F23"; penetrable="F24" } } | ConvertTo-Json -Depth 5 -Compress
+    shortcuts=@{ visibleCat="${shortcutPrefix}F23"; penetrable="${shortcutPrefix}F24" } } |
+    ConvertTo-Json -Depth 5 -Compress
 $session = @{ format="bongo-cat/session"; version=2; currentModel="keyboard"
     window=@{ visible=$true; scale=60.0; opacity=99.0; x=240; y=180; width=384; height=216 } } |
     ConvertTo-Json -Depth 5 -Compress
@@ -157,9 +172,8 @@ try {
         throw "Could not synchronize with the 1 FPS frame boundary"
     }
 
-    Release-Modifiers
     $timer = [Diagnostics.Stopwatch]::StartNew()
-    Send-Key 0x87 # F24: forced click-through
+    Send-Key 0x87 $modifierKeys # F24: forced click-through
     $proxy = Wait-Until {
         Get-AppWindows $process.Id | Where-Object {
             $_.Class -eq "BongoCat.LayeredPresenter" -and $_.Visible } |
@@ -230,19 +244,19 @@ try {
         $_.Class -eq "BongoCat.LayeredPresenter" -and $_.Visible } | Select-Object -First 1 } 2000
     if (-not $proxy) { $failures.Add("Proxy did not return after restore") }
 
-    Send-Key 0x86 # F23: hide
+    Send-Key 0x86 $modifierKeys # F23: hide
     if (-not (Wait-Until { $all = Get-AppWindows $process.Id
         -not @($all | Where-Object { $_.Class -in @("SDL_app", "BongoCat.LayeredPresenter") -and
             $_.Title -like "BongoCat - Pet*" -and $_.Visible }).Count } 1500)) {
         $failures.Add("Pet windows did not hide together")
     }
-    Send-Key 0x86
+    Send-Key 0x86 $modifierKeys
     $proxy = Wait-Until { Get-AppWindows $process.Id | Where-Object {
         $_.Class -eq "BongoCat.LayeredPresenter" -and $_.Visible } | Select-Object -First 1 } 2000
     if (-not $proxy) { $failures.Add("Proxy did not return after hide/show") }
 
     Save-Shot $source (Join-Path $OutputDir "active-proxy.png")
-    Send-Key 0x87
+    Send-Key 0x87 $modifierKeys
     $restoredValues = @(Wait-Until { $all = Get-AppWindows $process.Id
         $s = $all | Where-Object Class -eq "SDL_app" | Where-Object Title -like "BongoCat - Pet*" |
             Select-Object -First 1
@@ -254,40 +268,21 @@ try {
     }
     if ($restored) { Save-Shot $restored (Join-Path $OutputDir "restored-source.png") }
 
-    $dynamicProxy = $null
+    $dynamic = $null
     if ($restored) {
-        $points = @(@(($restored.L + 3), ($restored.T + 3)),
-            @(($restored.R - 4), ($restored.T + 3)),
-            @(($restored.L + 3), ($restored.B - 4)),
-            @(($restored.R - 4), ($restored.B - 4)))
-        foreach ($point in $points) {
-            [void][BongoCatClickNative]::SetCursorPos($point[0], $point[1])
-            $dynamicProxy = Wait-Until { Get-AppWindows $process.Id | Where-Object {
-                $_.Class -eq "BongoCat.LayeredPresenter" -and $_.Visible } |
-                Select-Object -First 1 } 700
-            if ($dynamicProxy) { break }
-        }
-        if (-not $dynamicProxy) {
-            $failures.Add("Transparent model corners did not dynamically pass through")
-        } else {
-            $center.X = [int](($restored.L + $restored.R) / 2)
-            $center.Y = [int](($restored.T + $restored.B) / 2)
-            [void][BongoCatClickNative]::SetCursorPos($center.X, $center.Y)
-            if (-not (Wait-Until { $all = Get-AppWindows $process.Id
-                $s = $all | Where-Object Class -eq "SDL_app" |
-                    Where-Object Title -like "BongoCat - Pet*" | Select-Object -First 1
-                $p = $all | Where-Object Class -eq "BongoCat.LayeredPresenter" |
-                    Select-Object -First 1
-                if ($s.Visible -and -not $p.Visible -and ($s.ExStyle -band 0x20) -eq 0) {
-                    $s } } 1500)) {
-                $failures.Add("Opaque model content did not become clickable again")
-            }
-        }
+        $dynamic = & (Join-Path $PSScriptRoot "ClickThroughDynamicAudit.ps1") `
+            -ProcessId $process.Id -Source $restored.Handle -Left $restored.L -Top $restored.T `
+            -Right $restored.R -Bottom $restored.B -OutputDir $OutputDir
+        if (-not $dynamic.TransparentClickPassed)
+            { $failures.Add("Transparent model corners did not pass clicks to the lower window") }
+        if (-not $dynamic.OpaqueClickBlocked)
+            { $failures.Add("Opaque model content did not block clicks to the lower window") }
+        if ($dynamic.DynamicProxyVisible)
+            { $failures.Add("Dynamic transparency switched to the layered proxy and may flicker") }
     }
     $snapshots.Add([pscustomobject]@{ Stage="lifecycle"; MinimizedFrames=$minimizedFrames
-        DynamicProxy=($null -ne $dynamicProxy); FinalFrames=(Frame-Count $framePath) })
+        Dynamic=$dynamic; FinalFrames=(Frame-Count $framePath) })
 } finally {
-    Release-Modifiers
     [void][BongoCatClickNative]::SetCursorPos($cursor.X, $cursor.Y)
     if ($process -and -not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
     Remove-Item Env:BONGO_CAT_ALLOW_TEST_INSTANCES -ErrorAction SilentlyContinue

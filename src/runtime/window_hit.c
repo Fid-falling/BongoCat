@@ -32,6 +32,37 @@ bool bongo_cat_window_visible_at_pointer(BongoCatApp *app, float x, float y) {
     return pixel[3] > 8;
 }
 
+void bongo_cat_window_capture_pointer_hit(BongoCatApp *app) {
+    if (!app || !app->window || !app->pointer_known ||
+        app->config.window.pass_through || app->hover_hidden ||
+        app->left_mouse_down || app->right_mouse_down) return;
+    float local_x, local_y;
+    bool inside = bongo_cat_platform_pointer_local(&app->platform,
+        app->pointer_x, app->pointer_y, &local_x, &local_y);
+    app->pointer_transparent = false;
+    if (inside) {
+        int width, height, pixel_width, pixel_height;
+        if (SDL_GetWindowSize(app->window, &width, &height) &&
+            SDL_GetWindowSizeInPixels(app->window, &pixel_width, &pixel_height) &&
+            width > 0 && height > 0 && pixel_width > 0 && pixel_height > 0) {
+            int pixel_x = SDL_clamp((int)(local_x * pixel_width / width),
+                0, pixel_width - 1);
+            int pixel_y = pixel_height - 1 - SDL_clamp(
+                (int)(local_y * pixel_height / height), 0, pixel_height - 1);
+            GLint previous_buffer;
+            GLubyte pixel[4] = {0};
+            glGetIntegerv(GL_READ_BUFFER, &previous_buffer);
+            glReadBuffer(GL_BACK);
+            glReadPixels(pixel_x, pixel_y, 1, 1, GL_RGBA,
+                GL_UNSIGNED_BYTE, pixel);
+            glReadBuffer((GLenum)previous_buffer);
+            app->pointer_transparent = pixel[3] <= 8;
+        }
+    }
+    app->pointer_hit_dirty = false;
+    app->pointer_hit_deadline_ns = 0;
+}
+
 void bongo_cat_window_mark_hit_dirty(BongoCatApp *app) {
     if (!app) return;
     app->pointer_hit_dirty = true;
@@ -95,12 +126,16 @@ void bongo_cat_window_sync_click_through(BongoCatApp *app) {
         app->pointer_hit_dirty = false;
         app->pointer_hit_deadline_ns = 0;
     }
-    bool enabled = forced || (app->pointer_known && app->pointer_transparent);
-    if (app->click_through_valid && app->click_through_applied == enabled) return;
-    bongo_cat_platform_set_click_through(&app->platform, enabled);
-    app->click_through_applied = enabled;
+    bool pointer_transparent = !forced && app->pointer_known && app->pointer_transparent;
+    bool forced_changed = !app->click_through_valid ||
+        app->click_through_forced_applied != forced;
+    if (app->click_through_valid && !forced_changed &&
+        app->click_through_applied == pointer_transparent) return;
+    bongo_cat_platform_set_click_through(&app->platform, forced, pointer_transparent);
+    app->click_through_applied = pointer_transparent;
+    app->click_through_forced_applied = forced;
     app->click_through_valid = true;
-    app->dirty = true;
+    if (forced_changed) app->dirty = true;
 }
 
 void bongo_cat_window_apply_pending_resize(BongoCatApp *app) {

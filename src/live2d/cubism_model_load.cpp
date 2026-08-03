@@ -128,7 +128,6 @@ bool NativeModel::load(const char *directory, const char *setting_file,
     _model->SaveParameters();
     return true;
 }
-
 bool NativeModel::load_model(BongoCatError *error) {
     const char *name = setting_->GetModelFileName();
     std::vector<unsigned char> bytes = read(path(name));
@@ -146,15 +145,15 @@ bool NativeModel::load_model(BongoCatError *error) {
     return true;
 }
 void NativeModel::load_expressions() {
+    expression_names_.resize((size_t)setting_->GetExpressionCount());
     for (int i = 0; i < setting_->GetExpressionCount(); ++i) {
         const char *name = setting_->GetExpressionName(i);
         std::vector<unsigned char> bytes = read(path(setting_->GetExpressionFileName(i)));
         if (bytes.empty()) continue;
         Csm::ACubismMotion *motion = LoadExpression(bytes.data(),
             (Csm::csmSizeInt)bytes.size(), name);
-        if (!motion) continue;
-        expressions_[name] = motion;
-        expression_names_.emplace_back(name);
+        if (!motion) continue; expressions_[name] = motion;
+        expression_names_[(size_t)i] = name;
     }
     if (!expressions_.empty()) {
         auto *updater = CSM_NEW Csm::CubismExpressionUpdater(*_expressionManager);
@@ -255,10 +254,11 @@ void NativeModel::load_lock_motion(const std::string &key,
 bool NativeModel::load_textures(BongoCatError *error) {
     release_textures();
     textures_.assign((size_t)setting_->GetTextureCount(), 0);
+    texture_alpha_.assign((size_t)setting_->GetTextureCount(), {});
     for (int i = 0; i < setting_->GetTextureCount(); ++i) {
         textures_[(size_t)i] = bongo_cat_image_texture_model(
             path(setting_->GetTextureFileName(i)).c_str(), direct_textures_,
-            nullptr, nullptr, error);
+            nullptr, nullptr, &texture_alpha_[(size_t)i], error);
         if (!textures_[(size_t)i]) {
             release_textures();
             return false;
@@ -269,15 +269,15 @@ bool NativeModel::load_textures(BongoCatError *error) {
     renderer_width_ = width_;
     renderer_height_ = height_;
     bind_textures();
+    prepare_expression_bounds();
     return true;
 }
-
 void NativeModel::release_textures() {
     if (!textures_.empty())
         glDeleteTextures((GLsizei)textures_.size(), textures_.data());
     textures_.clear();
+    texture_alpha_.clear();
 }
-
 void NativeModel::release_renderer() {
     DeleteRenderer();
     renderer_width_ = 0;

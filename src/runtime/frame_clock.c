@@ -34,6 +34,8 @@ int bongo_cat_window_wait_timeout(const BongoCatApp *app, uint64_t now) {
     if (bongo_cat_preferences_needs_frame(app->preferences) && wait_ms > 4)
         wait_ms = 4;
     if (app->wheel_animation_active && wait_ms > 8) wait_ms = 8;
+    if (app->config.window.visible && !app->window_minimized &&
+        app->click_through_applied && wait_ms > 16) wait_ms = 16;
     bool pending_hit = app->config.window.visible && !app->window_minimized &&
         app->pointer_hit_dirty &&
         app->pointer_hit_deadline_ns && !app->config.window.pass_through &&
@@ -86,6 +88,15 @@ bool bongo_cat_window_wait_timeout_self_test(void) {
     app->pointer_hit_deadline_ns = now;
     if (bongo_cat_window_wait_timeout(app, now) != 0) goto done;
     app->pointer_hit_dirty = false;
+#ifdef BONGO_CAT_HAS_CUBISM
+    app->config.model.max_fps = 1;
+#endif
+    app->click_through_applied = true;
+    if (bongo_cat_window_wait_timeout(app, now) != 16) goto done;
+    app->click_through_applied = false;
+#ifdef BONGO_CAT_HAS_CUBISM
+    app->config.model.max_fps = 60;
+#endif
     if (!bongo_cat_model_frame_due(app,
         now + frame_interval_ns(app))) goto done;
     app->window_minimized = true;

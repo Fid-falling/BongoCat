@@ -39,10 +39,12 @@ static void refresh_transparency(HWND window) {
     DeleteObject(region);
 }
 
-void bongo_cat_platform_set_click_through(BongoCatPlatform *platform, bool enabled) {
+void bongo_cat_platform_set_click_through(BongoCatPlatform *platform,
+    bool forced, bool pointer_transparent) {
     HWND window = native_window(platform);
-    bongo_cat_windows_borderless_set_click_through(window, enabled);
-    bongo_cat_windows_layered_set_click_through(platform, enabled);
+    bongo_cat_windows_layered_set_click_through(platform, forced);
+    bongo_cat_windows_borderless_set_click_through(window,
+        forced || pointer_transparent);
 }
 
 void bongo_cat_platform_set_taskbar(BongoCatPlatform *platform, bool visible) {

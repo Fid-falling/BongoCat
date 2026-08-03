@@ -83,5 +83,9 @@ void bongo_cat_windows_borderless_set_click_through(HWND window, bool enabled) {
     if (!window) return;
     if (enabled) SetPropW(window, click_through_property, (HANDLE)(INT_PTR)1);
     else RemovePropW(window, click_through_property);
+    LONG_PTR style = GetWindowLongPtrW(window, GWL_EXSTYLE);
+    LONG_PTR next = enabled ? style | WS_EX_TRANSPARENT :
+        style & ~WS_EX_TRANSPARENT;
+    if (next != style) SetWindowLongPtrW(window, GWL_EXSTYLE, next);
 }
 #endif
