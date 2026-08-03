@@ -55,6 +55,7 @@ static bool initialize(BongoCatApp *app, int argc, char **argv, BongoCatError *e
     if (loaded != BONGO_CAT_OK)
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Session ignored: %s", error->message);
     *error = (BongoCatError){0};
+    bongo_cat_config_store_initialize(app);
     if (app->smoke_language >= 0)
         app->config.app.language = (BongoCatLanguage)app->smoke_language;
     if (app->smoke_theme >= 0)
@@ -64,7 +65,6 @@ static bool initialize(BongoCatApp *app, int argc, char **argv, BongoCatError *e
         snprintf(app->config.current_model, sizeof(app->config.current_model),
             "%s", app->smoke_model);
     if (!app->autostart_launch) app->config.window.visible = true;
-    bongo_cat_config_store_initialize(app);
     bongo_cat_startup_stage(app, "configuration-ready");
     if (bongo_cat_window_create(app, error) != BONGO_CAT_OK) return false;
     bongo_cat_startup_stage(app, "window-ready");
@@ -136,6 +136,7 @@ static bool initialize(BongoCatApp *app, int argc, char **argv, BongoCatError *e
     if (app->smoke_preferences) bongo_cat_preferences_show(app->preferences);
     app->last_frame_ns = SDL_GetTicksNS();
     app->dirty = true;
+    app->startup_raise_due_ns = !app->smoke && !app->autostart_launch && app->config.window.visible ? app->last_frame_ns + 250000000ull : 0;
     if (app->smoke_deadline_ns) app->smoke_deadline_ns += app->last_frame_ns;
     if (!app->config.window.visible) bongo_cat_startup_ready(app);
     return true;
@@ -254,7 +255,7 @@ static void loop(BongoCatApp *app) {
         if (app->config.window.visible && !app->window_minimized && app->dirty) render(app);
         bongo_cat_preferences_render(app->preferences);
         if (app->config.window.visible && !app->window_minimized && app->dirty) render(app);
-        bongo_cat_tray_sync(app->tray);
+        bongo_cat_tray_sync(app->tray); bongo_cat_window_raise_when_due(app, now);
         bongo_cat_config_store_update(app, now);
         if (app->smoke_deadline_ns && now >= app->smoke_deadline_ns) app->running = false;
     }

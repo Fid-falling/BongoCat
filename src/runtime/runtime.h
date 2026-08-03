@@ -19,6 +19,7 @@ bool bongo_cat_window_visible_at_pointer(BongoCatApp *app, float x, float y);
 void bongo_cat_window_capture_pointer_hit(BongoCatApp *app);
 void bongo_cat_window_mark_hit_dirty(BongoCatApp *app);
 void bongo_cat_window_set_visible(BongoCatApp *app, bool visible);
+void bongo_cat_window_raise_when_due(BongoCatApp *app, uint64_t now);
 void bongo_cat_window_schedule_pointer_hit(BongoCatApp *app);
 void bongo_cat_window_schedule_hit_check(BongoCatApp *app);
 int bongo_cat_window_wait_timeout(const BongoCatApp *app, uint64_t now);

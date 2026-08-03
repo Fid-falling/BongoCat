@@ -48,6 +48,7 @@ public static class WindowProbe {
     }
 }
 "@
+. (Join-Path $PSScriptRoot "StartupVisibilityHelpers.ps1")
 
 function Set-ProcessEnvironment([hashtable]$Values) {
     $prior = @{}
@@ -187,6 +188,22 @@ if ($log -notmatch "Invalid configuration JSON") { throw "Invalid preferences we
 Write-Settings $shared $false $false 1000000 1000000
 $log = Invoke-Smoke "hidden and off-screen recovery" $shared -Probe
 
+$persisted = Join-Path $OutputDir "persisted-reveal"
+New-Item -ItemType Directory -Force -Path $persisted | Out-Null
+Write-Settings $persisted $false $true 1000000 1000000
+$persistedArgs = @("--ci-exit-ms=1800", "`"--data-root=$persisted`"")
+$persistedProcess = Start-Process -FilePath $testExe -WorkingDirectory $portableRoot `
+    -ArgumentList $persistedArgs -PassThru
+if (-not $persistedProcess.WaitForExit(10000) -or $persistedProcess.ExitCode -ne 0) {
+    throw "Persisted reveal process failed"
+}
+$persistedSession = Get-Content (Join-Path $persisted "session.json") -Raw |
+    ConvertFrom-Json
+if ($persistedSession.window.visible -ne $true) {
+    throw "A manual launch did not persist restored visibility"
+}
+Write-Host "PASS persisted manual reveal"
+
 Write-Settings $shared $true $true
 $log = Invoke-Smoke "blocked global hooks" $shared `
     -Environment @{BONGO_CAT_TEST_HOOK_FAILURE="1"}
@@ -247,7 +264,8 @@ $env:BONGO_CAT_TEST_INSTANCE_ID = "startup-matrix"
 $instanceData = Join-Path $OutputDir "single-instance"
 New-Item -ItemType Directory -Force -Path $instanceData | Out-Null
 Write-Settings $instanceData $false $true
-$firstArgs = @("--autostart", "--ci-smoke", "--ci-exit-ms=12000",
+$firstArgs = @("--autostart", "--ci-smoke", "--ci-frame-series",
+    "--ci-exit-ms=12000",
     "`"--data-root=$instanceData`"")
 $first = Start-Process -FilePath $testExe -WorkingDirectory $portableRoot `
     -ArgumentList $firstArgs -PassThru
@@ -261,10 +279,8 @@ Assert-OnScreen $window
 if (-not [WindowProbe]::PostMessageW($window, 0x0010, [UIntPtr]::Zero, [IntPtr]::Zero)) {
     throw "Primary instance did not accept a close request"
 }
-$hiddenDeadline = [DateTime]::UtcNow.AddSeconds(3)
-do { Start-Sleep -Milliseconds 100 } while ([WindowProbe]::IsWindowVisible($window) -and
-    [DateTime]::UtcNow -lt $hiddenDeadline)
-if ([WindowProbe]::IsWindowVisible($window)) { throw "Primary instance did not hide" }
+Wait-WindowVisibility $window $false
+$frameCount = @(Get-FrameRows $instanceData).Count
 $third = Start-Process -FilePath $testExe -WorkingDirectory $portableRoot `
     -ArgumentList @("--ci-smoke", "`"--data-root=$instanceData`"") -PassThru
 if (-not $third.WaitForExit(6000)) { throw "Third instance hung" }
@@ -272,6 +288,7 @@ if ($third.ExitCode -ne 0) { throw "Third instance failed with exit code $($thir
 $window = Find-VisibleWindow $first
 if ($window -eq [IntPtr]::Zero) { throw "Runtime-hidden instance was not revealed" }
 Assert-OnScreen $window
+Assert-NewVisibleModelFrame $instanceData $frameCount
 if (-not $first.WaitForExit(15000) -or $first.ExitCode -ne 0) { throw "Primary instance failed" }
 Assert-Frame $instanceData
 $env:BONGO_CAT_TEST_INSTANCE_ID = $null

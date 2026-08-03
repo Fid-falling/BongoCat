@@ -208,7 +208,6 @@ bool bongo_cat_window_event(BongoCatApp *app, const SDL_Event *event) {
         return true;
     }
     if (event->type == SDL_EVENT_WINDOW_HIDDEN) {
-        app->config.window.visible = false;
         bongo_cat_window_drag_end(app);
     }
     if (event->type == SDL_EVENT_WINDOW_MINIMIZED) {
@@ -224,7 +223,6 @@ bool bongo_cat_window_event(BongoCatApp *app, const SDL_Event *event) {
     if (event->type == SDL_EVENT_WINDOW_EXPOSED ||
         event->type == SDL_EVENT_WINDOW_SHOWN ||
         event->type == SDL_EVENT_WINDOW_RESTORED) {
-        if (event->type != SDL_EVENT_WINDOW_EXPOSED) app->config.window.visible = true;
         if (event->type != SDL_EVENT_WINDOW_EXPOSED) app->window_minimized = false;
         app->dirty = true;
     }
