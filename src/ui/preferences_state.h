@@ -57,6 +57,10 @@ struct BongoCatPreferences {
     uint64_t behavior_dialog_closing_ns;
     uint64_t behavior_tab_transition_ns;
     float behavior_scroll[2];
+    char behavior_rename_id[BONGO_CAT_PATH_CAP];
+    char behavior_rename_text[BONGO_CAT_ID_CAP];
+    struct nk_rect behavior_rename_bounds;
+    bool behavior_rename_select_all;
     bool native_drag;
     bool chrome_dragging;
     bool live_resize_active;

@@ -66,6 +66,7 @@ typedef struct BongoCatShortcutOptions {
 typedef struct BongoCatBehaviorShortcut {
     char id[BONGO_CAT_PATH_CAP];
     char shortcut[BONGO_CAT_SHORTCUT_CAP];
+    char label[BONGO_CAT_ID_CAP];
 } BongoCatBehaviorShortcut;
 
 typedef struct BongoCatConfig {

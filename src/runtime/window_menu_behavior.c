@@ -23,6 +23,17 @@ static const char *behavior_shortcut(const BongoCatApp *app, const char *id) {
     return NULL;
 }
 
+static const char *behavior_label(const BongoCatApp *app,
+    const BongoCatBehaviorEntry *entry) {
+    if (!app || !entry) return "";
+    for (size_t i = 0; i < app->config.behavior_shortcut_count; ++i) {
+        const BongoCatBehaviorShortcut *binding = &app->config.behavior_shortcuts[i];
+        if (strcmp(binding->id, entry->id) == 0 && binding->label[0])
+            return binding->label;
+    }
+    return entry->label;
+}
+
 static bool run_binding(BongoCatApp *app, const BongoCatBehaviorEntry *selected) {
     const char *shortcut = behavior_shortcut(app, selected->id);
     bool handled = bongo_cat_app_run_behavior(app, selected);
@@ -48,11 +59,11 @@ void bongo_cat_window_behavior_labels(BongoCatApp *app,
     for (size_t i = 0; i < app->behaviors.count; ++i) {
         const BongoCatBehaviorEntry *entry = &app->behaviors.entries[i];
         if (entry->kind == BONGO_CAT_BEHAVIOR_MOTION && motions)
-            motions[(*motion_count)++] = entry->label;
+            motions[(*motion_count)++] = behavior_label(app, entry);
         else if (entry->kind == BONGO_CAT_BEHAVIOR_EXPRESSION && expressions) {
             if (current_expression && entry->index == active_expression)
                 *current_expression = *expression_count;
-            expressions[(*expression_count)++] = entry->label;
+            expressions[(*expression_count)++] = behavior_label(app, entry);
         }
     }
 }

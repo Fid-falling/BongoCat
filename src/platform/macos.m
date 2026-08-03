@@ -183,6 +183,15 @@ bool bongo_cat_platform_dynamic_hit_supported(void) {
     return bongo_cat_macos_input_supported();
 }
 
+bool bongo_cat_platform_open_directory(const char *path) {
+    if (!path || !path[0]) return false;
+    @autoreleasepool {
+        NSString *directory = [NSString stringWithUTF8String:path];
+        return directory && [[NSWorkspace sharedWorkspace]
+            openURL:[NSURL fileURLWithPath:directory isDirectory:YES]];
+    }
+}
+
 void bongo_cat_platform_set_tray_left_click(void *tray, BongoCatTrayClick callback,
     void *userdata) {
     BongoCatSDLTray *native = tray;

@@ -86,7 +86,8 @@
           "deleteSuccess": "Xóa thành công",
           "deleteModel": "Bạn chắc muốn xóa mô hình này?",
           "importSuccess": "Nhập thành công",
-          "clickOrDragToImport": "Nhấp hoặc kéo tệp vào đây"
+          "clickOrDragToImport": "Nhấp hoặc kéo tệp vào đây",
+          "openDirectoryFailed": "Không thể mở thư mục mô hình"
         },
         "tooltips": {
           "createModel": "Tạo mô hình",

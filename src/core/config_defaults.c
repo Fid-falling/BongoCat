@@ -97,6 +97,7 @@ void bongo_cat_config_validate(BongoCatConfig *config) {
     for (size_t i = 0; i < config->behavior_shortcut_count; ++i) {
         config->behavior_shortcuts[i].id[BONGO_CAT_PATH_CAP - 1] = '\0';
         config->behavior_shortcuts[i].shortcut[BONGO_CAT_SHORTCUT_CAP - 1] = '\0';
+        config->behavior_shortcuts[i].label[BONGO_CAT_ID_CAP - 1] = '\0';
     }
     validate_shortcuts(config);
 }

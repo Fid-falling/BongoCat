@@ -30,9 +30,7 @@ else()
   endif()
 endif()
 include(cmake/Dependencies.cmake)
-
 find_package(OpenGL REQUIRED)
-
 set(BONGO_CAT_LIVE2D_SOURCES src/live2d/live2d_stub.c)
 set(BONGO_CAT_CUBISM_ENABLED OFF)
 set(CUBISM_CORE_HEADER "${BONGO_CAT_CUBISM_SDK}/Core/include/Live2DCubismCore.h")
@@ -119,7 +117,7 @@ add_library(bongo_cat_runtime STATIC
   src/ui/preferences_assets.c src/ui/preferences_about.c src/ui/preferences_about_community.c
   src/ui/preferences_live_resize.c
   src/ui/preferences_dialog.c src/ui/preferences_import.c src/ui/preferences_overlay.c
-  src/ui/preferences_behavior_dialog.c
+  src/ui/preferences_behavior_dialog.c src/ui/preferences_behavior_rename.c src/ui/preferences_behavior_row.c
   src/ui/preferences_notice.c
   src/ui/preferences_model.c src/ui/preferences_model_cover.c
   src/ui/preferences_pages.c src/ui/preferences_theme.c
@@ -148,7 +146,9 @@ target_compile_definitions(bongo_cat_runtime PRIVATE
 
 if(WIN32)
   enable_language(RC)
-  target_sources(bongo_cat_runtime PRIVATE src/platform/windows.c src/platform/windows_startup.c src/platform/windows_borderless.c src/platform/windows_pointer.c src/platform/windows_layered.c)
+  target_sources(bongo_cat_runtime PRIVATE src/platform/windows.c src/platform/windows_directory.c
+    src/platform/windows_startup.c src/platform/windows_borderless.c
+    src/platform/windows_pointer.c src/platform/windows_layered.c)
   target_sources(bongo_cat_runtime PRIVATE src/platform/windows_assets.c)
   target_link_libraries(bongo_cat_runtime PRIVATE dwmapi ole32 shell32 user32 windowscodecs)
 elseif(APPLE)

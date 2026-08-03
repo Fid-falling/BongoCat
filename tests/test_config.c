@@ -58,6 +58,7 @@ void test_config(void) {
     memcpy(value.behavior_shortcuts[0].id, "keyboard:motion:Tap:0",
         sizeof("keyboard:motion:Tap:0"));
     memcpy(value.behavior_shortcuts[0].shortcut, "Control+1", sizeof("Control+1"));
+    memcpy(value.behavior_shortcuts[0].label, "Happy tap", sizeof("Happy tap"));
 
     const char *preferences = "bongo-cat-\xE5\x81\x8F\xE5\xA5\xBD.json";
     const char *session = "bongo-cat-\xE4\xBC\x9A\xE8\xAF\x9D.json";
@@ -78,6 +79,7 @@ void test_config(void) {
     CHECK(strcmp(loaded.current_model, "standard") == 0);
     CHECK(loaded.behavior_shortcut_count == 1);
     CHECK(strcmp(loaded.behavior_shortcuts[0].shortcut, "Control+1") == 0);
+    CHECK(strcmp(loaded.behavior_shortcuts[0].label, "Happy tap") == 0);
 
     CHECK(bongo_cat_session_load(session, &loaded, &error) == BONGO_CAT_OK);
     CHECK(loaded.window.x == -321);

@@ -77,13 +77,17 @@ static void read_behaviors(yyjson_val *array, BongoCatConfig *config) {
     config->behavior_shortcut_count = 0;
     size_t index, count; yyjson_val *item;
     yyjson_arr_foreach(array, index, count, item) {
-        const char *id = get_string(item, "id"), *shortcut = get_string(item, "shortcut");
-        if (!id || !shortcut || config->behavior_shortcut_count >= BONGO_CAT_BEHAVIOR_CAP)
+        const char *id = get_string(item, "id");
+        const char *shortcut = get_string(item, "shortcut");
+        const char *label = get_string(item, "label");
+        if (!id || (!shortcut && !label) ||
+            config->behavior_shortcut_count >= BONGO_CAT_BEHAVIOR_CAP)
             continue;
         BongoCatBehaviorShortcut *entry =
             &config->behavior_shortcuts[config->behavior_shortcut_count++];
         copy_string(entry->id, sizeof(entry->id), id);
         copy_string(entry->shortcut, sizeof(entry->shortcut), shortcut);
+        copy_string(entry->label, sizeof(entry->label), label);
     }
 }
 
@@ -146,10 +150,13 @@ static void write_behaviors(yyjson_mut_doc *doc, yyjson_mut_val *root,
     yyjson_mut_obj_add_val(doc, root, "behaviorShortcuts", array);
     for (size_t i = 0; i < config->behavior_shortcut_count; ++i) {
         const BongoCatBehaviorShortcut *value = &config->behavior_shortcuts[i];
-        if (!value->id[0] || !value->shortcut[0]) continue;
+        if (!value->id[0] || (!value->shortcut[0] && !value->label[0])) continue;
         yyjson_mut_val *item = yyjson_mut_obj(doc);
         yyjson_mut_obj_add_strcpy(doc, item, "id", value->id);
-        yyjson_mut_obj_add_strcpy(doc, item, "shortcut", value->shortcut);
+        if (value->shortcut[0])
+            yyjson_mut_obj_add_strcpy(doc, item, "shortcut", value->shortcut);
+        if (value->label[0])
+            yyjson_mut_obj_add_strcpy(doc, item, "label", value->label);
         yyjson_mut_arr_add_val(array, item);
     }
 }

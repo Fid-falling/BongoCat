@@ -88,6 +88,7 @@ bool bongo_cat_platform_pointer_local(BongoCatPlatform *platform, double screen_
 void bongo_cat_platform_set_always_on_top(BongoCatPlatform *platform, bool enabled);
 void bongo_cat_platform_set_taskbar(BongoCatPlatform *platform, bool visible);
 void bongo_cat_platform_raise_window(SDL_Window *window);
+bool bongo_cat_platform_open_directory(const char *path);
 bool bongo_cat_platform_set_geometry(BongoCatPlatform *platform,
     int x, int y, int width, int height);
 void bongo_cat_platform_begin_drag(BongoCatPlatform *platform);

@@ -1,16 +1,12 @@
 #include "preferences_state.h"
-#include "preferences_notice.h"
 #include "preferences_overlay.h"
-#include "preferences_shortcut_clear.h"
 #include "ui_animation.h"
 #include "ui_backend.h"
 #include "ui_icons.h"
 #include "ui_paint.h"
 
 #include <SDL3/SDL.h>
-#include <math.h>
 #include <stdio.h>
-#include <string.h>
 
 static const char *tr(BongoCatPreferences *value, const char *key,
     const char *fallback) {
@@ -38,20 +34,6 @@ static bool hit(struct nk_context *context, struct nk_rect bounds, bool enabled)
     return enabled && nk_input_is_mouse_hovering_rect(&context->input, bounds) &&
         nk_input_is_mouse_click_in_rect(&context->input, NK_BUTTON_LEFT, bounds);
 }
-static BongoCatBehaviorShortcut *shortcut_for(BongoCatConfig *config,
-    const char *id) {
-    for (size_t i = 0; i < config->behavior_shortcut_count; ++i)
-        if (!strcmp(config->behavior_shortcuts[i].id, id))
-            return &config->behavior_shortcuts[i];
-    if (config->behavior_shortcut_count >= BONGO_CAT_BEHAVIOR_CAP)
-        return NULL;
-    BongoCatBehaviorShortcut *value =
-        &config->behavior_shortcuts[config->behavior_shortcut_count++];
-    memset(value, 0, sizeof(*value));
-    snprintf(value->id, sizeof(value->id), "%s", id);
-    return value;
-}
-
 static bool matches(const BongoCatBehaviorEntry *entry, int tab) {
     return tab == 0 ? entry->kind == BONGO_CAT_BEHAVIOR_MOTION :
         entry->kind == BONGO_CAT_BEHAVIOR_EXPRESSION;
@@ -84,6 +66,7 @@ void bongo_cat_preferences_behavior_dialog_close(
     if (!value || !value->behavior_dialog || value->behavior_dialog_closing_ns)
         return;
     value->behavior_dialog_closing_ns = SDL_GetTicksNS();
+    bongo_cat_preferences_behavior_rename_finish(value, true);
     bongo_cat_preferences_shortcut_cancel(value);
     value->render_dirty = true;
 }
@@ -143,83 +126,6 @@ static void draw_segments(BongoCatPreferences *value,
     }
 }
 
-static bool editor(BongoCatPreferences *value, struct nk_context *context,
-    struct nk_command_buffer *canvas, struct nk_rect bounds, const char *id,
-    BongoCatBehaviorShortcut *shortcut, BongoCatUIPalette p,
-    float opacity, bool enabled) {
-    bool active = bongo_cat_preferences_shortcut_active(value, id);
-    bool hover = enabled && nk_input_is_mouse_hovering_rect(&context->input, bounds);
-    if (active && p.effects) {
-        float phase = (float)(SDL_GetTicksNS() % 1500000000ULL) / 1500000000.0f;
-        float pulse = sinf(phase * 6.2831853f);
-        bongo_cat_ui_paint_shadow(context, bounds, 10, 0, 0,
-            5 + 3 * pulse, 0, alpha(nk_rgba(p.pink.r, p.pink.g,
-            p.pink.b, 76), opacity));
-        value->render_dirty = true;
-    }
-    nk_fill_rect(canvas, bounds, 10, alpha(active ? p.hover_pink :
-        (hover ? p.hover : p.field), opacity));
-    nk_stroke_rect(canvas, bounds, 10, 1, alpha(active ? p.pink :
-        (hover ? p.accent : p.border_subtle), opacity));
-    const char *shown = active ? tr(value,
-        "components.shortcut.hints.pressRecordShortcut", "Press shortcut") :
-        (shortcut->shortcut[0] ? shortcut->shortcut : tr(value,
-        "components.shortcut.hints.clickRecordShortcut", "Click to record shortcut"));
-    bool show_keyboard = active || !shortcut->shortcut[0];
-    float text_x = bounds.x + (show_keyboard ? 39.0f : 13.0f);
-    if (show_keyboard) bongo_cat_preferences_icon_draw(value, canvas,
-        BONGO_CAT_UI_ICON_KEYBOARD, nk_rect(bounds.x + 13,
-        bounds.y + 9, 18, 18), alpha(active ? p.pink : p.muted, opacity));
-    text(canvas, nk_rect(text_x, bounds.y + 8,
-        bounds.x + bounds.w - text_x -
-        (shortcut->shortcut[0] && !active ? 31.0f : 9.0f), 21), shown,
-        value->ui.caption_font,
-        alpha(active ? p.pink : (hover ? p.accent : p.muted), opacity));
-    struct nk_rect clear = nk_rect(bounds.x + bounds.w - 25,
-        bounds.y + 8, 17, 20);
-    if (bongo_cat_pref_shortcut_clear(context, canvas, id, clear, p,
-        opacity, enabled && !active && shortcut->shortcut[0])) {
-        shortcut->shortcut[0] = '\0'; value->render_dirty = true; return false;
-    }
-    if (hover) bongo_cat_ui_cursor_hover_rect(context, bounds,
-        BONGO_CAT_UI_CURSOR_POINTER);
-    return hit(context, bounds, enabled);
-}
-
-static void draw_row(BongoCatPreferences *value, struct nk_context *context,
-    struct nk_command_buffer *canvas, struct nk_rect row,
-    BongoCatBehaviorEntry *entry, BongoCatUIPalette p,
-    float opacity, bool enabled) {
-    text(canvas, nk_rect(row.x + 16, row.y + 18, row.w - 268, 21),
-        entry->label, value->ui.caption_font, alpha(p.text, opacity));
-    struct nk_rect play = nk_rect(row.x + row.w - 52, row.y + 10, 36, 36);
-    struct nk_rect edit = nk_rect(play.x - 188, row.y + 10, 180, 36);
-    bool play_hover = enabled && nk_input_is_mouse_hovering_rect(
-        &context->input, play);
-    nk_fill_rect(canvas, play, 10, alpha(play_hover ? p.hover : p.field, opacity));
-    nk_stroke_rect(canvas, play, 10, 1, alpha(play_hover ? p.accent :
-        p.border_subtle, opacity));
-    bongo_cat_preferences_icon_draw(value, canvas, BONGO_CAT_UI_ICON_PLAY,
-        nk_rect(play.x + 10, play.y + 10, 16, 16),
-        alpha(play_hover ? p.accent : p.text, opacity));
-    if (play_hover) bongo_cat_ui_cursor_hover_rect(context, play,
-        BONGO_CAT_UI_CURSOR_POINTER);
-    if (hit(context, play, enabled)) {
-        bongo_cat_app_run_behavior(value->app, entry);
-        char message[sizeof(entry->label) + 5];
-        snprintf(message, sizeof(message), "%s \xE2\x9C\x93", entry->label);
-        bongo_cat_preferences_notice_show(value->app, message, false);
-    }
-    BongoCatBehaviorShortcut *shortcut = shortcut_for(&value->app->config,
-        entry->id);
-    if (!shortcut) return;
-    char id[BONGO_CAT_ID_CAP + 16];
-    snprintf(id, sizeof(id), "behavior-%.*s", (int)sizeof(id) - 10, entry->id);
-    if (editor(value, context, canvas, edit, id, shortcut, p, opacity, enabled))
-        bongo_cat_preferences_shortcut_begin(value, id,
-            shortcut->shortcut, sizeof(shortcut->shortcut));
-}
-
 static void draw_rows(BongoCatPreferences *value, struct nk_context *context,
     struct nk_command_buffer *canvas, struct nk_rect panel,
     BongoCatUIPalette p, float opacity, bool enabled, size_t count) {
@@ -254,7 +160,8 @@ static void draw_rows(BongoCatPreferences *value, struct nk_context *context,
         struct nk_rect row = nk_rect(viewport.x,
             viewport.y + shown++ * 56.0f - offset, viewport.w, 56);
         if (row.y + row.h >= viewport.y && row.y <= viewport.y + viewport.h)
-            draw_row(value, context, canvas, row, entry, p,
+            bongo_cat_preferences_behavior_row_draw(value, context, canvas,
+                row, entry, p,
                 content_opacity, enabled);
     }
     nk_push_scissor(canvas, nk_window_get_content_region(context));

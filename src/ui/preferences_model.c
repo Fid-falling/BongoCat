@@ -8,6 +8,8 @@
 #include "ui_paint.h"
 #include "ui_icons.h"
 #include "bongo_cat/i18n.h"
+#include "bongo_cat/path.h"
+#include "bongo_cat/platform.h"
 #include "bongo_cat/preferences.h"
 
 #include <math.h>
@@ -118,6 +120,17 @@ static void select_model(BongoCatPreferences *value,
     bongo_cat_preferences_invalidate(value);
 }
 
+static void open_model_directory(BongoCatPreferences *value,
+    const BongoCatModelEntry *entry) {
+    const char *directory = entry->storage_directory[0] ?
+        entry->storage_directory : entry->directory;
+    if (bongo_cat_path_is_dir(directory) &&
+        bongo_cat_platform_open_directory(directory)) return;
+    bongo_cat_preferences_notice_show(value->app, tr(value->app,
+        "pages.preference.model.hints.openDirectoryFailed",
+        "Unable to open model directory"), true);
+}
+
 static void model_card(BongoCatPreferences *value, struct nk_context *context,
     BongoCatModelEntry *entry) {
     BongoCatApp *app = value->app;
@@ -179,8 +192,7 @@ static void model_card(BongoCatPreferences *value, struct nk_context *context,
     if (first_hover) nk_fill_rect(canvas, first, 0, p.hover_pink);
     if (second_hover) nk_fill_rect(canvas, second, 0, p.hover_pink);
     if (third_hover) nk_fill_rect(canvas, third, 0, p.hover_pink);
-    action_icon(value, canvas, first, selected ? BONGO_CAT_UI_ICON_SMILE :
-        BONGO_CAT_UI_ICON_CHECK,
+    action_icon(value, canvas, first, BONGO_CAT_UI_ICON_SMILE,
         first_hover ? p.pink : p.muted);
     action_icon(value, canvas, second, BONGO_CAT_UI_ICON_FOLDER,
         second_hover ? p.pink : p.muted);
@@ -205,7 +217,7 @@ static void model_card(BongoCatPreferences *value, struct nk_context *context,
             bongo_cat_preferences_behavior_dialog_open(value);
         else select_model(value, entry);
     } else if (second_hover && nk_input_is_mouse_click_in_rect(&context->input,
-        NK_BUTTON_LEFT, second)) select_model(value, entry);
+        NK_BUTTON_LEFT, second)) open_model_directory(value, entry);
     else if (third_hover && nk_input_is_mouse_click_in_rect(&context->input,
         NK_BUTTON_LEFT, third))
         bongo_cat_preferences_remove_dialog_open(app, entry->id);

@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/file.h>
+#include <sys/wait.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -151,6 +152,23 @@ void bongo_cat_platform_begin_drag(BongoCatPlatform *platform) {
 }
 bool bongo_cat_platform_dynamic_hit_supported(void) {
     return bongo_cat_linux_x11_supported(active_platform);
+}
+
+bool bongo_cat_platform_open_directory(const char *path) {
+    if (!path || !path[0]) return false;
+    pid_t launcher = fork();
+    if (launcher < 0) return false;
+    if (launcher == 0) {
+        pid_t opener = fork();
+        if (opener < 0) _exit(127);
+        if (opener > 0) _exit(0);
+        setsid();
+        execlp("xdg-open", "xdg-open", path, (char *)NULL);
+        _exit(127);
+    }
+    int status = 0;
+    return waitpid(launcher, &status, 0) == launcher &&
+        WIFEXITED(status) && WEXITSTATUS(status) == 0;
 }
 
 void bongo_cat_platform_set_tray_left_click(void *tray, BongoCatTrayClick callback,

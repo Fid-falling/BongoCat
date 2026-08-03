@@ -97,6 +97,13 @@ add_test(NAME windows-key-release COMMAND powershell.exe -NoProfile
   -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/key-release-test)
 set_tests_properties(windows-key-release PROPERTIES TIMEOUT 15 RUN_SERIAL TRUE)
 
+add_test(NAME behavior-management COMMAND powershell.exe -NoProfile
+  -ExecutionPolicy Bypass -File
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/BehaviorManagementAudit.ps1
+  -Exe $<TARGET_FILE:bongo_cat>
+  -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/behavior-management-test)
+set_tests_properties(behavior-management PROPERTIES TIMEOUT 45 RUN_SERIAL TRUE)
+
 set_tests_properties(preferences-navigation preferences-slider-drag
   preferences-model-border preferences-interaction preferences-robustness
   preferences-dpi preferences-performance PROPERTIES SKIP_RETURN_CODE 77)
