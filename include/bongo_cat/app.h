@@ -47,6 +47,7 @@ typedef struct BongoCatApp {
     bool smoke;
     bool smoke_preferences;
     bool smoke_preference_shortcut;
+    bool smoke_preference_model_select;
     bool smoke_remove_imported;
     bool smoke_shortcuts;
     bool smoke_menu;

@@ -84,22 +84,10 @@ static int find_base(const char *source, const char *model_name,
     return matches;
 }
 
-int bongo_cat_import_mver_patch_discover(const char *source,
+static int finish_patch(const char *source, const char *image_root,
     BongoCatImportDiscovery *discovery, BongoCatError *error) {
-    PatchSearch search = {0};
-    if (bongo_cat_path_name(source)[0] &&
-        strcmp(bongo_cat_path_name(source), "img") == 0 && patch_shape(source)) {
-        snprintf(search.image_root, sizeof(search.image_root), "%s", source);
-        search.matches = 1;
-    } else if (!bongo_cat_path_enumerate(source, find_image_root, &search)) return 0;
-    if (!search.matches) return 0;
-    if (search.matches != 1) {
-        bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
-            "Mver image patch contains multiple model roots: %s", source);
-        return -1;
-    }
     char model_root[BONGO_CAT_PATH_CAP], base[BONGO_CAT_PATH_CAP];
-    if (!parent_path(search.image_root, model_root, sizeof(model_root))) return -1;
+    if (!parent_path(image_root, model_root, sizeof(model_root))) return -1;
     int bases = find_base(source, bongo_cat_path_name(model_root), base, sizeof(base));
     if (bases != 1) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
@@ -112,11 +100,39 @@ int bongo_cat_import_mver_patch_discover(const char *source,
     for (size_t i = 0; i < discovery->count; ++i) {
         BongoCatImportCandidate *candidate = &discovery->candidates[i];
         char mode[BONGO_CAT_PATH_CAP];
-        if (bongo_cat_path_join(mode, sizeof(mode), search.image_root,
+        if (bongo_cat_path_join(mode, sizeof(mode), image_root,
             bongo_cat_mode_name(candidate->mode)) && bongo_cat_path_is_dir(mode))
             snprintf(candidate->overrides, sizeof(candidate->overrides), "%s", mode);
         snprintf(candidate->patch_root, sizeof(candidate->patch_root), "%s", source);
         candidate->format = BONGO_CAT_IMPORT_MVER_PATCH;
     }
     return 1;
+}
+
+int bongo_cat_import_mver_patch_discover_exact(const char *source,
+    BongoCatImportDiscovery *discovery, BongoCatError *error) {
+    char root[BONGO_CAT_PATH_CAP], image[BONGO_CAT_PATH_CAP];
+    if (strcmp(bongo_cat_path_name(source), "img") == 0 && patch_shape(source)) {
+        if (!parent_path(source, root, sizeof(root))) return 0;
+        return finish_patch(root, source, discovery, error);
+    }
+    if (!bongo_cat_path_join(image, sizeof(image), source, "img") ||
+        !bongo_cat_path_is_dir(image) || !patch_shape(image)) return 0;
+    return finish_patch(source, image, discovery, error);
+}
+
+int bongo_cat_import_mver_patch_discover(const char *source,
+    BongoCatImportDiscovery *discovery, BongoCatError *error) {
+    int exact = bongo_cat_import_mver_patch_discover_exact(source,
+        discovery, error);
+    if (exact) return exact;
+    PatchSearch search = {0};
+    if (!bongo_cat_path_enumerate(source, find_image_root, &search)) return 0;
+    if (!search.matches) return 0;
+    if (search.matches != 1) {
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
+            "Mver image patch contains multiple model roots: %s", source);
+        return -1;
+    }
+    return finish_patch(source, search.image_root, discovery, error);
 }

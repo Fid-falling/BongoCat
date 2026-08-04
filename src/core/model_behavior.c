@@ -100,9 +100,12 @@ static bool read_mver_assets(BongoCatBehaviorCatalog *catalog,
             continue;
         }
         const char *asset = yyjson_get_str(yyjson_obj_get(item, effect ? "effect" : "sound"));
+        const char *configured_label = yyjson_get_str(yyjson_obj_get(item, "label"));
         char label[BONGO_CAT_ID_CAP];
         int current = effect ? effect_index++ : sound_index++;
-        snprintf(label, sizeof(label), "%s %d", effect ? "Effect" : "Sound", current + 1);
+        if (configured_label) snprintf(label, sizeof(label), "%s", configured_label);
+        else snprintf(label, sizeof(label), "%s %d",
+            effect ? "Effect" : "Sound", current + 1);
         if (!add_behavior(catalog, model, effect ? BONGO_CAT_BEHAVIOR_EFFECT :
             BONGO_CAT_BEHAVIOR_SOUND, NULL, current, label, asset,
             model->adapter_directory)) { ok = false; break; }

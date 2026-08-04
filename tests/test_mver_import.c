@@ -1,5 +1,8 @@
 #include "model_import_mver_internal.h"
 #include "model_storage.h"
+#include "preferences_model_glyphs.h"
+#include "preferences_state.h"
+#include "ui_font_atlas.h"
 #include "runtime.h"
 #include "bongo_cat/file.h"
 #include "bongo_cat/path.h"
@@ -41,6 +44,132 @@ static bool child(char *output, size_t capacity, const char *root,
         (!directory || SDL_CreateDirectory(output));
 }
 
+static void labels_from_shortcut_rows(void) {
+    static const char default_expression[] =
+        "\xE9\xBB\x98\xE8\xAE\xA4\xE8\xA1\xA8\xE6\x83\x85";
+    static const char keyboard_hidden[] =
+        "\xE9\x94\xAE\xE7\x9B\x98\xE6\xB6\x88\xE5\xA4\xB1";
+    char *temporary = SDL_GetCurrentDirectory();
+    CHECK(temporary != NULL);
+    if (!temporary) return;
+    char root[BONGO_CAT_PATH_CAP], path[BONGO_CAT_PATH_CAP];
+    snprintf(root, sizeof(root), "%s/bongo-cat-labels-%llu", temporary,
+        (unsigned long long)SDL_GetTicksNS());
+    CHECK(SDL_CreateDirectory(root));
+    CHECK(child(path, sizeof(path), root, "config.json", false));
+    CHECK(write_text(path,
+        "{/* misleading: \\\"standard\\\" */standard:{"
+        "l2d_expression:[[18,//\xE9\xBB\x98\xE8\xAE\xA4\xE8\xA1\xA8\xE6\x83\x85\n76],"
+        "[18,77]],l2d_motion:[],l2d_motion_lockhand:"
+        "[[18,//\xE9\x94\xAE\xE7\x9B\x98\xE6\xB6\x88\xE5\xA4\xB1\n49]],sounds:[]},"
+        "keyboard:{l2d_expression:[]}}"));
+    BongoCatMverLabels labels = {0};
+    CHECK(bongo_cat_mver_labels_load(path, "standard", &labels));
+    CHECK(labels.count == 2);
+    CHECK(strcmp(bongo_cat_mver_label(&labels, "l2d_expression", 0),
+        default_expression) == 0);
+    CHECK(bongo_cat_mver_label(&labels, "l2d_expression", 1) == NULL);
+    CHECK(strcmp(bongo_cat_mver_label(&labels, "l2d_motion_lockhand", 0),
+        keyboard_hidden) == 0);
+    CHECK(bongo_cat_model_remove_tree(root, NULL));
+    SDL_free(temporary);
+}
+
+static void metadata_backfills_labels(void) {
+    static const char keyboard_hidden[] =
+        "\xE9\x94\xAE\xE7\x9B\x98\xE6\xB6\x88\xE5\xA4\xB1";
+    char *temporary = SDL_GetCurrentDirectory();
+    CHECK(temporary != NULL);
+    if (!temporary) return;
+    char root[BONGO_CAT_PATH_CAP], path[BONGO_CAT_PATH_CAP];
+    snprintf(root, sizeof(root), "%s/bongo-cat-metadata-%llu", temporary,
+        (unsigned long long)SDL_GetTicksNS());
+    CHECK(SDL_CreateDirectory(root));
+    CHECK(child(path, sizeof(path), root, ".bongo-cat-mver.json", false));
+    CHECK(write_text(path, "{\"version\":1,\"bindings\":["
+        "{\"kind\":\"motion\",\"group\":\"CAT_motion_lock\",\"index\":0,"
+        "\"shortcut\":\"Alt+1\",\"label\":\"\xE9\x94\xAE\xE7\x9B\x98\xE6\xB6\x88\xE5\xA4\xB1\"},"
+        "{\"kind\":\"motion\",\"group\":\"CAT_motion_lock\",\"index\":1,"
+        "\"shortcut\":\"Alt+2\",\"label\":\"Imported\"},"
+        "{\"kind\":\"expression\",\"index\":2,\"shortcut\":\"Alt+3\","
+        "\"label\":\"Expression label\"}]}"));
+    BongoCatApp *app = calloc(1, sizeof(*app));
+    CHECK(app != NULL);
+    if (app) {
+        app->config.behavior_shortcut_count = 2;
+        snprintf(app->config.behavior_shortcuts[0].id,
+            sizeof(app->config.behavior_shortcuts[0].id),
+            "model:motion:CAT_motion_lock:0");
+        snprintf(app->config.behavior_shortcuts[0].shortcut,
+            sizeof(app->config.behavior_shortcuts[0].shortcut), "Control+1");
+        snprintf(app->config.behavior_shortcuts[1].id,
+            sizeof(app->config.behavior_shortcuts[1].id),
+            "model:motion:CAT_motion_lock:1");
+        snprintf(app->config.behavior_shortcuts[1].label,
+            sizeof(app->config.behavior_shortcuts[1].label), "Custom name");
+        bongo_cat_import_apply_metadata(app, "model", root);
+        CHECK(app->config.behavior_shortcut_count == 3);
+        CHECK(strcmp(app->config.behavior_shortcuts[0].shortcut, "Control+1") == 0);
+        CHECK(strcmp(app->config.behavior_shortcuts[0].label, keyboard_hidden) == 0);
+        CHECK(strcmp(app->config.behavior_shortcuts[1].label, "Custom name") == 0);
+        CHECK(strcmp(app->config.behavior_shortcuts[2].id,
+            "model:expression:2") == 0);
+        CHECK(strcmp(app->config.behavior_shortcuts[2].label,
+            "Expression label") == 0);
+        free(app);
+    }
+    CHECK(bongo_cat_model_remove_tree(root, NULL));
+    SDL_free(temporary);
+}
+
+static bool range_has(const uint32_t *ranges, uint32_t rune) {
+    for (size_t i = 0; ranges[i]; i += 2)
+        if (rune >= ranges[i] && rune <= ranges[i + 1]) return true;
+    return false;
+}
+
+static void behavior_labels_add_font_glyphs(void) {
+    static const unsigned char custom_label[] = {
+        0xe7, 0x8c, 0xab, 0xe5, 0x92, 0xaa, 0xe5, 0xbd,
+        0xa2, 0xe6, 0x80, 0x81, 0
+    };
+    BongoCatApp *app = calloc(1, sizeof(*app));
+    CHECK(app != NULL);
+    if (!app) return;
+    snprintf(app->behaviors.entries[0].label,
+        sizeof(app->behaviors.entries[0].label),
+        "\xE9\x94\xAE\xE7\x9B\x98\xE6\xB6\x88\xE5\xA4\xB1");
+    app->behaviors.count = 1;
+    memcpy(app->config.behavior_shortcuts[0].label, custom_label,
+        sizeof(custom_label));
+    app->config.behavior_shortcut_count = 1;
+    uint32_t ranges[64] = {0x20, 0x7e, 0};
+    bongo_cat_preferences_model_glyphs(app, ranges,
+        sizeof(ranges) / sizeof(ranges[0]));
+    CHECK(range_has(ranges, 0x952e));
+    CHECK(range_has(ranges, 0x76d8));
+    CHECK(range_has(ranges, 0x6d88));
+    CHECK(range_has(ranges, 0x5931));
+    CHECK(range_has(ranges, 0x732b));
+    CHECK(range_has(ranges, 0x54aa));
+    CHECK(range_has(ranges, 0x5f62));
+    CHECK(range_has(ranges, 0x6001));
+    free(app);
+}
+
+static void font_reload_defers_during_frame(void) {
+    BongoCatPreferences value = {0};
+    value.ui_initialized = true;
+    value.ui.frame_building = true;
+    CHECK(bongo_cat_preferences_reload_fonts(&value));
+    CHECK(value.font_reload_pending);
+    CHECK(value.render_dirty);
+    BongoCatUIBackend backend = {0};
+    backend.frame_building = true;
+    CHECK(!bongo_cat_ui_font_atlas_reload(&backend, NULL, NULL,
+        NULL, NULL, NULL, 1.0f));
+}
+
 static bool portable_fixture(const char *root) {
     char image[BONGO_CAT_PATH_CAP], standard[BONGO_CAT_PATH_CAP];
     char hand[BONGO_CAT_PATH_CAP], model[BONGO_CAT_PATH_CAP];
@@ -71,6 +200,7 @@ static void portable_model(void) {
     char root[BONGO_CAT_PATH_CAP], package[BONGO_CAT_PATH_CAP];
     char data[BONGO_CAT_PATH_CAP], mode[BONGO_CAT_PATH_CAP];
     char bundle[BONGO_CAT_PATH_CAP], nested_package[BONGO_CAT_PATH_CAP];
+    char launch[BONGO_CAT_PATH_CAP];
     char variant[BONGO_CAT_PATH_CAP], variant_model[BONGO_CAT_PATH_CAP];
     char variant_img[BONGO_CAT_PATH_CAP], variant_standard[BONGO_CAT_PATH_CAP];
     char variant_hand[BONGO_CAT_PATH_CAP], source_hand[BONGO_CAT_PATH_CAP];
@@ -89,6 +219,7 @@ static void portable_model(void) {
     CHECK(child(package, sizeof(package), root, "app", true));
     CHECK(portable_fixture(package));
     CHECK(child(bundle, sizeof(bundle), root, "bundle", true));
+    CHECK(child(launch, sizeof(launch), root, "launch", true));
     CHECK(child(nested_package, sizeof(nested_package), bundle, "model", true));
     CHECK(portable_fixture(nested_package));
     CHECK(child(variant, sizeof(variant), bundle, "variant", true));
@@ -108,6 +239,14 @@ static void portable_model(void) {
     BongoCatImportDiscovery nested = {0};
     CHECK(bongo_cat_import_mver_discover_exact(mode, &nested, &error) == 0);
     CHECK(bongo_cat_import_mver_discover(mode, &nested, &error) == 1);
+    BongoCatImportDiscovery selected_container = {0};
+    CHECK(bongo_cat_import_discover(root, &selected_container, &error));
+    CHECK(selected_container.count == 3);
+    size_t patch_count = 0;
+    for (size_t i = 0; i < selected_container.count; ++i)
+        if (selected_container.candidates[i].format == BONGO_CAT_IMPORT_MVER_PATCH)
+            patch_count++;
+    CHECK(patch_count == 1);
     BongoCatApp *app = calloc(1, sizeof(*app));
     CHECK(app != NULL);
     if (!app) { bongo_cat_model_remove_tree(root, NULL); SDL_free(temporary); return; }
@@ -117,6 +256,8 @@ static void portable_model(void) {
     CHECK(bongo_cat_import_portable_mver(app, package, &error) == BONGO_CAT_OK);
     CHECK(app->models.count == 1);
     CHECK(app->models.entries[0].managed && !app->models.entries[0].preset);
+    CHECK(strcmp(app->models.entries[0].display_name, "app") == 0);
+    CHECK(strcmp(app->models.entries[0].storage_directory, package) == 0);
     CHECK(strcmp(app->config.current_model, app->models.entries[0].id) == 0);
     char adapter_file[BONGO_CAT_PATH_CAP];
     CHECK(child(adapter_file, sizeof(adapter_file),
@@ -126,8 +267,22 @@ static void portable_model(void) {
     CHECK(bongo_cat_import_portable_mver(app, package, &error) == BONGO_CAT_OK);
     CHECK(app->models.count == 1);
     bongo_cat_models_init(&app->models);
+    CHECK(bongo_cat_import_portable_mver(app, mode, &error) == BONGO_CAT_OK);
+    CHECK(app->models.count == 1);
+    CHECK(strcmp(app->models.entries[0].storage_directory, package) == 0);
+    bongo_cat_models_init(&app->models);
     CHECK(bongo_cat_import_portable_mver(app, root, &error) == BONGO_CAT_OK);
     CHECK(app->models.count == 3);
+    bongo_cat_models_init(&app->models);
+    CHECK(bongo_cat_import_portable_mver_scan(app, root, &error) == BONGO_CAT_OK);
+    CHECK(app->models.count == 3);
+    bongo_cat_models_init(&app->models);
+    CHECK(bongo_cat_import_nearby_mver(app, launch, &error) == BONGO_CAT_OK);
+    CHECK(app->models.count == 3);
+    for (size_t i = 0; i < app->models.count; ++i) {
+        CHECK(app->models.entries[i].display_name[0] != '\0');
+        CHECK(app->models.entries[i].managed);
+    }
     free(app);
     CHECK(bongo_cat_model_remove_tree(root, NULL));
     CHECK(bongo_cat_model_remove_tree(data, NULL));
@@ -148,6 +303,10 @@ int main(void) {
     CHECK(modifier.count == 1 && strcmp(modifier.items[0], "ShiftRight") == 0);
     BongoCatMverKeyNames dpad = bongo_cat_mver_gamepad_names(12);
     CHECK(dpad.count == 1 && strcmp(dpad.items[0], "DPadUp") == 0);
+    labels_from_shortcut_rows();
+    metadata_backfills_labels();
+    behavior_labels_add_font_glyphs();
+    font_reload_defers_during_frame();
     portable_model();
     return failures ? 1 : 0;
 }

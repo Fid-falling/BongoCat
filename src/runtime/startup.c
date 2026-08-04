@@ -47,6 +47,8 @@ static bool parse_arguments(BongoCatApp *app, int argc, char **argv,
         else if (strcmp(arg, "--ci-preferences") == 0) app->smoke_preferences = true;
         else if (strcmp(arg, "--ci-preference-shortcut") == 0)
             app->smoke_preference_shortcut = true;
+        else if (strcmp(arg, "--ci-preference-model-select") == 0)
+            app->smoke_preference_model_select = true;
         else if (strcmp(arg, "--ci-remove-imported") == 0) app->smoke_remove_imported = true;
         else if (strcmp(arg, "--ci-shortcuts") == 0) app->smoke_shortcuts = true;
         else if (strcmp(arg, "--ci-menu") == 0) app->smoke_menu = true;

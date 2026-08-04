@@ -40,6 +40,8 @@ struct BongoCatPreferences {
     BongoCatImportDialog *import_dialog;
     bool frame_checked;
     bool render_dirty;
+    bool font_reload_pending;
+    bool smoke_behavior_open_pending;
     uint64_t last_render_ns;
     float pending_raster_scale;
     uint64_t raster_retry_ns;

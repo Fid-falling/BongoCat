@@ -55,6 +55,8 @@ bool bongo_cat_preferences_behavior_dialog_active(
 void bongo_cat_preferences_behavior_dialog_open(
     BongoCatPreferences *value) {
     if (!value) return;
+    SDL_Log("Preferences behavior dialog opened with %llu behaviors",
+        (unsigned long long)value->app->behaviors.count);
     value->behavior_dialog = true;
     value->behavior_dialog_opened_ns = SDL_GetTicksNS();
     value->behavior_dialog_closing_ns = 0;

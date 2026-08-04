@@ -80,7 +80,8 @@
       "model": {
         "title": "Model",
         "labels": {
-          "deleteModel": "Delete Model"
+          "deleteModel": "Delete Model",
+          "nearbyModels": "Nearby folders"
         },
         "hints": {
           "deleteSuccess": "Deleted Successfully",
@@ -162,7 +163,8 @@
         "wheelSizeHint": "Wheel: resize",
         "wheelOpacityHint": "Ctrl+Wheel: opacity",
         "quitApp": "Quit App",
-        "model": "Model"
+        "model": "Model",
+        "addModel": "Add Model"
       }
     }
   },

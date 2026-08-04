@@ -106,6 +106,8 @@ BongoCatMenuAction bongo_cat_macos_context_menu(BongoCatPlatform *platform,
     for (size_t i = 0; i < labels->model_count; ++i)
         add_item(models, target, labels->model_names[i], BONGO_CAT_MENU_MODEL_FIRST + i,
             i == labels->current_model);
+    if (labels->model_count) [models addItem:[NSMenuItem separatorItem]];
+    add_item(models, target, labels->add_model, BONGO_CAT_MENU_MODEL_ADD, false);
     [modelRoot setSubmenu:models]; [menu addItem:modelRoot];
     [models release]; [modelRoot release];
     [menu addItem:[NSMenuItem separatorItem]];

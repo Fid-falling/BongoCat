@@ -31,10 +31,11 @@ static int sequential_index(yyjson_val *bindings, size_t index, const char *kind
     return result;
 }
 
-static bool shortcut_present(const BongoCatApp *app, const char *id) {
+static BongoCatBehaviorShortcut *shortcut_for(BongoCatApp *app, const char *id) {
     for (size_t i = 0; i < app->config.behavior_shortcut_count; ++i)
-        if (strcmp(app->config.behavior_shortcuts[i].id, id) == 0) return true;
-    return false;
+        if (strcmp(app->config.behavior_shortcuts[i].id, id) == 0)
+            return &app->config.behavior_shortcuts[i];
+    return NULL;
 }
 
 static bool behavior_id(char *id, size_t capacity, const char *model_id,
@@ -74,13 +75,21 @@ void bongo_cat_import_apply_metadata(BongoCatApp *app, const char *model_id,
     yyjson_arr_foreach(bindings, index, count, item) {
         char id[BONGO_CAT_PATH_CAP];
         const char *shortcut = yyjson_get_str(yyjson_obj_get(item, "shortcut"));
-        if (!shortcut || !behavior_id(id, sizeof(id), model_id, bindings, index, item) ||
-            shortcut_present(app, id)) continue;
+        const char *label = yyjson_get_str(yyjson_obj_get(item, "label"));
+        if (!shortcut || !behavior_id(id, sizeof(id), model_id, bindings, index, item))
+            continue;
+        BongoCatBehaviorShortcut *existing = shortcut_for(app, id);
+        if (existing) {
+            if (label && !existing->label[0])
+                snprintf(existing->label, sizeof(existing->label), "%s", label);
+            continue;
+        }
         if (app->config.behavior_shortcut_count >= BONGO_CAT_BEHAVIOR_CAP) break;
         BongoCatBehaviorShortcut *value =
             &app->config.behavior_shortcuts[app->config.behavior_shortcut_count++];
         snprintf(value->id, sizeof(value->id), "%s", id);
         snprintf(value->shortcut, sizeof(value->shortcut), "%s", shortcut);
+        if (label) snprintf(value->label, sizeof(value->label), "%s", label);
     }
     yyjson_doc_free(document);
 }

@@ -5,6 +5,7 @@
 
 typedef struct BongoCatModelEntry {
     char id[BONGO_CAT_ID_CAP];
+    char display_name[BONGO_CAT_ID_CAP];
     char directory[BONGO_CAT_PATH_CAP];
     char adapter_directory[BONGO_CAT_PATH_CAP];
     char storage_directory[BONGO_CAT_PATH_CAP];

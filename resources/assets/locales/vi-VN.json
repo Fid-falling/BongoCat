@@ -80,7 +80,8 @@
       "model": {
         "title": "Mô hình",
         "labels": {
-          "deleteModel": "Xóa mô hình"
+          "deleteModel": "Xóa mô hình",
+          "nearbyModels": "Thư mục lân cận"
         },
         "hints": {
           "deleteSuccess": "Xóa thành công",
@@ -162,7 +163,8 @@
         "wheelSizeHint": "Cuộn: kích thước",
         "wheelOpacityHint": "Ctrl+cuộn: độ mờ",
         "quitApp": "Thoát",
-        "model": "Mô hình"
+        "model": "Mô hình",
+        "addModel": "Thêm mô hình"
       }
     }
   },

@@ -34,6 +34,14 @@ if ($fixture.SparseAssets) {
         $report.assets.lefthand.available -eq 1 -and
         $report.assets.lefthand.missing -eq 1
 }
+if ($fixture.MotionOverflow) {
+    $standard = $layouts | Where-Object Mode -eq "standard" | Select-Object -First 1
+    $metadata = Get-Content (Join-Path $standard.Adapter ".bongo-cat-mver.json") `
+        -Raw | ConvertFrom-Json
+    $edgeMatches = $edgeMatches -and @($metadata.bindings | Where-Object {
+        $_.kind -eq "motion" -and $_.group -eq "CAT_motion_lock"
+    }).Count -eq 0
+}
 if ($fixture.Cleanup) {
     $custom = Join-Path $data "custom-models"
     $edgeMatches = $edgeMatches -and

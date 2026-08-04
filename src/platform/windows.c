@@ -268,6 +268,8 @@ BongoCatMenuAction bongo_cat_platform_context_menu(BongoCatPlatform *platform,
     for (size_t i = 0; i < labels->model_count; ++i)
         menu_text(models, MF_STRING | (i == labels->current_model ? MF_CHECKED : 0),
             BONGO_CAT_MENU_MODEL_FIRST + i, labels->model_names[i]);
+    if (labels->model_count) AppendMenuW(models, MF_SEPARATOR, 0, NULL);
+    menu_text(models, MF_STRING, BONGO_CAT_MENU_MODEL_ADD, labels->add_model);
     wchar_t *size_label = wide(labels->window_size), *opacity_label = wide(labels->opacity);
     wchar_t *model_label = wide(labels->model), *motion_label = wide(labels->motion);
     wchar_t *expression_label = wide(labels->expression);
@@ -277,8 +279,7 @@ BongoCatMenuAction bongo_cat_platform_context_menu(BongoCatPlatform *platform,
         motion_label ? motion_label : L"");
     if (labels->expression_count) AppendMenuW(menu, MF_POPUP, (UINT_PTR)expressions,
         expression_label ? expression_label : L"");
-    AppendMenuW(menu, MF_POPUP | (labels->model_count ? 0 : MF_GRAYED),
-        (UINT_PTR)models, model_label ? model_label : L"");
+    AppendMenuW(menu, MF_POPUP, (UINT_PTR)models, model_label ? model_label : L"");
     free(size_label); free(opacity_label); free(model_label); free(motion_label);
     free(expression_label);
     AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
@@ -296,5 +297,4 @@ BongoCatMenuAction bongo_cat_platform_context_menu(BongoCatPlatform *platform,
     DestroyMenu(menu);
     return (BongoCatMenuAction)command;
 }
-
 #endif

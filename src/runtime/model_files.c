@@ -195,6 +195,30 @@ static void prune_behavior_shortcuts(BongoCatApp *app) {
     app->config.behavior_shortcut_count = output;
 }
 
+static bool same_scan_root(const char *left, const char *right) {
+    size_t a = left ? strlen(left) : 0, b = right ? strlen(right) : 0;
+    while (a > 1 && (left[a - 1] == '/' || left[a - 1] == '\\')) a--;
+    while (b > 1 && (right[b - 1] == '/' || right[b - 1] == '\\')) b--;
+    if (a != b) return false;
+#ifdef _WIN32
+    return SDL_strncasecmp(left, right, a) == 0;
+#else
+    return strncmp(left, right, a) == 0;
+#endif
+}
+
+static void scan_portable_root(BongoCatApp *app, const char *root) {
+    if (!root || !root[0] || !bongo_cat_path_is_dir(root)) return;
+    size_t before = app->models.count;
+    BongoCatError error = {0};
+    BongoCatResult result = bongo_cat_import_portable_mver_scan(app, root, &error);
+    size_t added = app->models.count - before;
+    if (added) SDL_Log("Nearby model scan added %llu model modes from %s",
+        (unsigned long long)added, root);
+    if (result != BONGO_CAT_OK && error.message[0])
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
+}
+
 void bongo_cat_app_rescan_models(BongoCatApp *app) {
     if (!app) return;
     BongoCatError error = {0};
@@ -207,12 +231,10 @@ void bongo_cat_app_rescan_models(BongoCatApp *app) {
         bongo_cat_models_scan(&app->models, root, false, &error);
     }
     const char *base = SDL_GetBasePath();
-    if (base && base[0]) {
-        BongoCatError portable_error = {0};
-        if (bongo_cat_import_portable_mver(app, base, &portable_error) !=
-            BONGO_CAT_OK && portable_error.message[0])
-            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", portable_error.message);
-    }
+    scan_portable_root(app, base);
+    const char *desktop = SDL_GetUserFolder(SDL_FOLDER_DESKTOP);
+    if (desktop && !same_scan_root(desktop, base))
+        scan_portable_root(app, desktop);
     prune_behavior_shortcuts(app);
     for (size_t i = 0; i < app->models.count; ++i)
         if (!app->models.entries[i].preset)

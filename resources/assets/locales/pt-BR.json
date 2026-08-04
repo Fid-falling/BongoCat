@@ -80,7 +80,8 @@
       "model": {
         "title": "Modelo",
         "labels": {
-          "deleteModel": "Excluir modelo"
+          "deleteModel": "Excluir modelo",
+          "nearbyModels": "Pastas próximas"
         },
         "hints": {
           "deleteSuccess": "Excluído com sucesso",
@@ -162,7 +163,8 @@
         "wheelSizeHint": "Roda: tamanho",
         "wheelOpacityHint": "Ctrl+roda: opacidade",
         "quitApp": "Sair",
-        "model": "Modelo"
+        "model": "Modelo",
+        "addModel": "Adicionar modelo"
       }
     }
   },

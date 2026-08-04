@@ -4,6 +4,7 @@
 #include "bongo_cat/common.h"
 
 typedef union SDL_Event SDL_Event;
+typedef struct SDL_Window SDL_Window;
 typedef struct BongoCatApp BongoCatApp;
 typedef struct BongoCatPreferences BongoCatPreferences;
 
@@ -21,5 +22,7 @@ bool bongo_cat_preferences_shortcuts_blocked(
 void bongo_cat_preferences_render(BongoCatPreferences *preferences);
 void bongo_cat_preferences_invalidate(BongoCatPreferences *preferences);
 void bongo_cat_preferences_request_model_import(BongoCatPreferences *preferences);
+bool bongo_cat_preferences_open_model_import(BongoCatPreferences *preferences,
+    SDL_Window *parent);
 
 #endif

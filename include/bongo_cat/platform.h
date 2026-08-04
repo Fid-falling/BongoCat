@@ -50,6 +50,7 @@ typedef enum BongoCatMenuAction {
     BONGO_CAT_MENU_OPACITY_90,
     BONGO_CAT_MENU_OPACITY_100,
     BONGO_CAT_MENU_EXIT,
+    BONGO_CAT_MENU_MODEL_ADD,
     BONGO_CAT_MENU_MODEL_FIRST = 1000,
     BONGO_CAT_MENU_MOTION_FIRST = 2000,
     BONGO_CAT_MENU_EXPRESSION_FIRST = 3000
@@ -58,7 +59,7 @@ typedef void (*BongoCatMenuPreview)(void *userdata, BongoCatMenuAction action);
 
 typedef struct BongoCatMenuLabels {
     const char *preferences, *hide, *pass_through, *always_on_top;
-    const char *window_size, *opacity, *model, *exit;
+    const char *window_size, *opacity, *model, *add_model, *exit;
     const char *wheel_size_hint, *wheel_opacity_hint, *motion, *expression;
     const char *const *model_names, *const *motion_names, *const *expression_names;
     size_t model_count, current_model, motion_count, expression_count, current_expression;

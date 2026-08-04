@@ -97,7 +97,7 @@ add_library(bongo_cat_runtime STATIC
   src/runtime/model_import_mver_patch.c
   src/runtime/model_import_mver.c src/runtime/model_import_mver_image.c
   src/runtime/model_import_mver_shortcut.c src/runtime/model_import_mver_effect.c
-  src/runtime/model_import_mver_motion.c src/runtime/model_import_report.c
+  src/runtime/model_import_mver_motion.c src/runtime/model_import_mver_labels.c src/runtime/model_import_report.c
   src/runtime/model_import_mver_metadata.c src/runtime/model_import_metadata.c
   src/runtime/runtime_flow.c
   src/runtime/shortcuts.c
@@ -119,7 +119,7 @@ add_library(bongo_cat_runtime STATIC
   src/ui/preferences_dialog.c src/ui/preferences_import.c src/ui/preferences_overlay.c
   src/ui/preferences_behavior_dialog.c src/ui/preferences_behavior_rename.c src/ui/preferences_behavior_row.c
   src/ui/preferences_notice.c
-  src/ui/preferences_model.c src/ui/preferences_model_cover.c
+  src/ui/preferences_model.c src/ui/preferences_model_cover.c src/ui/preferences_model_glyphs.c
   src/ui/preferences_pages.c src/ui/preferences_theme.c
   src/ui/preferences_shortcuts.c src/ui/preferences_shortcut_clear.c src/ui/preferences_smoke.c
   src/ui/preferences_widgets.c src/ui/preferences_controls.c src/ui/preferences_combo.c src/ui/preferences_toggle.c
@@ -270,7 +270,9 @@ if(BUILD_TESTING)
   target_include_directories(bongo_cat_app_state_tests PRIVATE include)
   add_test(NAME app-state COMMAND bongo_cat_app_state_tests)
   add_executable(bongo_cat_mver_import_tests tests/test_mver_import.c)
-  target_include_directories(bongo_cat_mver_import_tests PRIVATE src/runtime)
+  target_include_directories(bongo_cat_mver_import_tests PRIVATE src/runtime src/ui)
+  target_include_directories(bongo_cat_mver_import_tests SYSTEM PRIVATE
+    ${BONGO_CAT_NUKLEAR_INCLUDE_DIR})
   target_link_libraries(bongo_cat_mver_import_tests PRIVATE bongo_cat_runtime)
   target_compile_definitions(bongo_cat_mver_import_tests PRIVATE BONGO_CAT_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   if(MSVC)

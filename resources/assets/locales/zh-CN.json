@@ -80,7 +80,8 @@
       "model": {
         "title": "模型管理",
         "labels": {
-          "deleteModel": "删除模型"
+          "deleteModel": "删除模型",
+          "nearbyModels": "附近目录下"
         },
         "hints": {
           "deleteSuccess": "删除成功",
@@ -162,7 +163,8 @@
         "wheelSizeHint": "滚轮调整大小",
         "wheelOpacityHint": "Ctrl+滚轮调整透明度",
         "quitApp": "退出",
-        "model": "模型"
+        "model": "模型",
+        "addModel": "添加模型"
       }
     }
   },

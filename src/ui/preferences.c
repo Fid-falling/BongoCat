@@ -73,6 +73,8 @@ void bongo_cat_preferences_close(BongoCatPreferences *value) {
     value->owns_gl_context = false;
     value->transparent_window = false;
     value->ui_initialized = false;
+    value->font_reload_pending = false;
+    value->smoke_behavior_open_pending = false;
     value->native_drag = false;
     value->chrome_dragging = false;
     value->pending_raster_scale = 0.0f;
@@ -91,6 +93,11 @@ void bongo_cat_preferences_destroy(BongoCatPreferences *value) {
 void bongo_cat_preferences_request_model_import(BongoCatPreferences *value) {
     if (value && !bongo_cat_preferences_import_is_open(value->import_dialog))
         value->import_requested = true; }
+bool bongo_cat_preferences_open_model_import(BongoCatPreferences *value,
+    SDL_Window *parent) {
+    return value && parent && bongo_cat_preferences_import_open(
+        value->import_dialog, parent);
+}
 bool bongo_cat_preferences_visible(const BongoCatPreferences *value) { return value && value->window; }
 bool bongo_cat_preferences_needs_frame(const BongoCatPreferences *value) {
     if (!value || !value->window) return false;
@@ -170,7 +177,7 @@ static bool chrome_event(BongoCatPreferences *value, const SDL_Event *event) {
 bool bongo_cat_preferences_event(BongoCatPreferences *value, const SDL_Event *event) {
     if (!value || !event) return false;
     if (bongo_cat_preferences_import_event(value->import_dialog, value->app,
-        value->window, event)) { value->render_dirty = value->window != NULL;
+        event)) { value->render_dirty = value->window != NULL;
         return true; }
     if (!value->window) return false;
     if (event->type == SDL_EVENT_SYSTEM_THEME_CHANGED) {

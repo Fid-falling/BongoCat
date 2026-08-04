@@ -32,8 +32,9 @@ instead of a diagnostic build.
 - Import and removal of custom model packages. A package is checked for a valid
   manifest and safe file references before it is installed under the user data
   directory.
-- Automatic discovery of Bongo-Cat-Mver packages placed beside the executable,
-  either as `config.json` + `img/` directly or as an intact child directory.
+- Automatic discovery of Bongo-Cat-Mver packages in the executable directory
+  or its immediate parent, shown separately as nearby models. Packages may use
+  `config.json` + `img/` directly or an intact child directory.
   Model containers with nested full packages and image-only variants (for
   example `A-*` plus `Z-*` directories) are also discovered. The source stays
   read-only and BongoCat caches only generated adapter files.
@@ -183,9 +184,10 @@ configuration migration path is retained.
 The default data directory comes from SDL's preference path and contains
 `preferences.json`, `session.json`, `custom-models/`, and the generated `portable-mver/` adapter
 cache. A Bongo-Cat-Mver package can be used without importing by placing its
-`config.json` and `img/` beside `BongoCat`, or by placing the intact package
-directory there. A collection such as `露西亚-誓焰版` may be placed as one
-folder; its full package and nested image patches are discovered together.
+`config.json` and `img/` beside `BongoCat`, by placing the intact package
+directory there, or by keeping both under the same immediate parent directory.
+A collection such as `露西亚-誓焰版` may be selected as one folder; its full
+package and nested image patches are discovered together.
 Tests and portable launches may override both paths:
 
 ```text

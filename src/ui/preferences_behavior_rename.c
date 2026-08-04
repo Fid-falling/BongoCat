@@ -25,6 +25,7 @@ static const char *display_label(const BongoCatBehaviorEntry *entry,
 void bongo_cat_preferences_behavior_rename_finish(
     BongoCatPreferences *value, bool save) {
     if (!value || !value->behavior_rename_id[0]) return;
+    bool label_changed = false;
     if (save) {
         size_t start = 0, end = strlen(value->behavior_rename_text);
         while (start < end && (value->behavior_rename_text[start] == ' ' ||
@@ -42,14 +43,20 @@ void bongo_cat_preferences_behavior_rename_finish(
             }
         BongoCatBehaviorShortcut *binding = binding_for(&value->app->config,
             value->behavior_rename_id);
-        if (binding) snprintf(binding->label, sizeof(binding->label), "%s",
-            entry && !strcmp(value->behavior_rename_text, entry->label) ? "" :
-            value->behavior_rename_text);
+        if (binding) {
+            char label[BONGO_CAT_ID_CAP];
+            snprintf(label, sizeof(label), "%s",
+                entry && !strcmp(value->behavior_rename_text, entry->label) ? "" :
+                value->behavior_rename_text);
+            label_changed = strcmp(binding->label, label) != 0;
+            snprintf(binding->label, sizeof(binding->label), "%s", label);
+        }
     }
     value->behavior_rename_id[0] = '\0';
     value->behavior_rename_text[0] = '\0';
     value->behavior_rename_select_all = false;
     SDL_StopTextInput(value->window);
+    if (label_changed) bongo_cat_preferences_reload_fonts(value);
     value->render_dirty = true;
 }
 

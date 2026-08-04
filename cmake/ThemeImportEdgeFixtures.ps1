@@ -53,7 +53,7 @@ $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
 $manifest.FileReferences.Motions.CAT_motion_lock = @()
 $manifest | ConvertTo-Json -Depth 20 | Set-Content $manifestPath
 $fixtures += [pscustomobject]@{ Name="mver-motion-overflow"; Path=$overflow
-    Valid=$false; Count=0 }
+    Valid=$true; Count=3; MotionOverflow=$true }
 
 $corruptEffect = Join-Path $OutputDir "mver-corrupt-effect"
 Copy-Item -LiteralPath $mver -Destination $corruptEffect -Recurse

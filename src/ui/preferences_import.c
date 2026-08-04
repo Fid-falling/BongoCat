@@ -129,20 +129,20 @@ bool bongo_cat_preferences_import_open(BongoCatImportDialog *dialog,
 }
 
 bool bongo_cat_preferences_import_event(BongoCatImportDialog *dialog,
-    BongoCatApp *app, SDL_Window *window, const SDL_Event *event) {
+    BongoCatApp *app, const SDL_Event *event) {
     if (!dialog || !event || event->type != dialog->event_type ||
         event->user.code != BONGO_CAT_IMPORT_EVENT_CODE ||
         event->user.data2 != dialog) return false;
     BongoCatImportJob *job = (BongoCatImportJob *)event->user.data1;
-    SDL_WindowID current = window ? SDL_GetWindowID(window) : 0;
+    SDL_Window *owner = SDL_GetWindowFromID(event->user.windowID);
     SDL_LockMutex(dialog->mutex);
     dialog->open = false;
-    bool accept = dialog->active && current && current == event->user.windowID;
+    bool accept = dialog->active && owner != NULL;
     SDL_UnlockMutex(dialog->mutex);
-    if (accept && app && window && job) {
+    if (accept && app && job) {
         SDL_GL_MakeCurrent(app->window, app->gl_context);
         for (size_t i = 0; i < job->count; ++i)
-            bongo_cat_preferences_import_path(app, window, job->paths[i]);
+            bongo_cat_preferences_import_path(app, owner, job->paths[i]);
     }
     free_job(job);
     return true;

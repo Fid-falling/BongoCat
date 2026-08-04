@@ -2,10 +2,10 @@
 #include "ui_catime.h"
 #include "ui_font.h"
 #include "ui_font_atlas.h"
+#include "preferences_model_glyphs.h"
 #include "ui_paint.h"
 #include "bongo_cat/i18n.h"
 #include "bongo_cat/memory.h"
-
 #include <SDL3/SDL_opengl.h>
 #include <math.h>
 #include <string.h>
@@ -83,6 +83,8 @@ static void font_paths(BongoCatPreferences *value, PreferenceFonts *fonts) {
     if (!fonts->heading_fallback) fonts->heading_fallback = fonts->body_fallback;
     if (!value->app->i18n) return;
     bongo_cat_i18n_glyph_ranges(value->app->i18n, value->glyph_ranges,
+        sizeof(value->glyph_ranges) / sizeof(value->glyph_ranges[0]));
+    bongo_cat_preferences_model_glyphs(value->app, value->glyph_ranges,
         sizeof(value->glyph_ranges) / sizeof(value->glyph_ranges[0]));
     fonts->ranges = value->glyph_ranges;
 }
@@ -220,11 +222,18 @@ bool bongo_cat_preferences_open_window(BongoCatPreferences *value) {
 
 bool bongo_cat_preferences_reload_fonts(BongoCatPreferences *value) {
     if (!value || !value->ui_initialized) return false;
+    if (value->ui.frame_building) {
+        value->font_reload_pending = true;
+        value->render_dirty = true;
+        return true;
+    }
     PreferenceFonts fonts;
     font_paths(value, &fonts);
-    return bongo_cat_ui_font_atlas_reload(&value->ui, fonts.body,
+    bool reloaded = bongo_cat_ui_font_atlas_reload(&value->ui, fonts.body,
         fonts.body_fallback, fonts.heading, fonts.heading_fallback,
         fonts.ranges, value->ui.raster_scale);
+    if (reloaded) value->font_reload_pending = false;
+    return reloaded;
 }
 
 bool bongo_cat_preferences_refresh_raster(BongoCatPreferences *value) {

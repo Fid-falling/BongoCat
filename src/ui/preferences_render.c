@@ -256,13 +256,21 @@ void bongo_cat_preferences_render(BongoCatPreferences *value) {
     value->render_retry_ns = 0;
     bongo_cat_preferences_refresh_raster(value);
     bongo_cat_preferences_reload_language(value);
+    if (value->font_reload_pending &&
+        !bongo_cat_preferences_reload_fonts(value)) {
+        value->font_reload_pending = false;
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+            "Deferred preferences font atlas rebuild failed");
+    }
     bongo_cat_preferences_apply_theme(value);
     float width = 0.0f, height = 0.0f;
     bongo_cat_ui_logical_size(&value->ui, &width, &height);
     bongo_cat_ui_paint_begin_frame(&value->ui);
     bongo_cat_ui_cursor_begin(&value->ui);
     bool dark = bongo_cat_preferences_resolved_theme(value) != 0;
+    value->ui.frame_building = true;
     bool close_requested = draw_frame(value, width, height, dark);
+    value->ui.frame_building = false;
     bongo_cat_preferences_shortcut_smoke(value);
     BongoCatUIPalette palette = bongo_cat_ui_palette(dark);
     glDisable(GL_SCISSOR_TEST);

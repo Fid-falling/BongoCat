@@ -128,6 +128,7 @@ static void context_menu(BongoCatApp *app) {
         tr(app, "composables.useAppMenu.labels.windowSize", "Window Size"),
         tr(app, "composables.useAppMenu.labels.opacity", "Opacity"),
         tr(app, "composables.useAppMenu.labels.model", "Model"),
+        tr(app, "composables.useAppMenu.labels.addModel", "Add Model"),
         tr(app, "composables.useAppMenu.labels.quitApp", "Exit"),
         tr(app, "composables.useAppMenu.labels.wheelSizeHint", "Wheel: resize"),
         tr(app, "composables.useAppMenu.labels.wheelOpacityHint", "Ctrl+Wheel: opacity"),
@@ -149,6 +150,8 @@ void bongo_cat_window_show_context_menu(BongoCatApp *app) { context_menu(app); }
 
 void bongo_cat_window_menu_action(BongoCatApp *app, BongoCatMenuAction action) {
     if (action == BONGO_CAT_MENU_PREFERENCES) bongo_cat_preferences_show(app->preferences);
+    else if (action == BONGO_CAT_MENU_MODEL_ADD)
+        bongo_cat_preferences_open_model_import(app->preferences, app->window);
     else if (action == BONGO_CAT_MENU_HIDE)
         bongo_cat_window_set_visible(app, false);
     else if (action == BONGO_CAT_MENU_PASS_THROUGH) {

@@ -8,6 +8,11 @@ bool bongo_cat_ui_font_atlas_reload(BongoCatUIBackend *ui,
     const char *heading_path, const char *heading_fallback_path,
     const nk_rune *glyph_ranges, float raster_scale) {
     if (!ui) return false;
+    if (ui->frame_building) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+            "Refusing to replace a font atlas while a UI frame is being built");
+        return false;
+    }
     BongoCatUIBackend next;
     memset(&next, 0, sizeof(next));
     if (!nk_init_default(&next.context, NULL)) return false;

@@ -23,7 +23,6 @@ typedef struct BongoCatImportCandidate {
     BongoCatModelMode mode;
     BongoCatImportFormat format;
     bool gamepad_buttons;
-    bool portable_compat;
 } BongoCatImportCandidate;
 
 typedef struct BongoCatImportDiscovery {
@@ -46,6 +45,8 @@ int bongo_cat_import_mver_discover_exact(const char *source,
     BongoCatImportDiscovery *discovery, BongoCatError *error);
 int bongo_cat_import_mver_patch_discover(const char *source,
     BongoCatImportDiscovery *discovery, BongoCatError *error);
+int bongo_cat_import_mver_patch_discover_exact(const char *source,
+    BongoCatImportDiscovery *discovery, BongoCatError *error);
 bool bongo_cat_import_manifest_valid(const char *root, const char *setting,
     BongoCatError *error);
 bool bongo_cat_import_mver_assets(const BongoCatImportCandidate *candidate,
@@ -63,6 +64,10 @@ bool bongo_cat_import_write_package(const BongoCatImportCandidate *candidate,
 void bongo_cat_import_apply_metadata(BongoCatApp *app, const char *model_id,
     const char *directory);
 BongoCatResult bongo_cat_import_portable_mver(BongoCatApp *app,
+    const char *root, BongoCatError *error);
+BongoCatResult bongo_cat_import_portable_mver_scan(BongoCatApp *app,
+    const char *root, BongoCatError *error);
+BongoCatResult bongo_cat_import_nearby_mver(BongoCatApp *app,
     const char *root, BongoCatError *error);
 BongoCatResult bongo_cat_import_portable_scan(const char *root,
     BongoCatPortableVisitor visitor, void *userdata, BongoCatError *error);

@@ -177,12 +177,15 @@ BongoCatMenuAction bongo_cat_linux_context_menu(BongoCatPlatform *platform,
             rows[i] = (LinuxMenuRow){text[i], BONGO_CAT_MENU_OPACITY_10 + i}; }
         rows[10] = (LinuxMenuRow){labels->wheel_opacity_hint, LINUX_MENU_HINT};
         action = popup_rows(display, owner, rows, 11, labels);
-    } else if (action == (BongoCatMenuAction)-3 && labels->model_count) {
-        LinuxMenuRow rows[BONGO_CAT_MODEL_CAP];
+    } else if (action == (BongoCatMenuAction)-3) {
+        LinuxMenuRow rows[BONGO_CAT_MODEL_CAP + 1];
         for (size_t i = 0; i < labels->model_count; ++i)
             rows[i] = (LinuxMenuRow){labels->model_names[i],
                 BONGO_CAT_MENU_MODEL_FIRST + (int)i};
-        action = popup_rows(display, owner, rows, (int)labels->model_count, labels);
+        rows[labels->model_count] = (LinuxMenuRow){labels->add_model,
+            BONGO_CAT_MENU_MODEL_ADD};
+        action = popup_rows(display, owner, rows,
+            (int)labels->model_count + 1, labels);
     } else if (action == LINUX_MENU_MOTIONS) {
         LinuxMenuRow rows[BONGO_CAT_BEHAVIOR_CAP];
         for (size_t i = 0; i < labels->motion_count; ++i)

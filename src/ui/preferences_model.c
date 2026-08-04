@@ -34,6 +34,8 @@ void bongo_cat_preferences_import_path(BongoCatApp *app,
         if (result != BONGO_CAT_OK) app->exit_code = 1;
     } else bongo_cat_preferences_notice_show(app, message,
         result != BONGO_CAT_OK);
+    if (result == BONGO_CAT_OK)
+        bongo_cat_preferences_reload_fonts(app->preferences);
     bongo_cat_preferences_invalidate(app->preferences);
     bongo_cat_preferences_render(app->preferences);
 }
@@ -50,6 +52,7 @@ static const char *model_name(const BongoCatModelEntry *entry) {
     if (!strcmp(entry->id, "standard")) return "Standard";
     if (!strcmp(entry->id, "keyboard")) return "Keyboard";
     if (!strcmp(entry->id, "gamepad")) return "Gamepad";
+    if (entry->display_name[0]) return entry->display_name;
     return entry->id;
 }
 
@@ -111,6 +114,7 @@ static void select_model(BongoCatPreferences *value,
     const BongoCatModelEntry *entry) {
     BongoCatError error = {0};
     if (bongo_cat_app_select_model_with_error(value->app, entry->id, &error)) {
+        bongo_cat_preferences_reload_fonts(value);
         bongo_cat_preferences_invalidate(value);
         return;
     }
@@ -230,6 +234,32 @@ static bool is_builtin(const char *id) {
         !strcmp(id, "gamepad");
 }
 
+static bool has_nearby(const BongoCatApp *app) {
+    for (size_t i = 0; i < app->models.count; ++i)
+        if (app->models.entries[i].managed) return true;
+    return false;
+}
+
+static void smoke_model_behavior(BongoCatPreferences *value) {
+    BongoCatApp *app = value->app;
+    if (app->smoke_preference_model_select) {
+        for (size_t i = 0; i < app->models.count; ++i) {
+            BongoCatModelEntry *entry = &app->models.entries[i];
+            if (!entry->managed || !strcmp(entry->id,
+                app->config.current_model)) continue;
+            app->smoke_preference_model_select = false;
+            value->smoke_behavior_open_pending = true;
+            SDL_Log("Preferences smoke selecting nearby model %s", entry->id);
+            select_model(value, entry);
+            return;
+        }
+    }
+    if (value->smoke_behavior_open_pending && !value->font_reload_pending) {
+        value->smoke_behavior_open_pending = false;
+        bongo_cat_preferences_behavior_dialog_open(value);
+    }
+}
+
 static void draw_named(BongoCatPreferences *value, struct nk_context *context,
     const char *id) {
     for (size_t i = 0; i < value->app->models.count; ++i)
@@ -241,6 +271,7 @@ static void draw_named(BongoCatPreferences *value, struct nk_context *context,
 void bongo_cat_preferences_page_model(BongoCatPreferences *value,
     struct nk_context *context) {
     BongoCatApp *app = value->app;
+    smoke_model_behavior(value);
     bongo_cat_preferences_model_covers_begin();
     bongo_cat_pref_section(context,
         tr(app, "pages.preference.model.title", "Installed models"));
@@ -255,8 +286,19 @@ void bongo_cat_preferences_page_model(BongoCatPreferences *value,
     draw_named(value, context, "keyboard");
     draw_named(value, context, "gamepad");
     for (size_t i = 0; i < app->models.count; ++i)
-        if (!is_builtin(app->models.entries[i].id))
+        if (!is_builtin(app->models.entries[i].id) &&
+            !app->models.entries[i].managed)
             model_card(value, context, &app->models.entries[i]);
     context->style.window.spacing = old_spacing;
+    if (has_nearby(app)) {
+        bongo_cat_pref_section(context, tr(app,
+            "pages.preference.model.labels.nearbyModels", "Nearby folders"));
+        context->style.window.spacing = nk_vec2(14, 17);
+        nk_layout_row_dynamic(context, 222, columns);
+        for (size_t i = 0; i < app->models.count; ++i)
+            if (app->models.entries[i].managed)
+                model_card(value, context, &app->models.entries[i]);
+        context->style.window.spacing = old_spacing;
+    }
     bongo_cat_preferences_model_covers_prune(app);
 }

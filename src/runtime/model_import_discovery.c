@@ -218,13 +218,50 @@ static int compare_candidates(const void *left, const void *right) {
     return difference ? difference : strcmp(a->directory, b->directory);
 }
 
+typedef struct ContainerDiscovery {
+    BongoCatImportDiscovery *output;
+} ContainerDiscovery;
+
+static BongoCatResult collect_container(void *userdata, const char *source,
+    BongoCatImportDiscovery *found, BongoCatError *error) {
+    (void)source;
+    ContainerDiscovery *container = userdata;
+    for (size_t i = 0; i < found->count; ++i) {
+        if (container->output->count >= BONGO_CAT_IMPORT_CANDIDATE_CAP) {
+            bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
+                "Selected folder contains too many model variants");
+            return BONGO_CAT_ERROR_FORMAT;
+        }
+        container->output->candidates[container->output->count++] =
+            found->candidates[i];
+    }
+    return BONGO_CAT_OK;
+}
+
 bool bongo_cat_import_discover(const char *source, BongoCatImportDiscovery *discovery,
     BongoCatError *error) {
     memset(discovery, 0, sizeof(*discovery));
     int mver = bongo_cat_import_mver_discover(source, discovery, error);
-    if (mver != 0) return mver > 0;
-    int patch = bongo_cat_import_mver_patch_discover(source, discovery, error);
-    if (patch != 0) return patch > 0;
+    if (mver > 0) return true;
+    if (mver < 0) return false;
+    BongoCatError patch_error = {0};
+    int patch = bongo_cat_import_mver_patch_discover(source, discovery, &patch_error);
+    if (patch > 0) return true;
+    memset(discovery, 0, sizeof(*discovery));
+    ContainerDiscovery container = {discovery};
+    BongoCatResult container_result = bongo_cat_import_portable_scan(source,
+        collect_container, &container, error);
+    if (container_result != BONGO_CAT_OK) return false;
+    if (discovery->count) {
+        qsort(discovery->candidates, discovery->count,
+            sizeof(discovery->candidates[0]), compare_candidates);
+        return true;
+    }
+    if (patch < 0) {
+        if (error) *error = patch_error;
+        return false;
+    }
+    if (error) *error = (BongoCatError){0};
     if (!bongo_cat_path_enumerate(source, discover_item, discovery)) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
             discovery->ambiguous ? "A model directory contains multiple model3 manifests" :
