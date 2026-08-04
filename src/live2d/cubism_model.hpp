@@ -32,6 +32,7 @@ public:
     bool update(float delta_seconds);
     void draw();
     void set_mirror(bool mirror);
+    void set_render_options(const BongoCatLive2DRenderOptions &options);
     void set_dragging(float x, float y);
     bool set_parameter(const char *id, float value);
     bool parameter(const char *id, float *minimum, float *maximum, float *value);
@@ -77,6 +78,7 @@ private:
     MotionMap motions_;
     std::map<std::string, LockMotion> lock_motions_;
     MotionMap expressions_;
+    Csm::CubismMotionManager mver_expression_manager_;
     std::vector<std::string> expression_names_;
     std::vector<GLuint> textures_;
     std::vector<BongoCatImageAlphaMask> texture_alpha_;
@@ -98,6 +100,7 @@ private:
     bool visual_state_ready_ = false;
     bool motion_updated_ = false;
     bool mirror_ = false;
+    BongoCatLive2DRenderOptions render_options_{};
     bool direct_textures_ = false;
     bool external_parameters_dirty_ = false;
     std::vector<std::string> idle_motion_keys_;

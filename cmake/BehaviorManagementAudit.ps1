@@ -11,6 +11,7 @@ $configPath = Join-Path $data "preferences.json"
 New-Item -ItemType Directory -Force -Path $data | Out-Null
 $env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
 $env:BONGO_CAT_TEST_INSTANCE_ID = "behavior-management-audit-$PID"
+$env:BONGO_CAT_DISABLE_NEARBY_MODEL_SCAN = "1"
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type @'

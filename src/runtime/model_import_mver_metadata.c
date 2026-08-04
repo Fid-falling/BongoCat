@@ -11,6 +11,49 @@
 
 #define MVER_METADATA ".bongo-cat-mver.json"
 
+static double number_or(yyjson_val *value, double fallback) {
+    return yyjson_is_num(value) ? yyjson_get_num(value) : fallback;
+}
+
+static bool add_render_profile(yyjson_mut_doc *output, yyjson_mut_val *root,
+    yyjson_val *config) {
+    yyjson_val *decoration = yyjson_obj_get(config, "decoration");
+    yyjson_val *workarea = yyjson_obj_get(config, "workarea");
+    yyjson_val *window = yyjson_obj_get(decoration, "window_size");
+    yyjson_val *offset = yyjson_obj_get(decoration, "l2d_offset");
+    yyjson_val *top_left = yyjson_obj_get(workarea, "top_left");
+    yyjson_val *right_bottom = yyjson_obj_get(workarea, "right_bottom");
+    double scale = number_or(yyjson_obj_get(decoration, "l2d_correct"), 1.1);
+    int width = (int)number_or(yyjson_arr_get(window, 0), 612.0);
+    int height = (int)number_or(yyjson_arr_get(window, 1), 352.0);
+    double offset_x = number_or(yyjson_arr_get(offset, 0), 0.0);
+    double offset_y = number_or(yyjson_arr_get(offset, 1), 0.0);
+    yyjson_val *mirror_value = yyjson_obj_get(decoration, "l2d_horizontal_flip");
+    bool mirror = yyjson_is_bool(mirror_value) && yyjson_get_bool(mirror_value);
+    yyjson_val *custom_value = yyjson_obj_get(workarea, "workarea");
+    bool custom = yyjson_is_bool(custom_value) && yyjson_get_bool(custom_value);
+    int left = (int)number_or(yyjson_arr_get(top_left, 0), 0.0);
+    int top = (int)number_or(yyjson_arr_get(top_left, 1), 0.0);
+    int right = (int)number_or(yyjson_arr_get(right_bottom, 0), 0.0);
+    int bottom = (int)number_or(yyjson_arr_get(right_bottom, 1), 0.0);
+    if (scale <= 0.0 || scale > 100.0) scale = 1.1;
+    if (width <= 0 || height <= 0) { width = 612; height = 352; }
+    yyjson_mut_val *render = yyjson_mut_obj_add_obj(output, root, "render");
+    return render &&
+        yyjson_mut_obj_add_str(output, render, "profile", "mver-0.1.6") &&
+        yyjson_mut_obj_add_real(output, render, "projectionScale", scale) &&
+        yyjson_mut_obj_add_real(output, render, "offsetX", offset_x) &&
+        yyjson_mut_obj_add_real(output, render, "offsetY", offset_y) &&
+        yyjson_mut_obj_add_int(output, render, "referenceWidth", width) &&
+        yyjson_mut_obj_add_int(output, render, "referenceHeight", height) &&
+        yyjson_mut_obj_add_bool(output, render, "mirror", mirror) &&
+        yyjson_mut_obj_add_bool(output, render, "customPointerBounds", custom) &&
+        yyjson_mut_obj_add_int(output, render, "pointerLeft", left) &&
+        yyjson_mut_obj_add_int(output, render, "pointerTop", top) &&
+        yyjson_mut_obj_add_int(output, render, "pointerRight", right) &&
+        yyjson_mut_obj_add_int(output, render, "pointerBottom", bottom);
+}
+
 static bool sound_source(const BongoCatImportCandidate *candidate, size_t index,
     char *source, size_t capacity, char *relative, size_t relative_capacity) {
     static const char *extensions[] = {"wav", "ogg", "flac"};
@@ -90,6 +133,7 @@ bool bongo_cat_import_mver_metadata(const BongoCatImportCandidate *candidate,
     if (output) yyjson_mut_doc_set_root(output, root);
     bool ok = yyjson_is_obj(mode) && items &&
         yyjson_mut_obj_add_int(output, root, "version", 1) &&
+        add_render_profile(output, root, config) &&
         bongo_cat_mver_add_behaviors(output, items, mode, candidate, &labels, error) &&
         add_sounds(output, items, config, yyjson_obj_get(mode, "sounds"),
             candidate, &labels, target) &&

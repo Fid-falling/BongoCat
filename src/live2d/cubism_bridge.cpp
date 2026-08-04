@@ -175,7 +175,8 @@ extern "C" void bongo_cat_live2d_destroy(BongoCatLive2D *runtime) {
 }
 
 extern "C" BongoCatResult bongo_cat_live2d_load(BongoCatLive2D *runtime,
-    const char *directory, const char *setting, bool preset, BongoCatError *error) {
+    const char *directory, const char *setting, bool preset,
+    const BongoCatLive2DRenderOptions *render_options, BongoCatError *error) {
     if (!runtime) return BONGO_CAT_ERROR_ARGUMENT;
     bongo_cat::NativeModel *previous = runtime->model;
     bongo_cat::NativeModel *model = nullptr;
@@ -187,6 +188,7 @@ extern "C" BongoCatResult bongo_cat_live2d_load(BongoCatLive2D *runtime,
                 "Cannot allocate Live2D model");
             return BONGO_CAT_ERROR_MEMORY;
         }
+        if (render_options) model->set_render_options(*render_options);
         if (!model->load(directory, setting, preset, error)) {
             delete model;
             return error ? error->code : BONGO_CAT_ERROR_CUBISM;
@@ -259,6 +261,11 @@ extern "C" void bongo_cat_live2d_draw(BongoCatLive2D *runtime) {
 }
 extern "C" void bongo_cat_live2d_set_mirror(BongoCatLive2D *runtime, bool mirror) {
     if (runtime && runtime->model) runtime->model->set_mirror(mirror);
+}
+extern "C" void bongo_cat_live2d_set_render_options(BongoCatLive2D *runtime,
+    const BongoCatLive2DRenderOptions *options) {
+    if (runtime && runtime->model && options)
+        runtime->model->set_render_options(*options);
 }
 extern "C" void bongo_cat_live2d_set_dragging(BongoCatLive2D *runtime,
     float x, float y) {

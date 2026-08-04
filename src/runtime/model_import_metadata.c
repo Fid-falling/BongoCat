@@ -93,3 +93,51 @@ void bongo_cat_import_apply_metadata(BongoCatApp *app, const char *model_id,
     }
     yyjson_doc_free(document);
 }
+
+bool bongo_cat_import_mver_render_options(const char *directory,
+    BongoCatLive2DRenderOptions *options) {
+    if (!options) return false;
+    *options = (BongoCatLive2DRenderOptions){0};
+    char path[BONGO_CAT_PATH_CAP];
+    if (!directory || !bongo_cat_path_join(path, sizeof(path), directory,
+        MVER_METADATA)) return false;
+    yyjson_doc *document = bongo_cat_json_read_file(path, 0, NULL);
+    yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
+    yyjson_val *render = yyjson_obj_get(root, "render");
+    const char *profile = yyjson_get_str(yyjson_obj_get(render, "profile"));
+    yyjson_val *scale = yyjson_obj_get(render, "projectionScale");
+    int width = (int)yyjson_get_sint(yyjson_obj_get(render, "referenceWidth"));
+    int height = (int)yyjson_get_sint(yyjson_obj_get(render, "referenceHeight"));
+    bool valid = yyjson_is_obj(root) &&
+        yyjson_get_int(yyjson_obj_get(root, "version")) == 1 &&
+        yyjson_is_obj(render) && profile && strcmp(profile, "mver-0.1.6") == 0 &&
+        yyjson_is_num(scale) && yyjson_get_num(scale) > 0.0 &&
+        yyjson_get_num(scale) <= 100.0 && width > 0 && height > 0;
+    if (valid) {
+        options->mver_compatibility = true;
+        options->projection_scale = (float)yyjson_get_num(scale);
+        options->offset_x = (float)yyjson_get_num(yyjson_obj_get(render, "offsetX"));
+        options->offset_y = (float)yyjson_get_num(yyjson_obj_get(render, "offsetY"));
+        options->reference_width = width;
+        options->reference_height = height;
+        yyjson_val *mirror = yyjson_obj_get(render, "mirror");
+        options->source_mirror = yyjson_is_bool(mirror) && yyjson_get_bool(mirror);
+        yyjson_val *custom = yyjson_obj_get(render, "customPointerBounds");
+        options->custom_pointer_bounds = yyjson_is_bool(custom) &&
+            yyjson_get_bool(custom);
+        options->pointer_left = (int)yyjson_get_sint(
+            yyjson_obj_get(render, "pointerLeft"));
+        options->pointer_top = (int)yyjson_get_sint(
+            yyjson_obj_get(render, "pointerTop"));
+        options->pointer_right = (int)yyjson_get_sint(
+            yyjson_obj_get(render, "pointerRight"));
+        options->pointer_bottom = (int)yyjson_get_sint(
+            yyjson_obj_get(render, "pointerBottom"));
+        if (options->custom_pointer_bounds &&
+            (options->pointer_right <= options->pointer_left ||
+             options->pointer_bottom <= options->pointer_top))
+            options->custom_pointer_bounds = false;
+    }
+    yyjson_doc_free(document);
+    return valid;
+}

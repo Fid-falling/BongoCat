@@ -51,3 +51,36 @@ desktop runtime.
 - Working set is below 100 MiB with one bundled model active.
 - Hidden rendering is suspended and a 24-hour run has no unbounded growth.
 - Every hand-written file is at most 300 physical lines.
+
+## Mver visual equivalence
+
+Mver imports retain the source package's `l2d_correct`, `window_size`,
+`l2d_offset`, and horizontal-follow values in `.bongo-cat-mver.json`. The native
+renderer uses the Mver 0.1.6 projection order for those models and does not
+apply native expression auto-fit. The compatibility matrix also converts the
+modern Cubism Core canvas units to Mver 0.1.6 units while retaining authored
+Layout translation and `l2d_offset`. Its horizontal option controls following,
+not model mirroring. Window resizing follows the imported reference aspect
+ratio. Pointer-driven head, body, eye, and physics parameters use Mver's
+configured `workarea`, or its DPI-virtualized primary-screen coordinate domain
+when no custom work area is enabled.
+
+For a blind comparison, capture identically sized and identically named frames
+from Mver and the native application, then run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File cmake/MverBlindTest.ps1 `
+  -MverFrames path/to/mver-frames -NativeFrames path/to/native-frames `
+  -OutputDir build/mver-blind-test
+```
+
+Give the reviewer `cases/` and `ballot.csv`; keep `private/answer-key.json`
+hidden until the ballot is complete. `metrics.csv` and `result.json` provide the
+automated pixel gate. Number continuous frames with a shared suffix such as
+`idle-0001.png`; the runner may align each pair by at most two frames and records
+the selected match. Foreground metrics use the screenshots' alpha union. When
+desktop capture makes alpha fully opaque, pass `-MaskFrames` with matching
+native framebuffer alpha captures; `ForegroundMode=full-frame-fallback` is
+reported explicitly when no valid mask is available. A valid run uses the same
+window size, pointer trace, expression or motion selection, frame rate, and
+capture timestamps in both applications.

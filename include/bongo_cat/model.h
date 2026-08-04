@@ -60,19 +60,37 @@ typedef struct BongoCatParameterRange { float minimum, maximum, value; } BongoCa
 typedef struct BongoCatLive2DVisualState {
     float fit_scale, fit_translate_x, fit_translate_y;
     float visible_min_x, visible_min_y, visible_max_x, visible_max_y;
-    bool fitted, visible;
+    bool fitted, visible, mver_compatibility;
 } BongoCatLive2DVisualState;
+
+typedef struct BongoCatLive2DRenderOptions {
+    bool mver_compatibility;
+    bool source_mirror;
+    bool custom_pointer_bounds;
+    float projection_scale;
+    float offset_x;
+    float offset_y;
+    int reference_width;
+    int reference_height;
+    int pointer_left;
+    int pointer_top;
+    int pointer_right;
+    int pointer_bottom;
+} BongoCatLive2DRenderOptions;
 
 BongoCatLive2D *bongo_cat_live2d_create(const char *asset_root, BongoCatError *error);
 void bongo_cat_live2d_destroy(BongoCatLive2D *live2d);
 BongoCatResult bongo_cat_live2d_load(BongoCatLive2D *live2d, const char *model_dir,
-    const char *setting_file, bool preset, BongoCatError *error);
+    const char *setting_file, bool preset,
+    const BongoCatLive2DRenderOptions *render_options, BongoCatError *error);
 bool bongo_cat_live2d_ready(const BongoCatLive2D *live2d);
 void bongo_cat_live2d_resize(BongoCatLive2D *live2d, int width, int height);
 void bongo_cat_live2d_reshape(BongoCatLive2D *live2d, int width, int height);
 bool bongo_cat_live2d_update(BongoCatLive2D *live2d, float delta_seconds);
 void bongo_cat_live2d_draw(BongoCatLive2D *live2d);
 void bongo_cat_live2d_set_mirror(BongoCatLive2D *live2d, bool mirror);
+void bongo_cat_live2d_set_render_options(BongoCatLive2D *live2d,
+    const BongoCatLive2DRenderOptions *options);
 void bongo_cat_live2d_set_dragging(BongoCatLive2D *live2d, float x, float y);
 bool bongo_cat_live2d_set_parameter(BongoCatLive2D *live2d, const char *id, float value);
 bool bongo_cat_live2d_parameter(BongoCatLive2D *live2d, const char *id,

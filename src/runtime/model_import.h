@@ -63,6 +63,8 @@ bool bongo_cat_import_write_package(const BongoCatImportCandidate *candidate,
     const char *target, BongoCatError *error);
 void bongo_cat_import_apply_metadata(BongoCatApp *app, const char *model_id,
     const char *directory);
+bool bongo_cat_import_mver_render_options(const char *directory,
+    BongoCatLive2DRenderOptions *options);
 BongoCatResult bongo_cat_import_portable_mver(BongoCatApp *app,
     const char *root, BongoCatError *error);
 BongoCatResult bongo_cat_import_portable_mver_scan(BongoCatApp *app,

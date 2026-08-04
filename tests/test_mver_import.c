@@ -179,7 +179,12 @@ static bool portable_fixture(const char *root) {
         !child(hand, sizeof(hand), standard, "hand", true) ||
         !child(model, sizeof(model), standard, "cat_model", true)) return false;
     if (!child(path, sizeof(path), root, "config.json", false) ||
-        !write_text(path, "{\"standard\":{\"keyboard\":[[65]],\"hand\":[[65]],"
+        !write_text(path, "{\"decoration\":{\"l2d_correct\":1.987,"
+            "\"l2d_offset\":[0,-0.005],\"l2d_horizontal_flip\":true,"
+            "\"window_size\":[1400,1400]},"
+            "\"workarea\":{\"workarea\":true,\"top_left\":[100,200],"
+            "\"right_bottom\":[2100,1400]},"
+            "\"standard\":{\"keyboard\":[[65]],\"hand\":[[65]],"
             "\"l2d_expression\":[[65],[66]]}}"))
         return false;
     if (!child(path, sizeof(path), model, "cat.model3.json", false) ||
@@ -263,6 +268,16 @@ static void portable_model(void) {
     CHECK(child(adapter_file, sizeof(adapter_file),
         app->models.entries[0].adapter_directory, "resources/left-keys/KeyA.png", false));
     CHECK(bongo_cat_path_is_file(adapter_file));
+    BongoCatLive2DRenderOptions render = {0};
+    CHECK(bongo_cat_import_mver_render_options(
+        app->models.entries[0].adapter_directory, &render));
+    CHECK(render.mver_compatibility && render.source_mirror);
+    CHECK(render.projection_scale > 1.986f && render.projection_scale < 1.988f);
+    CHECK(render.offset_y < -0.004f && render.offset_y > -0.006f);
+    CHECK(render.reference_width == 1400 && render.reference_height == 1400);
+    CHECK(render.custom_pointer_bounds && render.pointer_left == 100 &&
+        render.pointer_top == 200 && render.pointer_right == 2100 &&
+        render.pointer_bottom == 1400);
     bongo_cat_models_init(&app->models);
     CHECK(bongo_cat_import_portable_mver(app, package, &error) == BONGO_CAT_OK);
     CHECK(app->models.count == 1);

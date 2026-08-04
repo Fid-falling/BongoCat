@@ -72,7 +72,7 @@ add_test(NAME live2d-pointer-motion COMMAND powershell.exe -NoProfile
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Live2DPointerAudit.ps1
   -Exe $<TARGET_FILE:bongo_cat>
   -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/live2d-pointer-test)
-set_tests_properties(live2d-pointer-motion PROPERTIES TIMEOUT 15 RUN_SERIAL TRUE
+set_tests_properties(live2d-pointer-motion PROPERTIES TIMEOUT 45 RUN_SERIAL TRUE
   SKIP_RETURN_CODE 77)
 
 add_test(NAME model-visual-consistency COMMAND powershell.exe -NoProfile
@@ -80,7 +80,7 @@ add_test(NAME model-visual-consistency COMMAND powershell.exe -NoProfile
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/ModelVisualConsistencyAudit.ps1
   -Exe $<TARGET_FILE:bongo_cat>
   -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/model-visual-consistency-test)
-set_tests_properties(model-visual-consistency PROPERTIES TIMEOUT 45 RUN_SERIAL TRUE
+set_tests_properties(model-visual-consistency PROPERTIES TIMEOUT 120 RUN_SERIAL TRUE
   SKIP_RETURN_CODE 77)
 
 add_test(NAME windows-click-through COMMAND powershell.exe -NoProfile

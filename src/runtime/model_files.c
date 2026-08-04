@@ -37,6 +37,26 @@ static void request_model_frame(BongoCatApp *app) {
     app->dirty = true;
 }
 
+static void apply_model_aspect(BongoCatApp *app,
+    const BongoCatLive2DRenderOptions *options) {
+    if (!app || !app->window) return;
+    int reference_width = options && options->mver_compatibility
+        ? options->reference_width : 612;
+    int reference_height = options && options->mver_compatibility
+        ? options->reference_height : 354;
+    int x, y, width, height;
+    if (reference_width <= 0 || reference_height <= 0 ||
+        !SDL_GetWindowPosition(app->window, &x, &y) ||
+        !SDL_GetWindowSize(app->window, &width, &height) || height <= 0) return;
+    int next_width = (int)((double)height * reference_width /
+        reference_height + 0.5);
+    if (next_width < 64) next_width = 64;
+    if (next_width > 8192) next_width = 8192;
+    if (next_width != width)
+        bongo_cat_window_apply_geometry(app, x, y,
+            app->config.window.scale_percent, next_width, height);
+}
+
 static void commit_model(BongoCatApp *app,
     const BongoCatModelEntry *entry) {
     select_model_state(app, entry);
@@ -73,6 +93,9 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     }
     if (bongo_cat_behaviors_load(behaviors, entry, &optional) != BONGO_CAT_OK)
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", optional.message);
+    BongoCatLive2DRenderOptions render_options = {0};
+    bongo_cat_import_mver_render_options(entry->adapter_directory,
+        &render_options);
     int pixel_width = app->config.window.width, pixel_height = app->config.window.height;
     if (app->window) SDL_GetWindowSizeInPixels(app->window, &pixel_width, &pixel_height);
     SDL_Window *previous_window = SDL_GL_GetCurrentWindow();
@@ -88,7 +111,7 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     }
     bongo_cat_live2d_reshape(app->live2d, pixel_width, pixel_height);
     if (bongo_cat_live2d_load(app->live2d, entry->directory,
-        entry->setting_file, entry->preset, failure) != BONGO_CAT_OK) {
+        entry->setting_file, entry->preset, &render_options, failure) != BONGO_CAT_OK) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", failure->message);
         if (restore_context && previous_window && previous_context &&
             !SDL_GL_MakeCurrent(previous_window, previous_context))
@@ -98,6 +121,14 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
         if (!bongo_cat_live2d_ready(app->live2d)) app->loaded_model[0] = '\0';
         request_model_frame(app);
         return false;
+    }
+    app->model_render_options = render_options;
+    bongo_cat_live2d_set_render_options(app->live2d, &render_options);
+    apply_model_aspect(app, &render_options);
+    if (app->window) {
+        SDL_SyncWindow(app->window);
+        SDL_GetWindowSizeInPixels(app->window, &pixel_width, &pixel_height);
+        bongo_cat_live2d_reshape(app->live2d, pixel_width, pixel_height);
     }
     app->behaviors = *behaviors;
     free(behaviors);
@@ -231,10 +262,12 @@ void bongo_cat_app_rescan_models(BongoCatApp *app) {
         bongo_cat_models_scan(&app->models, root, false, &error);
     }
     const char *base = SDL_GetBasePath();
-    scan_portable_root(app, base);
-    const char *desktop = SDL_GetUserFolder(SDL_FOLDER_DESKTOP);
-    if (desktop && !same_scan_root(desktop, base))
-        scan_portable_root(app, desktop);
+    if (!SDL_getenv("BONGO_CAT_DISABLE_NEARBY_MODEL_SCAN")) {
+        scan_portable_root(app, base);
+        const char *desktop = SDL_GetUserFolder(SDL_FOLDER_DESKTOP);
+        if (desktop && !same_scan_root(desktop, base))
+            scan_portable_root(app, desktop);
+    }
     prune_behavior_shortcuts(app);
     for (size_t i = 0; i < app->models.count; ++i)
         if (!app->models.entries[i].preset)

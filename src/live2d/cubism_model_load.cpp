@@ -14,6 +14,7 @@
 #include <Motion/ICubismUpdater.hpp>
 #include <Physics/CubismPhysics.hpp>
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
@@ -63,6 +64,73 @@ private:
     Csm::CubismIdHandle eye_ball_y_ = nullptr;
 };
 
+class ExpressionUpdater final : public Csm::ICubismUpdater {
+public:
+    ExpressionUpdater(Csm::CubismExpressionMotionManager &modern,
+        Csm::CubismMotionManager &mver,
+        const BongoCatLive2DRenderOptions &options)
+        : Csm::ICubismUpdater(Csm::CubismUpdateOrder_Expression),
+          modern_(modern), mver_(mver), options_(options) {}
+
+    void OnLateUpdate(Csm::CubismModel *model, Csm::csmFloat32 delta) override {
+        if (!model) return;
+        if (options_.mver_compatibility) mver_.UpdateMotion(model, delta);
+        else modern_.UpdateMotion(model, delta);
+    }
+
+private:
+    Csm::CubismExpressionMotionManager &modern_;
+    Csm::CubismMotionManager &mver_;
+    const BongoCatLive2DRenderOptions &options_;
+};
+
+class BreathUpdater final : public Csm::ICubismUpdater {
+public:
+    BreathUpdater(Csm::CubismBreath &breath,
+        const BongoCatLive2DRenderOptions &options)
+        : Csm::ICubismUpdater(Csm::CubismUpdateOrder_Breath),
+          breath_(breath), options_(options) {}
+
+    void OnLateUpdate(Csm::CubismModel *model, Csm::csmFloat32 delta) override {
+        if (!model) return;
+        if (!options_.mver_compatibility) {
+            breath_.UpdateParameters(model, delta);
+            return;
+        }
+        mver_time_ += delta;
+        const Csm::csmFloat32 phase = mver_time_ * 2.0f * 3.14159f;
+        const auto &parameters = breath_.GetParameters();
+        for (Csm::csmUint32 i = 0; i < parameters.GetSize(); ++i) {
+            const auto &data = parameters[i];
+            model->AddParameterValue(data.ParameterId,
+                data.Offset + data.Peak * std::sin(phase / data.Cycle), data.Weight);
+        }
+    }
+
+private:
+    Csm::CubismBreath &breath_;
+    const BongoCatLive2DRenderOptions &options_;
+    Csm::csmFloat32 mver_time_ = 0.0f;
+};
+
+class PhysicsUpdater final : public Csm::ICubismUpdater {
+public:
+    PhysicsUpdater(Csm::CubismPhysics &physics,
+        const BongoCatLive2DRenderOptions &options)
+        : Csm::ICubismUpdater(Csm::CubismUpdateOrder_Physics),
+          physics_(physics), options_(options) {}
+
+    void OnLateUpdate(Csm::CubismModel *model, Csm::csmFloat32 delta) override {
+        if (!model) return;
+        if (options_.mver_compatibility) physics_.EvaluateMver(model, delta);
+        else physics_.Evaluate(model, delta);
+    }
+
+private:
+    Csm::CubismPhysics &physics_;
+    const BongoCatLive2DRenderOptions &options_;
+};
+
 } // namespace
 
 NativeModel::NativeModel() {
@@ -71,6 +139,9 @@ NativeModel::NativeModel() {
 }
 
 NativeModel::~NativeModel() {
+    _motionManager->StopAllMotions();
+    _expressionManager->StopAllMotions();
+    mver_expression_manager_.StopAllMotions();
     for (auto &item : motions_) Csm::ACubismMotion::Delete(item.second);
     for (auto &item : expressions_) Csm::ACubismMotion::Delete(item.second);
     release_render_resources();
@@ -155,10 +226,9 @@ void NativeModel::load_expressions() {
         if (!motion) continue; expressions_[name] = motion;
         expression_names_[(size_t)i] = name;
     }
-    if (!expressions_.empty()) {
-        auto *updater = CSM_NEW Csm::CubismExpressionUpdater(*_expressionManager);
-        _updateScheduler.AddUpdatableList(updater);
-    }
+    if (!expressions_.empty())
+        _updateScheduler.AddUpdatableList(CSM_NEW ExpressionUpdater(
+            *_expressionManager, mver_expression_manager_, render_options_));
 }
 
 void NativeModel::load_effects() {
@@ -166,7 +236,7 @@ void NativeModel::load_effects() {
         auto bytes = read(path(setting_->GetPhysicsFileName()));
         if (!bytes.empty()) LoadPhysics(bytes.data(), (Csm::csmSizeInt)bytes.size());
         if (_physics) _updateScheduler.AddUpdatableList(
-            CSM_NEW Csm::CubismPhysicsUpdater(*_physics));
+            CSM_NEW PhysicsUpdater(*_physics, render_options_));
     }
     if (setting_->GetPoseFileName()[0]) {
         auto bytes = read(path(setting_->GetPoseFileName()));
@@ -191,7 +261,7 @@ void NativeModel::load_effects() {
         ids->GetId("ParamBreath"), 0.5f, 0.5f, 3.2345f, 0.5f));
     _breath = Csm::CubismBreath::Create();
     _breath->SetParameters(breath);
-    _updateScheduler.AddUpdatableList(CSM_NEW Csm::CubismBreathUpdater(*_breath));
+    _updateScheduler.AddUpdatableList(CSM_NEW BreathUpdater(*_breath, render_options_));
     _updateScheduler.AddUpdatableList(CSM_NEW DragUpdater(*_dragManager));
     for (int i = 0; i < setting_->GetEyeBlinkParameterCount(); ++i)
         eye_blink_ids_.PushBack(setting_->GetEyeBlinkParameterId(i));
@@ -217,6 +287,11 @@ void NativeModel::load_motions() {
                 (Csm::csmSizeInt)bytes.size(), key.c_str(), nullptr, nullptr,
                 setting_, group, i, _motionConsistency));
             if (!motion) continue;
+            motion->SetMotionBehavior(render_options_.mver_compatibility
+                ? Csm::CubismMotion::MotionBehavior_V1
+                : Csm::CubismMotion::MotionBehavior_V2);
+            if (render_options_.mver_compatibility)
+                motion->UseMverCurveEvaluation();
             motion->SetEffectIds(eye_blink_ids_, lip_sync_ids_);
             motions_[key] = motion;
             if (std::strcmp(group, "Idle") == 0) idle_motion_keys_.push_back(key);

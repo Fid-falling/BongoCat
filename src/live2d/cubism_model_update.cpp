@@ -4,6 +4,7 @@
 #include <Math/CubismMatrix44.hpp>
 #include <Model/CubismModel.hpp>
 #include <Motion/CubismExpressionMotionManager.hpp>
+#include <Motion/CubismMotion.hpp>
 #include <Motion/CubismMotionManager.hpp>
 #include <Rendering/OpenGL/CubismOffscreenManager_OpenGLES2.hpp>
 #include <algorithm>
@@ -81,16 +82,34 @@ void NativeModel::draw() {
     auto *manager = Csm::Rendering::CubismOffscreenManager_OpenGLES2::GetInstance();
     manager->BeginFrameProcess();
     Csm::CubismMatrix44 projection;
-    if (_model->GetCanvasWidth() > 1.0f && width_ < height_) {
+    if (render_options_.mver_compatibility) {
+        float aspect = (float)render_options_.reference_width /
+            (float)render_options_.reference_height;
+        projection.Scale((mirror_ ? -1.0f : 1.0f) *
+            render_options_.projection_scale,
+            render_options_.projection_scale * aspect);
+        projection.Translate(render_options_.offset_x, render_options_.offset_y);
+    } else if (_model->GetCanvasWidth() > 1.0f && width_ < height_) {
         _modelMatrix->SetWidth(2.0f);
-        projection.Scale(mirror_ ? -1.0f : 1.0f, (float)width_ / (float)height_);
+        projection.Scale(mirror_ ? -1.0f : 1.0f,
+            (float)width_ / (float)height_);
     } else {
         projection.Scale((mirror_ ? -1.0f : 1.0f) * (float)height_ / (float)width_, 1.0f);
     }
     projection.MultiplyByMatrix(_modelMatrix);
+    if (render_options_.mver_compatibility) {
+        // Mver 0.1.6's Core reports canvas units at twice the modern scale.
+        // Preserve authored Layout translation while matching its model scale.
+        float *matrix = projection.GetArray();
+        matrix[0] *= 0.5f;
+        matrix[1] *= 0.5f;
+        matrix[4] *= 0.5f;
+        matrix[5] *= 0.5f;
+    }
     visual_state_ = BongoCatLive2DVisualState{};
     visual_state_.fit_scale = 1.0f;
-    fit_projection(&projection);
+    visual_state_.mver_compatibility = render_options_.mver_compatibility;
+    if (!render_options_.mver_compatibility) fit_projection(&projection);
     record_visible_state(projection);
     visual_state_ready_ = true;
     auto *renderer = GetRenderer<Csm::Rendering::CubismRenderer_OpenGLES2>();
@@ -100,6 +119,17 @@ void NativeModel::draw() {
 }
 
 void NativeModel::set_mirror(bool mirror) { mirror_ = mirror; }
+
+void NativeModel::set_render_options(const BongoCatLive2DRenderOptions &options) {
+    render_options_ = options;
+    for (auto &item : motions_) {
+        auto *motion = static_cast<Csm::CubismMotion *>(item.second);
+        motion->SetMotionBehavior(options.mver_compatibility
+            ? Csm::CubismMotion::MotionBehavior_V1
+            : Csm::CubismMotion::MotionBehavior_V2);
+        if (options.mver_compatibility) motion->UseMverCurveEvaluation();
+    }
+}
 
 void NativeModel::set_dragging(float x, float y) {
     if (!_dragManager) return;
@@ -186,6 +216,7 @@ bool NativeModel::toggle_lock_motion(const std::string &key,
 bool NativeModel::set_expression(int index) {
     if (index == -1) {
         _expressionManager->StopAllMotions();
+        mver_expression_manager_.StopAllMotions();
         expression_index_ = -1;
         active_bounds_ = ModelBounds{};
         return true;
@@ -193,8 +224,16 @@ bool NativeModel::set_expression(int index) {
     if (index < 0 || (size_t)index >= expression_names_.size()) return false;
     auto found = expressions_.find(expression_names_[(size_t)index]);
     if (found == expressions_.end()) return false;
-    if (_expressionManager->StartMotion(found->second, false) ==
-        Csm::InvalidMotionQueueEntryHandleValue) return false;
+    Csm::CubismMotionQueueEntryHandle handle;
+    if (render_options_.mver_compatibility) {
+        constexpr int priority = 3;
+        mver_expression_manager_.SetReservePriority(priority);
+        handle = mver_expression_manager_.StartMotionPriority(
+            found->second, false, priority);
+    } else {
+        handle = _expressionManager->StartMotion(found->second, false);
+    }
+    if (handle == Csm::InvalidMotionQueueEntryHandleValue) return false;
     expression_index_ = index;
     active_bounds_ = expression_bounds_[(size_t)index];
     return true;

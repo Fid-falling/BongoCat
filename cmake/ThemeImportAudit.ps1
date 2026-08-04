@@ -1,6 +1,7 @@
 param([string]$Exe = "", [string]$OutputDir = "")
 $ErrorActionPreference = "Stop"
 $env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
+$env:BONGO_CAT_DISABLE_NEARBY_MODEL_SCAN = "1"
 $root = Split-Path $PSScriptRoot -Parent
 if (-not $Exe) { $Exe = Join-Path $root "build\BongoCat.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build\theme-import-audit" }

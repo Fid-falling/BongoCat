@@ -65,7 +65,6 @@ static bool configured(yyjson_val *object, const char *key) {
 static bool add_degradations(yyjson_mut_doc *output, yyjson_mut_val *items,
     yyjson_val *config, const BongoCatImportCandidate *candidate) {
     yyjson_val *decoration = yyjson_obj_get(config, "decoration");
-    yyjson_val *workarea = yyjson_obj_get(config, "workarea");
     yyjson_val *mode = yyjson_obj_get(config, bongo_cat_mode_name(candidate->mode));
     bool ok = true;
     if (configured(decoration, "window_size") || configured(decoration, "topWindow"))
@@ -75,17 +74,10 @@ static bool add_degradations(yyjson_mut_doc *output, yyjson_mut_val *items,
         configured(decoration, "scalar") || configured(decoration, "hand_offset")))
         ok = add_degradation(output, items, "decoration.sprite_geometry",
             "Mver pixel offsets are tied to its fixed canvas and are not applied to BongoCat layouts");
-    if (ok && (configured(decoration, "l2d_offset") ||
-        configured(decoration, "l2d_correct")))
-        ok = add_degradation(output, items, "decoration.live2d_geometry",
-            "BongoCat fits Live2D models responsively instead of importing fixed-canvas transforms");
     if (ok && (configured(decoration, "leftHanded") ||
         configured(decoration, "mouse_force_move")))
         ok = add_degradation(output, items, "decoration.pointer_policy",
             "BongoCat uses its portable mouse mirror and tracking preferences");
-    if (ok && configured(workarea, "workarea"))
-        ok = add_degradation(output, items, "workarea",
-            "Desktop coordinates are machine-specific and are never persisted into a model");
     if (ok && candidate->mode == BONGO_CAT_MODE_STANDARD &&
         (configured(mode, "mouse") || configured(mode, "mouse_left") ||
         configured(mode, "mouse_right") || configured(mode, "mouse_side")))
@@ -157,6 +149,8 @@ bool bongo_cat_import_write_report(const BongoCatImportCandidate *candidate,
         yyjson_mut_obj_add_bool(output, capabilities, "expressionsAndMotions", mver) &&
         yyjson_mut_obj_add_bool(output, capabilities, "shortcutAudio", mver) &&
         yyjson_mut_obj_add_bool(output, capabilities, "imageEffects", mver) &&
+        yyjson_mut_obj_add_bool(output, capabilities, "mverProjection", mver) &&
+        yyjson_mut_obj_add_bool(output, capabilities, "mverPointerDomain", mver) &&
         yyjson_mut_obj_add_bool(output, capabilities, "imagePatch",
             candidate->format == BONGO_CAT_IMPORT_MVER_PATCH) &&
         yyjson_mut_obj_add_uint(output, root, "optionalMissingMotionSounds",

@@ -20,6 +20,7 @@ typedef struct BongoCatApp {
     BongoCatShortcutState shortcut_state;
     BongoCatModelCatalog models;
     BongoCatBehaviorCatalog behaviors;
+    BongoCatLive2DRenderOptions model_render_options;
     BongoCatI18n *i18n;
     BongoCatPlatform platform;
     BongoCatLive2D *live2d;

@@ -66,11 +66,34 @@ static void reconcile_button(BongoCatApp *app, bool *current, bool pressed,
     app->dirty = true;
 }
 
+static bool mver_pointer_bounds(const BongoCatApp *app, SDL_Rect *bounds) {
+    const BongoCatLive2DRenderOptions *options = &app->model_render_options;
+    if (!options->mver_compatibility || !bounds) return false;
+    if (options->custom_pointer_bounds) {
+        *bounds = (SDL_Rect){options->pointer_left, options->pointer_top,
+            options->pointer_right - options->pointer_left,
+            options->pointer_bottom - options->pointer_top};
+        return bounds->w > 0 && bounds->h > 0;
+    }
+    SDL_DisplayID primary = SDL_GetPrimaryDisplay();
+    SDL_Rect display;
+    if (!primary || !SDL_GetDisplayBounds(primary, &display)) return false;
+    float scale = SDL_GetDisplayContentScale(primary);
+    if (scale <= 0.0f) scale = 1.0f;
+    // Mver is DPI-unaware and reads GetDesktopWindow().right/bottom as a
+    // zero-origin pointer domain, even when the pointer is on another screen.
+    *bounds = (SDL_Rect){0, 0, (int)(display.w / scale + 0.5f),
+        (int)(display.h / scale + 0.5f)};
+    return bounds->w > 0 && bounds->h > 0;
+}
+
 static void apply_mouse_coordinates(BongoCatApp *app, double x, double y) {
     SDL_Point point = {(int)x, (int)y}; SDL_Rect bounds;
-    SDL_DisplayID display = SDL_GetDisplayForPoint(&point);
-    if (!display || !SDL_GetDisplayBounds(display, &bounds) ||
-        bounds.w <= 0 || bounds.h <= 0) return;
+    if (!mver_pointer_bounds(app, &bounds)) {
+        SDL_DisplayID display = SDL_GetDisplayForPoint(&point);
+        if (!display || !SDL_GetDisplayBounds(display, &bounds)) return;
+    }
+    if (bounds.w <= 0 || bounds.h <= 0) return;
     float x_ratio = (float)((x - bounds.x) / bounds.w);
     float y_ratio = (float)((y - bounds.y) / bounds.h);
     if (x_ratio < 0.0f) x_ratio = 0.0f;
