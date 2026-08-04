@@ -54,6 +54,13 @@ desktop runtime.
 
 ## Mver visual equivalence
 
+Mver 0.1.6 is the runtime behavior baseline for every model. Motion curve
+evaluation, expression blending, breath, physics, eye blink, and pointer-driven
+look updates do not switch algorithms by source format. A Tauri/standalone
+Live2D model is imported through an adapter that preserves its native canvas
+composition and `ParamMouse*` extension inputs; it does not select a second
+animation runtime.
+
 Mver imports retain the source package's `l2d_correct`, `window_size`,
 `l2d_offset`, and horizontal-follow values in `.bongo-cat-mver.json`. The native
 renderer uses the Mver 0.1.6 projection order for those models and does not
@@ -64,6 +71,15 @@ not model mirroring. Window resizing follows the imported reference aspect
 ratio. Pointer-driven head, body, eye, and physics parameters use Mver's
 configured `workarea`, or its DPI-virtualized primary-screen coordinate domain
 when no custom work area is enabled.
+
+All Mver models use Cubism `TargetPoint` for standard head, body, eye, and
+physics response. Mver 0.1.6 does not directly write `ParamMouseX` or
+`ParamMouseY`; the current-Core adapter supplies a calibrated compatibility
+contribution when those authored channels exist, reproducing the old runtime's
+observed deformation without overpowering `TargetPoint`. Standalone Tauri
+models retain their full `ParamMouse*` convention through the adapter. The Mver
+adapter also translates the horizontal target sign so the current Cubism
+runtime reproduces Mver 0.1.6's observed on-screen look direction.
 
 For a blind comparison, capture identically sized and identically named frames
 from Mver and the native application, then run:

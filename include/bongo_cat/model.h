@@ -60,11 +60,11 @@ typedef struct BongoCatParameterRange { float minimum, maximum, value; } BongoCa
 typedef struct BongoCatLive2DVisualState {
     float fit_scale, fit_translate_x, fit_translate_y;
     float visible_min_x, visible_min_y, visible_max_x, visible_max_y;
-    bool fitted, visible, mver_compatibility;
+    bool fitted, visible, mver_projection;
 } BongoCatLive2DVisualState;
 
 typedef struct BongoCatLive2DRenderOptions {
-    bool mver_compatibility;
+    bool mver_projection;
     bool source_mirror;
     bool custom_pointer_bounds;
     float projection_scale;

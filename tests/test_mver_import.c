@@ -271,7 +271,7 @@ static void portable_model(void) {
     BongoCatLive2DRenderOptions render = {0};
     CHECK(bongo_cat_import_mver_render_options(
         app->models.entries[0].adapter_directory, &render));
-    CHECK(render.mver_compatibility && render.source_mirror);
+    CHECK(render.mver_projection && render.source_mirror);
     CHECK(render.projection_scale > 1.986f && render.projection_scale < 1.988f);
     CHECK(render.offset_y < -0.004f && render.offset_y > -0.006f);
     CHECK(render.reference_width == 1400 && render.reference_height == 1400);

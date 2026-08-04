@@ -82,7 +82,7 @@ void NativeModel::draw() {
     auto *manager = Csm::Rendering::CubismOffscreenManager_OpenGLES2::GetInstance();
     manager->BeginFrameProcess();
     Csm::CubismMatrix44 projection;
-    if (render_options_.mver_compatibility) {
+    if (render_options_.mver_projection) {
         float aspect = (float)render_options_.reference_width /
             (float)render_options_.reference_height;
         projection.Scale((mirror_ ? -1.0f : 1.0f) *
@@ -97,19 +97,20 @@ void NativeModel::draw() {
         projection.Scale((mirror_ ? -1.0f : 1.0f) * (float)height_ / (float)width_, 1.0f);
     }
     projection.MultiplyByMatrix(_modelMatrix);
-    if (render_options_.mver_compatibility) {
+    if (render_options_.mver_projection) {
         // Mver 0.1.6's Core reports canvas units at twice the modern scale.
         // Preserve authored Layout translation while matching its model scale.
         float *matrix = projection.GetArray();
-        matrix[0] *= 0.5f;
-        matrix[1] *= 0.5f;
-        matrix[4] *= 0.5f;
-        matrix[5] *= 0.5f;
+        constexpr float mver_core_canvas_scale = 0.5f;
+        matrix[0] *= mver_core_canvas_scale;
+        matrix[1] *= mver_core_canvas_scale;
+        matrix[4] *= mver_core_canvas_scale;
+        matrix[5] *= mver_core_canvas_scale;
     }
     visual_state_ = BongoCatLive2DVisualState{};
     visual_state_.fit_scale = 1.0f;
-    visual_state_.mver_compatibility = render_options_.mver_compatibility;
-    if (!render_options_.mver_compatibility) fit_projection(&projection);
+    visual_state_.mver_projection = render_options_.mver_projection;
+    if (!render_options_.mver_projection) fit_projection(&projection);
     record_visible_state(projection);
     visual_state_ready_ = true;
     auto *renderer = GetRenderer<Csm::Rendering::CubismRenderer_OpenGLES2>();
@@ -124,10 +125,8 @@ void NativeModel::set_render_options(const BongoCatLive2DRenderOptions &options)
     render_options_ = options;
     for (auto &item : motions_) {
         auto *motion = static_cast<Csm::CubismMotion *>(item.second);
-        motion->SetMotionBehavior(options.mver_compatibility
-            ? Csm::CubismMotion::MotionBehavior_V1
-            : Csm::CubismMotion::MotionBehavior_V2);
-        if (options.mver_compatibility) motion->UseMverCurveEvaluation();
+        motion->SetMotionBehavior(Csm::CubismMotion::MotionBehavior_V1);
+        motion->UseMverCurveEvaluation();
     }
 }
 
@@ -225,14 +224,10 @@ bool NativeModel::set_expression(int index) {
     auto found = expressions_.find(expression_names_[(size_t)index]);
     if (found == expressions_.end()) return false;
     Csm::CubismMotionQueueEntryHandle handle;
-    if (render_options_.mver_compatibility) {
-        constexpr int priority = 3;
-        mver_expression_manager_.SetReservePriority(priority);
-        handle = mver_expression_manager_.StartMotionPriority(
-            found->second, false, priority);
-    } else {
-        handle = _expressionManager->StartMotion(found->second, false);
-    }
+    constexpr int priority = 3;
+    mver_expression_manager_.SetReservePriority(priority);
+    handle = mver_expression_manager_.StartMotionPriority(
+        found->second, false, priority);
     if (handle == Csm::InvalidMotionQueueEntryHandleValue) return false;
     expression_index_ = index;
     active_bounds_ = expression_bounds_[(size_t)index];

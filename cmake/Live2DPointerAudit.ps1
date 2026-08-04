@@ -1,4 +1,4 @@
-param([string]$Exe="", [string]$OutputDir="")
+param([string]$Exe="", [string]$OutputDir="", [string]$Model="standard")
 $ErrorActionPreference="Stop"
 $root=Split-Path $PSScriptRoot -Parent
 if(-not $Exe){$Exe=Join-Path $root "build-final\Release\BongoCat.exe"}
@@ -8,7 +8,7 @@ $data=Join-Path $OutputDir ("data-"+[DateTime]::UtcNow.Ticks)
 New-Item -ItemType Directory -Force -Path $data|Out-Null
 $env:BONGO_CAT_ALLOW_TEST_INSTANCES="1"
 $env:BONGO_CAT_TEST_INSTANCE_ID="live2d-pointer-audit-$PID"
-$arguments=@("--ci-smoke","--ci-model=standard",
+$arguments=@("--ci-smoke","--ci-model=$Model",
     "--ci-live2d-scenario=mouse-reverse","--ci-ignore-global-input",
     "--ci-exit-ms=2500","--data-root=$data")
 $process=Start-Process -FilePath $Exe -ArgumentList $arguments `
@@ -22,7 +22,9 @@ if($content-match "renderer=diagnostic"-and
     exit 77
 }
 $required=@("operation=accepted","assertions=passed","renderer=cubism-native",
-    "pointer.start_mouse=","pointer.final_mouse=","pointer.maximum_step=")
+    "pointer.tl.angle_x=","pointer.tl.angle_y=","pointer.tr.angle_x=",
+    "pointer.bl.angle_y=","pointer.br.angle_x=","pointer.br.angle_y=",
+    "pointer.maximum_step=")
 $missing=@($required|Where-Object{$content -notmatch [regex]::Escape($_)})
 $passed=$process.ExitCode-eq 0-and-not $missing.Count
 [pscustomobject]@{ExitCode=$process.ExitCode;Missing=($missing-join ",")

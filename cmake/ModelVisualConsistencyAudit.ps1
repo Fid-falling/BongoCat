@@ -1,4 +1,5 @@
-param([string]$Exe = "", [string]$OutputDir = "")
+param([string]$Exe = "", [string]$OutputDir = "",
+    [string[]]$Models = @("standard", "keyboard", "gamepad"))
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 if (-not $Exe) { $Exe = Join-Path $root "build-final\Release\BongoCat.exe" }
@@ -11,7 +12,7 @@ New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 $env:BONGO_CAT_ALLOW_TEST_INSTANCES = "1"
 $results = [Collections.Generic.List[object]]::new()
 $diagnostic = 0
-foreach ($model in @("standard", "keyboard", "gamepad")) {
+foreach ($model in $Models) {
     $data = Join-Path $OutputDir ("data-$model-" + [DateTime]::UtcNow.Ticks)
     $env:BONGO_CAT_TEST_INSTANCE_ID = "model-visual-$model-$PID"
     $arguments = @("--ci-smoke", "--ci-model=$model",
@@ -41,7 +42,7 @@ foreach ($model in @("standard", "keyboard", "gamepad")) {
         Cases=$rows.Count; Failed=$failed.Count; Missing=($missing -join ",")
         Passed=$passed })
 }
-if ($diagnostic -eq 3) {
+if ($diagnostic -eq $Models.Count) {
     Write-Output "Model visual consistency audit skipped: Cubism SDK is unavailable"
     exit 77
 }

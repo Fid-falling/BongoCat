@@ -57,18 +57,32 @@ static void set_parameter(BongoCatApp *app, const char *id,
     bongo_cat_live2d_set_parameter(app->live2d, id, value);
 }
 
+static void set_parameter_weighted(BongoCatApp *app, const char *id,
+    float x_ratio, float y_ratio, float weight) {
+    BongoCatParameterRange range;
+    if (!bongo_cat_live2d_parameter(app->live2d, id, &range)) return;
+    size_t length = strlen(id);
+    char axis = length ? id[length - 1] : 'X';
+    float target = bongo_cat_mouse_parameter_value(range.minimum, range.maximum,
+        x_ratio, y_ratio, axis, app->config.model.mouse_mirror);
+    float center = (range.minimum + range.maximum) * 0.5f;
+    bongo_cat_live2d_set_parameter(app->live2d, id,
+        center + (target - center) * weight);
+}
+
 static void reconcile_button(BongoCatApp *app, bool *current, bool pressed,
     const char *parameter) {
     if (*current == pressed) return;
     *current = pressed;
-    bongo_cat_live2d_set_parameter(app->live2d, parameter, pressed ? 1.0f : 0.0f);
+    bongo_cat_live2d_set_parameter(app->live2d, parameter,
+        pressed ? 1.0f : 0.0f);
     if (!pressed) bongo_cat_window_mark_hit_dirty(app);
     app->dirty = true;
 }
 
 static bool mver_pointer_bounds(const BongoCatApp *app, SDL_Rect *bounds) {
     const BongoCatLive2DRenderOptions *options = &app->model_render_options;
-    if (!options->mver_compatibility || !bounds) return false;
+    if (!options->mver_projection || !bounds) return false;
     if (options->custom_pointer_bounds) {
         *bounds = (SDL_Rect){options->pointer_left, options->pointer_top,
             options->pointer_right - options->pointer_left,
@@ -100,14 +114,22 @@ static void apply_mouse_coordinates(BongoCatApp *app, double x, double y) {
     if (x_ratio > 1.0f) x_ratio = 1.0f;
     if (y_ratio < 0.0f) y_ratio = 0.0f;
     if (y_ratio > 1.0f) y_ratio = 1.0f;
-    float drag_x = 1.0f - 2.0f * x_ratio;
+    float drag_x = app->model_render_options.mver_projection
+        ? 2.0f * x_ratio - 1.0f : 1.0f - 2.0f * x_ratio;
     float drag_y = 1.0f - 2.0f * y_ratio;
     if (app->config.model.mouse_mirror) drag_x = -drag_x;
-    // ParamMouseX/Y are retained for models that explicitly expose the
-    // compatibility parameters. Head/body/eye parameters are driven by the
-    // Cubism TargetPoint in NativeModel, just like Bongo Cat Mver.
-    set_parameter(app, "ParamMouseX", x_ratio, y_ratio);
-    set_parameter(app, "ParamMouseY", x_ratio, y_ratio);
+    if (app->model_render_options.mver_projection) {
+        // Best fit from synchronized 0%, 25%, and 50% Mver capture sweeps.
+        const float mver_authored_mouse_weight = 0.225f;
+        set_parameter_weighted(app, "ParamMouseX",
+            1.0f - x_ratio, y_ratio, mver_authored_mouse_weight);
+        set_parameter_weighted(app, "ParamMouseY",
+            x_ratio, y_ratio, mver_authored_mouse_weight);
+    } else {
+        // Standalone models retain the full authored extension range.
+        set_parameter(app, "ParamMouseX", x_ratio, y_ratio);
+        set_parameter(app, "ParamMouseY", x_ratio, y_ratio);
+    }
     bongo_cat_live2d_set_dragging(app->live2d, drag_x, drag_y);
     app->dirty = true;
 }

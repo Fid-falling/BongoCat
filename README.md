@@ -35,6 +35,8 @@ instead of a diagnostic build.
 - Automatic discovery of Bongo-Cat-Mver packages in the executable directory
   or its immediate parent, shown separately as nearby models. Packages may use
   `config.json` + `img/` directly or an intact child directory.
+- Mver 0.1.6 is the animation and input behavior baseline; standalone
+  Tauri/Live2D model folders are loaded through a canvas and input adapter.
   Model containers with nested full packages and image-only variants (for
   example `A-*` plus `Z-*` directories) are also discovered. The source stays
   read-only and BongoCat caches only generated adapter files.

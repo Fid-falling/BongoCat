@@ -40,9 +40,9 @@ static void request_model_frame(BongoCatApp *app) {
 static void apply_model_aspect(BongoCatApp *app,
     const BongoCatLive2DRenderOptions *options) {
     if (!app || !app->window) return;
-    int reference_width = options && options->mver_compatibility
+    int reference_width = options && options->mver_projection
         ? options->reference_width : 612;
-    int reference_height = options && options->mver_compatibility
+    int reference_height = options && options->mver_projection
         ? options->reference_height : 354;
     int x, y, width, height;
     if (reference_width <= 0 || reference_height <= 0 ||
