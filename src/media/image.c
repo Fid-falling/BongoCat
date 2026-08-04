@@ -14,16 +14,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define BONGO_CAT_LIVE2D_TEXTURE_LIMIT 2048
+#define BONGO_CAT_LIVE2D_EFFICIENT_TEXTURE_LIMIT 2048
 
 #ifdef _WIN32
-static bool needs_wic_scaling(const char *path) {
+static bool needs_wic_scaling(const char *path, int limit) {
     FILE *file = bongo_cat_file_open(path, "rb");
     int width = 0, height = 0, channels = 0;
     bool known = file && stbi_info_from_file(file, &width, &height, &channels);
     if (file) fclose(file);
-    return !known || width > BONGO_CAT_LIVE2D_TEXTURE_LIMIT ||
-        height > BONGO_CAT_LIVE2D_TEXTURE_LIMIT;
+    return !known || width > limit || height > limit;
 }
 
 static wchar_t *wide_path(const char *path) {
@@ -224,14 +223,25 @@ unsigned int bongo_cat_image_texture_thumbnail(const char *path, int max_width,
 unsigned int bongo_cat_image_texture_model(const char *path, bool direct_decode,
     int *width, int *height, BongoCatImageAlphaMask *alpha, BongoCatError *error) {
     BongoCatImage image;
+    GLint hardware_limit = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &hardware_limit);
+    if (hardware_limit < 1) hardware_limit = BONGO_CAT_LIVE2D_EFFICIENT_TEXTURE_LIMIT;
+    int decode_limit = hardware_limit;
 #ifdef _WIN32
     /* Preset atlases are verified byte-identical in WIC and stb. Keep WIC for
        custom PNG color metadata and for memory-bounded oversized decoding. */
-    if (!direct_decode || needs_wic_scaling(path)) {
-        if (!wic_scaled_image(path, &image, BONGO_CAT_LIVE2D_TEXTURE_LIMIT,
-            BONGO_CAT_LIVE2D_TEXTURE_LIMIT) &&
+    bool scaled = needs_wic_scaling(path, decode_limit);
+    if (!direct_decode || scaled) {
+        if (!wic_scaled_image(path, &image, (UINT)decode_limit,
+            (UINT)decode_limit) &&
             bongo_cat_image_load(path, &image, error) != BONGO_CAT_OK) return 0;
     } else if (bongo_cat_image_load(path, &image, error) != BONGO_CAT_OK) return 0;
+    if (scaled) SDL_Log("Live2D texture constrained to %dx%d by a %d pixel "
+        "texture limit: %s", image.width, image.height, decode_limit, path);
+    else if (image.width > BONGO_CAT_LIVE2D_EFFICIENT_TEXTURE_LIMIT ||
+        image.height > BONGO_CAT_LIVE2D_EFFICIENT_TEXTURE_LIMIT)
+        SDL_Log("High-resolution Live2D texture preserved at %dx%d: %s",
+            image.width, image.height, path);
 #else
     (void)direct_decode;
     if (bongo_cat_image_load(path, &image, error) != BONGO_CAT_OK) return 0;
@@ -240,6 +250,28 @@ unsigned int bongo_cat_image_texture_model(const char *path, bool direct_decode,
     bongo_cat_gl_clear_errors();
     GLuint texture = upload(&image, 0, true);
     GLenum upload_error = glGetError();
+#ifdef _WIN32
+    if (upload_error == GL_OUT_OF_MEMORY &&
+        (image.width > BONGO_CAT_LIVE2D_EFFICIENT_TEXTURE_LIMIT ||
+            image.height > BONGO_CAT_LIVE2D_EFFICIENT_TEXTURE_LIMIT)) {
+        if (texture) glDeleteTextures(1, &texture);
+        texture = 0;
+        bongo_cat_image_free(&image);
+        int fallback_limit = SDL_min(hardware_limit,
+            BONGO_CAT_LIVE2D_EFFICIENT_TEXTURE_LIMIT);
+        if (wic_scaled_image(path, &image, (UINT)fallback_limit,
+            (UINT)fallback_limit)) {
+            bongo_cat_image_make_alpha_mask(&image, alpha);
+            bongo_cat_gl_clear_errors();
+            texture = upload(&image, 0, true);
+            upload_error = glGetError();
+            if (upload_error == GL_NO_ERROR) SDL_LogWarn(
+                SDL_LOG_CATEGORY_RENDER,
+                "Live2D texture fell back to %dx%d after full-resolution "
+                "GPU upload exhausted memory: %s", image.width, image.height, path);
+        }
+    }
+#endif
     if (!texture || upload_error != GL_NO_ERROR) {
         if (texture) glDeleteTextures(1, &texture);
         texture = 0;

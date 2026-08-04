@@ -84,3 +84,12 @@ native framebuffer alpha captures; `ForegroundMode=full-frame-fallback` is
 reported explicitly when no valid mask is available. A valid run uses the same
 window size, pointer trace, expression or motion selection, frame rate, and
 capture timestamps in both applications.
+
+## Live2D texture quality
+
+Live2D atlases retain their authored pixel dimensions for both bundled and
+imported models. The loader only downsamples an atlas when it exceeds the
+active GPU's `GL_MAX_TEXTURE_SIZE`, or retries at 2048 pixels after an explicit
+`GL_OUT_OF_MEMORY` upload failure. Model textures use the same linear,
+non-mipmapped sampling as Mver so changing the pet window size does not switch
+filtering behavior or silently select a lower-resolution source.
