@@ -119,8 +119,9 @@ static void apply_mouse_coordinates(BongoCatApp *app, double x, double y) {
     float drag_y = 1.0f - 2.0f * y_ratio;
     if (app->config.model.mouse_mirror) drag_x = -drag_x;
     if (app->model_render_options.mver_projection) {
-        // Best fit from synchronized 0%, 25%, and 50% Mver capture sweeps.
-        const float mver_authored_mouse_weight = 0.225f;
+        // Mver's authored hand/device travel needs half of the extension range;
+        // lower whole-frame fits visibly under-travel at every settled corner.
+        const float mver_authored_mouse_weight = 0.5f;
         set_parameter_weighted(app, "ParamMouseX",
             1.0f - x_ratio, y_ratio, mver_authored_mouse_weight);
         set_parameter_weighted(app, "ParamMouseY",
