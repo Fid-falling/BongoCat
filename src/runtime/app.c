@@ -83,7 +83,7 @@ static bool initialize(BongoCatApp *app, int argc, char **argv, BongoCatError *e
         "Overlay disabled: %s", optional.message);
     optional = (BongoCatError){0}; app->audio = bongo_cat_audio_create(&optional);
     if (!app->audio) SDL_LogWarn(SDL_LOG_CATEGORY_AUDIO, "%s", optional.message);
-    else bongo_cat_audio_set_enabled(app->audio, app->config.model.motion_sound);
+    else bongo_cat_audio_set_enabled(app->audio, true);
     scan_models(app);
     if (!load_selected_model(app, error)) return false;
     bongo_cat_startup_stage(app, "model-ready");

@@ -54,7 +54,7 @@ void bongo_cat_window_behavior_labels(BongoCatApp *app,
     if (!motion_count || !expression_count) return;
     *motion_count = 0; *expression_count = 0;
     if (current_expression) *current_expression = BONGO_CAT_BEHAVIOR_CAP;
-    if (!app || !app->config.model.behavior) return;
+    if (!app) return;
     int active_expression = bongo_cat_live2d_expression(app->live2d);
     for (size_t i = 0; i < app->behaviors.count; ++i) {
         const BongoCatBehaviorEntry *entry = &app->behaviors.entries[i];
@@ -139,12 +139,10 @@ static bool expression_self_test(BongoCatApp *app) {
 
 bool bongo_cat_window_behavior_self_test(BongoCatApp *app) {
     if (!app) return false;
-    bool enabled = app->config.model.behavior, passed = true;
-    app->config.model.behavior = true;
+    bool passed = true;
     if (nth_behavior(app, BONGO_CAT_BEHAVIOR_MOTION, 0))
         passed = bongo_cat_window_behavior_action(app,
             BONGO_CAT_MENU_MOTION_FIRST) && passed;
     passed = expression_self_test(app) && passed;
-    app->config.model.behavior = enabled;
     return passed;
 }

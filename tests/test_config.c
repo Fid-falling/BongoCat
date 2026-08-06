@@ -13,6 +13,16 @@ static void write_text(const char *path, const char *text) {
     if (file) { CHECK(fputs(text, file) >= 0); CHECK(fclose(file) == 0); }
 }
 
+static bool contains_text(const char *path, const char *needle) {
+    char content[8192] = {0};
+    FILE *file = bongo_cat_file_open(path, "rb");
+    if (!file) return false;
+    size_t length = fread(content, 1, sizeof(content) - 1, file);
+    fclose(file);
+    content[length] = '\0';
+    return strstr(content, needle) != NULL;
+}
+
 void test_config(void) {
     BongoCatConfig value;
     bongo_cat_config_defaults(&value);
@@ -69,6 +79,8 @@ void test_config(void) {
     const char *session = "bongo-cat-\xE4\xBC\x9A\xE8\xAF\x9D.json";
     BongoCatError error = {0};
     CHECK(bongo_cat_preferences_save(preferences, &value, &error) == BONGO_CAT_OK);
+    CHECK(!contains_text(preferences, "\"motionSound\""));
+    CHECK(!contains_text(preferences, "\"behavior\""));
     CHECK(bongo_cat_session_save(session, &value, &error) == BONGO_CAT_OK);
     CHECK(bongo_cat_path_is_file(preferences));
     CHECK(bongo_cat_path_is_file(session));
@@ -91,6 +103,16 @@ void test_config(void) {
     CHECK(loaded.window.opacity_percent == 75.0f);
     CHECK(strcmp(loaded.current_model, "keyboard") == 0);
     CHECK(loaded.current_mode == BONGO_CAT_MODE_GAMEPAD);
+
+    const char *legacy_switches = "bongo-cat-legacy-switches.json";
+    write_text(legacy_switches,
+        "{\"format\":\"bongo-cat/preferences\",\"version\":2,"
+        "\"model\":{\"maxFPS\":42,\"motionSound\":false,\"behavior\":false}}");
+    CHECK(bongo_cat_preferences_load(legacy_switches, &loaded, &error) == BONGO_CAT_OK);
+    CHECK(loaded.model.max_fps == 42);
+    CHECK(bongo_cat_preferences_save(legacy_switches, &loaded, &error) == BONGO_CAT_OK);
+    CHECK(!contains_text(legacy_switches, "\"motionSound\""));
+    CHECK(!contains_text(legacy_switches, "\"behavior\""));
 
     const char *unsupported = "bongo-cat-unsupported.json";
     write_text(unsupported, "{\"schemaVersion\":2,\"model\":{\"maxFPS\":1}}");
@@ -128,4 +150,5 @@ void test_config(void) {
     CHECK(bongo_cat_file_remove(session));
     CHECK(bongo_cat_file_remove(unsupported));
     CHECK(bongo_cat_file_remove(broken_session));
+    CHECK(bongo_cat_file_remove(legacy_switches));
 }

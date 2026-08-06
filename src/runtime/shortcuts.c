@@ -13,7 +13,7 @@ static void visible(BongoCatApp *app) {
 
 bool bongo_cat_app_run_behavior(BongoCatApp *app,
     const BongoCatBehaviorEntry *behavior) {
-    if (!app || !behavior || !app->config.model.behavior) return false;
+    if (!app || !behavior) return false;
     if (behavior->kind == BONGO_CAT_BEHAVIOR_EFFECT) {
         if (!bongo_cat_overlay_effect(app->overlay, behavior->effect)) return false;
     } else if (behavior->kind == BONGO_CAT_BEHAVIOR_SOUND) {
@@ -70,12 +70,12 @@ static bool behavior_shortcut(BongoCatApp *app, const BongoCatInputEvent *event)
 void bongo_cat_app_shortcuts(BongoCatApp *app, const BongoCatInputEvent *event) {
     if (!app) return;
     if (event->kind == BONGO_CAT_INPUT_GAMEPAD_BUTTON) {
-        if (app->config.model.behavior) behavior_shortcut(app, event);
+        behavior_shortcut(app, event);
         return;
     }
     bool primary = bongo_cat_shortcut_update(&app->shortcut_state, event);
     if (!primary) {
-        if (app->config.model.behavior) behavior_shortcut(app, event);
+        behavior_shortcut(app, event);
         return;
     }
     BongoCatShortcutOptions *shortcuts = &app->config.shortcuts;
@@ -99,7 +99,7 @@ void bongo_cat_app_shortcuts(BongoCatApp *app, const BongoCatInputEvent *event) 
         app->config.window.always_on_top = !app->config.window.always_on_top;
         bongo_cat_platform_set_always_on_top(&app->platform, app->config.window.always_on_top);
         bongo_cat_preferences_invalidate(app->preferences);
-    } else if (app->config.model.behavior) behavior_shortcut(app, event);
+    } else behavior_shortcut(app, event);
 }
 
 static void test_key(BongoCatApp *app, BongoCatInputKind kind, const char *name) {

@@ -217,7 +217,7 @@ static void model_card(BongoCatPreferences *value, struct nk_context *context,
             BONGO_CAT_UI_CURSOR_POINTER);
     if (first_hover && nk_input_is_mouse_click_in_rect(&context->input,
         NK_BUTTON_LEFT, first)) {
-        if (selected && app->config.model.behavior)
+        if (selected)
             bongo_cat_preferences_behavior_dialog_open(value);
         else select_model(value, entry);
     } else if (second_hover && nk_input_is_mouse_click_in_rect(&context->input,

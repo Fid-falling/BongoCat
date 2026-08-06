@@ -73,12 +73,6 @@ void bongo_cat_preferences_page_cat(BongoCatApp *app, struct nk_context *context
     bongo_cat_pref_toggle(context, "ignore-mouse", tr(app,
         "pages.preference.cat.labels.ignoreMouse", "Ignore Mouse Events"), "",
         &model->ignore_mouse);
-    if (bongo_cat_pref_toggle(context, "motion-sound", tr(app,
-        "pages.preference.cat.labels.motionSound", "Motion Sound"), "",
-        &model->motion_sound)) bongo_cat_audio_set_enabled(app->audio, model->motion_sound);
-    bongo_cat_pref_toggle(context, "behavior", tr(app,
-        "pages.preference.cat.labels.behavior", "Motions and Expressions"), "",
-        &model->behavior);
     bongo_cat_pref_float(context, "release-delay", tr(app,
         "pages.preference.cat.labels.autoReleaseDelay", "Auto Release Delay"), "",
         .05f, &model->auto_release_seconds, 30.0f, .05f,
