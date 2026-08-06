@@ -5,18 +5,23 @@
 #include <SDL3/SDL.h>
 #include <yyjson.h>
 
-const char *test_mver_pointer_config(void) {
-    return "{\"decoration\":{\"l2d_correct\":1.987,"
+const char *test_mver_pointer_config(bool live2d) {
+    const char *prefix = "{\"decoration\":{\"l2d_correct\":1.987,"
         "\"l2d_offset\":[0,-0.005],\"l2d_horizontal_flip\":true,"
         "\"window_size\":[1400,1400],\"offsetX\":[10,11],"
         "\"offsetY\":[-10,-65],\"scalar\":[1,1],"
         "\"armLineColor\":[1,2,3],\"hand_offset\":[4,5],"
         "\"leftHanded\":true,\"mouse_force_move\":true,"
         "\"mouse_speed\":1.25},\"workarea\":{\"workarea\":true,"
-        "\"top_left\":[100,200],\"right_bottom\":[2100,1400]},"
-        "\"standard\":{\"l2d\":false,\"mouse\":false,"
+        "\"top_left\":[100,200],\"right_bottom\":[2100,1400]},";
+    const char *suffix = ",\"mouse\":false,"
+        "\"hand_offset\":[4,5],"
         "\"keyboard\":[[65]],\"hand\":[[65]],"
         "\"l2d_expression\":[[65],[66]]}}";
+    static char config[1024];
+    SDL_snprintf(config, sizeof(config), "%s\"standard\":{\"l2d\":%s%s",
+        prefix, live2d ? "true" : "false", suffix);
+    return config;
 }
 
 bool test_mver_pointer_fixture_assets(const char *standard,
@@ -31,7 +36,7 @@ bool test_mver_pointer_fixture_assets(const char *standard,
     return true;
 }
 
-bool test_mver_pointer_adapter(const char *adapter) {
+bool test_mver_pointer_adapter(const char *adapter, bool expected_enabled) {
     char path[BONGO_CAT_PATH_CAP];
     bool files = bongo_cat_path_join(path, sizeof(path), adapter,
         "resources/mver-pointer/arm.png") && bongo_cat_path_is_file(path) &&
@@ -42,7 +47,7 @@ bool test_mver_pointer_adapter(const char *adapter) {
     yyjson_val *pointer = metadata ? yyjson_obj_get(
         yyjson_doc_get_root(metadata), "standardPointer") : NULL;
     bool valid = yyjson_is_obj(pointer) &&
-        yyjson_get_bool(yyjson_obj_get(pointer, "enabled")) &&
+        yyjson_get_bool(yyjson_obj_get(pointer, "enabled")) == expected_enabled &&
         !yyjson_get_bool(yyjson_obj_get(pointer, "mouse")) &&
         yyjson_get_num(yyjson_obj_get(pointer, "offsetY")) == -65.0 &&
         yyjson_get_num(yyjson_obj_get(pointer, "handOffsetX")) == 4.0 &&

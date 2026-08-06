@@ -196,13 +196,19 @@ static bool assertions(BongoCatApp *app, const char *scenario, bool operation) {
     if (strcmp(scenario, "mouse-right") == 0)
         return active(app, "ParamMouseRightDown");
     if (strcmp(scenario, "mouse-move") == 0)
-        return signed_value(app, "ParamAngleX", false) &&
+        return signed_value(app, "ParamAngleX",
+                app->model_render_options.mver_projection) &&
             signed_value(app, "ParamAngleY", true);
     if (strcmp(scenario, "mouse-move-mirror") == 0)
         return signed_value(app, "ParamAngleX", true) &&
             signed_value(app, "ParamAngleY", true);
     if (strcmp(scenario, "mouse-reverse") == 0) {
-        bool horizontal = pointer_audit.angle_x[0] > 5.0f &&
+        bool horizontal = pointer_audit.mver ?
+            pointer_audit.angle_x[0] < -5.0f &&
+            pointer_audit.angle_x[1] > 5.0f &&
+            pointer_audit.angle_x[2] < -5.0f &&
+            pointer_audit.angle_x[3] > 5.0f :
+            pointer_audit.angle_x[0] > 5.0f &&
             pointer_audit.angle_x[1] < -5.0f &&
             pointer_audit.angle_x[2] > 5.0f &&
             pointer_audit.angle_x[3] < -5.0f;

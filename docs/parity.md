@@ -74,9 +74,9 @@ when no custom work area is enabled.
 
 All Mver models use Cubism `TargetPoint` for standard head, body, eye, and
 physics response. Mver 0.1.6 does not directly write `ParamMouseX` or
-`ParamMouseY`; the current-Core adapter supplies a calibrated compatibility
-contribution when those authored channels exist, reproducing the old runtime's
-observed deformation without overpowering `TargetPoint`. Standalone Tauri
+`ParamMouseY`; the current-Core adapter supplies their complete authored
+compatibility range when those channels exist, reproducing the old runtime's
+observed hand and pen travel alongside `TargetPoint`. Standalone Tauri
 models retain their full `ParamMouse*` convention through the adapter. The Mver
 adapter also translates the horizontal target sign so the current Cubism
 runtime reproduces Mver 0.1.6's observed on-screen look direction.

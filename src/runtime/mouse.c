@@ -63,19 +63,6 @@ static void set_parameter(BongoCatApp *app, const char *id,
     bongo_cat_live2d_set_parameter(app->live2d, id, value);
 }
 
-static void set_parameter_weighted(BongoCatApp *app, const char *id,
-    float x_ratio, float y_ratio, float weight) {
-    BongoCatParameterRange range;
-    if (!bongo_cat_live2d_parameter(app->live2d, id, &range)) return;
-    size_t length = strlen(id);
-    char axis = length ? id[length - 1] : 'X';
-    float target = bongo_cat_mouse_parameter_value(range.minimum, range.maximum,
-        x_ratio, y_ratio, axis, app->config.model.mouse_mirror);
-    float center = (range.minimum + range.maximum) * 0.5f;
-    bongo_cat_live2d_set_parameter(app->live2d, id,
-        center + (target - center) * weight);
-}
-
 static bool reconcile_button(BongoCatApp *app, bool *current, bool pressed,
     const char *parameter) {
     if (*current == pressed) return false;
@@ -153,18 +140,17 @@ static void apply_mouse_coordinates(BongoCatApp *app, double x, double y) {
     bool left_handed = app->model_render_options.pointer_left_handed ||
         (exact_pointer && bongo_cat_overlay_mver_pointer_left_handed(app->overlay));
     float mver_x = left_handed ? 1.0f - x_ratio : x_ratio;
-    float drag_x = 1.0f - 2.0f *
-        (mver ? mver_x : x_ratio);
+    float drag_x = mver ? 2.0f * mver_x - 1.0f :
+        1.0f - 2.0f * x_ratio;
     float drag_y = 1.0f - 2.0f * y_ratio;
     if (!mver && app->config.model.mouse_mirror) drag_x = -drag_x;
     bongo_cat_overlay_set_mver_pointer(app->overlay, x_ratio, y_ratio,
         app->left_mouse_down, app->right_mouse_down, app->side_mouse_down);
     if (app->model_render_options.mver_projection && !exact_pointer) {
-        const float mver_authored_mouse_weight = 0.5f;
-        set_parameter_weighted(app, "ParamMouseX",
-            1.0f - x_ratio, y_ratio, mver_authored_mouse_weight);
-        set_parameter_weighted(app, "ParamMouseY",
-            x_ratio, y_ratio, mver_authored_mouse_weight);
+        // Mver-authored hand and pen deformation uses the complete extension
+        // range alongside TargetPoint; attenuating it visibly shortens travel.
+        set_parameter(app, "ParamMouseX", 1.0f - x_ratio, y_ratio);
+        set_parameter(app, "ParamMouseY", x_ratio, y_ratio);
     } else if (!app->model_render_options.mver_projection) {
         // Standalone models retain the full authored extension range.
         set_parameter(app, "ParamMouseX", x_ratio, y_ratio);

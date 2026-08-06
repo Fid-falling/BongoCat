@@ -19,9 +19,9 @@ static int failures;
     failures++; \
 } } while (0)
 
-const char *test_mver_pointer_config(void);
+const char *test_mver_pointer_config(bool live2d);
 bool test_mver_pointer_fixture_assets(const char *standard, const char *source);
-bool test_mver_pointer_adapter(const char *adapter);
+bool test_mver_pointer_adapter(const char *adapter, bool expected_enabled);
 
 static bool chord(const char *json, bool gamepad, const char *expected) {
     yyjson_doc *document = yyjson_read(json, strlen(json), 0);
@@ -183,7 +183,7 @@ static bool portable_fixture(const char *root) {
         !child(hand, sizeof(hand), standard, "hand", true) ||
         !child(model, sizeof(model), standard, "cat_model", true)) return false;
     if (!child(path, sizeof(path), root, "config.json", false) ||
-        !write_text(path, test_mver_pointer_config()))
+        !write_text(path, test_mver_pointer_config(true)))
         return false;
     if (!child(path, sizeof(path), model, "cat.model3.json", false) ||
         !write_text(path, "{\"Version\":3,\"FileReferences\":{\"Moc\":\"cat.moc3\","
@@ -267,7 +267,7 @@ static void portable_model(void) {
         app->models.entries[0].adapter_directory, "resources/left-keys/KeyA.png", false));
     CHECK(bongo_cat_path_is_file(adapter_file));
     CHECK(test_mver_pointer_adapter(
-        app->models.entries[0].adapter_directory));
+        app->models.entries[0].adapter_directory, false));
     BongoCatLive2DRenderOptions render = {0};
     CHECK(bongo_cat_import_mver_render_options(
         app->models.entries[0].adapter_directory, &render));
@@ -298,6 +298,13 @@ static void portable_model(void) {
         CHECK(app->models.entries[i].display_name[0] != '\0');
         CHECK(app->models.entries[i].managed);
     }
+    CHECK(child(mode, sizeof(mode), package, "config.json", false));
+    CHECK(write_text(mode, test_mver_pointer_config(false)));
+    bongo_cat_models_init(&app->models);
+    CHECK(bongo_cat_import_portable_mver(app, package, &error) == BONGO_CAT_OK);
+    CHECK(app->models.count == 1);
+    CHECK(test_mver_pointer_adapter(
+        app->models.entries[0].adapter_directory, true));
     free(app);
     CHECK(bongo_cat_model_remove_tree(root, NULL));
     CHECK(bongo_cat_model_remove_tree(data, NULL));

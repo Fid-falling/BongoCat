@@ -14,7 +14,7 @@
 
 #define PORTABLE_DIRECTORY "portable-mver"
 #define PORTABLE_MARKER ".bongo-cat-portable.json"
-#define PORTABLE_SCHEMA_VERSION 6
+#define PORTABLE_SCHEMA_VERSION 8
 
 typedef struct PortableStamp {
     uint64_t sum, exclusive, bytes, latest, files, entries;
