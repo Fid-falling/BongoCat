@@ -226,8 +226,8 @@ unsigned int bongo_cat_image_texture_model(const char *path, bool direct_decode,
     GLint hardware_limit = 0;
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &hardware_limit);
     if (hardware_limit < 1) hardware_limit = BONGO_CAT_LIVE2D_EFFICIENT_TEXTURE_LIMIT;
-    int decode_limit = hardware_limit;
 #ifdef _WIN32
+    int decode_limit = hardware_limit;
     /* Preset atlases are verified byte-identical in WIC and stb. Keep WIC for
        custom PNG color metadata and for memory-bounded oversized decoding. */
     bool scaled = needs_wic_scaling(path, decode_limit);

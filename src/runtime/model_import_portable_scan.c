@@ -113,9 +113,8 @@ static void prioritize_next(PortableQueue *queue) {
     if (preferred >= queue->count || preferred == queue->head) return;
     char path[BONGO_CAT_PATH_CAP];
     snprintf(path, sizeof(path), "%s", queue->paths[queue->head]);
-    snprintf(queue->paths[queue->head], BONGO_CAT_PATH_CAP, "%s",
-        queue->paths[preferred]);
-    snprintf(queue->paths[preferred], BONGO_CAT_PATH_CAP, "%s", path);
+    memmove(queue->paths[queue->head], queue->paths[preferred], BONGO_CAT_PATH_CAP);
+    memmove(queue->paths[preferred], path, BONGO_CAT_PATH_CAP);
     unsigned char depth = queue->depths[queue->head];
     queue->depths[queue->head] = queue->depths[preferred];
     queue->depths[preferred] = depth;

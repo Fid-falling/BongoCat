@@ -84,11 +84,17 @@ static bool mver_pointer_bounds(const BongoCatApp *app, SDL_Rect *bounds) {
         return bounds->w > 0 && bounds->h > 0;
     }
 #ifdef _WIN32
-    DPI_AWARENESS_CONTEXT previous = SetThreadDpiAwarenessContext(
-        DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
+    typedef DPI_AWARENESS_CONTEXT (WINAPI *SetThreadDpiAwarenessContextFn)(
+        DPI_AWARENESS_CONTEXT);
+    FARPROC set_thread_dpi_proc = GetProcAddress(
+        GetModuleHandleW(L"user32.dll"), "SetThreadDpiAwarenessContext");
+    SetThreadDpiAwarenessContextFn set_thread_dpi = NULL;
+    memcpy(&set_thread_dpi, &set_thread_dpi_proc, sizeof(set_thread_dpi));
+    DPI_AWARENESS_CONTEXT previous = set_thread_dpi
+        ? set_thread_dpi(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE) : NULL;
     RECT desktop = {0};
     bool available = GetWindowRect(GetDesktopWindow(), &desktop) != FALSE;
-    if (previous) SetThreadDpiAwarenessContext(previous);
+    if (previous && set_thread_dpi) set_thread_dpi(previous);
     if (available && desktop.right > 0 && desktop.bottom > 0) {
         // Mver 0.1.6 stores right/bottom directly and uses a zero origin.
         *bounds = (SDL_Rect){0, 0, desktop.right, desktop.bottom};
