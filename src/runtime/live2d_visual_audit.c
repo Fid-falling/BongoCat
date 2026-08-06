@@ -72,7 +72,7 @@ static bool record(FILE *file, BongoCatApp *app, const char *name,
 }
 
 static bool expression_matrix(FILE *file, BongoCatApp *app, int expression,
-    int width, int height, bool mver) {
+    int width, int height) {
     bool passed = true;
     BongoCatLive2DVisualState enter = {0}, stable = {0}, current = {0};
     bongo_cat_live2d_set_dragging(app->live2d, 0.0f, 0.0f);
@@ -84,34 +84,33 @@ static bool expression_matrix(FILE *file, BongoCatApp *app, int expression,
     passed = record(file, app, label, false, &enter) && passed;
     advance(app, 120);
     snprintf(label, sizeof(label), "expression-%d-stable", expression);
-    passed = record(file, app, label, !mver, &stable) && passed;
-    passed = close_scale(enter.fit_scale, stable.fit_scale) && passed;
-    if (mver)
-        passed = !stable.fitted && close_scale(stable.fit_scale, 1.0f) && passed;
-    else if (expression == 0)
-        passed = !stable.fitted && close_scale(stable.fit_scale, 1.0f) && passed;
-    if (expression == 1) passed = stable.fit_scale >= 0.85f && passed;
-    if (expression == 2) passed = stable.fit_scale >= 0.70f && passed;
+    /* Expressions keep the authored projection; expanded geometry may be
+       clipped by the fixed composition canvas rather than moving the model. */
+    passed = record(file, app, label, false, &stable) && passed;
+    passed = close_scale(enter.fit_scale, stable.fit_scale) &&
+        !stable.fitted && close_scale(stable.fit_scale, 1.0f) &&
+        close_scale(stable.fit_translate_x, 0.0f) &&
+        close_scale(stable.fit_translate_y, 0.0f) && passed;
 
     const float pointers[][2] = {{-1.0f, 1.0f}, {1.0f, -1.0f}};
     for (int i = 0; i < 2; ++i) {
         bongo_cat_live2d_set_dragging(app->live2d, pointers[i][0], pointers[i][1]);
         advance(app, 90);
         snprintf(label, sizeof(label), "expression-%d-pointer-%d", expression, i);
-        passed = record(file, app, label, !mver, &current) &&
+        passed = record(file, app, label, false, &current) &&
             close_scale(stable.fit_scale, current.fit_scale) && passed;
     }
     bongo_cat_live2d_set_mirror(app->live2d, true);
     snprintf(label, sizeof(label), "expression-%d-mirror", expression);
-    passed = record(file, app, label, !mver, &current) &&
+    passed = record(file, app, label, false, &current) &&
         close_scale(stable.fit_scale, current.fit_scale) && passed;
     bongo_cat_live2d_reshape(app->live2d, width / 2, height / 2);
     snprintf(label, sizeof(label), "expression-%d-scale-50", expression);
-    passed = record(file, app, label, !mver, &current) &&
+    passed = record(file, app, label, false, &current) &&
         close_scale(stable.fit_scale, current.fit_scale) && passed;
     bongo_cat_live2d_reshape(app->live2d, width * 2, height * 2);
     snprintf(label, sizeof(label), "expression-%d-scale-200", expression);
-    passed = record(file, app, label, !mver, &current) &&
+    passed = record(file, app, label, false, &current) &&
         close_scale(stable.fit_scale, current.fit_scale) && passed;
     bongo_cat_live2d_reshape(app->live2d, width, height);
     bongo_cat_live2d_set_mirror(app->live2d, false);
@@ -199,8 +198,7 @@ bool bongo_cat_live2d_visual_audit_run(BongoCatApp *app) {
     }
     for (size_t i = 0; i < expression_count; ++i) {
         int expression = expression_indexes[i];
-        passed = expression_matrix(file, app, expression, width, height,
-            baseline.mver_projection) && passed;
+        passed = expression_matrix(file, app, expression, width, height) && passed;
         bongo_cat_live2d_set_expression(app->live2d, -1);
         advance(app, 90);
         char label[32]; snprintf(label, sizeof(label), "expression-%d-reset", expression);

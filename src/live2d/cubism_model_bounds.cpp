@@ -1,6 +1,5 @@
 #include "cubism_model.hpp"
 
-#include <Motion/CubismExpressionMotion.hpp>
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
@@ -78,67 +77,6 @@ NativeModel::ModelBounds NativeModel::capture_visible_bounds() const {
         bounds.max_y = std::max(bounds.max_y, drawable.bounds.max_y);
     }
     return bounds;
-}
-
-void NativeModel::prepare_expression_bounds() {
-    expression_bounds_.assign(expression_names_.size(), ModelBounds{});
-    if (!_model || expression_names_.empty()) return;
-    int count = _model->GetParameterCount();
-    std::vector<float> base((size_t)count);
-    for (int i = 0; i < count; ++i)
-        base[(size_t)i] = _model->GetParameterValue(i);
-    for (size_t i = 0; i < expression_names_.size(); ++i) {
-        auto found = expressions_.find(expression_names_[i]);
-        if (found == expressions_.end()) continue;
-        auto *expression = static_cast<Csm::CubismExpressionMotion *>(found->second);
-        auto parameters = expression->GetExpressionParameters();
-        if (parameters.GetSize() == 0) continue;
-        for (int parameter = 0; parameter < count; ++parameter)
-            _model->SetParameterValue(parameter, base[(size_t)parameter]);
-        for (Csm::csmUint32 parameter = 0; parameter < parameters.GetSize(); ++parameter) {
-            const auto &value = parameters[parameter];
-            int index = _model->GetParameterIndex(value.ParameterId);
-            if (index < 0 || index >= count) continue;
-            switch (value.BlendType) {
-            case Csm::CubismExpressionMotion::Additive:
-                _model->AddParameterValue(index, value.Value); break;
-            case Csm::CubismExpressionMotion::Multiply:
-                _model->MultiplyParameterValue(index, value.Value); break;
-            case Csm::CubismExpressionMotion::Overwrite:
-                _model->SetParameterValue(index, value.Value); break;
-            }
-        }
-        _model->Update();
-        expression_bounds_[i] = capture_visible_bounds();
-    }
-    for (int parameter = 0; parameter < count; ++parameter)
-        _model->SetParameterValue(parameter, base[(size_t)parameter]);
-    _model->Update();
-}
-
-void NativeModel::fit_projection(Csm::CubismMatrix44 *projection) {
-    if (!projection || !active_bounds_.valid) return;
-    float x0 = projection->TransformX(active_bounds_.min_x);
-    float x1 = projection->TransformX(active_bounds_.max_x);
-    float y0 = projection->TransformY(active_bounds_.min_y);
-    float y1 = projection->TransformY(active_bounds_.max_y);
-    float min_x = std::min(x0, x1), max_x = std::max(x0, x1);
-    float min_y = std::min(y0, y1), max_y = std::max(y0, y1);
-    constexpr float safe = 0.98f;
-    float span = std::max(max_x - min_x, max_y - min_y);
-    float scale = span > 2.0f * safe ? 2.0f * safe / span : 1.0f;
-    float x_low = -safe - scale * min_x, x_high = safe - scale * max_x;
-    float y_low = -safe - scale * min_y, y_high = safe - scale * max_y;
-    float tx = std::max(x_low, std::min(0.0f, x_high));
-    float ty = std::max(y_low, std::min(0.0f, y_high));
-    float *matrix = projection->GetArray();
-    matrix[0] *= scale; matrix[5] *= scale;
-    matrix[12] = matrix[12] * scale + tx;
-    matrix[13] = matrix[13] * scale + ty;
-    visual_state_.fit_scale = scale;
-    visual_state_.fit_translate_x = tx;
-    visual_state_.fit_translate_y = ty;
-    visual_state_.fitted = true;
 }
 
 void NativeModel::record_visible_state(Csm::CubismMatrix44 &projection) {

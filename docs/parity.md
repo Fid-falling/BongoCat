@@ -63,8 +63,9 @@ animation runtime.
 
 Mver imports retain the source package's `l2d_correct`, `window_size`,
 `l2d_offset`, and horizontal-follow values in `.bongo-cat-mver.json`. The native
-renderer uses the Mver 0.1.6 projection order for those models and does not
-apply native expression auto-fit. The compatibility matrix also converts the
+renderer uses the Mver 0.1.6 projection order for those models. Expressions keep
+the authored canvas projection so the Live2D model remains aligned with the
+background and input layers. The compatibility matrix also converts the
 modern Cubism Core canvas units to Mver 0.1.6 units while retaining authored
 Layout translation and `l2d_offset`. Its horizontal option controls following,
 not model mirroring. Window resizing follows the imported reference aspect

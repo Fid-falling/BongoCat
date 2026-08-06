@@ -61,8 +61,6 @@ private:
     void load_motions();
     void start_idle_motion();
     ModelBounds capture_visible_bounds() const;
-    void prepare_expression_bounds();
-    void fit_projection(Csm::CubismMatrix44 *projection);
     void record_visible_state(Csm::CubismMatrix44 &projection);
     void load_lock_motion(const std::string &key,
         const std::vector<unsigned char> &bytes);
@@ -94,8 +92,6 @@ private:
     int renderer_width_ = 0;
     int renderer_height_ = 0;
     int expression_index_ = -1;
-    std::vector<ModelBounds> expression_bounds_;
-    ModelBounds active_bounds_;
     BongoCatLive2DVisualState visual_state_{};
     bool visual_state_ready_ = false;
     bool motion_updated_ = false;

@@ -327,7 +327,6 @@ bool NativeModel::load_textures(BongoCatError *error) {
     renderer_width_ = width_;
     renderer_height_ = height_;
     bind_textures();
-    prepare_expression_bounds();
     return true;
 }
 void NativeModel::release_textures() {

@@ -97,8 +97,10 @@ void bongo_cat_window_menu_restore(void *userdata, BongoCatMenuAction selected) 
         selected <= BONGO_CAT_MENU_SCALE_200;
     bool keep_opacity = selected >= BONGO_CAT_MENU_OPACITY_10 &&
         selected <= BONGO_CAT_MENU_OPACITY_100;
-    bool keep_expression = selected >= BONGO_CAT_MENU_EXPRESSION_FIRST &&
-        selected < BONGO_CAT_MENU_EXPRESSION_FIRST + BONGO_CAT_BEHAVIOR_CAP;
+    /* Expressions belong to the model active when the menu opened. */
+    bool keep_expression = keep_model ||
+        (selected >= BONGO_CAT_MENU_EXPRESSION_FIRST &&
+        selected < BONGO_CAT_MENU_EXPRESSION_FIRST + BONGO_CAT_BEHAVIOR_CAP);
     if (!keep_model && strcmp(app->config.current_model, state->model) != 0) {
         bongo_cat_app_select_model(app, state->model);
         changed = true;

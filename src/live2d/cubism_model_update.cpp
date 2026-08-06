@@ -110,7 +110,6 @@ void NativeModel::draw() {
     visual_state_ = BongoCatLive2DVisualState{};
     visual_state_.fit_scale = 1.0f;
     visual_state_.mver_projection = render_options_.mver_projection;
-    if (!render_options_.mver_projection) fit_projection(&projection);
     record_visible_state(projection);
     visual_state_ready_ = true;
     auto *renderer = GetRenderer<Csm::Rendering::CubismRenderer_OpenGLES2>();
@@ -217,7 +216,6 @@ bool NativeModel::set_expression(int index) {
         _expressionManager->StopAllMotions();
         mver_expression_manager_.StopAllMotions();
         expression_index_ = -1;
-        active_bounds_ = ModelBounds{};
         return true;
     }
     if (index < 0 || (size_t)index >= expression_names_.size()) return false;
@@ -230,7 +228,6 @@ bool NativeModel::set_expression(int index) {
         found->second, false, priority);
     if (handle == Csm::InvalidMotionQueueEntryHandleValue) return false;
     expression_index_ = index;
-    active_bounds_ = expression_bounds_[(size_t)index];
     return true;
 }
 
