@@ -226,7 +226,7 @@ Write-Settings $shared $true $true 0 0 "broken"
 $log = Invoke-Smoke "broken model fallback" $shared
 if ($log -notmatch "loaded fallback model standard") { throw "Broken model did not use a preset fallback" }
 
-for ($index = 0; $index -lt 40; $index++) {
+for ($index = 0; $index -lt 70; $index++) {
     New-Item -ItemType Directory -Force -Path (Join-Path $portableRoot ("scan-{0:D2}" -f $index)) | Out-Null
 }
 Write-Settings $shared $true $true

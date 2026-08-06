@@ -5,9 +5,9 @@
 #include <SDL3/SDL_opengl.h>
 #include <SDL3/SDL_properties.h>
 #include <dwmapi.h>
+#include <stb_image_resize2.h>
 #include <stdlib.h>
 #include <windows.h>
-
 static const wchar_t proxy_class[] = L"BongoCat.LayeredPresenter";
 static const wchar_t proxy_property[] = L"BongoCat.LayeredProxy";
 
@@ -17,15 +17,18 @@ typedef struct BongoCatWindowsLayered {
     HBITMAP bitmap;
     HGDIOBJ original_bitmap;
     unsigned char *pixels;
+    unsigned char *readback;
+    size_t readback_capacity;
     HWND proxy;
     int width, height;
+    int source_width, source_height;
+    bool readback_valid;
     bool active;
     bool has_frame;
     bool source_transparent;
     bool visible;
     bool topmost;
 } BongoCatWindowsLayered;
-
 static HWND native_window(BongoCatPlatform *platform) {
     return platform && platform->window ? (HWND)SDL_GetPointerProperty(
         SDL_GetWindowProperties(platform->window),
@@ -74,6 +77,7 @@ void bongo_cat_windows_layered_destroy(BongoCatPlatform *platform) {
     if (source) RemovePropW(source, proxy_property);
     if (value->proxy) DestroyWindow(value->proxy);
     release_bitmap(value);
+    free(value->readback);
     if (value->memory_dc) DeleteDC(value->memory_dc);
     free(value);
     platform->presenter = NULL;
@@ -201,10 +205,12 @@ float bongo_cat_platform_get_opacity(const BongoCatPlatform *platform) {
 bool bongo_cat_platform_frame_alpha(const BongoCatPlatform *platform,
     int width, int height, int x, int y, uint8_t *alpha) {
     const BongoCatWindowsLayered *value = platform ? platform->presenter : NULL;
-    if (!value || !value->active || !value->has_frame || !value->pixels ||
-        value->width != width || value->height != height || !alpha ||
+    const unsigned char *pixels = value && value->readback_valid ?
+        value->readback : value ? value->pixels : NULL;
+    if (!value || !value->active || !value->has_frame || !pixels ||
+        value->source_width != width || value->source_height != height || !alpha ||
         x < 0 || y < 0 || x >= width || y >= height) return false;
-    *alpha = value->pixels[((size_t)y * (size_t)width + (size_t)x) * 4 + 3];
+    *alpha = pixels[((size_t)y * (size_t)width + (size_t)x) * 4 + 3];
     return true;
 }
 
@@ -241,6 +247,29 @@ static bool resize_bitmap(BongoCatWindowsLayered *value, int width, int height) 
     return true;
 }
 
+static bool read_frame(BongoCatWindowsLayered *value, int width, int height,
+    int display_width, int display_height) {
+    value->source_width = width; value->source_height = height;
+    value->readback_valid = width != display_width || height != display_height;
+    if (!value->readback_valid) {
+        glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, value->pixels);
+        return true;
+    }
+    size_t bytes = (size_t)width * (size_t)height * 4;
+    if (width <= 0 || height <= 0 ||
+        bytes / 4 != (size_t)width * (size_t)height) return false;
+    if (value->readback_capacity < bytes) {
+        unsigned char *next = realloc(value->readback, bytes);
+        if (!next) return false;
+        value->readback = next;
+        value->readback_capacity = bytes;
+    }
+    glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, value->readback);
+    return stbir_resize_uint8_linear(value->readback, width, height, width * 4,
+        value->pixels, display_width, display_height, display_width * 4,
+        STBIR_BGRA_PM) != NULL;
+}
+
 bool bongo_cat_platform_present(BongoCatPlatform *platform, int width, int height) {
     if (!platform || !platform->window) return false;
     BongoCatWindowsLayered *value = platform->presenter;
@@ -250,12 +279,17 @@ bool bongo_cat_platform_present(BongoCatPlatform *platform, int width, int heigh
         if (value->proxy) ShowWindow(value->proxy, SW_HIDE);
         return source != NULL;
     }
+    RECT bounds;
+    if (!GetWindowRect(source, &bounds)) return false;
+    int display_width = bounds.right - bounds.left,
+        display_height = bounds.bottom - bounds.top;
     if (!ensure_proxy(platform) || width <= 0 || height <= 0 ||
-        !resize_bitmap(value, width, height)) {
+        display_width <= 0 || display_height <= 0 ||
+        !resize_bitmap(value, display_width, display_height) ||
+        !read_frame(value, width, height, display_width, display_height)) {
         value->has_frame = false;
         return SDL_SetError("Cannot allocate the Windows layered frame");
     }
-    glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, value->pixels);
     if (!update_proxy(platform, value)) { value->has_frame = false; return false; }
     value->has_frame = true;
     if (!make_source_transparent(platform))

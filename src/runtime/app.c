@@ -60,7 +60,7 @@ static bool initialize(BongoCatApp *app, int argc, char **argv, BongoCatError *e
         app->config.app.language = (BongoCatLanguage)app->smoke_language;
     if (app->smoke_theme >= 0)
         app->config.app.theme = (BongoCatTheme)app->smoke_theme;
-    if (app->smoke_taskbar_visible) app->config.window.taskbar_visible = true;
+    if (app->smoke_pass_through) app->config.window.pass_through = true; if (app->smoke_taskbar_visible) app->config.window.taskbar_visible = true;
     if (app->smoke_model[0])
         snprintf(app->config.current_model, sizeof(app->config.current_model),
             "%s", app->smoke_model);
@@ -203,9 +203,9 @@ static void render(BongoCatApp *app) {
     glClear(GL_COLOR_BUFFER_BIT);
     bongo_cat_overlay_draw_background(app->overlay, app->config.model.mirror);
     bongo_cat_live2d_set_mirror(app->live2d, app->config.model.mirror);
-    bongo_cat_live2d_draw(app->live2d);
+    bongo_cat_live2d_draw(app->live2d); bongo_cat_overlay_draw_pointer_before_keys(app->overlay);
     bongo_cat_overlay_draw_keys(app->overlay, app->config.model.mirror);
-    bongo_cat_overlay_draw_effect(app->overlay, app->config.model.mirror);
+    bongo_cat_overlay_draw_effect(app->overlay, app->config.model.mirror); bongo_cat_overlay_draw_pointer_after_keys(app->overlay);
     bongo_cat_frame_audit(app, width, height);
     bongo_cat_window_capture_pointer_hit(app);
     if (!bongo_cat_platform_present(&app->platform, width, height)) {
@@ -244,7 +244,6 @@ static void loop(BongoCatApp *app) {
         }
         bongo_cat_preferences_input_end(app->preferences);
         take_instance_wake(app);
-        drain_input(app);
         uint64_t now = SDL_GetTicksNS(); bongo_cat_window_update_wheel_animation(app, now);
         bongo_cat_window_update_display_recovery(app, now);
         bongo_cat_runtime_flow_update(app, now);
@@ -252,6 +251,7 @@ static void loop(BongoCatApp *app) {
         bongo_cat_app_update_hover(app, now);
         if (bongo_cat_model_frame_due(app, now)) update_model(app, now);
         else if (!app->config.window.visible || app->window_minimized) app->last_frame_ns = now;
+        drain_input(app);
         if (app->config.window.visible && !app->window_minimized && app->dirty) render(app);
         bongo_cat_preferences_render(app->preferences);
         if (app->config.window.visible && !app->window_minimized && app->dirty) render(app);

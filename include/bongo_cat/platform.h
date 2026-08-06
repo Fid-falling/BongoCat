@@ -13,6 +13,7 @@ typedef struct BongoCatPlatform {
     BongoCatInputState *input;
     void *native;
     void *presenter;
+    void *relative_pointer;
     uint32_t wake_event_type;
     float window_opacity;
 } BongoCatPlatform;
@@ -86,6 +87,8 @@ bool bongo_cat_platform_frame_alpha(const BongoCatPlatform *platform,
 void bongo_cat_platform_set_visible(BongoCatPlatform *platform, bool visible);
 bool bongo_cat_platform_pointer_local(BongoCatPlatform *platform, double screen_x,
     double screen_y, float *local_x, float *local_y);
+bool bongo_cat_platform_relative_pointer(BongoCatPlatform *platform,
+    double *x, double *y);
 void bongo_cat_platform_set_always_on_top(BongoCatPlatform *platform, bool enabled);
 void bongo_cat_platform_set_taskbar(BongoCatPlatform *platform, bool visible);
 void bongo_cat_platform_raise_window(SDL_Window *window);

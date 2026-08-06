@@ -4,6 +4,7 @@
 #include "bongo_cat/config.h"
 #include "bongo_cat/input.h"
 #include "bongo_cat/model.h"
+#include "bongo_cat/mver_pointer.h"
 #include "bongo_cat/mouse.h"
 #include "bongo_cat/platform.h"
 #include "bongo_cat/shortcut.h"
@@ -54,6 +55,7 @@ typedef struct BongoCatApp {
     bool smoke_menu;
     bool smoke_input_audit;
     bool smoke_ignore_global_input;
+    bool smoke_pass_through;
     bool smoke_taskbar_visible;
     bool smoke_context_menu;
     bool smoke_frame_audited;
@@ -80,6 +82,7 @@ typedef struct BongoCatApp {
     uint64_t session_saved_hash, session_observed_hash;
     uint64_t preferences_save_due_ns, session_save_due_ns;
     BongoCatMouseTracking mouse_tracking;
+    BongoCatMverPointerState mver_pointer;
     bool hover_inside;
     bool hover_hidden;
     bool pointer_known;
@@ -90,6 +93,7 @@ typedef struct BongoCatApp {
     bool click_through_forced_applied;
     bool left_mouse_down;
     bool right_mouse_down;
+    bool side_mouse_down;
     bool window_minimized;
     double pointer_x, pointer_y;
     bool resize_gesture;

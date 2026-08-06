@@ -19,6 +19,10 @@ static int failures;
     failures++; \
 } } while (0)
 
+const char *test_mver_pointer_config(void);
+bool test_mver_pointer_fixture_assets(const char *standard, const char *source);
+bool test_mver_pointer_adapter(const char *adapter);
+
 static bool chord(const char *json, bool gamepad, const char *expected) {
     yyjson_doc *document = yyjson_read(json, strlen(json), 0);
     BongoCatImportCandidate candidate = {0};
@@ -179,13 +183,7 @@ static bool portable_fixture(const char *root) {
         !child(hand, sizeof(hand), standard, "hand", true) ||
         !child(model, sizeof(model), standard, "cat_model", true)) return false;
     if (!child(path, sizeof(path), root, "config.json", false) ||
-        !write_text(path, "{\"decoration\":{\"l2d_correct\":1.987,"
-            "\"l2d_offset\":[0,-0.005],\"l2d_horizontal_flip\":true,"
-            "\"window_size\":[1400,1400]},"
-            "\"workarea\":{\"workarea\":true,\"top_left\":[100,200],"
-            "\"right_bottom\":[2100,1400]},"
-            "\"standard\":{\"keyboard\":[[65]],\"hand\":[[65]],"
-            "\"l2d_expression\":[[65],[66]]}}"))
+        !write_text(path, test_mver_pointer_config()))
         return false;
     if (!child(path, sizeof(path), model, "cat.model3.json", false) ||
         !write_text(path, "{\"Version\":3,\"FileReferences\":{\"Moc\":\"cat.moc3\","
@@ -198,7 +196,7 @@ static bool portable_fixture(const char *root) {
         !SDL_CopyFile(source, path) || !child(path, sizeof(path), hand, "0.png", false) ||
         !SDL_CopyFile(source, path) || !child(path, sizeof(path), standard, "bg.png", false) ||
         !SDL_CopyFile(source, path)) return false;
-    return true;
+    return test_mver_pointer_fixture_assets(standard, source);
 }
 
 static void portable_model(void) {
@@ -268,6 +266,8 @@ static void portable_model(void) {
     CHECK(child(adapter_file, sizeof(adapter_file),
         app->models.entries[0].adapter_directory, "resources/left-keys/KeyA.png", false));
     CHECK(bongo_cat_path_is_file(adapter_file));
+    CHECK(test_mver_pointer_adapter(
+        app->models.entries[0].adapter_directory));
     BongoCatLive2DRenderOptions render = {0};
     CHECK(bongo_cat_import_mver_render_options(
         app->models.entries[0].adapter_directory, &render));

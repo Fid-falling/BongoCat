@@ -202,12 +202,7 @@ static bool assertions(BongoCatApp *app, const char *scenario, bool operation) {
         return signed_value(app, "ParamAngleX", true) &&
             signed_value(app, "ParamAngleY", true);
     if (strcmp(scenario, "mouse-reverse") == 0) {
-        bool horizontal = pointer_audit.mver ?
-            pointer_audit.angle_x[0] < -5.0f &&
-            pointer_audit.angle_x[1] > 5.0f &&
-            pointer_audit.angle_x[2] < -5.0f &&
-            pointer_audit.angle_x[3] > 5.0f :
-            pointer_audit.angle_x[0] > 5.0f &&
+        bool horizontal = pointer_audit.angle_x[0] > 5.0f &&
             pointer_audit.angle_x[1] < -5.0f &&
             pointer_audit.angle_x[2] > 5.0f &&
             pointer_audit.angle_x[3] < -5.0f;

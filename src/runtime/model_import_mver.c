@@ -28,6 +28,34 @@ static bool asset_file(const BongoCatImportCandidate *candidate, const char *gro
         bongo_cat_path_is_file(output);
 }
 
+static bool root_asset_file(const BongoCatImportCandidate *candidate,
+    const char *name, char *output, size_t capacity) {
+    if (candidate->overrides[0] &&
+        bongo_cat_path_join(output, capacity, candidate->overrides, name) &&
+        bongo_cat_path_is_file(output)) return true;
+    return bongo_cat_path_join(output, capacity, candidate->assets, name) &&
+        bongo_cat_path_is_file(output);
+}
+
+static bool copy_standard_pointer_assets(const BongoCatImportCandidate *candidate,
+    const char *target) {
+    static const char *const names[] = {
+        "arm.png", "mouse.png", "mouse_left.png", "mouse_right.png",
+        "mouse_side.png", "tablet.png", "tablet_left.png", "tablet_right.png"
+    };
+    char resources[BONGO_CAT_PATH_CAP], output[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_path_join(resources, sizeof(resources), target, "resources") ||
+        !bongo_cat_path_join(output, sizeof(output), resources, "mver-pointer") ||
+        !bongo_cat_path_create_directory(output)) return false;
+    for (size_t index = 0; index < sizeof(names) / sizeof(names[0]); ++index) {
+        char source[BONGO_CAT_PATH_CAP], destination[BONGO_CAT_PATH_CAP];
+        if (!root_asset_file(candidate, names[index], source, sizeof(source))) continue;
+        if (!bongo_cat_path_join(destination, sizeof(destination), output, names[index]) ||
+            !bongo_cat_path_copy_file(source, destination)) return false;
+    }
+    return true;
+}
+
 int bongo_cat_mver_modifier_index(int code) {
     return code == 16 ? 0 : code == 17 ? 1 : code == 18 ? 2 : -1;
 }
@@ -201,6 +229,7 @@ bool bongo_cat_import_mver_assets(const BongoCatImportCandidate *candidate,
         yyjson_val *hand = yyjson_obj_get(mode, "hand");
         if (yyjson_is_arr(hand)) ok = process_matrix(candidate, hand, NULL, NULL,
             keyboard, "hand", "left-keys", target, error);
+        if (ok) ok = copy_standard_pointer_assets(candidate, target);
     } else {
         yyjson_val *left_keys = yyjson_obj_get(mode, "lefthand");
         yyjson_val *right_keys = yyjson_obj_get(mode, "righthand");

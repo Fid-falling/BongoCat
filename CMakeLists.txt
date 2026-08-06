@@ -58,11 +58,9 @@ add_library(bongo_cat_core STATIC
   src/core/config_defaults.c src/core/config_io.c
   src/core/config_file.c src/core/config_session_io.c
   src/core/error.c
-  src/core/file.c
-  src/core/i18n.c
-  src/core/input_state.c
-  src/core/mouse_tracking.c
-  src/core/sha256.c
+  src/core/file.c src/core/i18n.c
+  src/core/input_state.c src/core/mver_pointer.c
+  src/core/mouse_tracking.c src/core/sha256.c src/core/utf8.c
   src/core/model_catalog.c
   src/core/model_behavior.c
   src/core/path.c src/core/path_io.c src/core/json.c)
@@ -80,7 +78,7 @@ add_library(bongo_cat_runtime STATIC
   src/media/image.c src/media/image_resize.c src/media/image_alpha.c
   src/media/stb_image_impl.c
   src/platform/memory.c src/render/gl_api.c
-  src/render/overlay.c
+  src/render/overlay.c src/render/mver_pointer_overlay.c src/render/mver_pointer_overlay_draw.c
   src/runtime/app.c src/runtime/config_store.c
   src/runtime/assets.c src/runtime/startup.c
   src/runtime/frame_audit.c src/runtime/frame_clock.c
@@ -146,11 +144,11 @@ target_compile_definitions(bongo_cat_runtime PRIVATE
 
 if(WIN32)
   enable_language(RC)
-  target_sources(bongo_cat_runtime PRIVATE src/platform/windows.c src/platform/windows_directory.c
+  target_sources(bongo_cat_runtime PRIVATE src/platform/windows.c src/platform/windows_menu.c src/platform/windows_directory.c
     src/platform/windows_startup.c src/platform/windows_borderless.c
-    src/platform/windows_pointer.c src/platform/windows_layered.c)
-  target_sources(bongo_cat_runtime PRIVATE src/platform/windows_assets.c)
-  target_link_libraries(bongo_cat_runtime PRIVATE dwmapi ole32 shell32 user32 windowscodecs)
+    src/platform/windows_pointer.c src/platform/windows_direct_input.c
+    src/platform/windows_layered.c src/platform/windows_assets.c)
+  target_link_libraries(bongo_cat_runtime PRIVATE dinput8 dxguid dwmapi ole32 shell32 user32 windowscodecs)
 elseif(APPLE)
   enable_language(OBJC)
   target_sources(bongo_cat_runtime PRIVATE src/platform/macos.m src/platform/macos_input.m
@@ -250,7 +248,7 @@ add_custom_target(check-lines ALL
 if(BUILD_TESTING)
   add_executable(bongo_cat_core_tests
     tests/test_main.c tests/test_config.c tests/test_input.c tests/test_models.c
-    tests/test_shortcut.c src/platform/windows_keys.c)
+    tests/test_mver_pointer.c tests/test_shortcut.c src/platform/windows_keys.c)
   target_link_libraries(bongo_cat_core_tests PRIVATE bongo_cat_core
     bongo_cat_warnings $<$<PLATFORM_ID:Windows>:user32>)
   target_compile_definitions(bongo_cat_core_tests PRIVATE
@@ -269,7 +267,7 @@ if(BUILD_TESTING)
   target_link_libraries(bongo_cat_app_state_tests PRIVATE bongo_cat_warnings)
   target_include_directories(bongo_cat_app_state_tests PRIVATE include)
   add_test(NAME app-state COMMAND bongo_cat_app_state_tests)
-  add_executable(bongo_cat_mver_import_tests tests/test_mver_import.c)
+  add_executable(bongo_cat_mver_import_tests tests/test_mver_import.c tests/test_mver_pointer_import.c)
   target_include_directories(bongo_cat_mver_import_tests PRIVATE src/runtime src/ui)
   target_include_directories(bongo_cat_mver_import_tests SYSTEM PRIVATE
     ${BONGO_CAT_NUKLEAR_INCLUDE_DIR})

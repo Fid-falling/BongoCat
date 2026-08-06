@@ -122,6 +122,14 @@ bool bongo_cat_import_mver_render_options(const char *directory,
         options->reference_height = height;
         yyjson_val *mirror = yyjson_obj_get(render, "mirror");
         options->source_mirror = yyjson_is_bool(mirror) && yyjson_get_bool(mirror);
+        yyjson_val *left_handed = yyjson_obj_get(render, "pointerLeftHanded");
+        options->pointer_left_handed = yyjson_is_bool(left_handed) &&
+            yyjson_get_bool(left_handed);
+        yyjson_val *force = yyjson_obj_get(render, "mouseForceMove");
+        options->mouse_force_move = yyjson_is_bool(force) && yyjson_get_bool(force);
+        yyjson_val *mouse_speed = yyjson_obj_get(render, "mouseSpeed");
+        options->mouse_speed = yyjson_is_num(mouse_speed)
+            ? (float)yyjson_get_num(mouse_speed) : 1.0f;
         yyjson_val *custom = yyjson_obj_get(render, "customPointerBounds");
         options->custom_pointer_bounds = yyjson_is_bool(custom) &&
             yyjson_get_bool(custom);

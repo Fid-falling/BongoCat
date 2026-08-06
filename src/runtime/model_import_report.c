@@ -74,15 +74,6 @@ static bool add_degradations(yyjson_mut_doc *output, yyjson_mut_val *items,
         configured(decoration, "scalar") || configured(decoration, "hand_offset")))
         ok = add_degradation(output, items, "decoration.sprite_geometry",
             "Mver pixel offsets are tied to its fixed canvas and are not applied to BongoCat layouts");
-    if (ok && (configured(decoration, "leftHanded") ||
-        configured(decoration, "mouse_force_move")))
-        ok = add_degradation(output, items, "decoration.pointer_policy",
-            "BongoCat uses its portable mouse mirror and tracking preferences");
-    if (ok && candidate->mode == BONGO_CAT_MODE_STANDARD &&
-        (configured(mode, "mouse") || configured(mode, "mouse_left") ||
-        configured(mode, "mouse_right") || configured(mode, "mouse_side")))
-        ok = add_degradation(output, items, "standard.device_sprites",
-            "Hand inputs are imported; Mver arm and pointing-device geometry is documented only");
     if (ok && candidate->mode == BONGO_CAT_MODE_GAMEPAD &&
         (configured(mode, "stick_offset_L") || configured(mode, "stick_offset_R")))
         ok = add_degradation(output, items, "gamepad.stick_offsets",

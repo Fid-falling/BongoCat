@@ -2,6 +2,7 @@
 #include "bongo_cat/config.h"
 #include "bongo_cat/file.h"
 #include "bongo_cat/path.h"
+#include "bongo_cat/utf8.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -45,6 +46,10 @@ void test_config(void) {
     CHECK(bongo_cat_config_shortcut_conflicts(&duplicates, "control+b", NULL));
     CHECK(!bongo_cat_config_shortcut_conflicts(&duplicates, "control+b",
         duplicates.shortcuts.visible_cat));
+    memcpy(duplicates.behavior_shortcuts[1].label, "\xc4\xe3",
+        sizeof("\xc4\xe3"));
+    bongo_cat_config_validate(&duplicates);
+    CHECK(bongo_cat_utf8_valid(duplicates.behavior_shortcuts[1].label));
 
     value.model.max_fps = 30;
     value.model.mirror = true;

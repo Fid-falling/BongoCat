@@ -15,8 +15,62 @@ static double number_or(yyjson_val *value, double fallback) {
     return yyjson_is_num(value) ? yyjson_get_num(value) : fallback;
 }
 
+static bool add_standard_pointer(yyjson_mut_doc *output, yyjson_mut_val *root,
+    yyjson_val *config, const BongoCatImportCandidate *candidate) {
+    if (candidate->mode != BONGO_CAT_MODE_STANDARD) return true;
+    yyjson_val *decoration = yyjson_obj_get(config, "decoration");
+    yyjson_val *standard = yyjson_obj_get(config, "standard");
+    yyjson_val *mouse_value = yyjson_obj_get(standard, "mouse");
+    bool mouse = yyjson_is_bool(mouse_value) && yyjson_get_bool(mouse_value);
+    yyjson_val *live2d_value = yyjson_obj_get(standard, "l2d");
+    bool live2d = !yyjson_is_bool(live2d_value) || yyjson_get_bool(live2d_value);
+    size_t device_index = mouse ? 0 : 1;
+    yyjson_val *offset_x = yyjson_obj_get(decoration, "offsetX");
+    yyjson_val *offset_y = yyjson_obj_get(decoration, "offsetY");
+    yyjson_val *scale = yyjson_obj_get(decoration, "scalar");
+    yyjson_val *hand_offset = yyjson_obj_get(
+        live2d ? standard : decoration, "hand_offset");
+    yyjson_val *line = yyjson_obj_get(decoration, "armLineColor");
+    yyjson_val *left_handed = yyjson_obj_get(decoration, "leftHanded");
+    const char *device = mouse ? "resources/mver-pointer/mouse.png" :
+        "resources/mver-pointer/tablet.png";
+    const char *left = mouse ? "resources/mver-pointer/mouse_left.png" :
+        "resources/mver-pointer/tablet_left.png";
+    const char *right = mouse ? "resources/mver-pointer/mouse_right.png" :
+        "resources/mver-pointer/tablet_right.png";
+    const char *side = mouse ? "resources/mver-pointer/mouse_side.png" : "";
+    yyjson_mut_val *pointer = yyjson_mut_obj_add_obj(output, root, "standardPointer");
+    return pointer &&
+        yyjson_mut_obj_add_bool(output, pointer, "enabled", !live2d) &&
+        yyjson_mut_obj_add_bool(output, pointer, "mouse", mouse) &&
+        yyjson_mut_obj_add_bool(output, pointer, "leftHanded",
+            yyjson_is_bool(left_handed) && yyjson_get_bool(left_handed)) &&
+        yyjson_mut_obj_add_str(output, pointer, "arm",
+            "resources/mver-pointer/arm.png") &&
+        yyjson_mut_obj_add_strcpy(output, pointer, "device", device) &&
+        yyjson_mut_obj_add_strcpy(output, pointer, "left", left) &&
+        yyjson_mut_obj_add_strcpy(output, pointer, "right", right) &&
+        yyjson_mut_obj_add_strcpy(output, pointer, "side", side) &&
+        yyjson_mut_obj_add_real(output, pointer, "offsetX",
+            number_or(yyjson_arr_get(offset_x, device_index), 0.0)) &&
+        yyjson_mut_obj_add_real(output, pointer, "offsetY",
+            number_or(yyjson_arr_get(offset_y, device_index), 0.0)) &&
+        yyjson_mut_obj_add_real(output, pointer, "scale",
+            number_or(yyjson_arr_get(scale, device_index), 1.0)) &&
+        yyjson_mut_obj_add_real(output, pointer, "handOffsetX",
+            number_or(yyjson_arr_get(hand_offset, 0), 0.0)) &&
+        yyjson_mut_obj_add_real(output, pointer, "handOffsetY",
+            number_or(yyjson_arr_get(hand_offset, 1), 0.0)) &&
+        yyjson_mut_obj_add_int(output, pointer, "lineRed",
+            (int)number_or(yyjson_arr_get(line, 0), 0.0)) &&
+        yyjson_mut_obj_add_int(output, pointer, "lineGreen",
+            (int)number_or(yyjson_arr_get(line, 1), 0.0)) &&
+        yyjson_mut_obj_add_int(output, pointer, "lineBlue",
+            (int)number_or(yyjson_arr_get(line, 2), 0.0));
+}
+
 static bool add_render_profile(yyjson_mut_doc *output, yyjson_mut_val *root,
-    yyjson_val *config) {
+    yyjson_val *config, const BongoCatImportCandidate *candidate) {
     yyjson_val *decoration = yyjson_obj_get(config, "decoration");
     yyjson_val *workarea = yyjson_obj_get(config, "workarea");
     yyjson_val *window = yyjson_obj_get(decoration, "window_size");
@@ -30,6 +84,12 @@ static bool add_render_profile(yyjson_mut_doc *output, yyjson_mut_val *root,
     double offset_y = number_or(yyjson_arr_get(offset, 1), 0.0);
     yyjson_val *mirror_value = yyjson_obj_get(decoration, "l2d_horizontal_flip");
     bool mirror = yyjson_is_bool(mirror_value) && yyjson_get_bool(mirror_value);
+    yyjson_val *left_handed_value = yyjson_obj_get(decoration, "leftHanded");
+    bool left_handed = yyjson_is_bool(left_handed_value) &&
+        yyjson_get_bool(left_handed_value);
+    yyjson_val *force_value = yyjson_obj_get(decoration, "mouse_force_move");
+    bool force = yyjson_is_bool(force_value) && yyjson_get_bool(force_value);
+    double mouse_speed = number_or(yyjson_obj_get(decoration, "mouse_speed"), 1.0);
     yyjson_val *custom_value = yyjson_obj_get(workarea, "workarea");
     bool custom = yyjson_is_bool(custom_value) && yyjson_get_bool(custom_value);
     int left = (int)number_or(yyjson_arr_get(top_left, 0), 0.0);
@@ -47,11 +107,15 @@ static bool add_render_profile(yyjson_mut_doc *output, yyjson_mut_val *root,
         yyjson_mut_obj_add_int(output, render, "referenceWidth", width) &&
         yyjson_mut_obj_add_int(output, render, "referenceHeight", height) &&
         yyjson_mut_obj_add_bool(output, render, "mirror", mirror) &&
+        yyjson_mut_obj_add_bool(output, render, "pointerLeftHanded", left_handed) &&
+        yyjson_mut_obj_add_bool(output, render, "mouseForceMove", force) &&
+        yyjson_mut_obj_add_real(output, render, "mouseSpeed", mouse_speed) &&
         yyjson_mut_obj_add_bool(output, render, "customPointerBounds", custom) &&
         yyjson_mut_obj_add_int(output, render, "pointerLeft", left) &&
         yyjson_mut_obj_add_int(output, render, "pointerTop", top) &&
         yyjson_mut_obj_add_int(output, render, "pointerRight", right) &&
-        yyjson_mut_obj_add_int(output, render, "pointerBottom", bottom);
+        yyjson_mut_obj_add_int(output, render, "pointerBottom", bottom) &&
+        add_standard_pointer(output, root, config, candidate);
 }
 
 static bool sound_source(const BongoCatImportCandidate *candidate, size_t index,
@@ -133,7 +197,7 @@ bool bongo_cat_import_mver_metadata(const BongoCatImportCandidate *candidate,
     if (output) yyjson_mut_doc_set_root(output, root);
     bool ok = yyjson_is_obj(mode) && items &&
         yyjson_mut_obj_add_int(output, root, "version", 1) &&
-        add_render_profile(output, root, config) &&
+        add_render_profile(output, root, config, candidate) &&
         bongo_cat_mver_add_behaviors(output, items, mode, candidate, &labels, error) &&
         add_sounds(output, items, config, yyjson_obj_get(mode, "sounds"),
             candidate, &labels, target) &&

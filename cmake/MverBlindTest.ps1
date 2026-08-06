@@ -5,6 +5,7 @@ param(
     [int]$Seed = 0,
     [int]$MaxFrameOffset = 2,
     [int]$AlphaThreshold = 8,
+    [int]$BackgroundThreshold = 4,
     [double]$MinimumSimilarity = 99.0,
     [double]$MinimumWithinEight = 98.0,
     [double]$MinimumForegroundSimilarity = 98.0,
@@ -14,6 +15,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Drawing
+Add-Type -Path (Join-Path $PSScriptRoot "MverBlindMetrics.cs") `
+    -ReferencedAssemblies System.Drawing
 $MverFrames = [IO.Path]::GetFullPath($MverFrames)
 $NativeFrames = [IO.Path]::GetFullPath($NativeFrames)
 if ($MaskFrames) { $MaskFrames = [IO.Path]::GetFullPath($MaskFrames) }
@@ -49,84 +52,8 @@ function Get-Frames([string]$Directory) {
 }
 
 function Measure-Pair([string]$Left, [string]$Right, [string]$Mask = "") {
-    $a = [Drawing.Bitmap]::new($Left)
-    $b = [Drawing.Bitmap]::new($Right)
-    $maskBitmap = if ($Mask) { [Drawing.Bitmap]::new($Mask) } else { $null }
-    try {
-        if ($a.Width -ne $b.Width -or $a.Height -ne $b.Height) {
-            throw "Frame dimensions differ: $Left and $Right"
-        }
-        $step = [Math]::Max(1, [int][Math]::Sqrt(
-            ($a.Width * [double]$a.Height) / 250000.0))
-        $absolute = 0.0; $within = 0; $samples = 0
-        $foregroundAbsolute = 0.0; $foregroundWithin = 0; $foreground = 0
-        $alphaUnion = 0; $alphaIntersection = 0; $alphaVaries = $false
-        for ($y = 0; $y -lt $a.Height; $y += $step) {
-            for ($x = 0; $x -lt $a.Width; $x += $step) {
-                $first = $a.GetPixel($x, $y); $second = $b.GetPixel($x, $y)
-                $maximum = 0
-                foreach ($delta in @(
-                    [Math]::Abs($first.R - $second.R),
-                    [Math]::Abs($first.G - $second.G),
-                    [Math]::Abs($first.B - $second.B),
-                    [Math]::Abs($first.A - $second.A))) {
-                    $absolute += $delta; $maximum = [Math]::Max($maximum, $delta)
-                }
-                if ($maximum -le 8) { $within++ }
-                $firstVisible = $first.A -gt $AlphaThreshold
-                $secondVisible = $second.A -gt $AlphaThreshold
-                if ($first.A -lt 255 -or $second.A -lt 255) { $alphaVaries = $true }
-                if ($firstVisible -or $secondVisible) { $alphaUnion++ }
-                if ($firstVisible -and $secondVisible) { $alphaIntersection++ }
-                $isForeground = $firstVisible -or $secondVisible
-                if ($maskBitmap) {
-                    $maskX = [Math]::Min($maskBitmap.Width - 1,
-                        [int]($x * [double]$maskBitmap.Width / $a.Width))
-                    $maskY = [Math]::Min($maskBitmap.Height - 1,
-                        [int]($y * [double]$maskBitmap.Height / $a.Height))
-                    $maskPixel = $maskBitmap.GetPixel($maskX, $maskY)
-                    $isForeground = $maskPixel.A -gt $AlphaThreshold -or
-                        [Math]::Max($maskPixel.R,
-                            [Math]::Max($maskPixel.G, $maskPixel.B)) -gt $AlphaThreshold
-                } elseif (-not $alphaVaries) {
-                    $isForeground = $true
-                }
-                if ($isForeground) {
-                    $foregroundMaximum = 0
-                    foreach ($delta in @(
-                        [Math]::Abs($first.R - $second.R),
-                        [Math]::Abs($first.G - $second.G),
-                        [Math]::Abs($first.B - $second.B),
-                        [Math]::Abs($first.A - $second.A))) {
-                        $foregroundAbsolute += $delta
-                        $foregroundMaximum = [Math]::Max($foregroundMaximum, $delta)
-                    }
-                    if ($foregroundMaximum -le 8) { $foregroundWithin++ }
-                    $foreground++
-                }
-                $samples++
-            }
-        }
-        if (-not $foreground) { throw "No foreground pixels found for $Left" }
-        $alphaUsable = $alphaVaries -and $alphaUnion -lt $samples * 0.98
-        return [pscustomobject]@{
-            Width=$a.Width; Height=$a.Height
-            Similarity=100.0 * (1.0 - $absolute / ($samples * 4.0 * 255.0))
-            WithinEight=100.0 * $within / $samples
-            ForegroundSimilarity=100.0 * (1.0 -
-                $foregroundAbsolute / ($foreground * 4.0 * 255.0))
-            ForegroundWithinEight=100.0 * $foregroundWithin / $foreground
-            ForegroundSamples=$foreground
-            ForegroundMode=if ($maskBitmap) { "mask" }
-                elseif ($alphaUsable) { "alpha-union" } else { "full-frame-fallback" }
-            AlphaIoU=if ($alphaUsable -and $alphaUnion) {
-                100.0 * $alphaIntersection / $alphaUnion
-            } else { 100.0 }
-        }
-    } finally {
-        if ($maskBitmap) { $maskBitmap.Dispose() }
-        $a.Dispose(); $b.Dispose()
-    }
+    return [MverBlindMetrics]::Measure($Left, $Right, $Mask, 0,
+        $AlphaThreshold, $BackgroundThreshold)
 }
 
 function Get-FrameIdentity([string]$Name) {
@@ -212,7 +139,8 @@ for ($index = 0; $index -lt $names.Count; $index++) {
         ForegroundSimilarityPercent=$measure.ForegroundSimilarity
         ForegroundWithinEightPercent=$measure.ForegroundWithinEight
         ForegroundSamples=$measure.ForegroundSamples
-        ForegroundMode=$measure.ForegroundMode; AlphaIoUPercent=$measure.AlphaIoU
+        ForegroundMode=$measure.ForegroundMode
+        ForegroundIoUPercent=$measure.ForegroundIoU
         NativeFrame=$bestName; Passed=$casePassed })
     $keys.Add([pscustomobject]@{ Case=$case; SourceFrame=$name
         NativeFrame=$bestName; MverSide=$mverSide })
@@ -226,7 +154,8 @@ $ballot | Export-Csv (Join-Path $OutputDir "ballot.csv") -NoTypeInformation -Enc
     MinimumWithinEight=$MinimumWithinEight
     MinimumForegroundSimilarity=$MinimumForegroundSimilarity
     MinimumForegroundWithinEight=$MinimumForegroundWithinEight
-    MaxFrameOffset=$MaxFrameOffset; Passed=$passed } | ConvertTo-Json |
+    MaxFrameOffset=$MaxFrameOffset; BackgroundThreshold=$BackgroundThreshold
+    Passed=$passed } | ConvertTo-Json |
     Set-Content (Join-Path $OutputDir "result.json") -Encoding UTF8
 Write-Output "Blind test: $($names.Count) cases; seed=$Seed; passed=$passed"
 if (-not $passed) { exit 1 }

@@ -1,5 +1,6 @@
 #include "model_import_mver_internal.h"
 #include "bongo_cat/file.h"
+#include "bongo_cat/utf8.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -139,12 +140,14 @@ static void collect_field(BongoCatMverLabels *labels, TextSpan mode,
     while ((cursor = skip_space(cursor, rows.end)) < rows.end && *cursor != ']') {
         const char *after = skip_value(cursor, rows.end);
         TextSpan row = {cursor, after};
-        char label[BONGO_CAT_ID_CAP];
+        char label[BONGO_CAT_ID_CAP], normalized[BONGO_CAT_ID_CAP];
         if (line_label(row, label, sizeof(label)) &&
+            bongo_cat_utf8_normalize_legacy(label, normalized,
+                sizeof(normalized)) &&
             labels->count < BONGO_CAT_BEHAVIOR_CAP) {
             BongoCatMverLabelEntry *entry = &labels->entries[labels->count++];
             snprintf(entry->field, sizeof(entry->field), "%s", field);
-            snprintf(entry->label, sizeof(entry->label), "%s", label);
+            snprintf(entry->label, sizeof(entry->label), "%s", normalized);
             entry->index = index;
         }
         index++; cursor = skip_space(after, rows.end);

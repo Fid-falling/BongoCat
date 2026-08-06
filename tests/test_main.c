@@ -6,6 +6,7 @@ int main(void) {
     test_config();
     test_input();
     test_models();
+    test_mver_pointer();
     test_shortcut();
     if (bongo_cat_test_failures) {
         fprintf(stderr, "%d checks failed\n", bongo_cat_test_failures);

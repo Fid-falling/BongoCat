@@ -1,10 +1,16 @@
 #include "runtime.h"
 #include "bongo_cat/file.h"
+#include "bongo_cat/mver_pointer.h"
+#include "bongo_cat/overlay.h"
 #include "bongo_cat/path.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <string.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 static void audit_mouse(BongoCatApp *app, double x, double y) {
     if (!app->smoke_input_audit) return;
@@ -70,14 +76,15 @@ static void set_parameter_weighted(BongoCatApp *app, const char *id,
         center + (target - center) * weight);
 }
 
-static void reconcile_button(BongoCatApp *app, bool *current, bool pressed,
+static bool reconcile_button(BongoCatApp *app, bool *current, bool pressed,
     const char *parameter) {
-    if (*current == pressed) return;
+    if (*current == pressed) return false;
     *current = pressed;
     bongo_cat_live2d_set_parameter(app->live2d, parameter,
         pressed ? 1.0f : 0.0f);
     if (!pressed) bongo_cat_window_mark_hit_dirty(app);
     app->dirty = true;
+    return true;
 }
 
 static bool mver_pointer_bounds(const BongoCatApp *app, SDL_Rect *bounds) {
@@ -89,16 +96,44 @@ static bool mver_pointer_bounds(const BongoCatApp *app, SDL_Rect *bounds) {
             options->pointer_bottom - options->pointer_top};
         return bounds->w > 0 && bounds->h > 0;
     }
+#ifdef _WIN32
+    DPI_AWARENESS_CONTEXT previous = SetThreadDpiAwarenessContext(
+        DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
+    RECT desktop = {0};
+    bool available = GetWindowRect(GetDesktopWindow(), &desktop) != FALSE;
+    if (previous) SetThreadDpiAwarenessContext(previous);
+    if (available && desktop.right > 0 && desktop.bottom > 0) {
+        // Mver 0.1.6 stores right/bottom directly and uses a zero origin.
+        *bounds = (SDL_Rect){0, 0, desktop.right, desktop.bottom};
+        return true;
+    }
+#endif
     SDL_DisplayID primary = SDL_GetPrimaryDisplay();
     SDL_Rect display;
     if (!primary || !SDL_GetDisplayBounds(primary, &display)) return false;
-    float scale = SDL_GetDisplayContentScale(primary);
-    if (scale <= 0.0f) scale = 1.0f;
-    // Mver is DPI-unaware and reads GetDesktopWindow().right/bottom as a
-    // zero-origin pointer domain, even when the pointer is on another screen.
-    *bounds = (SDL_Rect){0, 0, (int)(display.w / scale + 0.5f),
-        (int)(display.h / scale + 0.5f)};
+    *bounds = (SDL_Rect){0, 0, display.w, display.h};
     return bounds->w > 0 && bounds->h > 0;
+}
+
+static bool mver_model_pointer(BongoCatApp *app, double absolute_x,
+    double absolute_y, double *x, double *y, bool *changed) {
+    SDL_Rect bounds;
+    if (!mver_pointer_bounds(app, &bounds)) return false;
+    BongoCatMverPointerBounds pointer_bounds = {
+        bounds.x, bounds.y, bounds.w, bounds.h
+    };
+    double relative_x = 0.0, relative_y = 0.0;
+    bool use_relative = app->model_render_options.mouse_force_move &&
+        bongo_cat_platform_relative_pointer(&app->platform,
+            &relative_x, &relative_y);
+    bool initialized = app->mver_pointer.initialized;
+    double previous_x = app->mver_pointer.x;
+    double previous_y = app->mver_pointer.y;
+    if (!bongo_cat_mver_pointer_update(&app->mver_pointer,
+        absolute_x, absolute_y, relative_x, relative_y, use_relative,
+        &pointer_bounds, x, y)) return false;
+    *changed = !initialized || previous_x != *x || previous_y != *y;
+    return true;
 }
 
 static void apply_mouse_coordinates(BongoCatApp *app, double x, double y) {
@@ -107,26 +142,30 @@ static void apply_mouse_coordinates(BongoCatApp *app, double x, double y) {
         SDL_DisplayID display = SDL_GetDisplayForPoint(&point);
         if (!display || !SDL_GetDisplayBounds(display, &bounds)) return;
     }
-    if (bounds.w <= 0 || bounds.h <= 0) return;
-    float x_ratio = (float)((x - bounds.x) / bounds.w);
-    float y_ratio = (float)((y - bounds.y) / bounds.h);
-    if (x_ratio < 0.0f) x_ratio = 0.0f;
-    if (x_ratio > 1.0f) x_ratio = 1.0f;
-    if (y_ratio < 0.0f) y_ratio = 0.0f;
-    if (y_ratio > 1.0f) y_ratio = 1.0f;
-    float drag_x = app->model_render_options.mver_projection
-        ? 2.0f * x_ratio - 1.0f : 1.0f - 2.0f * x_ratio;
+    BongoCatMverPointerBounds pointer_bounds = {
+        bounds.x, bounds.y, bounds.w, bounds.h
+    };
+    float x_ratio, y_ratio;
+    if (!bongo_cat_mver_pointer_ratios(x, y, &pointer_bounds,
+        &x_ratio, &y_ratio)) return;
+    bool exact_pointer = bongo_cat_overlay_mver_pointer_enabled(app->overlay);
+    bool mver = app->model_render_options.mver_projection;
+    bool left_handed = app->model_render_options.pointer_left_handed ||
+        (exact_pointer && bongo_cat_overlay_mver_pointer_left_handed(app->overlay));
+    float mver_x = left_handed ? 1.0f - x_ratio : x_ratio;
+    float drag_x = 1.0f - 2.0f *
+        (mver ? mver_x : x_ratio);
     float drag_y = 1.0f - 2.0f * y_ratio;
-    if (app->config.model.mouse_mirror) drag_x = -drag_x;
-    if (app->model_render_options.mver_projection) {
-        // Mver's authored hand/device travel needs half of the extension range;
-        // lower whole-frame fits visibly under-travel at every settled corner.
+    if (!mver && app->config.model.mouse_mirror) drag_x = -drag_x;
+    bongo_cat_overlay_set_mver_pointer(app->overlay, x_ratio, y_ratio,
+        app->left_mouse_down, app->right_mouse_down, app->side_mouse_down);
+    if (app->model_render_options.mver_projection && !exact_pointer) {
         const float mver_authored_mouse_weight = 0.5f;
         set_parameter_weighted(app, "ParamMouseX",
             1.0f - x_ratio, y_ratio, mver_authored_mouse_weight);
         set_parameter_weighted(app, "ParamMouseY",
             x_ratio, y_ratio, mver_authored_mouse_weight);
-    } else {
+    } else if (!app->model_render_options.mver_projection) {
         // Standalone models retain the full authored extension range.
         set_parameter(app, "ParamMouseX", x_ratio, y_ratio);
         set_parameter(app, "ParamMouseY", x_ratio, y_ratio);
@@ -148,10 +187,16 @@ void bongo_cat_app_apply_mouse(BongoCatApp *app) {
     bool received = bongo_cat_input_take_mouse(&app->input, &target_x, &target_y);
     float global_x = 0.0f, global_y = 0.0f;
     SDL_MouseButtonFlags buttons = SDL_GetGlobalMouseState(&global_x, &global_y);
-    reconcile_button(app, &app->left_mouse_down,
+    bool button_changed = reconcile_button(app, &app->left_mouse_down,
         (buttons & SDL_BUTTON_LMASK) != 0, "ParamMouseLeftDown");
-    reconcile_button(app, &app->right_mouse_down,
-        (buttons & SDL_BUTTON_RMASK) != 0, "ParamMouseRightDown");
+    button_changed = reconcile_button(app, &app->right_mouse_down,
+        (buttons & SDL_BUTTON_RMASK) != 0, "ParamMouseRightDown") || button_changed;
+    bool side_down = (buttons & (SDL_BUTTON_X1MASK | SDL_BUTTON_X2MASK)) != 0;
+    if (app->side_mouse_down != side_down) {
+        app->side_mouse_down = side_down;
+        button_changed = true;
+        app->dirty = true;
+    }
     if (!received || target_x != global_x || target_y != global_y) {
         target_x = global_x;
         target_y = global_y;
@@ -165,6 +210,11 @@ void bongo_cat_app_apply_mouse(BongoCatApp *app) {
     bongo_cat_window_sync_click_through(app);
     uint64_t now = SDL_GetTicksNS();
     app->mouse_last_ns = now;
-    if (app->config.model.ignore_mouse || !moved) return;
-    apply_mouse_coordinates(app, target_x, target_y);
+    double model_x = target_x, model_y = target_y;
+    bool model_moved = moved;
+    if (app->model_render_options.mver_projection &&
+        !mver_model_pointer(app, target_x, target_y,
+            &model_x, &model_y, &model_moved)) return;
+    if (app->config.model.ignore_mouse || (!model_moved && !button_changed)) return;
+    apply_mouse_coordinates(app, model_x, model_y);
 }

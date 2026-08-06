@@ -67,6 +67,9 @@ typedef struct BongoCatLive2DRenderOptions {
     bool mver_projection;
     bool source_mirror;
     bool custom_pointer_bounds;
+    bool pointer_left_handed;
+    bool mouse_force_move;
+    float mouse_speed;
     float projection_scale;
     float offset_x;
     float offset_y;

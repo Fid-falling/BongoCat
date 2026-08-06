@@ -94,8 +94,12 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     if (bongo_cat_behaviors_load(behaviors, entry, &optional) != BONGO_CAT_OK)
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", optional.message);
     BongoCatLive2DRenderOptions render_options = {0};
-    bongo_cat_import_mver_render_options(entry->adapter_directory,
-        &render_options);
+    bool mver_profile = bongo_cat_import_mver_render_options(
+        entry->adapter_directory, &render_options);
+    if (mver_profile) SDL_Log("Mver runtime profile: projection=%.4f "
+        "force_mouse=%d left_handed=%d pointer_bounds=%d",
+        render_options.projection_scale, render_options.mouse_force_move,
+        render_options.pointer_left_handed, render_options.custom_pointer_bounds);
     int pixel_width = app->config.window.width, pixel_height = app->config.window.height;
     if (app->window) SDL_GetWindowSizeInPixels(app->window, &pixel_width, &pixel_height);
     SDL_Window *previous_window = SDL_GL_GetCurrentWindow();
@@ -123,6 +127,7 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
         return false;
     }
     app->model_render_options = render_options;
+    app->mver_pointer = (BongoCatMverPointerState){0};
     bongo_cat_live2d_set_render_options(app->live2d, &render_options);
     apply_model_aspect(app, &render_options);
     if (app->window) {
@@ -226,18 +231,6 @@ static void prune_behavior_shortcuts(BongoCatApp *app) {
     app->config.behavior_shortcut_count = output;
 }
 
-static bool same_scan_root(const char *left, const char *right) {
-    size_t a = left ? strlen(left) : 0, b = right ? strlen(right) : 0;
-    while (a > 1 && (left[a - 1] == '/' || left[a - 1] == '\\')) a--;
-    while (b > 1 && (right[b - 1] == '/' || right[b - 1] == '\\')) b--;
-    if (a != b) return false;
-#ifdef _WIN32
-    return SDL_strncasecmp(left, right, a) == 0;
-#else
-    return strncmp(left, right, a) == 0;
-#endif
-}
-
 static void scan_portable_root(BongoCatApp *app, const char *root) {
     if (!root || !root[0] || !bongo_cat_path_is_dir(root)) return;
     size_t before = app->models.count;
@@ -262,12 +255,8 @@ void bongo_cat_app_rescan_models(BongoCatApp *app) {
         bongo_cat_models_scan(&app->models, root, false, &error);
     }
     const char *base = SDL_GetBasePath();
-    if (!SDL_getenv("BONGO_CAT_DISABLE_NEARBY_MODEL_SCAN")) {
+    if (!SDL_getenv("BONGO_CAT_DISABLE_NEARBY_MODEL_SCAN"))
         scan_portable_root(app, base);
-        const char *desktop = SDL_GetUserFolder(SDL_FOLDER_DESKTOP);
-        if (desktop && !same_scan_root(desktop, base))
-            scan_portable_root(app, desktop);
-    }
     prune_behavior_shortcuts(app);
     for (size_t i = 0; i < app->models.count; ++i)
         if (!app->models.entries[i].preset)

@@ -2,7 +2,7 @@
 #include "bongo_cat/gl_api.h"
 #include "bongo_cat/image.h"
 #include "bongo_cat/path.h"
-
+#include "mver_pointer_overlay.h"
 #include <SDL3/SDL_opengl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,9 +13,9 @@ typedef struct TextureSlot {
     GLuint texture;
     uint64_t used;
 } TextureSlot;
-
 struct BongoCatOverlay {
     BongoCatGL gl;
+    BongoCatMverPointerOverlay *mver_pointer;
     GLuint program;
     GLint mirror_location;
     GLint image_location;
@@ -97,11 +97,17 @@ BongoCatOverlay *bongo_cat_overlay_create(BongoCatError *error) {
     value->gl.enable_attribute(1);
     value->gl.attribute_pointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4,
         (const void *)(sizeof(float) * 2));
+    value->mver_pointer = bongo_cat_mver_pointer_overlay_create(error);
+    if (!value->mver_pointer) {
+        bongo_cat_overlay_destroy(value);
+        return NULL;
+    }
     return value;
 }
 
 void bongo_cat_overlay_destroy(BongoCatOverlay *value) {
     if (!value) return;
+    bongo_cat_mver_pointer_overlay_destroy(value->mver_pointer);
     clear_textures(value);
     if (value->vbo) value->gl.delete_buffers(1, &value->vbo);
     if (value->vao) value->gl.delete_vertex_arrays(1, &value->vao);
@@ -126,7 +132,8 @@ BongoCatResult bongo_cat_overlay_load(BongoCatOverlay *value, const char *direct
 #endif
     snprintf(value->background_path, sizeof(value->background_path), "%s", path);
     if (bongo_cat_path_is_file(path)) value->background = bongo_cat_image_texture(path, NULL, NULL, error);
-    return BONGO_CAT_OK;
+    return bongo_cat_mver_pointer_overlay_load(value->mver_pointer,
+        directory, error) ? BONGO_CAT_OK : BONGO_CAT_ERROR_IO;
 }
 
 #ifdef BONGO_CAT_HAS_CUBISM
@@ -201,6 +208,17 @@ bool bongo_cat_overlay_hand_active(const BongoCatOverlay *value, bool right) {
     return value && (right ? value->right : value->left) != 0;
 }
 
+bool bongo_cat_overlay_mver_pointer_enabled(const BongoCatOverlay *value) {
+    return value && bongo_cat_mver_pointer_overlay_enabled(value->mver_pointer);
+}
+bool bongo_cat_overlay_mver_pointer_left_handed(const BongoCatOverlay *value) {
+    return value && bongo_cat_mver_pointer_overlay_left_handed(value->mver_pointer);
+}
+void bongo_cat_overlay_set_mver_pointer(BongoCatOverlay *value,
+    float x_ratio, float y_ratio, bool left, bool right, bool side) {
+    if (value) bongo_cat_mver_pointer_overlay_set(value->mver_pointer,
+        x_ratio, y_ratio, left, right, side);
+}
 bool bongo_cat_overlay_effect(BongoCatOverlay *value, const char *path) {
     if (!value) return false;
     value->effect = 0;
@@ -266,7 +284,9 @@ void bongo_cat_overlay_draw_keys(BongoCatOverlay *value, bool mirror) {
     (void)mirror;
 #endif
 }
-
+void bongo_cat_overlay_draw_pointer_before_keys(BongoCatOverlay *value) {
+    if (value) bongo_cat_mver_pointer_overlay_draw_before_keys(value->mver_pointer);
+}
 void bongo_cat_overlay_draw_effect(BongoCatOverlay *value, bool mirror) {
     if (!value) return;
 #ifdef BONGO_CAT_HAS_CUBISM
@@ -274,4 +294,7 @@ void bongo_cat_overlay_draw_effect(BongoCatOverlay *value, bool mirror) {
 #else
     (void)mirror;
 #endif
+}
+void bongo_cat_overlay_draw_pointer_after_keys(BongoCatOverlay *value) {
+    if (value) bongo_cat_mver_pointer_overlay_draw_after_keys(value->mver_pointer);
 }

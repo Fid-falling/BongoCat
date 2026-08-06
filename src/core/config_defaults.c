@@ -1,4 +1,5 @@
 #include "bongo_cat/config.h"
+#include "bongo_cat/utf8.h"
 
 #include <ctype.h>
 #include <string.h>
@@ -98,6 +99,13 @@ void bongo_cat_config_validate(BongoCatConfig *config) {
         config->behavior_shortcuts[i].id[BONGO_CAT_PATH_CAP - 1] = '\0';
         config->behavior_shortcuts[i].shortcut[BONGO_CAT_SHORTCUT_CAP - 1] = '\0';
         config->behavior_shortcuts[i].label[BONGO_CAT_ID_CAP - 1] = '\0';
+        char normalized[BONGO_CAT_ID_CAP] = {0};
+        if (bongo_cat_utf8_normalize_legacy(
+            config->behavior_shortcuts[i].label, normalized,
+            sizeof(normalized)))
+            memcpy(config->behavior_shortcuts[i].label, normalized,
+                sizeof(normalized));
+        else config->behavior_shortcuts[i].label[0] = '\0';
     }
     validate_shortcuts(config);
 }
