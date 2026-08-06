@@ -200,7 +200,7 @@ Arguments beginning with `--ci-` are test instrumentation. They select a model,
 preference page, language, theme, frame audit, or input audit; they are not a
 stable end-user command-line interface.
 
-## Tests and Audits
+## Tests
 
 The CTest suite covers strict configuration-format validation, model discovery,
 input ordering and recovery, shortcuts, localization, UI helpers, application
@@ -215,20 +215,6 @@ cmake --build build --target check-lines
 `check-lines` enforces a maximum of 300 physical lines for native C, C++,
 Objective-C, header, CMake module, and native test files. The rule is a review
 aid, not a claim that shorter files are automatically better.
-
-The Windows audit scripts exercise window styles, preferences, input hooks,
-model import, frame output, and hidden-window behavior. For example:
-
-```powershell
-& .\cmake\VisualAudit.ps1 -Exe .\build-cubism\Release\BongoCat.exe `
-  -OutputDir .\build-cubism\visual-audit -SkipMain
-& .\cmake\SoakAudit.ps1 -Exe .\build-cubism\Release\BongoCat.exe `
-  -OutputDir .\build-cubism\soak-audit -Mode hidden -DurationSeconds 60
-```
-
-The scripts keep their logs and images in the selected output directory. A
-diagnostic frame is useful for troubleshooting, but it is not evidence that a
-Live2D feature works.
 
 ## Continuous Integration
 

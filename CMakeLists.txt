@@ -277,21 +277,6 @@ if(BUILD_TESTING)
     set_property(SOURCE tests/test_mver_import.c APPEND PROPERTY COMPILE_OPTIONS "/experimental:c11atomics")
   endif()
   add_test(NAME model-import-unit COMMAND bongo_cat_mver_import_tests)
-  if(WIN32)
-    add_test(NAME model-import-formats
-      COMMAND powershell.exe -NoProfile -ExecutionPolicy Bypass
-        -File ${CMAKE_CURRENT_SOURCE_DIR}/cmake/ThemeImportAudit.ps1
-        -Exe $<TARGET_FILE:bongo_cat>
-        -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/model-import-format-test)
-    set_tests_properties(model-import-formats PROPERTIES TIMEOUT 300 RUN_SERIAL TRUE)
-    add_test(NAME model-import-real-samples
-      COMMAND powershell.exe -NoProfile -ExecutionPolicy Bypass
-        -File ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RealModelImportAudit.ps1
-        -Exe $<TARGET_FILE:bongo_cat>
-        -OutputDir ${CMAKE_CURRENT_BINARY_DIR}/real-model-import-test)
-    set_tests_properties(model-import-real-samples PROPERTIES TIMEOUT 300 RUN_SERIAL TRUE)
-    include(cmake/StartupReliability.cmake)
-  endif()
   if(UNIX AND NOT APPLE)
     target_link_libraries(bongo_cat_ui_tests PRIVATE m)
     target_link_libraries(bongo_cat_app_state_tests PRIVATE m)

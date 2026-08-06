@@ -81,26 +81,6 @@ models retain their full `ParamMouse*` convention through the adapter. The Mver
 adapter also translates the horizontal target sign so the current Cubism
 runtime reproduces Mver 0.1.6's observed on-screen look direction.
 
-For a blind comparison, capture identically sized and identically named frames
-from Mver and the native application, then run:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File cmake/MverBlindTest.ps1 `
-  -MverFrames path/to/mver-frames -NativeFrames path/to/native-frames `
-  -OutputDir build/mver-blind-test
-```
-
-Give the reviewer `cases/` and `ballot.csv`; keep `private/answer-key.json`
-hidden until the ballot is complete. `metrics.csv` and `result.json` provide the
-automated pixel gate. Number continuous frames with a shared suffix such as
-`idle-0001.png`; the runner may align each pair by at most two frames and records
-the selected match. Foreground metrics use the screenshots' alpha union. When
-desktop capture makes alpha fully opaque, pass `-MaskFrames` with matching
-native framebuffer alpha captures; `ForegroundMode=full-frame-fallback` is
-reported explicitly when no valid mask is available. A valid run uses the same
-window size, pointer trace, expression or motion selection, frame rate, and
-capture timestamps in both applications.
-
 ## Live2D texture quality
 
 Live2D atlases retain their authored pixel dimensions for both bundled and

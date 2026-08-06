@@ -145,5 +145,3 @@ for every release candidate.
 - `ctest --test-dir build-final -C Release --output-on-failure`
 - `ctest --test-dir build-mingw-final -C Release --output-on-failure`
 - `cmake -DROOT=. -P cmake/CheckLines.cmake`
-- `powershell -NoProfile -ExecutionPolicy Bypass -File cmake/StartupPerformanceAudit.ps1 -Exe build-final/Release/BongoCat.exe -OutputDir build-final/startup-performance-current`
-- `powershell -NoProfile -ExecutionPolicy Bypass -File cmake/VisualAudit.ps1 -Exe build-final/Release/BongoCat.exe -OutputDir build-final/visual-audit-current -PreferencesMatrix`

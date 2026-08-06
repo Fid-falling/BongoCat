@@ -94,7 +94,7 @@ BongoCat 对应功能继续由用户的窗口、鼠标镜像、模型缩放和�
 - [x] M17 增加环境变量驱动的可选真实样本测试入口。
 - [x] M18 对 Tauri、完整 Mver、两个 Z patch 逐模型执行 Cubism smoke。
 - [x] M19 统一 CTest 命令、测试计数和审计文档。
-- [x] M20 将所有 `cmake/*.ps1` 纳入 300 行门禁并拆分超长脚本。
+- [x] M20 曾将当时的本地审计脚本纳入 300 行门禁并拆分超长脚本；这些脚本现已移出仓库。
 - [x] M21 将 discovery、patch、shortcut、motion、effect、metadata、report、storage 分层。
 - [x] M22 将 Mver 的 Windows VK 解析限制在 adapter，运行时只接收 BongoCat 输入名。
 - [x] M23 清理历史命名噪声；旧 schema 测试变量不再使用 `legacy_path`。

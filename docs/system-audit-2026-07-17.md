@@ -85,12 +85,6 @@ release gates and must not be represented as locally executed tests.
 - `ctest --test-dir build-final -C Release --output-on-failure`
 - `ctest --test-dir build-mingw-final -C Release --output-on-failure`
 - `cmake -DROOT=. -P cmake/CheckLines.cmake`
-- `cmake/StartupMatrixAudit.ps1`
-- `cmake/VisualAudit.ps1`
-- `cmake/OverlayAudit.ps1`
-- `cmake/PreferencesInteractionAudit.ps1`
-- `cmake/PreferencesNavigationAudit.ps1`
-- `cmake/RuntimeFlowAudit.ps1`
 
 ## External release gates
 
