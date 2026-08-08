@@ -101,6 +101,16 @@ void test_config(void) {
     CHECK(strcmp(loaded.behavior_shortcuts[0].shortcut, "Control+1") == 0);
     CHECK(strcmp(loaded.behavior_shortcuts[0].label, "Happy tap") == 0);
 
+    for (int language = 0; language < BONGO_CAT_LANG_COUNT; ++language) {
+        value.app.language = (BongoCatLanguage)language;
+        CHECK(bongo_cat_preferences_save(preferences, &value, &error) == BONGO_CAT_OK);
+        BongoCatConfig language_loaded;
+        bongo_cat_config_defaults(&language_loaded);
+        CHECK(bongo_cat_preferences_load(preferences, &language_loaded,
+            &error) == BONGO_CAT_OK);
+        CHECK(language_loaded.app.language == (BongoCatLanguage)language);
+    }
+
     CHECK(bongo_cat_session_load(session, &loaded, &error) == BONGO_CAT_OK);
     CHECK(loaded.window.x == -321);
     CHECK(loaded.window.opacity_percent == 75.0f);

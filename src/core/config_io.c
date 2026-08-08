@@ -31,9 +31,9 @@ static BongoCatTheme parse_theme(const char *value) {
     return BONGO_CAT_THEME_AUTO;
 }
 static BongoCatLanguage parse_language(const char *value) {
-    const char *names[] = {"en-US", "zh-CN", "zh-TW", "pt-BR", "vi-VN"};
-    if (value) for (int i = 0; i <= BONGO_CAT_LANG_VI_VN; ++i)
-        if (strcmp(value, names[i]) == 0) return (BongoCatLanguage)i;
+    if (value) for (int i = 0; i < BONGO_CAT_LANG_COUNT; ++i)
+        if (strcmp(value, bongo_cat_language_name((BongoCatLanguage)i)) == 0)
+            return (BongoCatLanguage)i;
     return BONGO_CAT_LANG_EN_US;
 }
 

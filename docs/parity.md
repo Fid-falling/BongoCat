@@ -35,7 +35,8 @@ desktop runtime.
 ## Preferences and data
 
 - General, cat, model, behavior, and shortcut preference views.
-- English, Simplified Chinese, Traditional Chinese, Portuguese, and Vietnamese.
+- Simplified Chinese, Traditional Chinese, English, French, German, Japanese,
+  Korean, Portuguese, Russian, and Spanish.
 - Light, dark, and system themes.
 - Persist native settings and custom models without external project paths.
 - Build, test, run, and package with only files contained in this repository.

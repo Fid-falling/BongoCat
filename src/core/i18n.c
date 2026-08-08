@@ -143,10 +143,13 @@ static size_t build_ranges(uint32_t *points, size_t count,
     uint32_t *ranges, size_t capacity) {
     size_t written = 2;
     const unsigned char *builtins =
-        (const unsigned char *)"English"
+        (const unsigned char *)"English Fran\xC3\xA7" "ais Deutsch "
+        "Portugu\xC3\xAAs Espa\xC3\xB1" "ol"
         "\xE7\xAE\x80\xE4\xBD\x93\xE4\xB8\xAD\xE6\x96\x87"
         "\xE7\xB9\x81\xE9\xAB\x94\xE4\xB8\xAD\xE6\x96\x87"
-        "Portugu\xC3\xAAsTi\xE1\xBA\xBFng Vi\xE1\xBB\x87t";
+        "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E"
+        "\xED\x95\x9C\xEA\xB5\xAD\xEC\x96\xB4"
+        "\xD0\xA0\xD1\x83\xD1\x81\xD1\x81\xD0\xBA\xD0\xB8\xD0\xB9";
     while (*builtins) add_point(points, &count, decode_utf8(&builtins));
     qsort(points, count, sizeof(points[0]), compare_point);
     ranges[0] = 0x20; ranges[1] = 0x7e;
@@ -176,8 +179,8 @@ size_t bongo_cat_i18n_all_glyph_ranges(const BongoCatI18n *value, uint32_t *rang
     if (!value || !ranges || capacity < 3) return 0;
     uint32_t points[4096]; size_t count = 0;
     collect_value(yyjson_doc_get_root(value->fallback), points, &count);
-    for (int language = BONGO_CAT_LANG_ZH_CN; language <= BONGO_CAT_LANG_VI_VN;
-        ++language) {
+    for (int language = 0; language < BONGO_CAT_LANG_COUNT; ++language) {
+        if (language == BONGO_CAT_LANG_EN_US) continue;
         BongoCatError ignored = {0};
         yyjson_doc *doc = load_locale(value->root, (BongoCatLanguage)language,
             &ignored);

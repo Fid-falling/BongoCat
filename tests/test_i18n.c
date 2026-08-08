@@ -80,8 +80,9 @@ int main(void) {
     snprintf(root, sizeof(root), "%s/resources/assets/locales", BONGO_CAT_NATIVE_SOURCE_DIR);
     yyjson_doc *reference = load(root, "zh-CN");
     if (!reference) return 1;
-    const uint32_t expected[] = {'A', 0x4e2d, 0x8a2d, 0x00ea, 0x1ebf};
-    for (int language = 0; language <= BONGO_CAT_LANG_VI_VN; ++language) {
+    const uint32_t expected[] = {'A', 0x4e2d, 0x8a2d, 0x00e7, 0x00fc,
+        0x65e5, 0xd55c, 0x00ea, 0x0420, 0x00f1};
+    for (int language = 0; language < BONGO_CAT_LANG_COUNT; ++language) {
         const char *name = bongo_cat_language_name((BongoCatLanguage)language);
         yyjson_doc *document = load(root, name);
         if (!document || !same_shape(yyjson_doc_get_root(reference),
@@ -102,12 +103,13 @@ int main(void) {
     BongoCatI18n *all = bongo_cat_i18n_create(root,
         BONGO_CAT_LANG_EN_US, &error);
     uint32_t all_ranges[2048];
-    const uint32_t menu_points[] = {0x7b80, 0x9ad4, 0x00ea, 0x1ebf, 0x1ec7};
+    const uint32_t menu_points[] = {0x7b80, 0x9ad4, 0x00e7, 0x00fc, 0x65e5,
+        0xd55c, 0x00ea, 0x0420, 0x00f1};
     if (!all || bongo_cat_i18n_all_glyph_ranges(all, all_ranges, 2048) < 3)
         return 4;
     for (size_t i = 0; i < sizeof(menu_points) / sizeof(menu_points[0]); ++i)
         if (!includes(all_ranges, menu_points[i])) return 5;
-    for (int language = 0; language <= BONGO_CAT_LANG_VI_VN; ++language) {
+    for (int language = 0; language < BONGO_CAT_LANG_COUNT; ++language) {
         yyjson_doc *document = load(root,
             bongo_cat_language_name((BongoCatLanguage)language));
         if (!document || !covers_value(all_ranges, yyjson_doc_get_root(document)))

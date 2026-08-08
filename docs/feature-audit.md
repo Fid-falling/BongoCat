@@ -74,7 +74,7 @@ A diagnostic drawing never counts as a Live2D visual pass.
 |---|---|---|
 | Cat, general, model, shortcuts and about pages | PASS | Current 50-view matrix. |
 | Model card grid and direct-drawn icons | PASS | Responsive cards are present in both themes. |
-| English, Simplified/Traditional Chinese, Portuguese, Vietnamese | PASS | All five languages are screenshot-checked. |
+| Simplified/Traditional Chinese, English, French, German, Japanese, Korean, Portuguese, Russian and Spanish | PASS | All ten locales pass shape, glyph, persistence and settings-window smoke checks. |
 | Light and dark themes | PASS | Both themes are covered for every page and language. |
 | System theme | PASS | Auto mode resolves through the native SDL system theme. |
 | Click and drag model import | PASS | Both paths use the validated shared importer. |

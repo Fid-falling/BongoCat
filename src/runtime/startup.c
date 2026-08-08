@@ -65,7 +65,7 @@ static bool parse_arguments(BongoCatApp *app, int argc, char **argv,
             if (page >= 0 && page < 5) app->smoke_preference_page = page;
         } else if (strncmp(arg, "--ci-language=", 14) == 0) {
             const char *name = arg + 14;
-            for (int value = 0; value <= BONGO_CAT_LANG_VI_VN; ++value)
+            for (int value = 0; value < BONGO_CAT_LANG_COUNT; ++value)
                 if (strcmp(name, bongo_cat_language_name((BongoCatLanguage)value)) == 0)
                     app->smoke_language = value;
         } else if (strncmp(arg, "--ci-theme=", 11) == 0) {

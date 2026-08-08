@@ -104,9 +104,9 @@ static void update_autostart(BongoCatApp *app, bool old_value) {
 
 void bongo_cat_preferences_page_general(BongoCatApp *app, struct nk_context *context) {
     BongoCatAppOptions *options = &app->config.app;
-    const char *languages[] = {"English", "简体中文", "繁體中文", "Português", "Tiếng Việt"};
-    const char *ui_languages[] = {languages[1], languages[2], languages[0],
-        languages[3], languages[4]};
+    const char *ui_languages[] = {"简体中文", "繁體中文", "English",
+        "Français", "Deutsch", "日本語", "한국어", "Português",
+        "Русский", "Español"};
     bongo_cat_pref_section(context, tr(app, "pages.preference.general.labels.appSettings",
         "Application Settings"));
     bool old_autostart = options->autostart;
@@ -124,14 +124,17 @@ void bongo_cat_preferences_page_general(BongoCatApp *app, struct nk_context *con
     bongo_cat_pref_section(context, tr(app,
         "pages.preference.general.labels.appearanceSettings", "Appearance Settings"));
     section_gap(context, 6);
-    const int language_to_ui[] = {2, 0, 1, 3, 4};
+    const int language_to_ui[] = {2, 0, 1, 3, 4, 5, 6, 7, 8, 9};
     const BongoCatLanguage ui_to_language[] = {
         BONGO_CAT_LANG_ZH_CN, BONGO_CAT_LANG_ZH_TW,
-        BONGO_CAT_LANG_EN_US, BONGO_CAT_LANG_PT_BR,
-        BONGO_CAT_LANG_VI_VN};
+        BONGO_CAT_LANG_EN_US, BONGO_CAT_LANG_FR_FR,
+        BONGO_CAT_LANG_DE_DE, BONGO_CAT_LANG_JA_JP,
+        BONGO_CAT_LANG_KO_KR, BONGO_CAT_LANG_PT_BR,
+        BONGO_CAT_LANG_RU_RU, BONGO_CAT_LANG_ES_ES};
     int selected = bongo_cat_pref_combo(context,
         "language", tr(app, "pages.preference.general.labels.language",
-        "Language"), "", ui_languages, 5, language_to_ui[options->language]);
+        "Language"), "", ui_languages, BONGO_CAT_LANG_COUNT,
+        language_to_ui[options->language]);
     options->language = ui_to_language[selected];
     const char *themes[] = {
         tr(app, "pages.preference.general.options.auto", "System"),

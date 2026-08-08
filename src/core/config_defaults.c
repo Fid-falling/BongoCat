@@ -89,7 +89,8 @@ void bongo_cat_config_validate(BongoCatConfig *config) {
     if (config->window.width > 8192) config->window.width = 8192;
     if (config->window.height > 8192) config->window.height = 8192;
     if (config->app.theme > BONGO_CAT_THEME_DARK) config->app.theme = BONGO_CAT_THEME_AUTO;
-    if (config->app.language > BONGO_CAT_LANG_VI_VN) config->app.language = BONGO_CAT_LANG_EN_US;
+    if ((unsigned)config->app.language >= BONGO_CAT_LANG_COUNT)
+        config->app.language = BONGO_CAT_LANG_EN_US;
     if (config->current_mode > BONGO_CAT_MODE_GAMEPAD) config->current_mode = BONGO_CAT_MODE_STANDARD;
     config->current_model[sizeof(config->current_model) - 1] = '\0';
     if (config->behavior_shortcut_count > BONGO_CAT_BEHAVIOR_CAP)
@@ -115,8 +116,9 @@ const char *bongo_cat_theme_name(BongoCatTheme value) {
 }
 
 const char *bongo_cat_language_name(BongoCatLanguage value) {
-    const char *names[] = {"en-US", "zh-CN", "zh-TW", "pt-BR", "vi-VN"};
-    return value <= BONGO_CAT_LANG_VI_VN ? names[value] : names[0];
+    const char *names[] = {"en-US", "zh-CN", "zh-TW", "fr-FR", "de-DE",
+        "ja-JP", "ko-KR", "pt-BR", "ru-RU", "es-ES"};
+    return (unsigned)value < BONGO_CAT_LANG_COUNT ? names[value] : names[0];
 }
 
 const char *bongo_cat_mode_name(BongoCatModelMode value) {
