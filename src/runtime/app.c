@@ -119,7 +119,7 @@ static bool initialize(BongoCatApp *app, int argc, char **argv, BongoCatError *e
     if (app->smoke_menu) {
         bool menu = bongo_cat_window_menu_self_test(app);
         bool geometry = bongo_cat_window_geometry_self_test(app);
-        bool display = bongo_cat_window_display_self_test();
+        bool display = bongo_cat_window_display_self_test(app);
         bool wheel = bongo_cat_window_wheel_self_test(app);
         bool tray = bongo_cat_tray_self_test(app->tray);
         bool wait = bongo_cat_window_wait_timeout_self_test();
@@ -204,6 +204,7 @@ static void render(BongoCatApp *app) {
     bongo_cat_overlay_draw_background(app->overlay, app->config.model.mirror);
     bongo_cat_live2d_set_mirror(app->live2d, app->config.model.mirror);
     bongo_cat_live2d_draw(app->live2d); if (!app->model_mouse_parameters) bongo_cat_overlay_draw_pointer_before_keys(app->overlay);
+    if (app->config.model.mouse_centered && app->pointer_known && !app->model_pointer_anchor_ready) bongo_cat_app_apply_mouse_position(app, app->pointer_x, app->pointer_y, 0.0f);
     bongo_cat_overlay_draw_keys(app->overlay, app->config.model.mirror);
     bongo_cat_overlay_draw_effect(app->overlay, app->config.model.mirror); if (!app->model_mouse_parameters) bongo_cat_overlay_draw_pointer_after_keys(app->overlay);
     bongo_cat_frame_audit(app, width, height);
@@ -215,8 +216,7 @@ static void render(BongoCatApp *app) {
             "Main frame presentation failed: %s", SDL_GetError());
         return;
     }
-    bongo_cat_startup_ready(app);
-    app->dirty = false;
+    bongo_cat_startup_ready(app); app->dirty = false;
     bongo_cat_window_sync_click_through(app); bongo_cat_window_schedule_hit_check(app);
 }
 void bongo_cat_app_render_now(BongoCatApp *app) { if (app && app->window &&
@@ -249,9 +249,9 @@ static void loop(BongoCatApp *app) {
         bongo_cat_runtime_flow_update(app, now);
         bongo_cat_window_apply_pending_resize(app);
         bongo_cat_app_update_hover(app, now);
+        drain_input(app);
         if (bongo_cat_model_frame_due(app, now)) update_model(app, now);
         else if (!app->config.window.visible || app->window_minimized) app->last_frame_ns = now;
-        drain_input(app);
         if (app->config.window.visible && !app->window_minimized && app->dirty) render(app);
         bongo_cat_preferences_render(app->preferences);
         if (app->config.window.visible && !app->window_minimized && app->dirty) render(app);

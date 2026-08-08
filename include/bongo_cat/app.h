@@ -96,6 +96,8 @@ typedef struct BongoCatApp {
     bool right_mouse_down;
     bool side_mouse_down;
     bool model_mouse_parameters;
+    bool model_pointer_anchor_ready;
+    float model_pointer_anchor_x, model_pointer_anchor_y;
     bool window_minimized;
     double pointer_x, pointer_y;
     bool resize_gesture;

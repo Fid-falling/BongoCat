@@ -147,6 +147,7 @@ void bongo_cat_window_sync_click_through(BongoCatApp *app) {
 
 void bongo_cat_window_apply_pending_resize(BongoCatApp *app) {
     if (!app || !app->resize_pending) return;
+    app->model_pointer_anchor_ready = false;
     if (app->wheel_animation_active) {
         bongo_cat_live2d_reshape(app->live2d,
             app->resize_pixel_width, app->resize_pixel_height);

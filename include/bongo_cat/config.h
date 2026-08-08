@@ -25,6 +25,7 @@ typedef enum BongoCatModelMode {
 typedef struct BongoCatModelOptions {
     bool mirror;
     bool mouse_mirror;
+    bool mouse_centered;
     bool ignore_mouse;
     float auto_release_seconds;
     int max_fps;

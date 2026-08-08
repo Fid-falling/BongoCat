@@ -59,6 +59,7 @@ void bongo_cat_config_defaults(BongoCatConfig *config) {
     memset(config, 0, sizeof(*config));
     config->model.auto_release_seconds =
         BONGO_CAT_DEFAULT_AUTO_RELEASE_SECONDS;
+    config->model.mouse_centered = true;
     config->model.max_fps = BONGO_CAT_DEFAULT_MAX_FPS;
     config->window.visible = true;
     config->window.always_on_top = true;

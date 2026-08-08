@@ -11,7 +11,8 @@ namespace {
 constexpr Csm::csmFloat32 frame_rate = 30.0f;
 constexpr Csm::csmFloat32 maximum_speed = 7.2727275f / frame_rate;
 constexpr Csm::csmFloat32 acceleration_time = 0.15f;
-constexpr Csm::csmFloat32 epsilon = 0.01f;
+// Full-screen pointer mapping needs roughly pixel precision to avoid visible steps.
+constexpr Csm::csmFloat32 epsilon = 0.001f;
 constexpr Csm::csmFloat32 viewer_input_gain = 1.2f;
 }
 

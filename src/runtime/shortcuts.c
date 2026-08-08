@@ -87,6 +87,7 @@ void bongo_cat_app_shortcuts(BongoCatApp *app, const BongoCatInputEvent *event) 
             bongo_cat_preferences_close(app->preferences) : bongo_cat_preferences_show(app->preferences);
     } else if (bongo_cat_shortcut_matches(&app->shortcut_state, event, shortcuts->mirror)) {
         app->config.model.mirror = !app->config.model.mirror;
+        app->model_pointer_anchor_ready = false;
         app->dirty = true;
         bongo_cat_preferences_invalidate(app->preferences);
     } else if (bongo_cat_shortcut_matches(&app->shortcut_state, event, shortcuts->pass_through)) {
@@ -123,6 +124,7 @@ bool bongo_cat_app_shortcuts_self_test(BongoCatApp *app) {
     snprintf(keys->always_on_top, sizeof(keys->always_on_top), "Control+T");
     app->config.window.visible = true;
     app->config.model.mirror = false;
+    app->model_pointer_anchor_ready = true;
     app->config.window.pass_through = false;
     app->config.window.always_on_top = false;
     test_key(app, BONGO_CAT_INPUT_KEY_DOWN, "ControlLeft");
@@ -133,6 +135,7 @@ bool bongo_cat_app_shortcuts_self_test(BongoCatApp *app) {
     test_press(app, "Comma");
     test_key(app, BONGO_CAT_INPUT_KEY_UP, "ControlLeft");
     bool result = !app->config.window.visible && app->config.model.mirror &&
+        !app->model_pointer_anchor_ready &&
         app->config.window.pass_through && app->config.window.always_on_top &&
         bongo_cat_preferences_visible(app->preferences);
     bongo_cat_preferences_close(app->preferences);

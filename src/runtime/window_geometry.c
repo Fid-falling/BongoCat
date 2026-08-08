@@ -104,14 +104,17 @@ bool bongo_cat_window_geometry_self_test(BongoCatApp *app) {
     SDL_Rect bounds;
     if (!display || !SDL_GetDisplayUsableBounds(display, &bounds)) return false;
     app->config.window.keep_in_screen = true;
+    app->model_pointer_anchor_ready = true;
     bongo_cat_window_apply_geometry(app, bounds.x - 2000, bounds.y - 2000,
         100.0f, 320, 240);
     SDL_SyncWindow(app->window);
+    bongo_cat_window_apply_pending_resize(app);
     bongo_cat_window_clamp_to_display(app);
     SDL_SyncWindow(app->window);
     int x, y, width, height;
     SDL_GetWindowPosition(app->window, &x, &y);
     bool clamped = x >= bounds.x && y >= bounds.y;
+    bool anchor_reset = !app->model_pointer_anchor_ready;
     bool scaled = bongo_cat_window_set_scale(app, 125.0f);
     SDL_SyncWindow(app->window);
     SDL_GetWindowSize(app->window, &width, &height);
@@ -160,6 +163,11 @@ bool bongo_cat_window_geometry_self_test(BongoCatApp *app) {
     released.button.button = SDL_BUTTON_RIGHT;
     bongo_cat_window_event(app, &released);
     gesture = gesture && !app->resize_gesture;
+    app->pointer_known = true; app->model_pointer_anchor_ready = true;
+    SDL_Event display_scale = {.type = SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED};
+    display_scale.window.windowID = SDL_GetWindowID(app->window);
+    bongo_cat_window_event(app, &display_scale);
+    bool display_reset = !app->pointer_known && !app->model_pointer_anchor_ready;
     shift.kind = BONGO_CAT_INPUT_KEY_UP;
     bongo_cat_input_push(&app->input, &shift);
     bongo_cat_input_pop(&app->input, &discarded);
@@ -172,10 +180,11 @@ bool bongo_cat_window_geometry_self_test(BongoCatApp *app) {
         backup.opacity_percent / 100.0f);
     bongo_cat_window_sync_click_through(app);
     SDL_SyncWindow(app->window);
-    bool passed = clamped && scaled && opacity && hidden && restored && bounded && gesture;
+    bool passed = clamped && anchor_reset && scaled && opacity && hidden && restored &&
+        bounded && gesture && display_reset;
     if (!passed) fprintf(stderr, "geometry self-test: clamped=%d scaled=%d(%dx%d) "
-        "opacity=%d hidden=%d restored=%d bounded=%d gesture=%d(%dx%d)\n",
-        clamped, scaled, scaled_width, scaled_height, opacity, hidden, restored,
-        bounded, gesture, gesture_width, gesture_height);
+        "anchor=%d opacity=%d hidden=%d restored=%d bounded=%d gesture=%d(%dx%d) display=%d\n",
+        clamped, scaled, scaled_width, scaled_height, anchor_reset, opacity, hidden, restored,
+        bounded, gesture, gesture_width, gesture_height, display_reset);
     return passed;
 }

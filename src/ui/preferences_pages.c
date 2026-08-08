@@ -66,10 +66,20 @@ void bongo_cat_preferences_page_cat(BongoCatApp *app, struct nk_context *context
         "Model Settings"));
     if (bongo_cat_pref_toggle(context, "mirror", tr(app,
         "pages.preference.cat.labels.mirrorMode", "Mirror Mode"), "",
-        &model->mirror)) app->dirty = true;
+        &model->mirror)) {
+        app->model_pointer_anchor_ready = false;
+        app->dirty = true;
+    }
     bongo_cat_pref_toggle(context, "mouse-mirror", tr(app,
         "pages.preference.cat.labels.mouseMirror", "Mouse Mirror"), "",
         &model->mouse_mirror);
+    if (bongo_cat_pref_toggle(context, "mouse-centered", tr(app,
+        "pages.preference.cat.labels.mouseCentered", "Model-Centered Mouse Tracking"),
+        "", &model->mouse_centered)) {
+        app->model_pointer_anchor_ready = false;
+        app->pointer_known = false;
+        app->dirty = true;
+    }
     bongo_cat_pref_toggle(context, "ignore-mouse", tr(app,
         "pages.preference.cat.labels.ignoreMouse", "Ignore Mouse Events"), "",
         &model->ignore_mouse);

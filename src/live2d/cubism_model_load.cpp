@@ -63,6 +63,8 @@ std::string NativeModel::path(const char *relative) const {
 bool NativeModel::load(const char *directory, const char *setting_file,
     bool direct_textures, BongoCatError *error) {
     if (!directory || !setting_file) return false;
+    visual_state_ready_ = false;
+    visual_state_ = BongoCatLive2DVisualState{};
     direct_textures_ = direct_textures;
     directory_ = directory;
     if (!directory_.empty() && directory_.back() != '/' && directory_.back() != '\\')

@@ -14,6 +14,7 @@
           "modelSettings": "Configurações do Modelo",
           "mirrorMode": "Modo Espelho",
           "mouseMirror": "Espelho do Mouse",
+          "mouseCentered": "Rastreamento do mouse centrado no modelo",
           "ignoreMouse": "Ignorar Eventos do Mouse",
           "windowSettings": "Configurações da Janela",
           "passThrough": "Janela Transparente",

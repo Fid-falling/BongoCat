@@ -30,6 +30,7 @@ void test_config(void) {
     CHECK(value.window.width == 612 && value.window.height == 354);
     CHECK(value.window.visible && value.window.always_on_top);
     CHECK(!value.window.keep_in_screen);
+    CHECK(value.model.mouse_centered);
 
     value.model.max_fps = 900;
     value.window.scale_percent = -2.0f;
@@ -63,6 +64,7 @@ void test_config(void) {
 
     value.model.max_fps = 30;
     value.model.mirror = true;
+    value.model.mouse_centered = false;
     value.window.pass_through = true;
     value.window.x = -321;
     value.window.opacity_percent = 75.0f;
@@ -89,6 +91,7 @@ void test_config(void) {
     bongo_cat_config_defaults(&loaded);
     CHECK(bongo_cat_preferences_load(preferences, &loaded, &error) == BONGO_CAT_OK);
     CHECK(loaded.model.max_fps == 30 && loaded.model.mirror);
+    CHECK(!loaded.model.mouse_centered);
     CHECK(loaded.window.pass_through);
     CHECK(loaded.window.x == 0);
     CHECK(loaded.window.opacity_percent == 100.0f);

@@ -18,6 +18,11 @@ void test_mver_pointer(void) {
         &x_ratio, &y_ratio));
     CHECK(close_to(x_ratio, 0.0f));
     CHECK(close_to(y_ratio, 1.0f));
+    bounds = (BongoCatMverPointerBounds){-1920.0, -1200.0, 1920.0, 1200.0};
+    CHECK(bongo_cat_mver_pointer_ratios(-960.0, -600.0, &bounds,
+        &x_ratio, &y_ratio));
+    CHECK(close_to(x_ratio, 0.5f));
+    CHECK(close_to(y_ratio, 0.5f));
     bounds.width = 0.0;
     CHECK(!bongo_cat_mver_pointer_ratios(100.0, 200.0, &bounds,
         &x_ratio, &y_ratio));

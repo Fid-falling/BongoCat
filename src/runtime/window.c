@@ -238,8 +238,14 @@ bool bongo_cat_window_event(BongoCatApp *app, const SDL_Event *event) {
     } else if (event->type == SDL_EVENT_WINDOW_MOVED) {
         app->config.window.x = event->window.data1;
         app->config.window.y = event->window.data2;
+        app->pointer_known = false;
         if (!app->window_drag_active) bongo_cat_window_clamp_to_display(app);
         bongo_cat_window_mark_hit_dirty(app);
+    } else if (event->type == SDL_EVENT_WINDOW_DISPLAY_CHANGED ||
+        event->type == SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED) {
+        app->pointer_known = false;
+        app->model_pointer_anchor_ready = false;
+        app->dirty = true;
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
         event->button.button == SDL_BUTTON_LEFT) {
         bongo_cat_window_drag_begin(app, &event->button);

@@ -41,6 +41,7 @@ static void read_model(yyjson_val *obj, BongoCatModelOptions *value) {
     if (!yyjson_is_obj(obj)) return;
     value->mirror = get_bool(obj, "mirror", value->mirror);
     value->mouse_mirror = get_bool(obj, "mouseMirror", value->mouse_mirror);
+    value->mouse_centered = get_bool(obj, "mouseCenterTracking", value->mouse_centered);
     value->ignore_mouse = get_bool(obj, "ignoreMouse", value->ignore_mouse);
     value->auto_release_seconds = get_float(obj, "autoReleaseDelay", value->auto_release_seconds);
     value->max_fps = get_int(obj, "maxFPS", value->max_fps);
@@ -112,6 +113,7 @@ static void write_model(yyjson_mut_doc *doc, yyjson_mut_val *obj,
     const BongoCatModelOptions *v) {
     yyjson_mut_obj_add_bool(doc, obj, "mirror", v->mirror);
     yyjson_mut_obj_add_bool(doc, obj, "mouseMirror", v->mouse_mirror);
+    yyjson_mut_obj_add_bool(doc, obj, "mouseCenterTracking", v->mouse_centered);
     yyjson_mut_obj_add_bool(doc, obj, "ignoreMouse", v->ignore_mouse);
     yyjson_mut_obj_add_real(doc, obj, "autoReleaseDelay", v->auto_release_seconds);
     yyjson_mut_obj_add_int(doc, obj, "maxFPS", v->max_fps);

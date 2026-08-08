@@ -213,12 +213,14 @@ bool bongo_cat_window_recover_to_display(BongoCatApp *app) {
 }
 
 void bongo_cat_window_display_event(BongoCatApp *app, const SDL_Event *event) {
-    if (!app || !event || event->type == SDL_EVENT_DISPLAY_CURRENT_MODE_CHANGED)
-        return;
+    if (!app || !event) return;
     if (event->type < SDL_EVENT_DISPLAY_FIRST ||
         event->type > SDL_EVENT_DISPLAY_LAST) return;
     if (app->window_drag_active && app->config.window.keep_in_screen)
         bongo_cat_window_drag_bounds_refresh(app);
+    app->pointer_known = false;
+    app->model_pointer_anchor_ready = false;
+    app->dirty = true;
     app->display_recovery_due_ns = SDL_GetTicksNS() + DISPLAY_RECOVERY_DELAY_NS;
 }
 
@@ -230,13 +232,20 @@ void bongo_cat_window_update_display_recovery(BongoCatApp *app, uint64_t now) {
     else bongo_cat_window_recover_to_display(app);
 }
 
-bool bongo_cat_window_display_self_test(void) {
+bool bongo_cat_window_display_self_test(BongoCatApp *app) {
     const SDL_Rect displays[] = {{0, 0, 1920, 1040}, {1920, 0, 1920, 1040}};
     const SDL_Rect gapped[] = {{0, 0, 1920, 1040}, {2020, 0, 1920, 1040}};
+    const SDL_Rect negative[] = {{-1920, 0, 1920, 1080}, {0, 0, 2560, 1440}};
+    const SDL_Rect stacked[] = {{0, -1200, 1920, 1200}, {0, 0, 1920, 1080},
+        {1920, 0, 1280, 1024}};
     SDL_Rect partial = {-80, 100, 320, 240};
     SDL_Rect secondary = {2200, 100, 320, 240};
     SDL_Rect detached = {4200, 100, 320, 240};
     SDL_Rect bridge = {1800, 100, 320, 240};
+    SDL_Rect negative_bridge = {-100, 100, 200, 200};
+    SDL_Rect vertical_bridge = {100, -100, 200, 200};
+    SDL_Rect triple_bridge = {1800, 100, 300, 200};
+    SDL_Rect corner_gap = {1800, -100, 240, 200};
     SDL_Point fitted = fitted_position(&detached, &displays[0]);
     bool overlap = intersects_bounds(&partial, displays, 2);
     bool second = intersects_bounds(&secondary, displays, 2);
@@ -244,7 +253,27 @@ bool bongo_cat_window_display_self_test(void) {
     bool recovered = fitted.x == 1600 && fitted.y == 100;
     bool adjacent_covered = bounds_cover_window(&bridge, displays, 2);
     bool gap_rejected = !bounds_cover_window(&bridge, gapped, 2);
+    bool event_reset = false;
+    if (app) {
+        bool pointer_known = app->pointer_known;
+        bool anchor_ready = app->model_pointer_anchor_ready;
+        bool dirty = app->dirty;
+        uint64_t recovery_due = app->display_recovery_due_ns;
+        app->pointer_known = true; app->model_pointer_anchor_ready = true;
+        app->dirty = false; app->display_recovery_due_ns = 0;
+        SDL_Event event = {.type = SDL_EVENT_DISPLAY_CURRENT_MODE_CHANGED};
+        bongo_cat_window_display_event(app, &event);
+        event_reset = !app->pointer_known && !app->model_pointer_anchor_ready &&
+            app->dirty && app->display_recovery_due_ns > 0;
+        app->pointer_known = pointer_known;
+        app->model_pointer_anchor_ready = anchor_ready;
+        app->dirty = dirty; app->display_recovery_due_ns = recovery_due;
+    }
     return overlap && second && removed && recovered && adjacent_covered &&
         gap_rejected && !bounds_cover_window(&partial, displays, 2) &&
-        !intersects_bounds(&detached, displays, 2);
+        !intersects_bounds(&detached, displays, 2) && event_reset &&
+        bounds_cover_window(&negative_bridge, negative, 2) &&
+        bounds_cover_window(&vertical_bridge, stacked, 3) &&
+        bounds_cover_window(&triple_bridge, stacked, 3) &&
+        !bounds_cover_window(&corner_gap, stacked, 3);
 }

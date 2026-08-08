@@ -45,7 +45,7 @@ void bongo_cat_window_drag_bounds_clear(BongoCatApp *app);
 bool bongo_cat_window_recover_to_display(BongoCatApp *app);
 void bongo_cat_window_display_event(BongoCatApp *app, const SDL_Event *event);
 void bongo_cat_window_update_display_recovery(BongoCatApp *app, uint64_t now);
-bool bongo_cat_window_display_self_test(void);
+bool bongo_cat_window_display_self_test(BongoCatApp *app);
 void bongo_cat_window_drag_begin(BongoCatApp *app,
     const SDL_MouseButtonEvent *event);
 void bongo_cat_window_drag_motion(BongoCatApp *app,
@@ -59,6 +59,8 @@ void bongo_cat_app_reset_gamepad(BongoCatApp *app);
 void bongo_cat_app_apply_mouse(BongoCatApp *app);
 void bongo_cat_app_apply_mouse_position(BongoCatApp *app, double x, double y,
     float elapsed_seconds);
+bool bongo_cat_app_audit_screen_pointer(BongoCatApp *app);
+bool bongo_cat_app_audit_display_pointer(BongoCatApp *app);
 void bongo_cat_app_track_hover(BongoCatApp *app, double x, double y);
 void bongo_cat_app_update_hover(BongoCatApp *app, uint64_t now);
 BongoCatResult bongo_cat_copy_directory(const char *source, const char *target,

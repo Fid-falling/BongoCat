@@ -62,8 +62,8 @@ Viewer mouse tracking feeds its configured `ParamAngleX`, `ParamAngleY`,
 `ParamEyeBallX`, `ParamEyeBallY`, and, when present, `ParamBodyAngleX` channels
 through the Viewer's own `TargetPoint` variant before physics consumes them at
 the `physics3` authored FPS. That variant uses a `7.2727275 / 30` maximum target
-speed, a 0.15 second acceleration time, a 0.01 output dead zone, and the
-Viewer's additional 1.2 input gain. Parameter scaling selects the authored
+speed, a 0.15 second acceleration time, a pixel-scale desktop dead zone, and
+the Viewer's additional 1.2 input gain. Parameter scaling selects the authored
 positive or negative extent from the parameter's value immediately before the
 additive update; all five default mappings use weight 1.0. Tracking follows
 pointer movement continuously and keeps the Viewer's TargetPoint response
@@ -71,6 +71,14 @@ curve without requiring a mouse button. Primary and secondary button state
 remains independent for model-authored hand parameters. Viewer-default
 automatic Idle playback is enabled and avoids immediately repeating the same
 Idle motion when alternatives exist.
+Desktop tracking is model-centered by default, so look direction changes only
+when the pointer crosses the pet's visible center. Users can disable the
+setting to retain the legacy screen/work-area-centered coordinate mapping.
+In model-centered mode, the authored hand and device range maps absolutely to
+the full display containing the pet; legacy mode retains Mver relative input.
+The display is selected from the pet's visible center. Negative-coordinate,
+stacked, and mixed-DPI layouts retain desktop coordinates, and display mode,
+topology, or scale changes invalidate and immediately resample the mapping.
 `ParamAngleZ` and model-specific `ParamMouse*` channels are not synthesized by
 the Viewer-equivalent path.
 

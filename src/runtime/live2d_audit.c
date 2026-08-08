@@ -36,6 +36,20 @@ static void input(BongoCatApp *app, BongoCatInputKind kind, const char *name, fl
     bongo_cat_app_apply_input(app, &event);
 }
 
+static bool pointer_test_center(BongoCatApp *app, SDL_Rect *bounds,
+    double *center_x, double *center_y) {
+    int window_x, window_y, width, height;
+    if (!app || !app->window || !bounds || !center_x || !center_y ||
+        !SDL_GetWindowPosition(app->window, &window_x, &window_y) ||
+        !SDL_GetWindowSize(app->window, &width, &height)) return false;
+    *center_x = window_x + width * 0.5;
+    *center_y = window_y + height * 0.5;
+    SDL_Point point = {(int)*center_x, (int)*center_y};
+    SDL_DisplayID display = SDL_GetDisplayForPoint(&point);
+    return display && SDL_GetDisplayBounds(display, bounds) &&
+        bounds->w > 0 && bounds->h > 0;
+}
+
 static bool motion(BongoCatApp *app, const char *scenario) {
     if (strcmp(scenario, "motion-0") == 0)
         return bongo_cat_live2d_start_motion(app->live2d, "CAT_motion", 0);
@@ -48,12 +62,12 @@ static bool motion(BongoCatApp *app, const char *scenario) {
 
 static bool pointer(BongoCatApp *app, bool mirror) {
     SDL_Rect bounds;
-    SDL_DisplayID display = SDL_GetPrimaryDisplay();
-    if (!display || !SDL_GetDisplayBounds(display, &bounds)) return false;
+    double center_x, center_y;
+    if (!pointer_test_center(app, &bounds, &center_x, &center_y)) return false;
     app->config.model.mouse_mirror = mirror;
     app->left_mouse_down = false;
-    bongo_cat_app_apply_mouse_position(app, bounds.x + bounds.w * 0.9,
-        bounds.y + bounds.h * 0.1, 1.0f / 60.0f);
+    bongo_cat_app_apply_mouse_position(app, center_x + bounds.w * 0.4,
+        center_y - bounds.h * 0.4, 1.0f / 60.0f);
     for (int frame = 0; frame < 90; ++frame)
         bongo_cat_app_step_live2d(app, 1.0f / 60.0f);
     return true;
@@ -61,20 +75,20 @@ static bool pointer(BongoCatApp *app, bool mirror) {
 
 static bool reverse_pointer(BongoCatApp *app) {
     SDL_Rect bounds;
-    SDL_DisplayID display = SDL_GetPrimaryDisplay();
-    if (!display || !SDL_GetDisplayBounds(display, &bounds)) return false;
+    double center_x, center_y;
+    if (!pointer_test_center(app, &bounds, &center_x, &center_y)) return false;
     pointer_audit = (PointerAudit){.ran = true,
         .mver = app->model_render_options.mver_projection};
     app->config.model.mouse_mirror = false;
     app->left_mouse_down = false;
     const float ratios[4][2] = {
-        {0.1f, 0.1f}, {0.9f, 0.1f}, {0.1f, 0.9f}, {0.9f, 0.9f}};
+        {-0.4f, -0.4f}, {0.4f, -0.4f}, {-0.4f, 0.4f}, {0.4f, 0.4f}};
     float previous_x = 0.0f;
     bool previous_ready = value(app, "ParamAngleX", &previous_x);
     for (int corner = 0; corner < 4; ++corner) {
         bongo_cat_app_apply_mouse_position(app,
-            bounds.x + bounds.w * ratios[corner][0],
-            bounds.y + bounds.h * ratios[corner][1], 1.0f / 60.0f);
+            center_x + bounds.w * ratios[corner][0],
+            center_y + bounds.h * ratios[corner][1], 1.0f / 60.0f);
         for (int frame = 0; frame < 90; ++frame) {
             bongo_cat_app_step_live2d(app, 1.0f / 60.0f);
             float current_x = previous_x;
@@ -104,6 +118,7 @@ static bool apply(BongoCatApp *app, const char *scenario) {
         return bongo_cat_live2d_visual_audit_run(app);
     if (strcmp(scenario, "viewer-sequence") == 0)
         return bongo_cat_live2d_viewer_audit_run(app);
+    if (strcmp(scenario, "mouse-screen") == 0) return bongo_cat_app_audit_screen_pointer(app); if (strcmp(scenario, "mouse-hand-screen") == 0) return bongo_cat_app_audit_display_pointer(app);
     if (strcmp(scenario, "mirror") == 0) app->config.model.mirror = true;
     else if (strcmp(scenario, "mouse-move") == 0) return pointer(app, false);
     else if (strcmp(scenario, "mouse-move-mirror") == 0) return pointer(app, true);
@@ -175,7 +190,7 @@ static bool assertions(BongoCatApp *app, const char *scenario, bool operation) {
     if (!operation) return false;
     if (strncmp(scenario, "switch:", 7) == 0)
         return strcmp(app->config.current_model, scenario + 7) == 0;
-    if (strcmp(scenario, "idle") == 0 || strcmp(scenario, "mirror") == 0 ||
+    if (strcmp(scenario, "idle") == 0 || strcmp(scenario, "mouse-screen") == 0 || strcmp(scenario, "mouse-hand-screen") == 0 || strcmp(scenario, "mirror") == 0 ||
         strcmp(scenario, "visual-consistency") == 0 ||
         strcmp(scenario, "viewer-sequence") == 0 ||
         strcmp(scenario, "key-left-release") == 0 ||

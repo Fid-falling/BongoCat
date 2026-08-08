@@ -14,6 +14,7 @@
           "modelSettings": "模型设置",
           "mirrorMode": "镜像模式",
           "mouseMirror": "鼠标镜像",
+          "mouseCentered": "以桌宠为中心的鼠标追踪",
           "ignoreMouse": "忽略鼠标事件",
           "windowSettings": "窗口设置",
           "passThrough": "窗口穿透",
