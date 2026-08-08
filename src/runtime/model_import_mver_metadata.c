@@ -41,7 +41,10 @@ static bool add_standard_pointer(yyjson_mut_doc *output, yyjson_mut_val *root,
     const char *side = mouse ? "resources/mver-pointer/mouse_side.png" : "";
     yyjson_mut_val *pointer = yyjson_mut_obj_add_obj(output, root, "standardPointer");
     return pointer &&
-        yyjson_mut_obj_add_bool(output, pointer, "enabled", !live2d) &&
+        /* Mver draws the pointer layer after the Live2D model in both standard
+           and Live2D-standard modes. Keep it enabled so the authored hand,
+           device, and button overlays continue to follow the pointer. */
+        yyjson_mut_obj_add_bool(output, pointer, "enabled", true) &&
         yyjson_mut_obj_add_bool(output, pointer, "mouse", mouse) &&
         yyjson_mut_obj_add_bool(output, pointer, "leftHanded",
             yyjson_is_bool(left_handed) && yyjson_get_bool(left_handed)) &&

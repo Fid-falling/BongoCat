@@ -44,7 +44,8 @@ if(EXISTS "${CUBISM_CORE_HEADER}")
     include(cmake/Cubism.cmake)
     set(BONGO_CAT_LIVE2D_SOURCES
       src/live2d/cubism_bridge.cpp src/live2d/cubism_model_load.cpp
-      src/live2d/cubism_model_update.cpp src/live2d/cubism_model_bounds.cpp
+      src/live2d/cubism_model_update.cpp src/live2d/cubism_viewer_look.cpp
+      src/live2d/cubism_model_bounds.cpp
       src/live2d/cubism_model_validate.cpp)
     set(BONGO_CAT_CUBISM_ENABLED ON)
   endif()
@@ -84,6 +85,7 @@ add_library(bongo_cat_runtime STATIC
   src/runtime/frame_audit.c src/runtime/frame_clock.c
   src/runtime/gamepad.c
   src/runtime/live2d_audit.c src/runtime/live2d_visual_audit.c
+  src/runtime/live2d_viewer_audit.c
   src/runtime/mouse.c
   src/runtime/model_files.c src/runtime/model_update.c
   src/runtime/model_storage.c
@@ -170,6 +172,13 @@ add_executable(bongo_cat src/main.c)
 target_link_libraries(bongo_cat PRIVATE bongo_cat_runtime bongo_cat_warnings)
 set_target_properties(bongo_cat PROPERTIES OUTPUT_NAME "BongoCat")
 bongo_cat_enable_release_ipo(Framework bongo_cat_core bongo_cat_runtime bongo_cat)
+
+if(WIN32)
+  add_executable(cubism_viewer_desktop_capture EXCLUDE_FROM_ALL
+    cmake/CubismViewerDesktopCapture.cpp)
+  target_compile_features(cubism_viewer_desktop_capture PRIVATE cxx_std_17)
+  target_link_libraries(cubism_viewer_desktop_capture PRIVATE d3d11 dxgi user32)
+endif()
 if(APPLE)
   set_source_files_properties(resources/icons/icon.icns PROPERTIES
     MACOSX_PACKAGE_LOCATION Resources)

@@ -267,7 +267,7 @@ static void portable_model(void) {
         app->models.entries[0].adapter_directory, "resources/left-keys/KeyA.png", false));
     CHECK(bongo_cat_path_is_file(adapter_file));
     CHECK(test_mver_pointer_adapter(
-        app->models.entries[0].adapter_directory, false));
+        app->models.entries[0].adapter_directory, true));
     BongoCatLive2DRenderOptions render = {0};
     CHECK(bongo_cat_import_mver_render_options(
         app->models.entries[0].adapter_directory, &render));

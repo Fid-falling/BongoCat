@@ -1,4 +1,5 @@
 #include "cubism_model.hpp"
+#include "cubism_viewer_look.hpp"
 
 #include <Id/CubismIdManager.hpp>
 #include <Math/CubismMatrix44.hpp>
@@ -49,20 +50,17 @@ static bool changed(std::vector<float> &snapshot, int count, Getter value) {
 bool NativeModel::update(float delta_seconds) {
     if (!_model || delta_seconds <= 0.0f) return false;
     if (delta_seconds > 0.25f) delta_seconds = 0.25f;
-    // Cubism's target point supplies the same acceleration/deceleration curve
-    // used by Bongo Cat Mver. It must advance before the late drag updater.
-    if (_dragManager) _dragManager->Update(delta_seconds);
     external_parameters_dirty_ = false;
-    motion_updated_ = false;
+    motion_updated_ = suppress_eye_blink_;
     _model->LoadParameters();
     for (int i = 0; i < _model->GetParameterCount(); ++i) {
         if (!pending_parameters_[(size_t)i]) continue;
         _model->SetParameterValue(i, pending_parameter_values_[(size_t)i]);
         pending_parameters_[(size_t)i] = 0;
     }
-    if (_motionManager->IsFinished())
+    if (automatic_idle_ && _motionManager->IsFinished())
         start_idle_motion();
-    else
+    else if (!_motionManager->IsFinished())
         motion_updated_ = _motionManager->UpdateMotion(_model, delta_seconds);
     _model->SaveParameters();
     _updateScheduler.OnLateUpdate(_model, delta_seconds);
@@ -122,19 +120,23 @@ void NativeModel::set_mirror(bool mirror) { mirror_ = mirror; }
 
 void NativeModel::set_render_options(const BongoCatLive2DRenderOptions &options) {
     render_options_ = options;
-    for (auto &item : motions_) {
-        auto *motion = static_cast<Csm::CubismMotion *>(item.second);
-        motion->SetMotionBehavior(Csm::CubismMotion::MotionBehavior_V1);
-        motion->UseMverCurveEvaluation();
-    }
 }
 
 void NativeModel::set_dragging(float x, float y) {
-    if (!_dragManager) return;
+    if (!viewer_look_) return;
     x = std::max(-1.0f, std::min(1.0f, x));
     y = std::max(-1.0f, std::min(1.0f, y));
-    _dragManager->Set(x, y);
+    viewer_look_->set_target(x, y);
     external_parameters_dirty_ = true;
+}
+
+void NativeModel::prepare_viewer_audit() {
+    automatic_idle_ = false;
+    suppress_eye_blink_ = true;
+    _motionManager->StopAllMotions();
+    for (int i = 0; i < _model->GetParameterCount(); ++i)
+        _model->SetParameterValue(i, _model->GetParameterDefaultValue(i));
+    _model->SaveParameters();
 }
 
 bool NativeModel::set_parameter(const char *id, float value) {
@@ -177,8 +179,10 @@ void NativeModel::start_idle_motion() {
     if (idle_motion_keys_.empty()) return;
     constexpr int priority = 1;
     if (!_motionManager->ReserveMotion(priority)) return;
-    const std::string &key = idle_motion_keys_[
-        (size_t)(std::rand() % (int)idle_motion_keys_.size())];
+    int next = std::rand() % (int)idle_motion_keys_.size();
+    if (next == last_idle_motion_) next = (next + 1) % (int)idle_motion_keys_.size();
+    last_idle_motion_ = next;
+    const std::string &key = idle_motion_keys_[(size_t)next];
     auto found = motions_.find(key);
     if (found != motions_.end())
         _motionManager->StartMotionPriority(found->second, false, priority);
@@ -214,18 +218,14 @@ bool NativeModel::toggle_lock_motion(const std::string &key,
 bool NativeModel::set_expression(int index) {
     if (index == -1) {
         _expressionManager->StopAllMotions();
-        mver_expression_manager_.StopAllMotions();
         expression_index_ = -1;
         return true;
     }
     if (index < 0 || (size_t)index >= expression_names_.size()) return false;
     auto found = expressions_.find(expression_names_[(size_t)index]);
     if (found == expressions_.end()) return false;
-    Csm::CubismMotionQueueEntryHandle handle;
-    constexpr int priority = 3;
-    mver_expression_manager_.SetReservePriority(priority);
-    handle = mver_expression_manager_.StartMotionPriority(
-        found->second, false, priority);
+    Csm::CubismMotionQueueEntryHandle handle =
+        _expressionManager->StartMotion(found->second, false);
     if (handle == Csm::InvalidMotionQueueEntryHandleValue) return false;
     expression_index_ = index;
     return true;

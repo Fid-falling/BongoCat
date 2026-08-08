@@ -40,6 +40,7 @@ typedef struct BongoCatApp {
     char smoke_model[BONGO_CAT_ID_CAP];
     char smoke_runtime_model[BONGO_CAT_ID_CAP];
     char smoke_live2d_scenario[BONGO_CAT_ID_CAP];
+    char smoke_viewer_trace[BONGO_CAT_PATH_CAP];
     char loaded_model[BONGO_CAT_ID_CAP];
     bool running;
     bool preferences_store_valid;
@@ -94,6 +95,7 @@ typedef struct BongoCatApp {
     bool left_mouse_down;
     bool right_mouse_down;
     bool side_mouse_down;
+    bool model_mouse_parameters;
     bool window_minimized;
     double pointer_x, pointer_y;
     bool resize_gesture;

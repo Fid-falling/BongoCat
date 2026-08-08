@@ -60,6 +60,8 @@ typedef struct BongoCatParameterRange { float minimum, maximum, value; } BongoCa
 typedef struct BongoCatLive2DVisualState {
     float fit_scale, fit_translate_x, fit_translate_y;
     float visible_min_x, visible_min_y, visible_max_x, visible_max_y;
+    int drawable_count, drawable_visible, drawable_vertex_changed;
+    int offscreen_count, offscreen_positive, part_count, part_positive;
     bool fitted, visible, mver_projection;
 } BongoCatLive2DVisualState;
 
@@ -95,6 +97,7 @@ void bongo_cat_live2d_set_mirror(BongoCatLive2D *live2d, bool mirror);
 void bongo_cat_live2d_set_render_options(BongoCatLive2D *live2d,
     const BongoCatLive2DRenderOptions *options);
 void bongo_cat_live2d_set_dragging(BongoCatLive2D *live2d, float x, float y);
+void bongo_cat_live2d_prepare_viewer_audit(BongoCatLive2D *live2d);
 bool bongo_cat_live2d_set_parameter(BongoCatLive2D *live2d, const char *id, float value);
 bool bongo_cat_live2d_parameter(BongoCatLive2D *live2d, const char *id,
     BongoCatParameterRange *range);

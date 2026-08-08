@@ -19,9 +19,8 @@ typedef struct PointerAudit {
 
 static PointerAudit pointer_audit;
 
-/* TargetPoint is capped at 4 degrees per 60 Hz step. The authored breath
-   track adds a small change on the same parameter after pointer motion. */
-#define POINTER_VISIBLE_STEP_LIMIT 4.1f
+/* Viewer 5.3.03: (7.2727275 / 30) target speed * 30-degree range * 1.2 gain. */
+#define POINTER_VISIBLE_STEP_LIMIT 8.8f
 
 static bool value(BongoCatApp *app, const char *id, float *output) {
     BongoCatParameterRange range;
@@ -52,11 +51,9 @@ static bool pointer(BongoCatApp *app, bool mirror) {
     SDL_DisplayID display = SDL_GetPrimaryDisplay();
     if (!display || !SDL_GetDisplayBounds(display, &bounds)) return false;
     app->config.model.mouse_mirror = mirror;
+    app->left_mouse_down = false;
     bongo_cat_app_apply_mouse_position(app, bounds.x + bounds.w * 0.9,
         bounds.y + bounds.h * 0.1, 1.0f / 60.0f);
-    // Dragging is intentionally smoothed by Cubism's TargetPoint. Advance
-    // enough frames to observe the settled direction, as a real render loop
-    // does, rather than asserting on its first acceleration step.
     for (int frame = 0; frame < 90; ++frame)
         bongo_cat_app_step_live2d(app, 1.0f / 60.0f);
     return true;
@@ -69,6 +66,7 @@ static bool reverse_pointer(BongoCatApp *app) {
     pointer_audit = (PointerAudit){.ran = true,
         .mver = app->model_render_options.mver_projection};
     app->config.model.mouse_mirror = false;
+    app->left_mouse_down = false;
     const float ratios[4][2] = {
         {0.1f, 0.1f}, {0.9f, 0.1f}, {0.1f, 0.9f}, {0.9f, 0.9f}};
     float previous_x = 0.0f;
@@ -104,6 +102,8 @@ static bool apply(BongoCatApp *app, const char *scenario) {
         return bongo_cat_app_select_model(app, scenario + 7);
     if (strcmp(scenario, "visual-consistency") == 0)
         return bongo_cat_live2d_visual_audit_run(app);
+    if (strcmp(scenario, "viewer-sequence") == 0)
+        return bongo_cat_live2d_viewer_audit_run(app);
     if (strcmp(scenario, "mirror") == 0) app->config.model.mirror = true;
     else if (strcmp(scenario, "mouse-move") == 0) return pointer(app, false);
     else if (strcmp(scenario, "mouse-move-mirror") == 0) return pointer(app, true);
@@ -177,6 +177,7 @@ static bool assertions(BongoCatApp *app, const char *scenario, bool operation) {
         return strcmp(app->config.current_model, scenario + 7) == 0;
     if (strcmp(scenario, "idle") == 0 || strcmp(scenario, "mirror") == 0 ||
         strcmp(scenario, "visual-consistency") == 0 ||
+        strcmp(scenario, "viewer-sequence") == 0 ||
         strcmp(scenario, "key-left-release") == 0 ||
         strcmp(scenario, "keys-both-release") == 0 ||
         strcmp(scenario, "key-stress") == 0 ||
@@ -219,14 +220,9 @@ static bool assertions(BongoCatApp *app, const char *scenario, bool operation) {
             pointer_audit.angle_y[3] < -5.0f;
         bool custom = true;
         if (!pointer_audit.mver && pointer_audit.has_mouse) {
-            custom = pointer_audit.mouse_x[0] > 5.0f &&
-                pointer_audit.mouse_x[1] < -5.0f &&
-                pointer_audit.mouse_x[2] > 5.0f &&
-                pointer_audit.mouse_x[3] < -5.0f &&
-                pointer_audit.mouse_y[0] > 5.0f &&
-                pointer_audit.mouse_y[1] > 5.0f &&
-                pointer_audit.mouse_y[2] < -5.0f &&
-                pointer_audit.mouse_y[3] < -5.0f;
+            for (int corner = 0; corner < 4; ++corner)
+                custom = SDL_fabsf(pointer_audit.mouse_x[corner]) < 0.001f &&
+                    SDL_fabsf(pointer_audit.mouse_y[corner]) < 0.001f && custom;
         }
         return direction && custom &&
             pointer_audit.maximum_step < POINTER_VISIBLE_STEP_LIMIT;

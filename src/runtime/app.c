@@ -203,9 +203,9 @@ static void render(BongoCatApp *app) {
     glClear(GL_COLOR_BUFFER_BIT);
     bongo_cat_overlay_draw_background(app->overlay, app->config.model.mirror);
     bongo_cat_live2d_set_mirror(app->live2d, app->config.model.mirror);
-    bongo_cat_live2d_draw(app->live2d); bongo_cat_overlay_draw_pointer_before_keys(app->overlay);
+    bongo_cat_live2d_draw(app->live2d); if (!app->model_mouse_parameters) bongo_cat_overlay_draw_pointer_before_keys(app->overlay);
     bongo_cat_overlay_draw_keys(app->overlay, app->config.model.mirror);
-    bongo_cat_overlay_draw_effect(app->overlay, app->config.model.mirror); bongo_cat_overlay_draw_pointer_after_keys(app->overlay);
+    bongo_cat_overlay_draw_effect(app->overlay, app->config.model.mirror); if (!app->model_mouse_parameters) bongo_cat_overlay_draw_pointer_after_keys(app->overlay);
     bongo_cat_frame_audit(app, width, height);
     bongo_cat_window_capture_pointer_hit(app);
     if (!bongo_cat_platform_present(&app->platform, width, height)) {

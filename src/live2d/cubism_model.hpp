@@ -18,6 +18,7 @@ namespace bongo_cat {
 
 bool validate_model_setting_json(const std::vector<unsigned char> &json,
     const char *setting_file, BongoCatError *error);
+class ViewerLookUpdater;
 
 class NativeModel final : public Csm::CubismUserModel {
 public:
@@ -34,6 +35,7 @@ public:
     void set_mirror(bool mirror);
     void set_render_options(const BongoCatLive2DRenderOptions &options);
     void set_dragging(float x, float y);
+    void prepare_viewer_audit();
     bool set_parameter(const char *id, float value);
     bool parameter(const char *id, float *minimum, float *maximum, float *value);
     bool start_motion(const char *group, int index);
@@ -76,7 +78,6 @@ private:
     MotionMap motions_;
     std::map<std::string, LockMotion> lock_motions_;
     MotionMap expressions_;
-    Csm::CubismMotionManager mver_expression_manager_;
     std::vector<std::string> expression_names_;
     std::vector<GLuint> textures_;
     std::vector<BongoCatImageAlphaMask> texture_alpha_;
@@ -95,11 +96,15 @@ private:
     BongoCatLive2DVisualState visual_state_{};
     bool visual_state_ready_ = false;
     bool motion_updated_ = false;
+    bool suppress_eye_blink_ = false;
+    bool automatic_idle_ = true;
     bool mirror_ = false;
     BongoCatLive2DRenderOptions render_options_{};
     bool direct_textures_ = false;
     bool external_parameters_dirty_ = false;
     std::vector<std::string> idle_motion_keys_;
+    ViewerLookUpdater *viewer_look_ = nullptr;
+    int last_idle_motion_ = -1;
     float opacity_snapshot_ = -1.0f;
 };
 

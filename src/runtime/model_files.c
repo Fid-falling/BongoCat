@@ -9,14 +9,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 typedef struct TreeContext {
     const char *source;
     const char *target;
     BongoCatError *error;
     unsigned depth;
 } TreeContext;
-
 #define MODEL_TREE_DEPTH_CAP 32
 
 static void select_model_state(BongoCatApp *app, const BongoCatModelEntry *entry) {
@@ -127,6 +125,9 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
         return false;
     }
     app->model_render_options = render_options;
+    BongoCatParameterRange mouse_range; app->model_mouse_parameters =
+        bongo_cat_live2d_parameter(app->live2d, "ParamMouseLeftDown", &mouse_range) ||
+        bongo_cat_live2d_parameter(app->live2d, "ParamMouseRightDown", &mouse_range);
     app->mver_pointer = (BongoCatMverPointerState){0};
     bongo_cat_live2d_set_render_options(app->live2d, &render_options);
     apply_model_aspect(app, &render_options);
@@ -155,7 +156,6 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
 bool bongo_cat_app_select_model(BongoCatApp *app, const char *id) {
     return bongo_cat_app_select_model_with_error(app, id, NULL);
 }
-
 static bool copy_tree(const char *source, const char *target, unsigned depth,
     BongoCatError *error);
 static BongoCatPathVisit copy_item(void *userdata,

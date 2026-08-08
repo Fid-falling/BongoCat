@@ -92,6 +92,10 @@ static bool parse_arguments(BongoCatApp *app, int argc, char **argv,
         } else if (strncmp(arg, "--ci-model=", 11) == 0) {
             if (!store_argument(app->smoke_model, sizeof(app->smoke_model),
                 arg + 11, "Model", error)) return false;
+        } else if (strncmp(arg, "--ci-viewer-trace=", 18) == 0) {
+            if (!store_argument(app->smoke_viewer_trace,
+                sizeof(app->smoke_viewer_trace), arg + 18,
+                "Viewer trace", error)) return false;
         } else if (strncmp(arg, "--ci-live2d-scenario=", 21) == 0 &&
             !store_argument(app->smoke_live2d_scenario,
                 sizeof(app->smoke_live2d_scenario), arg + 21, "Scenario", error)) return false;

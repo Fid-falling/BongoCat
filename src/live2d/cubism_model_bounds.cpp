@@ -80,6 +80,21 @@ NativeModel::ModelBounds NativeModel::capture_visible_bounds() const {
 }
 
 void NativeModel::record_visible_state(Csm::CubismMatrix44 &projection) {
+    visual_state_.drawable_count = _model->GetDrawableCount();
+    for (int i = 0; i < _model->GetDrawableCount(); ++i) {
+        if (_model->GetDrawableDynamicFlagIsVisible(i) &&
+            _model->GetDrawableOpacity(i) > 0.001f)
+            ++visual_state_.drawable_visible;
+        if (_model->GetDrawableDynamicFlagVertexPositionsDidChange(i))
+            ++visual_state_.drawable_vertex_changed;
+    }
+    visual_state_.offscreen_count = _model->GetOffscreenCount();
+    for (int i = 0; i < _model->GetOffscreenCount(); ++i)
+        if (_model->GetOffscreenOpacity(i) > 0.001f)
+            ++visual_state_.offscreen_positive;
+    visual_state_.part_count = _model->GetPartCount();
+    for (int i = 0; i < _model->GetPartCount(); ++i)
+        if (_model->GetPartOpacity(i) > 0.001f) ++visual_state_.part_positive;
     ModelBounds bounds = capture_visible_bounds();
     if (!bounds.valid) return;
     float x0 = projection.TransformX(bounds.min_x);

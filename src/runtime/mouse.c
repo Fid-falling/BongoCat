@@ -141,7 +141,8 @@ static void apply_mouse_coordinates(BongoCatApp *app, double x, double y) {
     float x_ratio, y_ratio;
     if (!bongo_cat_mver_pointer_ratios(x, y, &pointer_bounds,
         &x_ratio, &y_ratio)) return;
-    bool exact_pointer = bongo_cat_overlay_mver_pointer_enabled(app->overlay);
+    bool exact_pointer = !app->model_mouse_parameters &&
+        bongo_cat_overlay_mver_pointer_enabled(app->overlay);
     bool mver = app->model_render_options.mver_projection;
     bool left_handed = app->model_render_options.pointer_left_handed ||
         (exact_pointer && bongo_cat_overlay_mver_pointer_left_handed(app->overlay));
@@ -153,13 +154,7 @@ static void apply_mouse_coordinates(BongoCatApp *app, double x, double y) {
     bongo_cat_overlay_set_mver_pointer(app->overlay, x_ratio, y_ratio,
         app->left_mouse_down, app->right_mouse_down, app->side_mouse_down);
     if (app->model_render_options.mver_projection && !exact_pointer) {
-        // Mver-authored hand and pen deformation uses the complete extension
-        // range alongside TargetPoint; attenuating it visibly shortens travel.
         set_parameter(app, "ParamMouseX", 1.0f - x_ratio, y_ratio);
-        set_parameter(app, "ParamMouseY", x_ratio, y_ratio);
-    } else if (!app->model_render_options.mver_projection) {
-        // Standalone models retain the full authored extension range.
-        set_parameter(app, "ParamMouseX", x_ratio, y_ratio);
         set_parameter(app, "ParamMouseY", x_ratio, y_ratio);
     }
     bongo_cat_live2d_set_dragging(app->live2d, drag_x, drag_y);

@@ -52,14 +52,32 @@ desktop runtime.
 - Hidden rendering is suspended and a 24-hour run has no unbounded growth.
 - Every hand-written file is at most 300 physical lines.
 
-## Mver visual equivalence
+## Cubism Viewer animation equivalence
 
-Mver 0.1.6 is the runtime behavior baseline for every model. Motion curve
-evaluation, expression blending, breath, physics, eye blink, and pointer-driven
-look updates do not switch algorithms by source format. A Tauri/standalone
-Live2D model is imported through an adapter that preserves its native canvas
-composition and `ParamMouse*` extension inputs; it does not select a second
-animation runtime.
+Live2D Cubism Viewer 5.3.03 is the animation and interaction baseline for every
+model. Motion curves, expression blending, physics, eye blink, pose, idle
+motion, and pointer-driven look updates use the official Cubism Framework
+order and behavior. Source format never selects a second animation runtime.
+Viewer mouse tracking feeds its configured `ParamAngleX`, `ParamAngleY`,
+`ParamEyeBallX`, `ParamEyeBallY`, and, when present, `ParamBodyAngleX` channels
+through the Viewer's own `TargetPoint` variant before physics consumes them at
+the `physics3` authored FPS. That variant uses a `7.2727275 / 30` maximum target
+speed, a 0.15 second acceleration time, a 0.01 output dead zone, and the
+Viewer's additional 1.2 input gain. Parameter scaling selects the authored
+positive or negative extent from the parameter's value immediately before the
+additive update; all five default mappings use weight 1.0. Tracking follows
+pointer movement continuously and keeps the Viewer's TargetPoint response
+curve without requiring a mouse button. Primary and secondary button state
+remains independent for model-authored hand parameters. Viewer-default
+automatic Idle playback is enabled and avoids immediately repeating the same
+Idle motion when alternatives exist.
+`ParamAngleZ` and model-specific `ParamMouse*` channels are not synthesized by
+the Viewer-equivalent path.
+
+Mver 0.1.6 remains the compatibility baseline for package discovery, imported
+files, configuration, shortcuts, window composition, and projection only. A
+Tauri or standalone Live2D model is imported through the same adapter and then
+runs through the Viewer-equivalent Cubism animation path.
 
 Mver imports retain the source package's `l2d_correct`, `window_size`,
 `l2d_offset`, and horizontal-follow values in `.bongo-cat-mver.json`. The native
@@ -73,14 +91,30 @@ ratio. Pointer-driven head, body, eye, and physics parameters use Mver's
 configured `workarea`, or its DPI-virtualized primary-screen coordinate domain
 when no custom work area is enabled.
 
-All Mver models use Cubism `TargetPoint` for standard head, body, eye, and
-physics response. Mver 0.1.6 does not directly write `ParamMouseX` or
-`ParamMouseY`; the current-Core adapter supplies their complete authored
-compatibility range when those channels exist, reproducing the old runtime's
-observed hand and pen travel alongside `TargetPoint`. Standalone Tauri
-models retain their full `ParamMouse*` convention through the adapter. The Mver
-adapter also translates the horizontal target sign so the current Cubism
-runtime reproduces Mver 0.1.6's observed on-screen look direction.
+The Mver adapter translates the horizontal target sign and work-area mapping
+before the values reach the shared Viewer-equivalent look stage. It does not
+alter Cubism motion curves, expression blending, physics, or look timing.
+
+## Cubism Viewer blind test
+
+The `viewer-sequence` CI scenario captures model-only Native frames and key
+parameters at track and release samples `1, 2, 4, 8, 15, 30`. It does not use
+desktop screenshots, so window decoration and desktop overlays cannot affect
+the Native side. Reference Viewer screenshots are compared with:
+
+```powershell
+cmake\RunCubismViewerBlindTest.ps1 `
+  -ViewerDirectory build-delivery-final\viewer-studio-audit\viewer `
+  -NativeDirectory build-delivery-final\viewer-studio-audit\native-run\cubism-viewer-audit\native `
+  -OutputDirectory build-delivery-final\viewer-studio-audit\blind-test-final
+```
+
+The tool removes transparent, white, and black backgrounds, rejects detached
+desktop overlays, and normalizes each source with its baseline model bounds.
+It writes anonymous randomized A/B ballots, a separate answer key, normalized
+frames, and metrics for the full model, face, hair, and hands. Dynamic metrics
+also report each side's change from `track-000`, preventing a high static image
+score from hiding a different interaction response curve.
 
 ## Live2D texture quality
 

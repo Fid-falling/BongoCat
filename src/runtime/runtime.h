@@ -70,6 +70,7 @@ bool bongo_cat_window_geometry_self_test(BongoCatApp *app);
 void bongo_cat_window_show_context_menu(BongoCatApp *app);
 void bongo_cat_live2d_audit_run(BongoCatApp *app);
 bool bongo_cat_live2d_visual_audit_run(BongoCatApp *app);
+bool bongo_cat_live2d_viewer_audit_run(BongoCatApp *app);
 void bongo_cat_frame_audit(BongoCatApp *app, int width, int height);
 void bongo_cat_app_render_now(BongoCatApp *app);
 void bongo_cat_runtime_flow_update(BongoCatApp *app, uint64_t now);
