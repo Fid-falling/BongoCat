@@ -69,6 +69,19 @@ typedef struct BongoCatSDLTray {
 
 static BongoCatTrayTarget *tray_target;
 
+@interface BongoCatModalTarget : NSObject { BongoCatModalTick callback_; void *userdata_; }
+- (id)initWithCallback:(BongoCatModalTick)callback userdata:(void *)userdata;
+- (void)tick:(NSTimer *)timer;
+@end
+@implementation BongoCatModalTarget
+- (id)initWithCallback:(BongoCatModalTick)callback userdata:(void *)userdata {
+    self = [super init];
+    if (self) { callback_ = callback; userdata_ = userdata; }
+    return self;
+}
+- (void)tick:(NSTimer *)timer { (void)timer; callback_(userdata_); }
+@end
+
 static NSWindow *native_window(BongoCatPlatform *platform) {
     return (__bridge NSWindow *)SDL_GetPointerProperty(SDL_GetWindowProperties(platform->window),
         SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
@@ -166,6 +179,9 @@ bool bongo_cat_platform_relative_pointer(BongoCatPlatform *platform,
     (void)platform; (void)x; (void)y;
     return false;
 }
+void bongo_cat_platform_relative_pointer_reset(BongoCatPlatform *platform) {
+    (void)platform;
+}
 void bongo_cat_platform_set_always_on_top(BongoCatPlatform *platform, bool enabled) {
     [native_window(platform) setLevel:enabled ? NSFloatingWindowLevel : NSNormalWindowLevel];
 }
@@ -197,9 +213,19 @@ bool bongo_cat_platform_set_geometry(BongoCatPlatform *platform,
         SDL_SetWindowPosition(platform->window, x, y);
     return true;
 }
-void bongo_cat_platform_begin_drag(BongoCatPlatform *platform) {
+void bongo_cat_platform_begin_drag(BongoCatPlatform *platform,
+    BongoCatModalTick modal_tick, void *userdata) {
     NSWindow *window = native_window(platform);
+    BongoCatModalTarget *target = modal_tick ? [[BongoCatModalTarget alloc]
+        initWithCallback:modal_tick userdata:userdata] : nil;
+    if (modal_tick) modal_tick(userdata);
+    NSTimer *timer = target ? [NSTimer timerWithTimeInterval:1.0 / 60.0
+        target:target selector:@selector(tick:) userInfo:nil repeats:YES] : nil;
+    if (timer) [[NSRunLoop currentRunLoop] addTimer:timer
+        forMode:NSRunLoopCommonModes];
     [window performWindowDragWithEvent:[NSApp currentEvent]];
+    [timer invalidate];
+    if (modal_tick) modal_tick(userdata);
 }
 bool bongo_cat_platform_dynamic_hit_supported(void) {
     return bongo_cat_macos_input_supported();

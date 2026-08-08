@@ -6,5 +6,6 @@
 bool bongo_cat_windows_direct_input_create(BongoCatPlatform *platform,
     void *window);
 void bongo_cat_windows_direct_input_destroy(BongoCatPlatform *platform);
+void bongo_cat_windows_direct_input_reset(BongoCatPlatform *platform);
 
 #endif

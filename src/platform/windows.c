@@ -214,10 +214,13 @@ void bongo_cat_platform_set_always_on_top(BongoCatPlatform *platform, bool enabl
         0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     bongo_cat_windows_layered_set_always_on_top(platform, enabled);
 }
-void bongo_cat_platform_begin_drag(BongoCatPlatform *platform) {
+void bongo_cat_platform_begin_drag(BongoCatPlatform *platform,
+    BongoCatModalTick modal_tick, void *userdata) {
     HWND hwnd = native_window(platform);
-    ReleaseCapture();
-    SendMessageW(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+    bongo_cat_windows_begin_drag(hwnd, modal_tick, userdata);
 }
 bool bongo_cat_platform_dynamic_hit_supported(void) { return true; }
+void bongo_cat_platform_relative_pointer_reset(BongoCatPlatform *platform) {
+    bongo_cat_windows_direct_input_reset(platform);
+}
 #endif

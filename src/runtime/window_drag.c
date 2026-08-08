@@ -1,4 +1,5 @@
 #include "runtime.h"
+#include "modal_frame.h"
 
 static int rounded_delta(float value) {
     return value < 0.0f ? (int)(value - 0.5f) : (int)(value + 0.5f);
@@ -47,7 +48,12 @@ void bongo_cat_window_drag_motion(BongoCatApp *app,
             "Mouse capture is unavailable during constrained window drag: %s",
             SDL_GetError());
         move_with_pointer(app, pointer_x, pointer_y);
-    } else bongo_cat_platform_begin_drag(&app->platform);
+    } else {
+        BongoCatModalFrame modal_frame;
+        bongo_cat_modal_frame_init(&modal_frame, app);
+        bongo_cat_platform_begin_drag(&app->platform,
+            bongo_cat_modal_frame_tick, &modal_frame);
+    }
 }
 
 void bongo_cat_window_drag_end(BongoCatApp *app) {

@@ -127,6 +127,9 @@ bool bongo_cat_platform_relative_pointer(BongoCatPlatform *platform,
     (void)platform; (void)x; (void)y;
     return false;
 }
+void bongo_cat_platform_relative_pointer_reset(BongoCatPlatform *platform) {
+    (void)platform;
+}
 void bongo_cat_platform_set_always_on_top(BongoCatPlatform *platform, bool enabled) {
     SDL_SetWindowAlwaysOnTop(platform->window, enabled);
 }
@@ -152,7 +155,9 @@ bool bongo_cat_platform_set_geometry(BongoCatPlatform *platform,
         SDL_SetWindowPosition(platform->window, x, y);
     return true;
 }
-void bongo_cat_platform_begin_drag(BongoCatPlatform *platform) {
+void bongo_cat_platform_begin_drag(BongoCatPlatform *platform,
+    BongoCatModalTick modal_tick, void *userdata) {
+    (void)modal_tick; (void)userdata;
     bongo_cat_linux_x11_begin_drag(platform);
 }
 bool bongo_cat_platform_dynamic_hit_supported(void) {

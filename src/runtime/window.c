@@ -226,7 +226,10 @@ bool bongo_cat_window_event(BongoCatApp *app, const SDL_Event *event) {
     if (event->type == SDL_EVENT_WINDOW_EXPOSED ||
         event->type == SDL_EVENT_WINDOW_SHOWN ||
         event->type == SDL_EVENT_WINDOW_RESTORED) {
-        if (event->type != SDL_EVENT_WINDOW_EXPOSED) app->window_minimized = false;
+        if (event->type != SDL_EVENT_WINDOW_EXPOSED) {
+            app->window_minimized = false;
+            bongo_cat_platform_relative_pointer_reset(&app->platform);
+        }
         app->dirty = true;
     }
     if (event->type == SDL_EVENT_WINDOW_RESIZED ||

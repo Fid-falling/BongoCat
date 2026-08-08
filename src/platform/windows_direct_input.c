@@ -13,6 +13,9 @@
 typedef struct BongoCatDirectInput {
     LPDIRECTINPUT8A input;
     LPDIRECTINPUTDEVICE8A mouse;
+    POINT absolute;
+    bool absolute_ready;
+    ULONGLONG last_read_ms;
     FILE *audit;
     unsigned long long reads;
     unsigned long long reacquires;
@@ -40,6 +43,11 @@ void bongo_cat_windows_direct_input_destroy(BongoCatPlatform *platform) {
     platform->relative_pointer = NULL;
 }
 
+void bongo_cat_windows_direct_input_reset(BongoCatPlatform *platform) {
+    double x = 0.0, y = 0.0;
+    bongo_cat_platform_relative_pointer(platform, &x, &y);
+}
+
 bool bongo_cat_windows_direct_input_create(BongoCatPlatform *platform,
     void *window) {
     if (!platform || !window) return false;
@@ -63,6 +71,8 @@ bool bongo_cat_windows_direct_input_create(BongoCatPlatform *platform,
         state->mouse, DIPROP_BUFFERSIZE, &property.diph);
     if (SUCCEEDED(result)) result = state->mouse->lpVtbl->Acquire(state->mouse);
     if (SUCCEEDED(result)) {
+        state->absolute_ready = GetPhysicalCursorPos(&state->absolute) != FALSE;
+        state->last_read_ms = GetTickCount64();
         const char *audit_path = getenv("BONGO_CAT_DIRECT_INPUT_AUDIT_FILE");
         if (audit_path && audit_path[0]) {
             state->audit = bongo_cat_file_open(audit_path, "wb");
@@ -81,7 +91,19 @@ bool bongo_cat_platform_relative_pointer(BongoCatPlatform *platform,
     double *x, double *y) {
     BongoCatDirectInput *state = platform ? platform->relative_pointer : NULL;
     if (!state || !state->mouse || !x || !y) return false;
+    ULONGLONG now_ms = GetTickCount64();
+    bool stale = state->last_read_ms && now_ms - state->last_read_ms > 250;
+    state->last_read_ms = now_ms;
     DIMOUSESTATE mouse = {0};
+    POINT absolute = {0};
+    bool absolute_ready = GetPhysicalCursorPos(&absolute) != FALSE;
+    bool fallback_ready = absolute_ready && state->absolute_ready;
+    LONG fallback_x = fallback_ready ? absolute.x - state->absolute.x : 0;
+    LONG fallback_y = fallback_ready ? absolute.y - state->absolute.y : 0;
+    if (absolute_ready) {
+        state->absolute = absolute;
+        state->absolute_ready = true;
+    } else state->absolute_ready = false;
     HRESULT result = state->mouse->lpVtbl->GetDeviceState(
         state->mouse, sizeof(mouse), &mouse);
     bool reacquired = false;
@@ -93,27 +115,33 @@ bool bongo_cat_platform_relative_pointer(BongoCatPlatform *platform,
     }
     state->reads++;
     if (reacquired) state->reacquires++;
-    if (SUCCEEDED(result)) {
-        *x = mouse.lX;
-        *y = mouse.lY;
-        state->total_x += mouse.lX;
-        state->total_y += mouse.lY;
-    } else {
-        // Mver never switches back to absolute coordinates after enabling
-        // DirectInput. A transient loss therefore means no new movement.
+    bool sample_ready = SUCCEEDED(result);
+    bool use_fallback = !stale && fallback_ready && (!sample_ready ||
+        ((mouse.lX == 0 && mouse.lY == 0) &&
+            (fallback_x != 0 || fallback_y != 0)));
+    if (stale) {
         *x = 0.0;
         *y = 0.0;
-        state->failures++;
+    } else if (sample_ready && !use_fallback) {
+        *x = mouse.lX;
+        *y = mouse.lY;
+    } else if (fallback_ready) {
+        *x = fallback_x;
+        *y = fallback_y;
+    } else {
+        *x = 0.0;
+        *y = 0.0;
     }
+    state->total_x += (long long)*x;
+    state->total_y += (long long)*y;
+    if (!sample_ready) state->failures++;
     if (state->audit) {
         fprintf(state->audit,
-            "read=%llu result=0x%08lx reacquired=%d dx=%.0f dy=%.0f total_x=%lld total_y=%lld\n",
-            state->reads, (unsigned long)result, reacquired, *x, *y,
+            "read=%llu result=0x%08lx reacquired=%d stale=%d fallback=%d dx=%.0f dy=%.0f total_x=%lld total_y=%lld\n",
+            state->reads, (unsigned long)result, reacquired, stale, use_fallback, *x, *y,
             state->total_x, state->total_y);
         fflush(state->audit);
     }
-    // The return value describes whether relative mode is available, not
-    // whether this individual sample succeeded.
-    return true;
+    return sample_ready || fallback_ready;
 }
 #endif

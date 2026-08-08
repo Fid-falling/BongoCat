@@ -74,6 +74,7 @@ void bongo_cat_gamepads_set_enabled(BongoCatApp *app, bool enabled) {
     if (!app) return;
     bool initialized = (SDL_WasInit(SDL_INIT_GAMEPAD) & SDL_INIT_GAMEPAD) != 0;
     if (enabled && !initialized) {
+        SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
         if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD)) {
             SDL_LogWarn(SDL_LOG_CATEGORY_INPUT,
                 "Gamepad initialization failed: %s", SDL_GetError());

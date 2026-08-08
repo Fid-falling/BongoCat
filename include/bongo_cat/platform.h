@@ -90,13 +90,15 @@ bool bongo_cat_platform_pointer_local(BongoCatPlatform *platform, double screen_
     double screen_y, float *local_x, float *local_y);
 bool bongo_cat_platform_relative_pointer(BongoCatPlatform *platform,
     double *x, double *y);
+void bongo_cat_platform_relative_pointer_reset(BongoCatPlatform *platform);
 void bongo_cat_platform_set_always_on_top(BongoCatPlatform *platform, bool enabled);
 void bongo_cat_platform_set_taskbar(BongoCatPlatform *platform, bool visible);
 void bongo_cat_platform_raise_window(SDL_Window *window);
 bool bongo_cat_platform_open_directory(const char *path);
 bool bongo_cat_platform_set_geometry(BongoCatPlatform *platform,
     int x, int y, int width, int height);
-void bongo_cat_platform_begin_drag(BongoCatPlatform *platform);
+void bongo_cat_platform_begin_drag(BongoCatPlatform *platform,
+    BongoCatModalTick modal_tick, void *userdata);
 bool bongo_cat_platform_dynamic_hit_supported(void);
 void bongo_cat_platform_set_tray_callbacks(void *tray,
     BongoCatTrayClick left_click, BongoCatModalTick modal_tick,

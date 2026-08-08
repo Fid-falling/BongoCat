@@ -121,8 +121,7 @@ static bool mver_model_pointer(BongoCatApp *app, double absolute_x,
         bongo_cat_platform_relative_pointer(&app->platform,
             &relative_x, &relative_y);
     bool initialized = app->mver_pointer.initialized;
-    double previous_x = app->mver_pointer.x;
-    double previous_y = app->mver_pointer.y;
+    double previous_x = app->mver_pointer.x, previous_y = app->mver_pointer.y;
     if (!bongo_cat_mver_pointer_update(&app->mver_pointer,
         absolute_x, absolute_y, relative_x, relative_y, use_relative,
         &pointer_bounds, x, y)) return false;
@@ -181,7 +180,6 @@ static bool model_pointer_ratios(BongoCatApp *app, double x, double y,
     *y_ratio = clamp_ratio(0.5f + (float)((y - center_y) / bounds.h));
     return true;
 }
-
 static void apply_mouse_coordinates(BongoCatApp *app, double hand_x,
     double hand_y, double gaze_x, double gaze_y) {
     SDL_Point point = {(int)hand_x, (int)hand_y}; SDL_Rect bounds;

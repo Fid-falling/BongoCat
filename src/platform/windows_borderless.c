@@ -6,13 +6,20 @@
 static const wchar_t original_proc_property[] = L"BongoCat.BorderlessWindowProc";
 static const wchar_t click_through_property[] = L"BongoCat.ClickThrough";
 static const wchar_t menu_binding_property[] = L"BongoCat.MenuBinding";
+static const wchar_t drag_binding_property[] = L"BongoCat.DragBinding";
 #define BONGO_CAT_MENU_PREVIEW_TIMER ((UINT_PTR)0xBC4E)
+#define BONGO_CAT_DRAG_MODAL_TIMER ((UINT_PTR)0xBC50)
 
 typedef struct WindowsMenuBinding {
     BongoCatMenuPreview preview;
     void (*tick)(void *userdata);
     void *userdata;
 } WindowsMenuBinding;
+
+typedef struct WindowsDragBinding {
+    BongoCatModalTick tick;
+    void *userdata;
+} WindowsDragBinding;
 
 static LONG_PTR borderless_style(LONG_PTR style) {
     return (style & ~(WS_CAPTION | WS_THICKFRAME | WS_SYSMENU |
@@ -23,6 +30,7 @@ static LRESULT CALLBACK borderless_window_proc(HWND window, UINT message,
     WPARAM wparam, LPARAM lparam) {
     WNDPROC original = (WNDPROC)GetPropW(window, original_proc_property);
     WindowsMenuBinding *menu = GetPropW(window, menu_binding_property);
+    WindowsDragBinding *drag = GetPropW(window, drag_binding_property);
     if (message == WM_NCHITTEST && GetPropW(window, click_through_property)) {
         return HTTRANSPARENT;
     } else if (message == WM_STYLECHANGING && wparam == (WPARAM)GWL_STYLE && lparam) {
@@ -50,9 +58,31 @@ static LRESULT CALLBACK borderless_window_proc(HWND window, UINT message,
         wparam == BONGO_CAT_MENU_PREVIEW_TIMER && menu && menu->tick) {
         menu->tick(menu->userdata);
         return 0;
+    } else if (message == WM_TIMER &&
+        wparam == BONGO_CAT_DRAG_MODAL_TIMER && drag && drag->tick) {
+        drag->tick(drag->userdata);
+        return 0;
     }
     return CallWindowProcW(original ? original : DefWindowProcW,
         window, message, wparam, lparam);
+}
+
+void bongo_cat_windows_begin_drag(HWND window, BongoCatModalTick modal_tick,
+    void *userdata) {
+    if (!window) return;
+    WindowsDragBinding binding = {modal_tick, userdata};
+    bool bound = modal_tick && SetPropW(window, drag_binding_property, &binding);
+    if (bound) {
+        modal_tick(userdata);
+        SetTimer(window, BONGO_CAT_DRAG_MODAL_TIMER, 16, NULL);
+    }
+    ReleaseCapture();
+    SendMessageW(window, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+    if (bound) {
+        KillTimer(window, BONGO_CAT_DRAG_MODAL_TIMER);
+        RemovePropW(window, drag_binding_property);
+        modal_tick(userdata);
+    }
 }
 
 static void clear_menu_binding(HWND window) {
@@ -93,6 +123,8 @@ void bongo_cat_windows_borderless_install(HWND window) {
 void bongo_cat_windows_borderless_uninstall(HWND window) {
     if (!window) return;
     clear_menu_binding(window);
+    KillTimer(window, BONGO_CAT_DRAG_MODAL_TIMER);
+    RemovePropW(window, drag_binding_property);
     WNDPROC original = (WNDPROC)GetPropW(window, original_proc_property);
     if (!original) return;
     SetWindowLongPtrW(window, GWLP_WNDPROC, (LONG_PTR)original);

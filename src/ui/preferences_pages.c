@@ -74,8 +74,10 @@ void bongo_cat_preferences_page_cat(BongoCatApp *app, struct nk_context *context
         "pages.preference.cat.labels.mouseMirror", "Mouse Mirror"), "",
         &model->mouse_mirror);
     if (bongo_cat_pref_toggle(context, "mouse-centered", tr(app,
-        "pages.preference.cat.labels.mouseCentered", "Model-Centered Mouse Tracking"),
+        "pages.preference.cat.labels.mouseCentered", "Mouse Centered on Desktop Pet"),
         "", &model->mouse_centered)) {
+        bongo_cat_platform_relative_pointer_reset(&app->platform);
+        app->mver_pointer = (BongoCatMverPointerState){0};
         app->model_pointer_anchor_ready = false;
         app->pointer_known = false;
         app->dirty = true;

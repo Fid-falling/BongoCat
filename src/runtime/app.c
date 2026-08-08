@@ -147,7 +147,7 @@ static void handle_event(BongoCatApp *app, const SDL_Event *event) {
     if (event->type >= SDL_EVENT_GAMEPAD_AXIS_MOTION &&
         event->type <= SDL_EVENT_GAMEPAD_TOUCHPAD_UP) bongo_cat_gamepad_event(app, event);
 }
-static void drain_input(BongoCatApp *app) {
+void bongo_cat_app_drain_input(BongoCatApp *app, bool allow_shortcuts) {
     BongoCatInputEvent event;
     while (bongo_cat_input_pop(&app->input, &event)) {
         if (app->smoke_ignore_global_input) continue;
@@ -164,13 +164,13 @@ static void drain_input(BongoCatApp *app) {
             delay = (uint64_t)(app->config.model.auto_release_seconds * 1000.0f);
 #endif
         bongo_cat_input_auto_release(&app->input, &event, delay);
-        if (!bongo_cat_preferences_shortcuts_blocked(app->preferences))
+        if (allow_shortcuts && !bongo_cat_preferences_shortcuts_blocked(app->preferences))
             bongo_cat_app_shortcuts(app, &event);
         bongo_cat_app_apply_input(app, &event);
     }
     uint64_t now = SDL_GetTicks();
     while (bongo_cat_input_take_release(&app->input, now, &event)) {
-        if (!bongo_cat_preferences_shortcuts_blocked(app->preferences))
+        if (allow_shortcuts && !bongo_cat_preferences_shortcuts_blocked(app->preferences))
             bongo_cat_app_shortcuts(app, &event);
         bongo_cat_app_apply_input(app, &event);
     }
@@ -249,7 +249,7 @@ static void loop(BongoCatApp *app) {
         bongo_cat_runtime_flow_update(app, now);
         bongo_cat_window_apply_pending_resize(app);
         bongo_cat_app_update_hover(app, now);
-        drain_input(app);
+        bongo_cat_app_drain_input(app, true);
         if (bongo_cat_model_frame_due(app, now)) update_model(app, now);
         else if (!app->config.window.visible || app->window_minimized) { app->last_frame_ns = now; bongo_cat_memory_policy_idle(); }
         if (app->config.window.visible && !app->window_minimized && app->dirty) render(app);
