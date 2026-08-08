@@ -176,9 +176,10 @@ bool bongo_cat_platform_open_directory(const char *path) {
         WIFEXITED(status) && WEXITSTATUS(status) == 0;
 }
 
-void bongo_cat_platform_set_tray_left_click(void *tray, BongoCatTrayClick callback,
+void bongo_cat_platform_set_tray_callbacks(void *tray,
+    BongoCatTrayClick left_click, BongoCatModalTick modal_tick,
     void *userdata) {
-    (void)tray; (void)callback; (void)userdata;
+    (void)tray; (void)left_click; (void)modal_tick; (void)userdata;
 }
 bool bongo_cat_platform_single_instance_begin(void) {
     char path[96]; snprintf(path, sizeof(path), "/tmp/bongo-cat-%lu.lock",

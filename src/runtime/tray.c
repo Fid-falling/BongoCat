@@ -4,6 +4,7 @@
 #include "bongo_cat/i18n.h"
 #include "bongo_cat/path.h"
 #include "bongo_cat/preferences.h"
+#include "modal_frame.h"
 #include "runtime.h"
 
 #include <SDL3/SDL.h>
@@ -18,6 +19,7 @@ struct BongoCatTray {
     SDL_TrayEntry *preferences;
     SDL_TrayEntry *exit;
     BongoCatImage icon;
+    BongoCatModalFrame modal_frame;
     bool state_valid;
     bool last_visible, last_pass_through, last_always_on_top;
     BongoCatLanguage last_language;
@@ -64,6 +66,11 @@ static void on_tray_left_click(void *userdata) {
         bongo_cat_preferences_show(tray->app->preferences);
 }
 
+static void on_tray_modal_frame(void *userdata) {
+    BongoCatTray *tray = userdata;
+    if (tray) bongo_cat_modal_frame_tick(&tray->modal_frame);
+}
+
 static void on_exit(void *userdata, SDL_TrayEntry *entry) {
     (void)entry;
     ((BongoCatTray *)userdata)->app->running = false;
@@ -81,6 +88,7 @@ BongoCatTray *bongo_cat_tray_create(BongoCatApp *app, BongoCatError *error) {
     BongoCatTray *tray = calloc(1, sizeof(*tray));
     if (!tray) return NULL;
     tray->app = app;
+    bongo_cat_modal_frame_init(&tray->modal_frame, app);
     char path[BONGO_CAT_PATH_CAP];
     bongo_cat_path_join(path, sizeof(path), app->asset_root,
 #ifdef __APPLE__
@@ -116,7 +124,8 @@ BongoCatTray *bongo_cat_tray_create(BongoCatApp *app, BongoCatError *error) {
     add(menu, NULL, 0, NULL, tray);
     tray->exit = add(menu, bongo_cat_i18n_get(app->i18n,
         "composables.useAppMenu.labels.quitApp", "Exit"), SDL_TRAYENTRY_BUTTON, on_exit, tray);
-    bongo_cat_platform_set_tray_left_click(tray->handle, on_tray_left_click, tray);
+    bongo_cat_platform_set_tray_callbacks(tray->handle,
+        on_tray_left_click, on_tray_modal_frame, tray);
     bongo_cat_tray_sync(tray);
     return tray;
 }
@@ -174,7 +183,8 @@ bool bongo_cat_tray_self_test(BongoCatTray *tray) {
     SDL_Log("Tray self-test: preferences visible=%d", preferences);
     bongo_cat_preferences_close(app->preferences);
     SDL_Log("Tray self-test: preferences closed");
-    bool result = preferences && app->config.window.visible == visible &&
+    bool result = preferences && bongo_cat_modal_frame_self_test() &&
+        app->config.window.visible == visible &&
         app->config.window.pass_through == pass_through &&
         app->config.window.always_on_top == always_on_top;
     SDL_Log("Tray self-test: result=%d", result);
@@ -183,7 +193,7 @@ bool bongo_cat_tray_self_test(BongoCatTray *tray) {
 
 void bongo_cat_tray_destroy(BongoCatTray *tray) {
     if (!tray) return;
-    bongo_cat_platform_set_tray_left_click(tray->handle, NULL, NULL);
+    bongo_cat_platform_set_tray_callbacks(tray->handle, NULL, NULL, NULL);
     if (tray->handle) SDL_DestroyTray(tray->handle);
     bongo_cat_image_free(&tray->icon);
     free(tray);

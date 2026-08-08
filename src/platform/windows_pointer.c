@@ -66,55 +66,6 @@ void bongo_cat_platform_set_taskbar(BongoCatPlatform *platform, bool visible) {
     }
 }
 
-static const wchar_t tray_proc_property[] = L"BongoCat.TrayWindowProc";
-static BongoCatTrayClick tray_click;
-static void *tray_click_userdata;
-
-static LRESULT CALLBACK tray_window_proc(HWND window, UINT message,
-    WPARAM wparam, LPARAM lparam) {
-    WNDPROC original = (WNDPROC)GetPropW(window, tray_proc_property);
-    if (message == WM_USER + 1 && LOWORD(lparam) == WM_LBUTTONUP && tray_click) {
-        tray_click(tray_click_userdata);
-        return 0;
-    }
-    return CallWindowProcW(original ? original : DefWindowProcW,
-        window, message, wparam, lparam);
-}
-
-static void bind_tray_window(HWND window, void *tray, bool binding) {
-    wchar_t name[32]; DWORD process = 0;
-    GetWindowThreadProcessId(window, &process);
-    if (process != GetCurrentProcessId() ||
-        !GetClassNameW(window, name, (int)(sizeof(name) / sizeof(name[0]))) ||
-        wcscmp(name, L"Message") != 0 ||
-        (void *)GetWindowLongPtrW(window, GWLP_USERDATA) != tray) return;
-    WNDPROC original = (WNDPROC)GetWindowLongPtrW(window, GWLP_WNDPROC);
-    if (binding) {
-        if (!GetPropW(window, tray_proc_property) && original != tray_window_proc &&
-            SetPropW(window, tray_proc_property, (HANDLE)original)) {
-            SetLastError(ERROR_SUCCESS);
-            if (!SetWindowLongPtrW(window, GWLP_WNDPROC,
-                (LONG_PTR)tray_window_proc) && GetLastError() != ERROR_SUCCESS)
-                RemovePropW(window, tray_proc_property);
-        }
-    } else if (GetPropW(window, tray_proc_property)) {
-        if ((WNDPROC)GetWindowLongPtrW(window, GWLP_WNDPROC) == tray_window_proc)
-            SetWindowLongPtrW(window, GWLP_WNDPROC, (LONG_PTR)GetPropW(
-                window, tray_proc_property));
-        RemovePropW(window, tray_proc_property);
-    }
-}
-
-void bongo_cat_platform_set_tray_left_click(void *tray, BongoCatTrayClick callback,
-    void *userdata) {
-    tray_click = callback;
-    tray_click_userdata = userdata;
-    /* Pinned SDL stores SDL_Tray* in its private message window userdata. */
-    HWND window = NULL;
-    while ((window = FindWindowExW(HWND_MESSAGE, window, L"Message", NULL)) != NULL)
-        bind_tray_window(window, tray, callback != NULL);
-}
-
 void bongo_cat_platform_raise_window(SDL_Window *window) {
     if (!window) return;
     SDL_ShowWindow(window);

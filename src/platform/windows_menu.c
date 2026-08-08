@@ -93,7 +93,7 @@ BongoCatMenuAction bongo_cat_platform_context_menu(BongoCatPlatform *platform,
         labels->preview_tick, labels->preview_userdata);
     UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON,
         point.x, point.y, 0, window, NULL);
-    bongo_cat_windows_menu_preview(NULL, NULL, NULL, NULL);
+    bongo_cat_windows_menu_preview(window, NULL, NULL, NULL);
     if (labels->restore) labels->restore(labels->preview_userdata, (BongoCatMenuAction)command);
     DestroyMenu(menu);
     return (BongoCatMenuAction)command;

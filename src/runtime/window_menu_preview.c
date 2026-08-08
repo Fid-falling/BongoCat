@@ -35,7 +35,8 @@ void bongo_cat_window_menu_preview_init(BongoCatWindowMenuPreview *state,
         .scale = app ? app->config.window.scale_percent : 100.0f,
         .opacity = app ? app->config.window.opacity_percent : 100.0f,
         .expression = app ? bongo_cat_live2d_expression(app->live2d) : -1,
-        .last = BONGO_CAT_MENU_NONE, .last_tick_ns = SDL_GetTicksNS()};
+        .last = BONGO_CAT_MENU_NONE};
+    bongo_cat_modal_frame_init(&state->modal_frame, app);
     if (app) snprintf(state->model, sizeof(state->model), "%.*s",
         (int)sizeof(state->model) - 1, app->config.current_model);
 }
@@ -68,23 +69,15 @@ void bongo_cat_window_menu_preview(void *userdata, BongoCatMenuAction action) {
         bongo_cat_platform_set_opacity(&app->platform,
             app->config.window.opacity_percent / 100.0f);
     } else if (bongo_cat_window_behavior_action(app, action)) {
-        // Native menu tracking pauses the main loop, so advance once here to
-        // expose the first motion/expression frame while hovering.
-        bongo_cat_live2d_update(app->live2d, 1.0f / 60.0f);
-        state->last_tick_ns = app->last_frame_ns = SDL_GetTicksNS();
+        bongo_cat_modal_frame_tick(&state->modal_frame);
+        return;
     }
     bongo_cat_app_render_now(app);
 }
 
 void bongo_cat_window_menu_preview_tick(void *userdata) {
     BongoCatWindowMenuPreview *state = userdata;
-    if (!state || !state->app) return;
-    uint64_t now = SDL_GetTicksNS();
-    float elapsed = (float)((now - state->last_tick_ns) / 1000000000.0);
-    if (elapsed > 0.25f) elapsed = 0.25f;
-    state->last_tick_ns = state->app->last_frame_ns = now;
-    if (bongo_cat_live2d_update(state->app->live2d, elapsed))
-        bongo_cat_app_render_now(state->app);
+    if (state) bongo_cat_modal_frame_tick(&state->modal_frame);
 }
 
 void bongo_cat_window_menu_restore(void *userdata, BongoCatMenuAction selected) {
@@ -120,7 +113,7 @@ void bongo_cat_window_menu_restore(void *userdata, BongoCatMenuAction selected) 
     if (!keep_expression &&
         bongo_cat_live2d_expression(app->live2d) != state->expression &&
         bongo_cat_live2d_set_expression(app->live2d, state->expression)) {
-        bongo_cat_live2d_update(app->live2d, 1.0f / 60.0f);
+        bongo_cat_app_step_live2d(app, 1.0f / 60.0f);
         changed = true;
     }
     if (changed) bongo_cat_app_render_now(app);

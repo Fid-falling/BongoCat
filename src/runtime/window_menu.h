@@ -1,7 +1,7 @@
 #ifndef BONGO_CAT_WINDOW_MENU_INTERNAL_H
 #define BONGO_CAT_WINDOW_MENU_INTERNAL_H
 
-#include "runtime.h"
+#include "modal_frame.h"
 
 typedef struct BongoCatWindowMenuPreview {
     BongoCatApp *app;
@@ -9,7 +9,7 @@ typedef struct BongoCatWindowMenuPreview {
     float scale, opacity;
     int expression;
     BongoCatMenuAction last;
-    uint64_t last_tick_ns;
+    BongoCatModalFrame modal_frame;
 } BongoCatWindowMenuPreview;
 
 void bongo_cat_window_menu_preview_init(BongoCatWindowMenuPreview *state,

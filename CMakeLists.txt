@@ -82,7 +82,7 @@ add_library(bongo_cat_runtime STATIC
   src/render/overlay.c src/render/mver_pointer_overlay.c src/render/mver_pointer_overlay_draw.c
   src/runtime/app.c src/runtime/config_store.c
   src/runtime/assets.c src/runtime/startup.c
-  src/runtime/frame_audit.c src/runtime/frame_clock.c
+  src/runtime/frame_audit.c src/runtime/frame_clock.c src/runtime/modal_frame.c
   src/runtime/gamepad.c
   src/runtime/live2d_audit.c src/runtime/live2d_visual_audit.c
   src/runtime/live2d_viewer_audit.c
@@ -149,7 +149,8 @@ if(WIN32)
   target_sources(bongo_cat_runtime PRIVATE src/platform/windows.c src/platform/windows_menu.c src/platform/windows_directory.c
     src/platform/windows_startup.c src/platform/windows_borderless.c
     src/platform/windows_pointer.c src/platform/windows_direct_input.c
-    src/platform/windows_layered.c src/platform/windows_assets.c)
+    src/platform/windows_layered.c src/platform/windows_tray.c
+    src/platform/windows_assets.c)
   target_link_libraries(bongo_cat_runtime PRIVATE dinput8 dxguid dwmapi ole32 shell32 user32 windowscodecs)
 elseif(APPLE)
   enable_language(OBJC)

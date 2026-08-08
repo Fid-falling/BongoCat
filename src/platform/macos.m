@@ -23,26 +23,43 @@ typedef struct BongoCatSDLTray {
 } BongoCatSDLTray;
 
 @interface BongoCatTrayTarget : NSObject {
-    NSStatusItem *item_; NSMenu *menu_; BongoCatTrayClick callback_; void *userdata_;
+    NSStatusItem *item_; NSMenu *menu_; BongoCatTrayClick callback_;
+    BongoCatModalTick modal_tick_; void *userdata_;
 }
 - (id)initWithItem:(NSStatusItem *)item menu:(NSMenu *)menu
-    callback:(BongoCatTrayClick)callback userdata:(void *)userdata;
+    callback:(BongoCatTrayClick)callback modalTick:(BongoCatModalTick)modalTick
+    userdata:(void *)userdata;
 - (void)clicked:(id)sender;
+- (void)tickModal:(NSTimer *)timer;
 - (void)unbind;
 @end
 
 @implementation BongoCatTrayTarget
 - (id)initWithItem:(NSStatusItem *)item menu:(NSMenu *)menu
-    callback:(BongoCatTrayClick)callback userdata:(void *)userdata {
+    callback:(BongoCatTrayClick)callback modalTick:(BongoCatModalTick)modalTick
+    userdata:(void *)userdata {
     self = [super init];
-    if (self) { item_ = item; menu_ = menu; callback_ = callback; userdata_ = userdata; }
+    if (self) { item_ = item; menu_ = menu; callback_ = callback;
+        modal_tick_ = modalTick; userdata_ = userdata; }
     return self;
 }
 - (void)clicked:(id)sender {
     (void)sender;
     NSEvent *event = [NSApp currentEvent];
     if ([event type] == NSEventTypeLeftMouseUp) callback_(userdata_);
-    else [NSMenu popUpContextMenu:menu_ withEvent:event forView:[item_ button]];
+    else {
+        if (modal_tick_) modal_tick_(userdata_);
+        NSTimer *timer = modal_tick_ ? [NSTimer timerWithTimeInterval:1.0 / 60.0
+            target:self selector:@selector(tickModal:) userInfo:nil repeats:YES] : nil;
+        if (timer) [[NSRunLoop currentRunLoop] addTimer:timer
+            forMode:NSRunLoopCommonModes];
+        [NSMenu popUpContextMenu:menu_ withEvent:event forView:[item_ button]];
+        [timer invalidate];
+    }
+}
+- (void)tickModal:(NSTimer *)timer {
+    (void)timer;
+    if (modal_tick_) modal_tick_(userdata_);
 }
 - (void)unbind {
     [[item_ button] setTarget:nil]; [[item_ button] setAction:nil];
@@ -197,15 +214,17 @@ bool bongo_cat_platform_open_directory(const char *path) {
     }
 }
 
-void bongo_cat_platform_set_tray_left_click(void *tray, BongoCatTrayClick callback,
+void bongo_cat_platform_set_tray_callbacks(void *tray,
+    BongoCatTrayClick left_click, BongoCatModalTick modal_tick,
     void *userdata) {
     BongoCatSDLTray *native = tray;
     if (tray_target) {
         [tray_target unbind]; [tray_target release]; tray_target = nil;
     }
-    if (!native || !callback || !native->status_item || !native->menu) return;
+    if (!native || !left_click || !native->status_item || !native->menu) return;
     tray_target = [[BongoCatTrayTarget alloc] initWithItem:native->status_item
-        menu:native->menu->menu callback:callback userdata:userdata];
+        menu:native->menu->menu callback:left_click modalTick:modal_tick
+        userdata:userdata];
     [native->status_item setMenu:nil];
     [[native->status_item button] setTarget:tray_target];
     [[native->status_item button] setAction:@selector(clicked:)];

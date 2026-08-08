@@ -1,13 +1,18 @@
 #include "windows_borderless.h"
 
 #ifdef _WIN32
+#include <stdlib.h>
+
 static const wchar_t original_proc_property[] = L"BongoCat.BorderlessWindowProc";
 static const wchar_t click_through_property[] = L"BongoCat.ClickThrough";
-static BongoCatMenuPreview menu_preview;
-static void (*menu_preview_tick)(void *userdata);
-static void *menu_preview_userdata;
-static HWND menu_preview_window;
+static const wchar_t menu_binding_property[] = L"BongoCat.MenuBinding";
 #define BONGO_CAT_MENU_PREVIEW_TIMER ((UINT_PTR)0xBC4E)
+
+typedef struct WindowsMenuBinding {
+    BongoCatMenuPreview preview;
+    void (*tick)(void *userdata);
+    void *userdata;
+} WindowsMenuBinding;
 
 static LONG_PTR borderless_style(LONG_PTR style) {
     return (style & ~(WS_CAPTION | WS_THICKFRAME | WS_SYSMENU |
@@ -17,6 +22,7 @@ static LONG_PTR borderless_style(LONG_PTR style) {
 static LRESULT CALLBACK borderless_window_proc(HWND window, UINT message,
     WPARAM wparam, LPARAM lparam) {
     WNDPROC original = (WNDPROC)GetPropW(window, original_proc_property);
+    WindowsMenuBinding *menu = GetPropW(window, menu_binding_property);
     if (message == WM_NCHITTEST && GetPropW(window, click_through_property)) {
         return HTTRANSPARENT;
     } else if (message == WM_STYLECHANGING && wparam == (WPARAM)GWL_STYLE && lparam) {
@@ -32,33 +38,47 @@ static LRESULT CALLBACK borderless_window_proc(HWND window, UINT message,
         return TRUE;
     } else if (message == WM_MOUSEACTIVATE) {
         return MA_ACTIVATE;
-    } else if (message == WM_MENUSELECT && menu_preview) {
+    } else if (message == WM_MENUSELECT && menu && menu->preview) {
         UINT id = LOWORD(wparam), flags = HIWORD(wparam);
         if (flags == 0xffff && !lparam) return CallWindowProcW(
             original ? original : DefWindowProcW, window, message, wparam, lparam);
         if ((flags & (MF_POPUP | MF_SEPARATOR)) || !id)
-            menu_preview(menu_preview_userdata, BONGO_CAT_MENU_NONE);
+            menu->preview(menu->userdata, BONGO_CAT_MENU_NONE);
         else
-            menu_preview(menu_preview_userdata, (BongoCatMenuAction)id);
+            menu->preview(menu->userdata, (BongoCatMenuAction)id);
     } else if (message == WM_TIMER &&
-        wparam == BONGO_CAT_MENU_PREVIEW_TIMER && menu_preview_tick) {
-        menu_preview_tick(menu_preview_userdata);
+        wparam == BONGO_CAT_MENU_PREVIEW_TIMER && menu && menu->tick) {
+        menu->tick(menu->userdata);
         return 0;
     }
     return CallWindowProcW(original ? original : DefWindowProcW,
         window, message, wparam, lparam);
 }
 
+static void clear_menu_binding(HWND window) {
+    WindowsMenuBinding *menu = window ?
+        GetPropW(window, menu_binding_property) : NULL;
+    if (!menu) return;
+    KillTimer(window, BONGO_CAT_MENU_PREVIEW_TIMER);
+    RemovePropW(window, menu_binding_property);
+    free(menu);
+}
+
 void bongo_cat_windows_menu_preview(HWND window, BongoCatMenuPreview preview,
     void (*tick)(void *userdata), void *userdata) {
-    if (menu_preview_window)
-        KillTimer(menu_preview_window, BONGO_CAT_MENU_PREVIEW_TIMER);
-    menu_preview = preview;
-    menu_preview_tick = tick;
-    menu_preview_userdata = userdata;
-    menu_preview_window = window;
-    if (window && tick)
-        SetTimer(window, BONGO_CAT_MENU_PREVIEW_TIMER, 16, NULL);
+    if (!window) return;
+    clear_menu_binding(window);
+    if (!preview && !tick) return;
+    WindowsMenuBinding *menu = calloc(1, sizeof(*menu));
+    if (!menu) return;
+    menu->preview = preview;
+    menu->tick = tick;
+    menu->userdata = userdata;
+    if (!SetPropW(window, menu_binding_property, menu)) {
+        free(menu);
+        return;
+    }
+    if (tick) SetTimer(window, BONGO_CAT_MENU_PREVIEW_TIMER, 16, NULL);
 }
 
 void bongo_cat_windows_borderless_install(HWND window) {
@@ -72,6 +92,7 @@ void bongo_cat_windows_borderless_install(HWND window) {
 
 void bongo_cat_windows_borderless_uninstall(HWND window) {
     if (!window) return;
+    clear_menu_binding(window);
     WNDPROC original = (WNDPROC)GetPropW(window, original_proc_property);
     if (!original) return;
     SetWindowLongPtrW(window, GWLP_WNDPROC, (LONG_PTR)original);
