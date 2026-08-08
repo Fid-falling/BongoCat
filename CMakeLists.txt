@@ -86,7 +86,7 @@ add_library(bongo_cat_runtime STATIC
   src/runtime/gamepad.c
   src/runtime/live2d_audit.c src/runtime/live2d_visual_audit.c
   src/runtime/live2d_viewer_audit.c
-  src/runtime/mouse.c
+  src/runtime/memory_policy.c src/runtime/mouse.c
   src/runtime/model_files.c src/runtime/model_update.c
   src/runtime/model_storage.c
   src/runtime/model_import.c

@@ -216,7 +216,7 @@ static void render(BongoCatApp *app) {
             "Main frame presentation failed: %s", SDL_GetError());
         return;
     }
-    bongo_cat_startup_ready(app); app->dirty = false;
+    bongo_cat_startup_ready(app); bongo_cat_memory_policy_frame_presented(); app->dirty = false;
     bongo_cat_window_sync_click_through(app); bongo_cat_window_schedule_hit_check(app);
 }
 void bongo_cat_app_render_now(BongoCatApp *app) { if (app && app->window &&
@@ -251,7 +251,7 @@ static void loop(BongoCatApp *app) {
         bongo_cat_app_update_hover(app, now);
         drain_input(app);
         if (bongo_cat_model_frame_due(app, now)) update_model(app, now);
-        else if (!app->config.window.visible || app->window_minimized) app->last_frame_ns = now;
+        else if (!app->config.window.visible || app->window_minimized) { app->last_frame_ns = now; bongo_cat_memory_policy_idle(); }
         if (app->config.window.visible && !app->window_minimized && app->dirty) render(app);
         bongo_cat_preferences_render(app->preferences);
         if (app->config.window.visible && !app->window_minimized && app->dirty) render(app);

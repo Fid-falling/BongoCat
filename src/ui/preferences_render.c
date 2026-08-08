@@ -5,9 +5,9 @@
 #include "ui_animation.h"
 #include "ui_paint.h"
 #include "bongo_cat/file.h"
+#include "bongo_cat/memory_policy.h"
 #include "bongo_cat/path.h"
 #include "bongo_cat/tray.h"
-
 #include <SDL3/SDL_opengl.h>
 #include <math.h>
 #include <stdio.h>
@@ -287,7 +287,7 @@ void bongo_cat_preferences_render(BongoCatPreferences *value) {
         value->render_retry_ns = now + 1000000000ull;
         SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
             "Preferences frame presentation failed: %s", SDL_GetError());
-    }
+    } else bongo_cat_memory_policy_ui_frame_presented();
     bongo_cat_preferences_record_frame(value);
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
     bongo_cat_ui_cursor_apply(&value->ui);

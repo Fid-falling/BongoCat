@@ -5,7 +5,7 @@
 #include "preferences_model_glyphs.h"
 #include "ui_paint.h"
 #include "bongo_cat/i18n.h"
-#include "bongo_cat/memory.h"
+#include "bongo_cat/memory_policy.h"
 #include <SDL3/SDL_opengl.h>
 #include <math.h>
 #include <string.h>
@@ -202,7 +202,7 @@ bool bongo_cat_preferences_open_window(BongoCatPreferences *value) {
     value->native_drag = SDL_SetWindowHitTest(value->window,
         preference_hit_test, value);
     bongo_cat_preferences_assets_load(value);
-    bongo_cat_platform_trim_memory();
+    bongo_cat_memory_policy_ui_loaded();
     value->style_theme = -1;
     value->font_language = value->app->config.app.language;
     int pixel_width = 0, pixel_height = 0;

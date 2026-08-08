@@ -149,7 +149,7 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
         !SDL_GL_MakeCurrent(previous_window, previous_context))
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
             "Cannot restore the previous OpenGL context: %s", SDL_GetError());
-    commit_model(app, entry);
+    bongo_cat_memory_policy_model_loaded(); commit_model(app, entry);
     return true;
 }
 
