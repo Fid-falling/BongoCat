@@ -87,9 +87,15 @@ static NSWindow *native_window(BongoCatPlatform *platform) {
         SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
 }
 
+static void configure_capture_window(NSWindow *window) {
+    [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
+    [window setSharingType:NSWindowSharingReadOnly];
+}
+
 static void show_instance(void) {
     if (!active_platform) { instance_show_pending = true; return; }
-    [native_window(active_platform) orderFrontRegardless];
+    NSWindow *window = native_window(active_platform); configure_capture_window(window);
+    [window orderFrontRegardless];
     [NSApp activateIgnoringOtherApps:YES];
     instance_show_pending = false;
 }
@@ -128,7 +134,7 @@ BongoCatResult bongo_cat_platform_init(BongoCatPlatform *platform, SDL_Window *w
         return BONGO_CAT_ERROR_PLATFORM;
     }
     active_platform = platform;
-    [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
+    configure_capture_window(native_window(platform));
     BongoCatError input_error = {0};
     if (!bongo_cat_macos_input_start(platform, &input_error))
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", input_error.message);
@@ -163,7 +169,7 @@ bool bongo_cat_platform_frame_alpha(const BongoCatPlatform *platform,
 }
 void bongo_cat_platform_set_visible(BongoCatPlatform *platform, bool visible) {
     if (!platform || !platform->window) return;
-    visible ? SDL_ShowWindow(platform->window) : SDL_HideWindow(platform->window);
+    visible ? SDL_ShowWindow(platform->window) : SDL_HideWindow(platform->window); if (visible) configure_capture_window(native_window(platform));
 }
 bool bongo_cat_platform_pointer_local(BongoCatPlatform *platform, double screen_x,
     double screen_y, float *local_x, float *local_y) {
@@ -185,17 +191,13 @@ void bongo_cat_platform_relative_pointer_reset(BongoCatPlatform *platform) {
 void bongo_cat_platform_set_always_on_top(BongoCatPlatform *platform, bool enabled) {
     [native_window(platform) setLevel:enabled ? NSFloatingWindowLevel : NSNormalWindowLevel];
 }
-void bongo_cat_platform_set_taskbar(BongoCatPlatform *platform, bool visible) {
-    (void)platform;
-    [NSApp setActivationPolicy:visible ? NSApplicationActivationPolicyRegular :
-        NSApplicationActivationPolicyAccessory];
-}
 void bongo_cat_platform_raise_window(SDL_Window *window) {
     if (!window) return;
     SDL_ShowWindow(window);
     SDL_RaiseWindow(window);
     NSWindow *native = (__bridge NSWindow *)SDL_GetPointerProperty(
         SDL_GetWindowProperties(window), SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
+    configure_capture_window(native);
     [NSApp activateIgnoringOtherApps:YES];
     [native makeKeyAndOrderFront:nil];
 }
@@ -226,6 +228,7 @@ void bongo_cat_platform_begin_drag(BongoCatPlatform *platform,
     [window performWindowDragWithEvent:[NSApp currentEvent]];
     [timer invalidate];
     if (modal_tick) modal_tick(userdata);
+    [target release];
 }
 bool bongo_cat_platform_dynamic_hit_supported(void) {
     return bongo_cat_macos_input_supported();

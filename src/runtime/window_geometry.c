@@ -164,10 +164,12 @@ bool bongo_cat_window_geometry_self_test(BongoCatApp *app) {
     bongo_cat_window_event(app, &released);
     gesture = gesture && !app->resize_gesture;
     app->pointer_known = true; app->model_pointer_anchor_ready = true;
+    app->mver_pointer.initialized = true;
     SDL_Event display_scale = {.type = SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED};
     display_scale.window.windowID = SDL_GetWindowID(app->window);
     bongo_cat_window_event(app, &display_scale);
-    bool display_reset = !app->pointer_known && !app->model_pointer_anchor_ready;
+    bool display_reset = !app->pointer_known &&
+        !app->model_pointer_anchor_ready && !app->mver_pointer.initialized;
     shift.kind = BONGO_CAT_INPUT_KEY_UP;
     bongo_cat_input_push(&app->input, &shift);
     bongo_cat_input_pop(&app->input, &discarded);

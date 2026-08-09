@@ -128,6 +128,8 @@ static int SDLCALL input_thread(void *userdata) {
     if (!display || !XQueryExtension(display, "XInputExtension", &opcode, &event, &error) ||
         XIQueryVersion(display, &major, &minor) != Success) {
         if (display) XCloseDisplay(display);
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+            "XInput2 is unavailable; global input monitoring is disabled");
         return 1;
     }
     unsigned char bits[(XI_LASTEVENT + 7) / 8] = {0};
@@ -167,7 +169,6 @@ bool bongo_cat_linux_x11_start(BongoCatPlatform *platform, BongoCatError *error)
         bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM, "Cannot start X11 input listener");
         return false;
     }
-    for (int i = 0; i < 100 && !atomic_load(&state->supported); ++i) SDL_Delay(10);
     return true;
 }
 
@@ -203,9 +204,10 @@ static void state_message(LinuxX11State *state, const char *name, long action) {
         SubstructureRedirectMask | SubstructureNotifyMask, &event); XFlush(state->display);
 }
 
-void bongo_cat_linux_x11_taskbar(BongoCatPlatform *platform, bool visible) {
+void bongo_cat_linux_x11_configure_capture_window(BongoCatPlatform *platform) {
     LinuxX11State *state = platform ? platform->native : NULL;
-    if (state && state->display) state_message(state, "_NET_WM_STATE_SKIP_TASKBAR", visible ? 0 : 1);
+    if (state && state->display && state->window)
+        state_message(state, "_NET_WM_STATE_SKIP_TASKBAR", 1);
 }
 
 void bongo_cat_linux_x11_begin_drag(BongoCatPlatform *platform) {

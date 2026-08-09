@@ -83,6 +83,7 @@ void test_config(void) {
     CHECK(bongo_cat_preferences_save(preferences, &value, &error) == BONGO_CAT_OK);
     CHECK(!contains_text(preferences, "\"motionSound\""));
     CHECK(!contains_text(preferences, "\"behavior\""));
+    CHECK(!contains_text(preferences, "\"taskbarVisible\""));
     CHECK(bongo_cat_session_save(session, &value, &error) == BONGO_CAT_OK);
     CHECK(bongo_cat_path_is_file(preferences));
     CHECK(bongo_cat_path_is_file(session));

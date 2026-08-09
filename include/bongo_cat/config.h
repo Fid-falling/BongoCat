@@ -41,7 +41,6 @@ typedef struct BongoCatWindowOptions {
     bool visible;
     bool pass_through;
     bool always_on_top;
-    bool taskbar_visible;
     bool hide_on_hover;
     bool keep_in_screen;
     float scale_percent;

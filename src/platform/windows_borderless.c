@@ -1,4 +1,5 @@
 #include "windows_borderless.h"
+#include "windows_capture.h"
 
 #ifdef _WIN32
 #include <stdlib.h>
@@ -31,7 +32,9 @@ static LRESULT CALLBACK borderless_window_proc(HWND window, UINT message,
     WNDPROC original = (WNDPROC)GetPropW(window, original_proc_property);
     WindowsMenuBinding *menu = GetPropW(window, menu_binding_property);
     WindowsDragBinding *drag = GetPropW(window, drag_binding_property);
-    if (message == WM_NCHITTEST && GetPropW(window, click_through_property)) {
+    if (bongo_cat_windows_capture_handle_message(window, message, wparam)) {
+        return 0;
+    } else if (message == WM_NCHITTEST && GetPropW(window, click_through_property)) {
         return HTTRANSPARENT;
     } else if (message == WM_SYSCOMMAND &&
         (wparam & 0xFFF0u) == SC_MINIMIZE) {

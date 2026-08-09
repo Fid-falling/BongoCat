@@ -18,6 +18,7 @@ typedef struct MacInputState {
     CFRunLoopRef loop;
     bool key_down[BONGO_CAT_INPUT_KEY_STATE_CAP];
     atomic_bool supported;
+    atomic_bool stop_requested;
 } MacInputState;
 
 static atomic_bool global_supported = ATOMIC_VAR_INIT(false);
@@ -107,10 +108,16 @@ static int SDLCALL input_thread(void *userdata) {
             atomic_store(&global_supported, true);
         }
         SDL_SignalSemaphore(state->ready);
-        if (atomic_load(&state->supported)) CFRunLoopRun();
+        if (!atomic_load(&state->supported)) SDL_LogWarn(
+            SDL_LOG_CATEGORY_APPLICATION,
+            "macOS input monitoring permission is required for global input");
+        while (atomic_load(&state->supported) &&
+            !atomic_load(&state->stop_requested))
+            CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.1, true);
         if (state->source) CFRelease(state->source);
         if (state->tap) CFRelease(state->tap);
         if (state->loop) CFRelease(state->loop);
+        atomic_store(&global_supported, false);
     }
     return 0;
 }
@@ -120,31 +127,44 @@ bool bongo_cat_macos_input_start(BongoCatPlatform *platform, BongoCatError *erro
         if (!CGPreflightListenEventAccess()) CGRequestListenEventAccess();
     }
     MacInputState *state = calloc(1, sizeof(*state));
-    if (!state) return false;
+    if (!state) {
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_MEMORY,
+            "Cannot allocate macOS input state");
+        return false;
+    }
     state->platform = platform;
     atomic_init(&state->supported, false);
+    atomic_init(&state->stop_requested, false);
     state->ready = SDL_CreateSemaphore(0);
     state->thread = state->ready ? SDL_CreateThread(input_thread,
         "bongo-cat-macos-input", state) : NULL;
-    platform->native = state;
-    if (!state->thread || !SDL_WaitSemaphoreTimeout(state->ready, 3000) ||
-        !atomic_load(&state->supported)) {
+    if (!state->ready || !state->thread) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM,
-            "macOS input monitoring permission is required for global input");
+            "Cannot start the macOS input listener");
+        if (state->thread) SDL_WaitThread(state->thread, NULL);
+        if (state->ready) SDL_DestroySemaphore(state->ready);
+        free(state);
         return false;
     }
+    platform->native = state;
     return true;
 }
 
 void bongo_cat_macos_input_stop(BongoCatPlatform *platform) {
     MacInputState *state = platform ? platform->native : NULL;
     if (!state) return;
-    if (state->loop) CFRunLoopStop(state->loop);
+    atomic_store(&state->stop_requested, true);
+    if (state->thread &&
+        !SDL_WaitSemaphoreTimeout(state->ready, 3000)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+            "macOS input thread did not initialize before shutdown");
+        platform->native = NULL;
+        return;
+    }
     if (state->thread) SDL_WaitThread(state->thread, NULL);
     if (state->ready) SDL_DestroySemaphore(state->ready);
     free(state);
     platform->native = NULL;
-    atomic_store(&global_supported, false);
 }
 
 bool bongo_cat_macos_input_supported(void) { return atomic_load(&global_supported); }

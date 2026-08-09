@@ -57,7 +57,6 @@ typedef struct BongoCatApp {
     bool smoke_input_audit;
     bool smoke_ignore_global_input;
     bool smoke_pass_through;
-    bool smoke_taskbar_visible;
     bool smoke_context_menu;
     bool smoke_frame_audited;
     bool smoke_frame_series;

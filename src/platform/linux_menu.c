@@ -92,11 +92,20 @@ static int popup_rows(Display *display, Window owner, const LinuxMenuRow *rows,
     if (!menu) return -1;
     XSelectInput(display, menu, ExposureMask | ButtonPressMask |
         PointerMotionMask | LeaveWindowMask | KeyPressMask);
-    XMapRaised(display, menu); XGrabPointer(display, menu, True,
+    XMapRaised(display, menu);
+    int pointer_grab = XGrabPointer(display, menu, False,
         ButtonPressMask | PointerMotionMask, GrabModeAsync, GrabModeAsync,
         None, None, CurrentTime);
-    XGrabKeyboard(display, menu, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+    int keyboard_grab = XGrabKeyboard(display, menu, False,
+        GrabModeAsync, GrabModeAsync, CurrentTime);
     GC gc = XCreateGC(display, menu, 0, NULL);
+    if (pointer_grab != GrabSuccess || keyboard_grab != GrabSuccess || !gc) {
+        if (pointer_grab == GrabSuccess) XUngrabPointer(display, CurrentTime);
+        if (keyboard_grab == GrabSuccess) XUngrabKeyboard(display, CurrentTime);
+        if (gc) XFreeGC(display, gc);
+        XDestroyWindow(display, menu); XFlush(display);
+        return -1;
+    }
     int selected = -1, hover = -1;
     while (selected < 0) {
         if (!XPending(display) && labels->preview_tick) {

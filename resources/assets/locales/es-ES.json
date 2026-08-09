@@ -39,7 +39,6 @@
         "labels": {
           "appSettings": "Ajustes de la aplicación",
           "launchOnStartup": "Iniciar con el sistema",
-          "showTaskbarIcon": "Mostrar icono en la barra de tareas",
           "showTrayIcon": "Mostrar icono en la bandeja",
           "appearanceSettings": "Ajustes de apariencia",
           "themeMode": "Tema",
@@ -54,7 +53,6 @@
           "darkMode": "Oscuro"
         },
         "hints": {
-          "showTaskbarIcon": "Al activarlo, OBS Studio puede capturar la ventana.",
           "showTrayIcon": "Al activarlo, el icono de la aplicación aparece en la bandeja del sistema.",
           "inputMonitoringPermission": "Active la supervisión de entrada para recibir eventos de teclado y ratón del sistema.",
           "inputMonitoringPermissionGuide": "Se necesita el permiso de supervisión de entrada para que la aplicación reciba eventos de teclado y ratón del sistema.\n\nPasos:\n1. Abra Ajustes del Sistema > Privacidad y seguridad > Supervisión de entrada.\n2. Si BongoCat ya aparece en la lista, selecciónelo y pulse el botón \"-\" para eliminarlo.\n3. Pulse el botón \"+\" para buscar y añadir BongoCat.\n4. Reinicie la aplicación para que el permiso tenga efecto.",

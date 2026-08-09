@@ -82,11 +82,7 @@ void bongo_cat_preferences_page_cat(BongoCatApp *app, struct nk_context *context
     if (bongo_cat_pref_toggle(context, "mouse-centered", tr(app,
         "pages.preference.cat.labels.mouseCentered", "Mouse Centered on Desktop Pet"),
         "", &model->mouse_centered)) {
-        bongo_cat_platform_relative_pointer_reset(&app->platform);
-        app->mver_pointer = (BongoCatMverPointerState){0};
-        app->model_pointer_anchor_ready = false;
-        app->pointer_known = false;
-        app->dirty = true;
+        bongo_cat_app_reset_pointer_tracking(app);
     }
     if (bongo_cat_pref_toggle(context, "ignore-mouse", tr(app,
         "pages.preference.cat.labels.ignoreMouse", "Ignore Mouse Events"), "",
@@ -124,13 +120,6 @@ void bongo_cat_preferences_page_general(BongoCatApp *app, struct nk_context *con
     if (bongo_cat_pref_toggle(context, "autostart", tr(app,
         "pages.preference.general.labels.launchOnStartup", "Launch on Startup"), "",
         &options->autostart)) update_autostart(app, old_autostart);
-    if (bongo_cat_pref_toggle(context, "taskbar", tr(app,
-        "pages.preference.general.labels.showTaskbarIcon", "Show Taskbar Icon"), tr(app,
-        "pages.preference.general.hints.showTaskbarIcon", "Allows window capture in OBS."),
-        &app->config.window.taskbar_visible)) {
-        bongo_cat_platform_set_taskbar(&app->platform, app->config.window.taskbar_visible);
-        app->dirty = true;
-    }
     section_gap(context, 7);
     bongo_cat_pref_section(context, tr(app,
         "pages.preference.general.labels.appearanceSettings", "Appearance Settings"));

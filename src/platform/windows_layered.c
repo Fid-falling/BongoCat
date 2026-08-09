@@ -1,4 +1,5 @@
 #include "windows_layered.h"
+#include "windows_capture.h"
 
 #ifdef _WIN32
 #include <SDL3/SDL.h>
@@ -20,14 +21,9 @@ typedef struct BongoCatWindowsLayered {
     unsigned char *readback;
     size_t readback_capacity;
     HWND proxy;
-    int width, height;
-    int source_width, source_height;
-    bool readback_valid;
-    bool active;
-    bool has_frame;
-    bool source_transparent;
-    bool visible;
-    bool topmost;
+    int width, height, source_width, source_height;
+    bool readback_valid, active, has_frame;
+    bool source_transparent, visible, topmost;
 } BongoCatWindowsLayered;
 static HWND native_window(BongoCatPlatform *platform) {
     return platform && platform->window ? (HWND)SDL_GetPointerProperty(
@@ -220,6 +216,7 @@ void bongo_cat_platform_set_visible(BongoCatPlatform *platform, bool visible) {
     if (value) value->visible = visible;
     if (!visible && value && value->proxy) ShowWindow(value->proxy, SW_HIDE);
     visible ? SDL_ShowWindow(platform->window) : SDL_HideWindow(platform->window);
+    if (visible) bongo_cat_windows_capture_configure(native_window(platform));
 }
 
 static bool resize_bitmap(BongoCatWindowsLayered *value, int width, int height) {

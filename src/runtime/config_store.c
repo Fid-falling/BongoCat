@@ -21,7 +21,6 @@ static uint64_t preferences_hash(const BongoCatConfig *config) {
     HASH_FIELD(config->model);
     HASH_FIELD(config->window.pass_through);
     HASH_FIELD(config->window.always_on_top);
-    HASH_FIELD(config->window.taskbar_visible);
     HASH_FIELD(config->window.hide_on_hover);
     HASH_FIELD(config->window.keep_in_screen);
     HASH_FIELD(config->window.hide_delay_seconds);

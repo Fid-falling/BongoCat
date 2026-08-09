@@ -63,7 +63,7 @@ A diagnostic drawing never counts as a Live2D visual pass.
 | Keep inside monitor | PASS | Off-screen placement is clamped in the geometry smoke. |
 | Menu scale and opacity | PASS | Native size and opacity values are asserted. |
 | Shift plus right-drag resize | PASS | Synthetic gesture verifies scale, size and release. |
-| Taskbar visibility | PASS | TOOLWINDOW/APPWINDOW styles are asserted. |
+| Capture window presence | PENDING | The pet is hidden from the taskbar/Dock while remaining eligible for OBS window capture; Windows is implemented and macOS/Linux need platform exercise. |
 | System tray | PASS | Native SDL tray handle and state callbacks are asserted. |
 | Right-click context menu | PASS | Production Win32 popup opens Preferences. |
 | Single instance | PASS | A second process exits while the first remains alive. |

@@ -95,7 +95,6 @@ void bongo_cat_window_apply(BongoCatApp *app) {
     bongo_cat_platform_set_visible(&app->platform, value->visible);
     bongo_cat_window_sync_click_through(app);
     bongo_cat_platform_set_always_on_top(&app->platform, value->always_on_top);
-    bongo_cat_platform_set_taskbar(&app->platform, value->taskbar_visible);
 }
 
 static const char *tr(BongoCatApp *app, const char *key, const char *fallback) {
@@ -228,11 +227,13 @@ bool bongo_cat_window_event(BongoCatApp *app, const SDL_Event *event) {
     if (event->type == SDL_EVENT_WINDOW_EXPOSED ||
         event->type == SDL_EVENT_WINDOW_SHOWN ||
         event->type == SDL_EVENT_WINDOW_RESTORED) {
-        if (event->type != SDL_EVENT_WINDOW_EXPOSED) {
+        if (event->type != SDL_EVENT_WINDOW_EXPOSED)
             app->window_minimized = false;
-            bongo_cat_platform_relative_pointer_reset(&app->platform);
-        }
-        app->dirty = true;
+        bongo_cat_app_reset_pointer_tracking(app);
+    }
+    if (event->type == SDL_EVENT_WINDOW_FOCUS_GAINED ||
+        event->type == SDL_EVENT_WINDOW_FOCUS_LOST) {
+        bongo_cat_app_reset_pointer_tracking(app);
     }
     if (event->type == SDL_EVENT_WINDOW_RESIZED ||
         event->type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
@@ -248,9 +249,7 @@ bool bongo_cat_window_event(BongoCatApp *app, const SDL_Event *event) {
         bongo_cat_window_mark_hit_dirty(app);
     } else if (event->type == SDL_EVENT_WINDOW_DISPLAY_CHANGED ||
         event->type == SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED) {
-        app->pointer_known = false;
-        app->model_pointer_anchor_ready = false;
-        app->dirty = true;
+        bongo_cat_app_reset_pointer_tracking(app);
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
         event->button.button == SDL_BUTTON_LEFT) {
         bongo_cat_window_drag_begin(app, &event->button);

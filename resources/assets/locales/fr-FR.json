@@ -39,7 +39,6 @@
         "labels": {
           "appSettings": "Paramètres de l'application",
           "launchOnStartup": "Lancer au démarrage",
-          "showTaskbarIcon": "Afficher l'icône dans la barre des tâches",
           "showTrayIcon": "Afficher l'icône dans la zone de notification",
           "appearanceSettings": "Paramètres d'apparence",
           "themeMode": "Thème",
@@ -54,7 +53,6 @@
           "darkMode": "Sombre"
         },
         "hints": {
-          "showTaskbarIcon": "Lorsque cette option est activée, la fenêtre peut être capturée avec OBS Studio.",
           "showTrayIcon": "Lorsque cette option est activée, l'icône de l'application apparaît dans la zone de notification.",
           "inputMonitoringPermission": "Activez la surveillance des entrées pour recevoir les événements clavier et souris du système.",
           "inputMonitoringPermissionGuide": "L'autorisation de surveillance des entrées est nécessaire pour recevoir les événements clavier et souris du système.\n\nÉtapes :\n1. Ouvrez Réglages Système > Confidentialité et sécurité > Surveillance de l'entrée.\n2. Si BongoCat figure déjà dans la liste, sélectionnez-le et cliquez sur le bouton \"-\" pour le retirer.\n3. Cliquez sur le bouton \"+\" pour rechercher et ajouter BongoCat.\n4. Redémarrez l'application pour appliquer l'autorisation.",

@@ -218,9 +218,7 @@ void bongo_cat_window_display_event(BongoCatApp *app, const SDL_Event *event) {
         event->type > SDL_EVENT_DISPLAY_LAST) return;
     if (app->window_drag_active && app->config.window.keep_in_screen)
         bongo_cat_window_drag_bounds_refresh(app);
-    app->pointer_known = false;
-    app->model_pointer_anchor_ready = false;
-    app->dirty = true;
+    bongo_cat_app_reset_pointer_tracking(app);
     app->display_recovery_due_ns = SDL_GetTicksNS() + DISPLAY_RECOVERY_DELAY_NS;
 }
 

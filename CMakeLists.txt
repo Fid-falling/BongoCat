@@ -86,7 +86,7 @@ add_library(bongo_cat_runtime STATIC
   src/runtime/gamepad.c
   src/runtime/live2d_audit.c src/runtime/live2d_visual_audit.c
   src/runtime/live2d_viewer_audit.c
-  src/runtime/memory_policy.c src/runtime/mouse.c
+  src/runtime/memory_policy.c src/runtime/mouse.c src/runtime/mouse_mapping.c
   src/runtime/model_files.c src/runtime/model_update.c
   src/runtime/model_storage.c
   src/runtime/model_import.c
@@ -147,11 +147,11 @@ target_compile_definitions(bongo_cat_runtime PRIVATE
 if(WIN32)
   enable_language(RC)
   target_sources(bongo_cat_runtime PRIVATE src/platform/windows.c src/platform/windows_menu.c src/platform/windows_directory.c
-    src/platform/windows_startup.c src/platform/windows_borderless.c
-    src/platform/windows_pointer.c src/platform/windows_direct_input.c
+    src/platform/windows_startup.c src/platform/windows_borderless.c src/platform/windows_capture.c
+    src/platform/windows_pointer.c src/platform/windows_direct_input.c src/platform/windows_input.c src/platform/windows_popup.c
     src/platform/windows_layered.c src/platform/windows_tray.c
     src/platform/windows_assets.c)
-  target_link_libraries(bongo_cat_runtime PRIVATE dinput8 dxguid dwmapi ole32 shell32 user32 windowscodecs)
+  target_link_libraries(bongo_cat_runtime PRIVATE dinput8 dxguid dwmapi ole32 shell32 user32 uuid windowscodecs)
 elseif(APPLE)
   enable_language(OBJC)
   target_sources(bongo_cat_runtime PRIVATE src/platform/macos.m src/platform/macos_input.m
@@ -297,18 +297,13 @@ add_custom_target(check-lines ALL
     -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CheckLines.cmake
   VERBATIM)
 if(BUILD_TESTING)
-  add_executable(bongo_cat_core_tests
-    tests/test_main.c tests/test_config.c tests/test_input.c tests/test_models.c
-    tests/test_mver_pointer.c tests/test_shortcut.c src/platform/windows_keys.c)
-  target_link_libraries(bongo_cat_core_tests PRIVATE bongo_cat_core
-    bongo_cat_warnings $<$<PLATFORM_ID:Windows>:user32>)
-  target_compile_definitions(bongo_cat_core_tests PRIVATE
-    BONGO_CAT_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+  add_executable(bongo_cat_core_tests tests/test_main.c tests/test_config.c tests/test_input.c tests/test_models.c tests/test_mver_pointer.c tests/test_shortcut.c src/platform/windows_keys.c)
+  target_link_libraries(bongo_cat_core_tests PRIVATE bongo_cat_core bongo_cat_warnings $<$<PLATFORM_ID:Windows>:user32>)
+  target_compile_definitions(bongo_cat_core_tests PRIVATE BONGO_CAT_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   add_test(NAME core COMMAND bongo_cat_core_tests)
   add_executable(bongo_cat_i18n_tests tests/test_i18n.c)
   target_link_libraries(bongo_cat_i18n_tests PRIVATE bongo_cat_core bongo_cat_warnings)
-  target_compile_definitions(bongo_cat_i18n_tests PRIVATE
-    BONGO_CAT_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+  target_compile_definitions(bongo_cat_i18n_tests PRIVATE BONGO_CAT_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   add_test(NAME i18n COMMAND bongo_cat_i18n_tests)
   add_executable(bongo_cat_ui_tests tests/test_nuklear.c src/ui/nuklear_impl.c src/ui/ui_paint_border.c)
   target_include_directories(bongo_cat_ui_tests SYSTEM PRIVATE ${BONGO_CAT_NUKLEAR_INCLUDE_DIR})
@@ -320,14 +315,19 @@ if(BUILD_TESTING)
   add_test(NAME app-state COMMAND bongo_cat_app_state_tests)
   add_executable(bongo_cat_mver_import_tests tests/test_mver_import.c tests/test_mver_pointer_import.c)
   target_include_directories(bongo_cat_mver_import_tests PRIVATE src/runtime src/ui)
-  target_include_directories(bongo_cat_mver_import_tests SYSTEM PRIVATE
-    ${BONGO_CAT_NUKLEAR_INCLUDE_DIR})
+  target_include_directories(bongo_cat_mver_import_tests SYSTEM PRIVATE ${BONGO_CAT_NUKLEAR_INCLUDE_DIR})
   target_link_libraries(bongo_cat_mver_import_tests PRIVATE bongo_cat_runtime)
   target_compile_definitions(bongo_cat_mver_import_tests PRIVATE BONGO_CAT_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   if(MSVC)
-    set_property(SOURCE tests/test_mver_import.c APPEND PROPERTY COMPILE_OPTIONS "/experimental:c11atomics")
+    set_property(SOURCE tests/test_mver_import.c tests/test_windows_capture.c APPEND PROPERTY COMPILE_OPTIONS "/experimental:c11atomics")
   endif()
   add_test(NAME model-import-unit COMMAND bongo_cat_mver_import_tests)
+  if(WIN32)
+    add_executable(bongo_cat_windows_capture_tests tests/test_windows_capture.c)
+    target_include_directories(bongo_cat_windows_capture_tests PRIVATE src/platform)
+    target_link_libraries(bongo_cat_windows_capture_tests PRIVATE bongo_cat_runtime bongo_cat_warnings)
+    add_test(NAME windows-capture COMMAND bongo_cat_windows_capture_tests)
+  endif()
   if(UNIX AND NOT APPLE)
     target_link_libraries(bongo_cat_ui_tests PRIVATE m)
     target_link_libraries(bongo_cat_app_state_tests PRIVATE m)

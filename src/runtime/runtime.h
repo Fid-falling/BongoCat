@@ -59,6 +59,11 @@ const char *bongo_cat_gamepad_button_name(Uint8 button);
 void bongo_cat_gamepads_set_enabled(BongoCatApp *app, bool enabled);
 void bongo_cat_app_reset_gamepad(BongoCatApp *app);
 void bongo_cat_app_apply_mouse(BongoCatApp *app);
+void bongo_cat_app_reset_pointer_tracking(BongoCatApp *app);
+bool bongo_cat_app_map_mver_pointer(BongoCatApp *app, double absolute_x,
+    double absolute_y, double *x, double *y, bool *changed);
+void bongo_cat_app_apply_mouse_coordinates(BongoCatApp *app, double hand_x,
+    double hand_y, double gaze_x, double gaze_y);
 void bongo_cat_app_drain_input(BongoCatApp *app, bool allow_shortcuts);
 void bongo_cat_app_apply_mouse_position(BongoCatApp *app, double x, double y,
     float elapsed_seconds);

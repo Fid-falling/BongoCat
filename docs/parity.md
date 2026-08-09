@@ -28,7 +28,7 @@ desktop runtime.
 - Transparent, borderless, draggable main window with per-pixel alpha.
 - Click-through, always-on-top, hide-on-hover, and keep-in-monitor behavior.
 - Shift plus secondary drag resizing from 10 through 500 percent.
-- Tray and context menus, taskbar visibility, and single instance handling.
+- Tray and context menus, capture-friendly taskbar/Dock suppression, and single instance handling.
 - Restore window position and size across monitor and DPI changes.
 - Autostart, project information, and application exit.
 

@@ -126,9 +126,7 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     BongoCatParameterRange mouse_range; app->model_mouse_parameters =
         bongo_cat_live2d_parameter(app->live2d, "ParamMouseLeftDown", &mouse_range) ||
         bongo_cat_live2d_parameter(app->live2d, "ParamMouseRightDown", &mouse_range);
-    bongo_cat_platform_relative_pointer_reset(&app->platform);
-    app->mver_pointer = (BongoCatMverPointerState){0};
-    app->model_pointer_anchor_ready = false;
+    bongo_cat_app_reset_pointer_tracking(app);
     bongo_cat_live2d_set_render_options(app->live2d, &render_options);
     apply_model_aspect(app, &render_options);
     if (app->window) {

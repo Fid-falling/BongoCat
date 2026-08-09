@@ -60,7 +60,6 @@ static bool initialize(BongoCatApp *app, int argc, char **argv, BongoCatError *e
         app->config.app.language = (BongoCatLanguage)app->smoke_language;
     if (app->smoke_theme >= 0) app->config.app.theme = (BongoCatTheme)app->smoke_theme;
     if (app->smoke_pass_through) app->config.window.pass_through = true;
-    if (app->smoke_taskbar_visible) app->config.window.taskbar_visible = true;
     if (app->smoke_model[0])
         snprintf(app->config.current_model, sizeof(app->config.current_model),
             "%s", app->smoke_model);

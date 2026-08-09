@@ -50,7 +50,6 @@ static void read_window(yyjson_val *obj, BongoCatWindowOptions *value) {
     if (!yyjson_is_obj(obj)) return;
     value->pass_through = get_bool(obj, "passThrough", value->pass_through);
     value->always_on_top = get_bool(obj, "alwaysOnTop", value->always_on_top);
-    value->taskbar_visible = get_bool(obj, "taskbarVisible", value->taskbar_visible);
     value->hide_on_hover = get_bool(obj, "hideOnHover", value->hide_on_hover);
     value->keep_in_screen = get_bool(obj, "keepInScreen", value->keep_in_screen);
     value->hide_delay_seconds = get_float(obj, "hideOnHoverDelay", value->hide_delay_seconds);
@@ -122,7 +121,6 @@ static void write_window(yyjson_mut_doc *doc, yyjson_mut_val *obj,
     const BongoCatWindowOptions *v) {
     yyjson_mut_obj_add_bool(doc, obj, "passThrough", v->pass_through);
     yyjson_mut_obj_add_bool(doc, obj, "alwaysOnTop", v->always_on_top);
-    yyjson_mut_obj_add_bool(doc, obj, "taskbarVisible", v->taskbar_visible);
     yyjson_mut_obj_add_bool(doc, obj, "hideOnHover", v->hide_on_hover);
     yyjson_mut_obj_add_bool(doc, obj, "keepInScreen", v->keep_in_screen);
     yyjson_mut_obj_add_real(doc, obj, "hideOnHoverDelay", v->hide_delay_seconds);

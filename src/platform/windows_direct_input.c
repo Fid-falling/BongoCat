@@ -15,6 +15,7 @@ typedef struct BongoCatDirectInput {
     LPDIRECTINPUTDEVICE8A mouse;
     POINT absolute;
     bool absolute_ready;
+    bool rebase_pending;
     ULONGLONG last_read_ms;
     FILE *audit;
     unsigned long long reads;
@@ -46,6 +47,8 @@ void bongo_cat_windows_direct_input_destroy(BongoCatPlatform *platform) {
 void bongo_cat_windows_direct_input_reset(BongoCatPlatform *platform) {
     double x = 0.0, y = 0.0;
     bongo_cat_platform_relative_pointer(platform, &x, &y);
+    BongoCatDirectInput *state = platform ? platform->relative_pointer : NULL;
+    if (state) state->rebase_pending = true;
 }
 
 bool bongo_cat_windows_direct_input_create(BongoCatPlatform *platform,
@@ -72,6 +75,7 @@ bool bongo_cat_windows_direct_input_create(BongoCatPlatform *platform,
     if (SUCCEEDED(result)) result = state->mouse->lpVtbl->Acquire(state->mouse);
     if (SUCCEEDED(result)) {
         state->absolute_ready = GetPhysicalCursorPos(&state->absolute) != FALSE;
+        state->rebase_pending = true;
         state->last_read_ms = GetTickCount64();
         const char *audit_path = getenv("BONGO_CAT_DIRECT_INPUT_AUDIT_FILE");
         if (audit_path && audit_path[0]) {
@@ -116,10 +120,12 @@ bool bongo_cat_platform_relative_pointer(BongoCatPlatform *platform,
     state->reads++;
     if (reacquired) state->reacquires++;
     bool sample_ready = SUCCEEDED(result);
+    bool available = sample_ready || fallback_ready;
+    bool rebase = state->rebase_pending || stale || reacquired || !sample_ready;
     bool use_fallback = !stale && fallback_ready && (!sample_ready ||
         ((mouse.lX == 0 && mouse.lY == 0) &&
             (fallback_x != 0 || fallback_y != 0)));
-    if (stale) {
+    if (rebase) {
         *x = 0.0;
         *y = 0.0;
     } else if (sample_ready && !use_fallback) {
@@ -134,14 +140,16 @@ bool bongo_cat_platform_relative_pointer(BongoCatPlatform *platform,
     }
     state->total_x += (long long)*x;
     state->total_y += (long long)*y;
+    state->rebase_pending = !available;
     if (!sample_ready) state->failures++;
     if (state->audit) {
         fprintf(state->audit,
-            "read=%llu result=0x%08lx reacquired=%d stale=%d fallback=%d dx=%.0f dy=%.0f total_x=%lld total_y=%lld\n",
-            state->reads, (unsigned long)result, reacquired, stale, use_fallback, *x, *y,
+            "read=%llu result=0x%08lx reacquired=%d stale=%d rebase=%d fallback=%d dx=%.0f dy=%.0f total_x=%lld total_y=%lld\n",
+            state->reads, (unsigned long)result, reacquired, stale, rebase,
+            use_fallback, *x, *y,
             state->total_x, state->total_y);
         fflush(state->audit);
     }
-    return sample_ready || fallback_ready;
+    return available && !rebase;
 }
 #endif

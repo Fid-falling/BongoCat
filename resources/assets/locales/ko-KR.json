@@ -39,7 +39,6 @@
         "labels": {
           "appSettings": "앱 설정",
           "launchOnStartup": "시작할 때 실행",
-          "showTaskbarIcon": "작업 표시줄 아이콘 표시",
           "showTrayIcon": "트레이 아이콘 표시",
           "appearanceSettings": "모양 설정",
           "themeMode": "테마",
@@ -54,7 +53,6 @@
           "darkMode": "다크"
         },
         "hints": {
-          "showTaskbarIcon": "활성화하면 OBS Studio에서 창을 캡처할 수 있습니다.",
           "showTrayIcon": "활성화하면 시스템 트레이에 앱 아이콘이 표시됩니다.",
           "inputMonitoringPermission": "시스템의 키보드와 마우스 이벤트를 받으려면 입력 모니터링을 활성화하세요.",
           "inputMonitoringPermissionGuide": "앱이 시스템의 키보드와 마우스 이벤트를 받으려면 입력 모니터링 권한이 필요합니다.\n\n단계:\n1. 시스템 설정 > 개인정보 보호 및 보안 > 입력 모니터링을 엽니다.\n2. BongoCat이 이미 목록에 있으면 선택하고 \"-\" 버튼을 눌러 제거합니다.\n3. \"+\" 버튼을 눌러 BongoCat을 찾아 추가합니다.\n4. 권한을 적용하려면 앱을 다시 시작합니다.",

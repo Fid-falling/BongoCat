@@ -1,5 +1,6 @@
 #include "bongo_cat/platform.h"
 #include "windows_borderless.h"
+#include "windows_popup.h"
 #include "../ui/ui_native_theme.h"
 
 #ifdef _WIN32
@@ -27,6 +28,16 @@ static void menu_text(HMENU menu, UINT flags, UINT_PTR id, const char *text) {
     free(label);
 }
 
+static void destroy_unattached(HMENU menu, HMENU sizes, HMENU opacity,
+    HMENU models, HMENU motions, HMENU expressions) {
+    if (menu) DestroyMenu(menu);
+    if (sizes) DestroyMenu(sizes);
+    if (opacity) DestroyMenu(opacity);
+    if (models) DestroyMenu(models);
+    if (motions) DestroyMenu(motions);
+    if (expressions) DestroyMenu(expressions);
+}
+
 BongoCatMenuAction bongo_cat_platform_context_menu(BongoCatPlatform *platform,
     const BongoCatMenuLabels *labels) {
     if (!platform || !labels) return BONGO_CAT_MENU_NONE;
@@ -35,8 +46,11 @@ BongoCatMenuAction bongo_cat_platform_context_menu(BongoCatPlatform *platform,
     HMENU motions = labels->motion_count ? CreatePopupMenu() : NULL;
     HMENU expressions = labels->expression_count ? CreatePopupMenu() : NULL;
     if (!menu || !sizes || !opacity || !models ||
-        (labels->motion_count && !motions) || (labels->expression_count && !expressions))
+        (labels->motion_count && !motions) ||
+        (labels->expression_count && !expressions)) {
+        destroy_unattached(menu, sizes, opacity, models, motions, expressions);
         return BONGO_CAT_MENU_NONE;
+    }
     menu_text(menu, MF_STRING, BONGO_CAT_MENU_PREFERENCES, labels->preferences);
     menu_text(menu, MF_STRING, BONGO_CAT_MENU_HIDE, labels->hide);
     AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
@@ -87,12 +101,11 @@ BongoCatMenuAction bongo_cat_platform_context_menu(BongoCatPlatform *platform,
     menu_text(menu, MF_STRING, BONGO_CAT_MENU_EXIT, labels->exit);
     POINT point; GetCursorPos(&point);
     HWND window = native_window(platform);
-    SetForegroundWindow(window);
     bongo_cat_ui_native_menu_prepare(platform->window, labels->dark_theme);
     bongo_cat_windows_menu_preview(window, labels->preview,
         labels->preview_tick, labels->preview_userdata);
-    UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON,
-        point.x, point.y, 0, window, NULL);
+    UINT command = bongo_cat_windows_popup_track(window, menu,
+        TPM_RETURNCMD | TPM_RIGHTBUTTON, point.x, point.y);
     bongo_cat_windows_menu_preview(window, NULL, NULL, NULL);
     if (labels->restore) labels->restore(labels->preview_userdata, (BongoCatMenuAction)command);
     DestroyMenu(menu);

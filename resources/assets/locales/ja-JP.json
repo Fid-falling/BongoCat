@@ -39,7 +39,6 @@
         "labels": {
           "appSettings": "アプリ設定",
           "launchOnStartup": "起動時に実行",
-          "showTaskbarIcon": "タスクバーアイコンを表示",
           "showTrayIcon": "トレイアイコンを表示",
           "appearanceSettings": "外観設定",
           "themeMode": "テーマ",
@@ -54,7 +53,6 @@
           "darkMode": "ダーク"
         },
         "hints": {
-          "showTaskbarIcon": "有効にすると、OBS Studioでウィンドウをキャプチャできます。",
           "showTrayIcon": "有効にすると、システムトレイにアプリアイコンを表示します。",
           "inputMonitoringPermission": "システムからキーボードとマウスのイベントを受け取るには、入力監視を有効にしてください。",
           "inputMonitoringPermissionGuide": "システムからキーボードとマウスのイベントを受け取るには、入力監視の権限が必要です。\n\n手順：\n1. システム設定 > プライバシーとセキュリティ > 入力監視を開きます。\n2. BongoCatがすでに一覧にある場合は選択し、\"-\"ボタンで削除します。\n3. \"+\"ボタンをクリックしてBongoCatを探し、追加します。\n4. 権限を反映するため、アプリを再起動します。",

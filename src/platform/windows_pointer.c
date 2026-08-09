@@ -1,11 +1,11 @@
 #include "bongo_cat/platform.h"
 #include "windows_borderless.h"
+#include "windows_capture.h"
 #include "windows_layered.h"
 
 #ifdef _WIN32
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_properties.h>
-#include <dwmapi.h>
 #include <windows.h>
 
 static HWND native_window(BongoCatPlatform *platform) {
@@ -26,44 +26,12 @@ bool bongo_cat_platform_pointer_local(BongoCatPlatform *platform, double screen_
         point.y >= client.top && point.y < client.bottom;
 }
 
-static void refresh_transparency(HWND window) {
-    MARGINS margins = {-1, -1, -1, -1};
-    DwmExtendFrameIntoClientArea(window, &margins);
-    HRGN region = CreateRectRgn(-1, -1, 0, 0);
-    if (!region) return;
-    DWM_BLURBEHIND blur = {0};
-    blur.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION;
-    blur.fEnable = TRUE;
-    blur.hRgnBlur = region;
-    DwmEnableBlurBehindWindow(window, &blur);
-    DeleteObject(region);
-}
-
 void bongo_cat_platform_set_click_through(BongoCatPlatform *platform,
     bool forced, bool pointer_transparent) {
     HWND window = native_window(platform);
     bongo_cat_windows_layered_set_click_through(platform, forced);
     bongo_cat_windows_borderless_set_click_through(window,
         forced || pointer_transparent);
-}
-
-void bongo_cat_platform_set_taskbar(BongoCatPlatform *platform, bool visible) {
-    HWND window = native_window(platform);
-    if (!window) return;
-    LONG_PTR style = GetWindowLongPtrW(window, GWL_EXSTYLE);
-    LONG_PTR next = (style | (visible ? WS_EX_APPWINDOW : WS_EX_TOOLWINDOW)) &
-        ~(visible ? WS_EX_TOOLWINDOW : WS_EX_APPWINDOW);
-    if (next == style) return;
-    bool shown = IsWindowVisible(window) != FALSE;
-    if (shown) ShowWindow(window, SW_HIDE);
-    SetWindowLongPtrW(window, GWL_EXSTYLE, next);
-    SetWindowPos(window, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE |
-        SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
-    refresh_transparency(window);
-    if (shown) {
-        ShowWindow(window, SW_SHOWNOACTIVATE);
-        UpdateWindow(window);
-    }
 }
 
 void bongo_cat_platform_raise_window(SDL_Window *window) {
@@ -82,6 +50,7 @@ void bongo_cat_platform_raise_window(SDL_Window *window) {
     BringWindowToTop(handle); SetForegroundWindow(handle); SetActiveWindow(handle);
     if (proxy) BringWindowToTop(proxy);
     if (attached) AttachThreadInput(current_thread, foreground_thread, FALSE);
+    bongo_cat_windows_capture_configure(handle);
 }
 
 bool bongo_cat_platform_set_geometry(BongoCatPlatform *platform,

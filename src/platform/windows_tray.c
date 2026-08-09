@@ -1,4 +1,5 @@
 #include "bongo_cat/platform.h"
+#include "windows_popup.h"
 
 #ifdef _WIN32
 #include <stdlib.h>
@@ -31,6 +32,7 @@ static LRESULT CALLBACK tray_window_proc(HWND window, UINT message,
         LRESULT result = CallWindowProcW(original ? original : DefWindowProcW,
             window, message, wparam, lparam);
         KillTimer(window, BONGO_CAT_TRAY_MODAL_TIMER);
+        bongo_cat_windows_popup_complete(window);
         return result;
     }
     if (message == WM_TIMER && wparam == BONGO_CAT_TRAY_MODAL_TIMER &&

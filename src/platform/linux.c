@@ -112,6 +112,7 @@ bool bongo_cat_platform_frame_alpha(const BongoCatPlatform *platform,
 void bongo_cat_platform_set_visible(BongoCatPlatform *platform, bool visible) {
     if (!platform || !platform->window) return;
     visible ? SDL_ShowWindow(platform->window) : SDL_HideWindow(platform->window);
+    if (visible) bongo_cat_linux_x11_configure_capture_window(platform);
 }
 bool bongo_cat_platform_pointer_local(BongoCatPlatform *platform, double screen_x,
     double screen_y, float *local_x, float *local_y) {
@@ -132,13 +133,13 @@ void bongo_cat_platform_relative_pointer_reset(BongoCatPlatform *platform) {
 }
 void bongo_cat_platform_set_always_on_top(BongoCatPlatform *platform, bool enabled) {
     SDL_SetWindowAlwaysOnTop(platform->window, enabled);
-}
-void bongo_cat_platform_set_taskbar(BongoCatPlatform *platform, bool visible) {
-    bongo_cat_linux_x11_taskbar(platform, visible);
+    bongo_cat_linux_x11_configure_capture_window(platform);
 }
 void bongo_cat_platform_raise_window(SDL_Window *window) {
     if (!window) return;
     SDL_ShowWindow(window);
+    if (active_platform && active_platform->window == window)
+        bongo_cat_linux_x11_configure_capture_window(active_platform);
     SDL_RaiseWindow(window);
 }
 

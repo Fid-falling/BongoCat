@@ -39,7 +39,6 @@
         "labels": {
           "appSettings": "Anwendungseinstellungen",
           "launchOnStartup": "Beim Systemstart ausführen",
-          "showTaskbarIcon": "Taskleistensymbol anzeigen",
           "showTrayIcon": "Infobereichssymbol anzeigen",
           "appearanceSettings": "Darstellung",
           "themeMode": "Design",
@@ -54,7 +53,6 @@
           "darkMode": "Dunkel"
         },
         "hints": {
-          "showTaskbarIcon": "Wenn aktiviert, kann das Fenster mit OBS Studio aufgenommen werden.",
           "showTrayIcon": "Wenn aktiviert, wird das Anwendungssymbol im Infobereich angezeigt.",
           "inputMonitoringPermission": "Aktivieren Sie die Eingabeüberwachung, um Tastatur- und Mausereignisse vom System zu empfangen.",
           "inputMonitoringPermissionGuide": "Die Berechtigung zur Eingabeüberwachung ist erforderlich, damit die Anwendung Tastatur- und Mausereignisse vom System empfangen kann.\n\nSchritte:\n1. Öffnen Sie Systemeinstellungen > Datenschutz & Sicherheit > Eingabeüberwachung.\n2. Falls BongoCat bereits aufgeführt ist, wählen Sie es aus und entfernen Sie es mit der Schaltfläche \"-\".\n3. Klicken Sie auf \"+\", um BongoCat zu suchen und hinzuzufügen.\n4. Starten Sie die Anwendung neu, damit die Berechtigung wirksam wird.",
