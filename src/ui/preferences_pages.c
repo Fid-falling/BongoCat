@@ -32,8 +32,11 @@ void bongo_cat_preferences_page_cat(BongoCatApp *app, struct nk_context *context
     }
     if (bongo_cat_pref_toggle(context, "always-top", tr(app,
         "composables.useAppMenu.labels.alwaysOnTop", "Always on Top"), "",
-        &window->always_on_top))
+        &window->always_on_top)) {
         bongo_cat_platform_set_always_on_top(&app->platform, window->always_on_top);
+        bongo_cat_window_mark_hit_dirty(app);
+        bongo_cat_window_sync_click_through(app);
+    }
     if (bongo_cat_pref_toggle(context, "keep-in-screen", tr(app,
         "pages.preference.cat.labels.keepInScreen", "Keep on Screen"), "",
         &window->keep_in_screen) && window->keep_in_screen)
@@ -70,9 +73,12 @@ void bongo_cat_preferences_page_cat(BongoCatApp *app, struct nk_context *context
         app->model_pointer_anchor_ready = false;
         app->dirty = true;
     }
-    bongo_cat_pref_toggle(context, "mouse-mirror", tr(app,
+    if (bongo_cat_pref_toggle(context, "mouse-mirror", tr(app,
         "pages.preference.cat.labels.mouseMirror", "Mouse Mirror"), "",
-        &model->mouse_mirror);
+        &model->mouse_mirror)) {
+        app->pointer_known = false;
+        app->dirty = true;
+    }
     if (bongo_cat_pref_toggle(context, "mouse-centered", tr(app,
         "pages.preference.cat.labels.mouseCentered", "Mouse Centered on Desktop Pet"),
         "", &model->mouse_centered)) {
@@ -82,9 +88,12 @@ void bongo_cat_preferences_page_cat(BongoCatApp *app, struct nk_context *context
         app->pointer_known = false;
         app->dirty = true;
     }
-    bongo_cat_pref_toggle(context, "ignore-mouse", tr(app,
+    if (bongo_cat_pref_toggle(context, "ignore-mouse", tr(app,
         "pages.preference.cat.labels.ignoreMouse", "Ignore Mouse Events"), "",
-        &model->ignore_mouse);
+        &model->ignore_mouse)) {
+        app->pointer_known = false;
+        app->dirty = true;
+    }
     bongo_cat_pref_float(context, "release-delay", tr(app,
         "pages.preference.cat.labels.autoReleaseDelay", "Auto Release Delay"), "",
         .05f, &model->auto_release_seconds, 30.0f, .05f,
@@ -104,6 +113,8 @@ static void update_autostart(BongoCatApp *app, bool old_value) {
 
 void bongo_cat_preferences_page_general(BongoCatApp *app, struct nk_context *context) {
     BongoCatAppOptions *options = &app->config.app;
+    // Keep each option in its own native language so the list is recognizable
+    // regardless of the language currently used by the settings window.
     const char *ui_languages[] = {"简体中文", "繁體中文", "English",
         "Français", "Deutsch", "日本語", "한국어", "Português",
         "Русский", "Español"};

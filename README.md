@@ -125,6 +125,18 @@ The SDK is ignored by Git and is never fetched by this project.
 
 Use Visual Studio 2022 or the matching Build Tools (v143, Windows 10/11 SDK):
 
+```bat
+build.bat Release
+```
+
+The repository build script displays a live `#F77DAA` progress bar, keeps
+configuration and build logs under `build-cubism/`, and uses two parallel jobs
+by default. Set `BONGOCAT_BUILD_JOBS` to change the job count or set
+`BONGOCAT_CLEAN_BUILD=1` to request a clean build. The Cubism SDK is used
+automatically when it is present; set `BONGOCAT_REQUIRE_CUBISM=1` to fail
+instead of using the diagnostic backend when it is missing. The equivalent
+manual commands are:
+
 ```powershell
 cmake -S . -B build-cubism -G "Visual Studio 17 2022" -A x64 `
   -DBONGO_CAT_REQUIRE_CUBISM=ON `

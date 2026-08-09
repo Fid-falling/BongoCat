@@ -43,6 +43,7 @@ typedef struct BongoCatUIBackend {
     const struct nk_user_font *hero_font;
     nk_rune *latin_glyph_ranges;
     nk_rune *cjk_glyph_ranges;
+    nk_rune *korean_glyph_ranges;
     void *vertices;
     void *elements;
     size_t vertex_capacity;
@@ -76,7 +77,9 @@ typedef struct BongoCatUIBackend {
 
 bool bongo_cat_ui_init(BongoCatUIBackend *ui, SDL_Window *window,
     const char *body_font_path, const char *body_fallback_path,
-    const char *heading_font_path, const char *heading_fallback_path,
+    const char *body_korean_fallback_path, const char *heading_font_path,
+    const char *heading_fallback_path,
+    const char *heading_korean_fallback_path,
     const nk_rune *glyph_ranges, float layout_scale, float raster_scale,
     BongoCatError *error);
 void bongo_cat_ui_destroy(BongoCatUIBackend *ui);

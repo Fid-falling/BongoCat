@@ -50,6 +50,8 @@ static void on_always_on_top(void *userdata, SDL_TrayEntry *entry) {
     tray->app->config.window.always_on_top = !tray->app->config.window.always_on_top;
     bongo_cat_platform_set_always_on_top(&tray->app->platform,
         tray->app->config.window.always_on_top);
+    bongo_cat_window_mark_hit_dirty(tray->app);
+    bongo_cat_window_sync_click_through(tray->app);
     bongo_cat_tray_sync(tray);
     bongo_cat_preferences_invalidate(tray->app->preferences);
 }
@@ -145,10 +147,10 @@ void bongo_cat_tray_sync(BongoCatTray *tray) {
     SDL_SetTrayEntryChecked(tray->visible, tray->app->config.window.visible);
     SDL_SetTrayEntryChecked(tray->pass_through, tray->app->config.window.pass_through);
     SDL_SetTrayEntryChecked(tray->always_on_top, tray->app->config.window.always_on_top);
+    // The checkbox already communicates visibility; keep the action name
+    // stable so users do not have to reinterpret the menu after each click.
     SDL_SetTrayEntryLabel(tray->visible, bongo_cat_i18n_get(tray->app->i18n,
-        tray->app->config.window.visible ? "composables.useAppMenu.labels.hideCat" :
-        "composables.useAppMenu.labels.showCat", tray->app->config.window.visible
-        ? "Hide BongoCat" : "Show BongoCat"));
+        "composables.useAppMenu.labels.showCat", "Show BongoCat"));
     SDL_SetTrayEntryLabel(tray->pass_through, bongo_cat_i18n_get(tray->app->i18n,
         "composables.useAppMenu.labels.passThrough", "Mouse pass-through"));
     SDL_SetTrayEntryLabel(tray->always_on_top, bongo_cat_i18n_get(tray->app->i18n,

@@ -98,41 +98,108 @@ static void font_to_front(struct nk_font_atlas *atlas, struct nk_font *font) {
     atlas->fonts = font;
 }
 
-static bool split_ranges(const nk_rune *ranges, nk_rune **latin,
-    nk_rune **cjk) {
-    *latin = NULL; *cjk = NULL;
+typedef enum GlyphRangeKind {
+    GLYPH_RANGE_PRIMARY,
+    GLYPH_RANGE_CJK,
+    GLYPH_RANGE_KOREAN
+} GlyphRangeKind;
+
+// Nuklear does not skip missing glyphs while merging fonts, so each script
+// must be assigned to a font that actually contains it.
+static GlyphRangeKind glyph_range_kind(nk_rune point) {
+    bool korean = (point >= 0x1100 && point <= 0x11ff) ||
+        (point >= 0x3130 && point <= 0x318f) ||
+        (point >= 0xa960 && point <= 0xa97f) ||
+        (point >= 0xac00 && point <= 0xd7ff);
+    if (korean) return GLYPH_RANGE_KOREAN;
+    return point >= 0x2e80 ? GLYPH_RANGE_CJK : GLYPH_RANGE_PRIMARY;
+}
+
+static void append_range(nk_rune *ranges, size_t *count,
+    nk_rune first, nk_rune last) {
+    ranges[(*count)++] = first;
+    ranges[(*count)++] = last;
+}
+
+static int compare_ranges(const void *left, const void *right) {
+    const nk_rune *a = left, *b = right;
+    return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 :
+        (a[1] < b[1] ? -1 : a[1] > b[1]);
+}
+
+static void normalize_ranges(nk_rune *ranges, size_t *count) {
+    qsort(ranges, *count / 2, sizeof(*ranges) * 2, compare_ranges);
+    size_t written = 0;
+    for (size_t read = 0; read < *count; read += 2) {
+        nk_rune first = ranges[read], last = ranges[read + 1];
+        if (written >= 2 && first <= ranges[written - 1] + 1) {
+            ranges[written - 1] = NK_MAX(ranges[written - 1], last);
+            continue;
+        }
+        ranges[written++] = first;
+        ranges[written++] = last;
+    }
+    ranges[written] = 0;
+    *count = written;
+}
+
+static bool split_ranges(const nk_rune *ranges, nk_rune **primary,
+    nk_rune **cjk, nk_rune **korean) {
+    *primary = NULL; *cjk = NULL; *korean = NULL;
     if (!ranges) return true;
     size_t entries = 0;
     while (ranges[entries]) entries++;
-    *latin = calloc(entries + 3, sizeof(**latin));
-    *cjk = calloc(entries + 3, sizeof(**cjk));
-    if (!*latin || !*cjk) { free(*latin); free(*cjk); return false; }
-    size_t low = 0, high = 0;
+    size_t capacity = entries + 32;
+    *primary = calloc(capacity, sizeof(**primary));
+    *cjk = calloc(capacity, sizeof(**cjk));
+    *korean = calloc(capacity, sizeof(**korean));
+    if (!*primary || !*cjk || !*korean) {
+        free(*korean); free(*cjk); free(*primary);
+        return false;
+    }
+    static const nk_rune boundaries[] = {0x1100, 0x1200, 0x2e80,
+        0x3130, 0x3190, 0xa960, 0xa980, 0xac00, 0xd800};
+    size_t counts[3] = {0};
     for (size_t pair = 0; ranges[pair] && ranges[pair + 1]; pair += 2) {
-        nk_rune first = ranges[pair], last = ranges[pair + 1];
-        if (first < 0x2e80) {
-            (*latin)[low++] = first;
-            (*latin)[low++] = NK_MIN(last, 0x2e7f);
-        }
-        if (last >= 0x2e80) {
-            (*cjk)[high++] = NK_MAX(first, 0x2e80);
-            (*cjk)[high++] = last;
+        nk_rune cursor = ranges[pair], last = ranges[pair + 1];
+        while (cursor <= last) {
+            nk_rune segment_last = last;
+            for (size_t i = 0; i < sizeof(boundaries) / sizeof(boundaries[0]); ++i)
+                if (boundaries[i] > cursor && boundaries[i] - 1 < segment_last)
+                    segment_last = boundaries[i] - 1;
+            GlyphRangeKind kind = glyph_range_kind(cursor);
+            nk_rune *target = kind == GLYPH_RANGE_PRIMARY ? *primary :
+                (kind == GLYPH_RANGE_CJK ? *cjk : *korean);
+            append_range(target, &counts[kind], cursor, segment_last);
+            if (segment_last == last) break;
+            cursor = segment_last + 1;
         }
     }
+    normalize_ranges(*primary, &counts[GLYPH_RANGE_PRIMARY]);
+    normalize_ranges(*cjk, &counts[GLYPH_RANGE_CJK]);
+    normalize_ranges(*korean, &counts[GLYPH_RANGE_KOREAN]);
     return true;
 }
 
 static struct nk_font *add_family_font(struct nk_font_atlas *atlas,
-    const UIFontSource *primary, const UIFontSource *fallback, float size,
-    const nk_rune *all, const nk_rune *latin, const nk_rune *cjk) {
+    const UIFontSource *primary, const UIFontSource *fallback,
+    const UIFontSource *korean_fallback, float size, const nk_rune *all,
+    const nk_rune *primary_ranges, const nk_rune *cjk,
+    const nk_rune *korean) {
     bool merge = primary && primary->data && fallback && fallback->data &&
-        cjk && cjk[0];
+        ((cjk && cjk[0]) || (korean && korean[0]));
     const UIFontSource *base = primary && primary->data ? primary : fallback;
     struct nk_font *font = add_font(atlas, base, size,
-        merge ? latin : all, false);
+        merge ? primary_ranges : all, false);
     if (!font || !merge) return font;
     font_to_front(atlas, font);
-    return add_font(atlas, fallback, size, cjk, true) ? font : NULL;
+    if (cjk && cjk[0] && !add_font(atlas, fallback, size, cjk, true))
+        return NULL;
+    const UIFontSource *korean_source = korean_fallback &&
+        korean_fallback->data ? korean_fallback : fallback;
+    if (korean && korean[0] &&
+        !add_font(atlas, korean_source, size, korean, true)) return NULL;
+    return font;
 }
 
 static bool font_has_ranges(const struct nk_font *font, const nk_rune *ranges) {
@@ -196,25 +263,48 @@ static bool upload_atlas(BongoCatUIBackend *ui) {
 
 bool bongo_cat_ui_font_atlas_create(BongoCatUIBackend *ui,
     const char *body_path, const char *body_fallback_path,
-    const char *heading_path, const char *heading_fallback_path,
+    const char *body_korean_fallback_path, const char *heading_path,
+    const char *heading_fallback_path,
+    const char *heading_korean_fallback_path,
     const nk_rune *glyph_ranges, float raster_scale) {
-    UIFontSource body = {0}, body_fallback = {0};
+    UIFontSource body = {0}, body_fallback = {0}, body_korean_fallback = {0};
     UIFontSource heading = {0}, heading_fallback = {0};
+    UIFontSource heading_korean_fallback = {0};
     bool body_loaded = body_path && source_load(&body, body_path);
     bool body_fallback_loaded = body_fallback_path &&
         (!body_path || strcmp(body_path, body_fallback_path) != 0) &&
         source_load(&body_fallback, body_fallback_path);
+    bool body_korean_fallback_loaded = body_korean_fallback_path &&
+        (!body_path || strcmp(body_path, body_korean_fallback_path) != 0) &&
+        (!body_fallback_path || strcmp(body_fallback_path,
+            body_korean_fallback_path) != 0) &&
+        source_load(&body_korean_fallback, body_korean_fallback_path);
     bool heading_loaded = heading_path && source_load(&heading, heading_path);
     bool heading_fallback_loaded = heading_fallback_path &&
         (!heading_path || strcmp(heading_path, heading_fallback_path) != 0) &&
         source_load(&heading_fallback, heading_fallback_path);
+    bool heading_korean_fallback_loaded = heading_korean_fallback_path &&
+        (!heading_path || strcmp(heading_path,
+            heading_korean_fallback_path) != 0) &&
+        (!heading_fallback_path || strcmp(heading_fallback_path,
+            heading_korean_fallback_path) != 0) &&
+        source_load(&heading_korean_fallback,
+            heading_korean_fallback_path);
     const UIFontSource *heading_source = heading_loaded ? &heading :
         (body_loaded ? &body : NULL);
     const UIFontSource *heading_fallback_source = heading_fallback_loaded ?
         &heading_fallback : (body_fallback_loaded ? &body_fallback : NULL);
-    nk_rune *latin_ranges = NULL, *cjk_ranges = NULL;
-    if (!split_ranges(glyph_ranges, &latin_ranges, &cjk_ranges)) {
+    const UIFontSource *heading_korean_fallback_source =
+        heading_korean_fallback_loaded ? &heading_korean_fallback :
+        (body_korean_fallback_loaded ? &body_korean_fallback :
+        heading_fallback_source);
+    nk_rune *primary_ranges = NULL, *cjk_ranges = NULL;
+    nk_rune *korean_ranges = NULL;
+    if (!split_ranges(glyph_ranges, &primary_ranges, &cjk_ranges,
+        &korean_ranges)) {
+        source_release(&heading_korean_fallback);
         source_release(&heading_fallback); source_release(&heading);
+        source_release(&body_korean_fallback);
         source_release(&body_fallback); source_release(&body);
         return false;
     }
@@ -230,16 +320,26 @@ bool bongo_cat_ui_font_atlas_create(BongoCatUIBackend *ui,
         font_scale, maximum_texture);
     const UIFontSource *body_source = body_loaded ? &body : NULL;
     const UIFontSource *fallback_source = body_fallback_loaded ? &body_fallback : NULL;
+    const UIFontSource *body_korean_fallback_source =
+        body_korean_fallback_loaded ? &body_korean_fallback : fallback_source;
     struct nk_font *caption_font = add_family_font(&ui->atlas, body_source,
-        fallback_source, 18.0f * font_scale, glyph_ranges, latin_ranges, cjk_ranges);
+        fallback_source, body_korean_fallback_source, 18.0f * font_scale,
+        glyph_ranges, primary_ranges, cjk_ranges, korean_ranges);
     struct nk_font *body_font = add_family_font(&ui->atlas, body_source,
-        fallback_source, 20.0f * font_scale, glyph_ranges, latin_ranges, cjk_ranges);
+        fallback_source, body_korean_fallback_source, 20.0f * font_scale,
+        glyph_ranges, primary_ranges, cjk_ranges, korean_ranges);
     struct nk_font *label_font = add_family_font(&ui->atlas, heading_source,
-        heading_fallback_source, 20.0f * font_scale, glyph_ranges, latin_ranges, cjk_ranges);
+        heading_fallback_source, heading_korean_fallback_source,
+        20.0f * font_scale, glyph_ranges, primary_ranges, cjk_ranges,
+        korean_ranges);
     struct nk_font *heading_font = add_family_font(&ui->atlas, heading_source,
-        heading_fallback_source, 28.0f * font_scale, glyph_ranges, latin_ranges, cjk_ranges);
+        heading_fallback_source, heading_korean_fallback_source,
+        28.0f * font_scale, glyph_ranges, primary_ranges, cjk_ranges,
+        korean_ranges);
     struct nk_font *hero_font = add_family_font(&ui->atlas, heading_source,
-        heading_fallback_source, 36.0f * font_scale, glyph_ranges, latin_ranges, cjk_ranges);
+        heading_fallback_source, heading_korean_fallback_source,
+        36.0f * font_scale, glyph_ranges, primary_ranges, cjk_ranges,
+        korean_ranges);
     bool uploaded = caption_font && body_font && label_font && heading_font &&
         hero_font && upload_atlas(ui);
     if (uploaded) {
@@ -253,21 +353,30 @@ bool bongo_cat_ui_font_atlas_create(BongoCatUIBackend *ui,
         label_font->handle.height = 20.0f;
         heading_font->handle.height = 28.0f;
         hero_font->handle.height = 36.0f;
-        ui->latin_glyph_ranges = latin_ranges;
+        ui->latin_glyph_ranges = primary_ranges;
         ui->cjk_glyph_ranges = cjk_ranges;
+        ui->korean_glyph_ranges = korean_ranges;
         ui->font_probe_loaded = font_has_ranges(body_font, glyph_ranges);
         nk_style_set_font(&ui->context, ui->body_font);
-    } else { free(cjk_ranges); free(latin_ranges); }
-    ui->font_path_found = body_path != NULL || body_fallback_path != NULL;
-    ui->font_file_loaded = body_loaded || body_fallback_loaded;
+    } else {
+        free(korean_ranges); free(cjk_ranges); free(primary_ranges);
+    }
+    ui->font_path_found = body_path != NULL || body_fallback_path != NULL ||
+        body_korean_fallback_path != NULL;
+    ui->font_file_loaded = body_loaded || body_fallback_loaded ||
+        body_korean_fallback_loaded;
     ui->custom_font_loaded = ui->font_file_loaded && body_font != NULL;
+    detach_source(&ui->atlas, &heading_korean_fallback);
     detach_source(&ui->atlas, &heading_fallback);
     detach_source(&ui->atlas, &heading);
+    detach_source(&ui->atlas, &body_korean_fallback);
     detach_source(&ui->atlas, &body_fallback);
     detach_source(&ui->atlas, &body);
     nk_font_atlas_cleanup(&ui->atlas);
+    source_release(&heading_korean_fallback);
     source_release(&heading_fallback);
     source_release(&heading);
+    source_release(&body_korean_fallback);
     source_release(&body_fallback);
     source_release(&body);
     return uploaded;
@@ -276,8 +385,10 @@ bool bongo_cat_ui_font_atlas_create(BongoCatUIBackend *ui,
 void bongo_cat_ui_font_atlas_destroy(BongoCatUIBackend *ui) {
     if (!ui) return;
     nk_font_atlas_clear(&ui->atlas);
-    free(ui->cjk_glyph_ranges); free(ui->latin_glyph_ranges);
-    ui->cjk_glyph_ranges = NULL; ui->latin_glyph_ranges = NULL;
+    free(ui->korean_glyph_ranges); free(ui->cjk_glyph_ranges);
+    free(ui->latin_glyph_ranges);
+    ui->korean_glyph_ranges = NULL; ui->cjk_glyph_ranges = NULL;
+    ui->latin_glyph_ranges = NULL;
     ui->caption_font = NULL;
     ui->body_font = NULL;
     ui->label_font = NULL;

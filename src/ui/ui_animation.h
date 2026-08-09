@@ -17,6 +17,8 @@ float bongo_cat_ui_animate_eased(struct nk_context *context,
     const char *id, float target, float duration_ms, BongoCatUIEasing easing);
 float bongo_cat_ui_animate(struct nk_context *context, const char *id,
     float target, float duration_ms);
+float bongo_cat_ui_animate_pulse(struct nk_context *context,
+    const char *id, bool triggered, float hold_ms, float fade_ms);
 bool bongo_cat_ui_animations_active(const struct nk_context *context);
 void bongo_cat_ui_animations_reset(const struct nk_context *context);
 

@@ -171,7 +171,7 @@ static void font_reload_defers_during_frame(void) {
     BongoCatUIBackend backend = {0};
     backend.frame_building = true;
     CHECK(!bongo_cat_ui_font_atlas_reload(&backend, NULL, NULL,
-        NULL, NULL, NULL, 1.0f));
+        NULL, NULL, NULL, NULL, NULL, 1.0f));
 }
 
 static bool portable_fixture(const char *root) {

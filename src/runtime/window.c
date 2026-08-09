@@ -161,6 +161,8 @@ void bongo_cat_window_menu_action(BongoCatApp *app, BongoCatMenuAction action) {
     } else if (action == BONGO_CAT_MENU_ALWAYS_ON_TOP) {
         app->config.window.always_on_top = !app->config.window.always_on_top;
         bongo_cat_platform_set_always_on_top(&app->platform, app->config.window.always_on_top);
+        bongo_cat_window_mark_hit_dirty(app);
+        bongo_cat_window_sync_click_through(app);
     } else if (action >= BONGO_CAT_MENU_SCALE_50 && action <= BONGO_CAT_MENU_SCALE_200) {
         bongo_cat_window_cancel_wheel_animation(app);
         bongo_cat_window_set_scale(app,

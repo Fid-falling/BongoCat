@@ -5,7 +5,9 @@
 
 bool bongo_cat_ui_font_atlas_reload(BongoCatUIBackend *ui,
     const char *body_path, const char *body_fallback_path,
-    const char *heading_path, const char *heading_fallback_path,
+    const char *body_korean_fallback_path, const char *heading_path,
+    const char *heading_fallback_path,
+    const char *heading_korean_fallback_path,
     const nk_rune *glyph_ranges, float raster_scale) {
     if (!ui) return false;
     if (ui->frame_building) {
@@ -17,8 +19,9 @@ bool bongo_cat_ui_font_atlas_reload(BongoCatUIBackend *ui,
     memset(&next, 0, sizeof(next));
     if (!nk_init_default(&next.context, NULL)) return false;
     bool created = bongo_cat_ui_font_atlas_create(&next, body_path,
-        body_fallback_path, heading_path, heading_fallback_path,
-        glyph_ranges, raster_scale);
+        body_fallback_path, body_korean_fallback_path, heading_path,
+        heading_fallback_path, heading_korean_fallback_path, glyph_ranges,
+        raster_scale);
     nk_free(&next.context);
     if (!created) {
         if (next.font_texture) glDeleteTextures(1, &next.font_texture);
@@ -40,6 +43,7 @@ bool bongo_cat_ui_font_atlas_reload(BongoCatUIBackend *ui,
     ui->hero_font = next.hero_font;
     ui->latin_glyph_ranges = next.latin_glyph_ranges;
     ui->cjk_glyph_ranges = next.cjk_glyph_ranges;
+    ui->korean_glyph_ranges = next.korean_glyph_ranges;
     ui->custom_font_loaded = next.custom_font_loaded;
     ui->font_probe_loaded = next.font_probe_loaded;
     ui->font_path_found = next.font_path_found;

@@ -5,6 +5,7 @@
 #include "ui_backend.h"
 #include "bongo_cat/i18n.h"
 #include "bongo_cat/preferences.h"
+#include "../runtime/modal_frame.h"
 
 typedef struct BongoCatPreferenceNotice {
     char message[384];
@@ -69,6 +70,8 @@ struct BongoCatPreferences {
     bool live_resize_rendering;
     bool live_resize_pending;
     bool live_resize_timer;
+    bool live_resize_modal_ready;
+    BongoCatModalFrame live_resize_modal_frame;
     unsigned live_resize_layout_frames;
     int drag_window_x;
     int drag_window_y;
@@ -91,6 +94,7 @@ bool bongo_cat_preferences_scale_event(BongoCatPreferences *value,
 bool bongo_cat_preferences_refresh_raster(BongoCatPreferences *value);
 bool bongo_cat_preferences_reload_fonts(BongoCatPreferences *value);
 bool bongo_cat_preferences_reload_language(BongoCatPreferences *value);
+void bongo_cat_preferences_drag_tick(BongoCatPreferences *value);
 void bongo_cat_preferences_live_resize_install(BongoCatPreferences *value);
 void bongo_cat_preferences_live_resize_uninstall(BongoCatPreferences *value);
 void bongo_cat_preferences_record_frame(BongoCatPreferences *value);

@@ -70,7 +70,9 @@ static bool create_device(BongoCatUIBackend *ui, BongoCatError *error) {
 
 bool bongo_cat_ui_init(BongoCatUIBackend *ui, SDL_Window *window,
     const char *body_font_path, const char *body_fallback_path,
-    const char *heading_font_path, const char *heading_fallback_path,
+    const char *body_korean_fallback_path, const char *heading_font_path,
+    const char *heading_fallback_path,
+    const char *heading_korean_fallback_path,
     const nk_rune *glyph_ranges, float layout_scale, float raster_scale,
     BongoCatError *error) {
     memset(ui, 0, sizeof(*ui));
@@ -83,8 +85,9 @@ bool bongo_cat_ui_init(BongoCatUIBackend *ui, SDL_Window *window,
     ui->elements = malloc(ui->element_capacity);
     if (!ui->vertices || !ui->elements || !nk_init_default(&ui->context, NULL) ||
         !create_device(ui, error) || !bongo_cat_ui_font_atlas_create(ui,
-            body_font_path, body_fallback_path, heading_font_path,
-            heading_fallback_path, glyph_ranges, raster_scale)) {
+            body_font_path, body_fallback_path, body_korean_fallback_path,
+            heading_font_path, heading_fallback_path,
+            heading_korean_fallback_path, glyph_ranges, raster_scale)) {
         if (error && !error->message[0]) bongo_cat_error_set(error,
             BONGO_CAT_ERROR_MEMORY, "Preferences UI resources could not be created");
         bongo_cat_ui_destroy(ui);

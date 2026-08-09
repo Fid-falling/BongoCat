@@ -283,6 +283,11 @@ void bongo_cat_app_apply_mouse(BongoCatApp *app) {
     if (moved) {
         audit_mouse(app, target_x, target_y);
         bongo_cat_app_track_hover(app, target_x, target_y);
+        // Refresh the hit pixel before the next button press. Waiting for the
+        // scheduled frame can leave a stale transparent state for fast clicks.
+        if (app->click_through_applied && !app->left_mouse_down &&
+            !app->right_mouse_down)
+            bongo_cat_window_capture_pointer_hit(app);
     }
     bongo_cat_window_sync_click_through(app);
     uint64_t now = SDL_GetTicksNS();

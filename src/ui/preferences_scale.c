@@ -19,12 +19,16 @@
 typedef struct PreferenceFonts {
     char body_path[BONGO_CAT_PATH_CAP];
     char body_fallback_path[BONGO_CAT_PATH_CAP];
+    char body_korean_fallback_path[BONGO_CAT_PATH_CAP];
     char heading_path[BONGO_CAT_PATH_CAP];
     char heading_fallback_path[BONGO_CAT_PATH_CAP];
+    char heading_korean_fallback_path[BONGO_CAT_PATH_CAP];
     const char *body;
     const char *body_fallback;
+    const char *body_korean_fallback;
     const char *heading;
     const char *heading_fallback;
+    const char *heading_korean_fallback;
     const nk_rune *ranges;
 } PreferenceFonts;
 
@@ -73,12 +77,19 @@ static void font_paths(BongoCatPreferences *value, PreferenceFonts *fonts) {
     memset(fonts, 0, sizeof(*fonts));
     fonts->body = bongo_cat_ui_system_font(fonts->body_path,
         sizeof(fonts->body_path), false);
-    fonts->body_fallback = bongo_cat_ui_system_font(
-        fonts->body_fallback_path, sizeof(fonts->body_fallback_path), true);
+    fonts->body_fallback = bongo_cat_ui_system_font(fonts->body_fallback_path,
+        sizeof(fonts->body_fallback_path), true);
+    fonts->body_korean_fallback = bongo_cat_ui_system_korean_font(
+        fonts->body_korean_fallback_path,
+        sizeof(fonts->body_korean_fallback_path));
     fonts->heading = bongo_cat_ui_system_heading_font(fonts->heading_path,
         sizeof(fonts->heading_path), false);
     fonts->heading_fallback = bongo_cat_ui_system_heading_font(
-        fonts->heading_fallback_path, sizeof(fonts->heading_fallback_path), true);
+        fonts->heading_fallback_path,
+        sizeof(fonts->heading_fallback_path), true);
+    fonts->heading_korean_fallback = bongo_cat_ui_system_korean_heading_font(
+        fonts->heading_korean_fallback_path,
+        sizeof(fonts->heading_korean_fallback_path));
     if (!fonts->heading) fonts->heading = fonts->body;
     if (!fonts->heading_fallback) fonts->heading_fallback = fonts->body_fallback;
     if (!value->app->i18n) return;
@@ -108,8 +119,9 @@ static SDL_HitTestResult SDLCALL preference_hit_test(SDL_Window *window,
     if (right) return SDL_HITTEST_RESIZE_RIGHT;
     if (bottom) return SDL_HITTEST_RESIZE_BOTTOM;
     if (left) return SDL_HITTEST_RESIZE_LEFT;
-    return bongo_cat_ui_title_drag_hit(point->x / scale, point->y / scale,
-        width / scale) ? SDL_HITTEST_DRAGGABLE : SDL_HITTEST_NORMAL;
+    // Title dragging is handled from SDL events so the application loop keeps
+    // advancing the desktop pet instead of entering a native modal move loop.
+    return SDL_HITTEST_NORMAL;
 }
 
 static bool attach_gl_context(BongoCatPreferences *value) {
@@ -193,14 +205,15 @@ bool bongo_cat_preferences_open_window(BongoCatPreferences *value) {
     font_paths(value, &fonts);
     BongoCatError error = {0};
     if (!bongo_cat_ui_init(&value->ui, value->window, fonts.body,
-        fonts.body_fallback, fonts.heading, fonts.heading_fallback,
-        fonts.ranges, layout_scale, raster_scale, &error)) {
+        fonts.body_fallback, fonts.body_korean_fallback, fonts.heading,
+        fonts.heading_fallback, fonts.heading_korean_fallback, fonts.ranges,
+        layout_scale, raster_scale, &error)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
         return false;
     }
     value->ui_initialized = true;
-    value->native_drag = SDL_SetWindowHitTest(value->window,
-        preference_hit_test, value);
+    SDL_SetWindowHitTest(value->window, preference_hit_test, value);
+    value->native_drag = false;
     bongo_cat_preferences_assets_load(value);
     bongo_cat_memory_policy_ui_loaded();
     value->style_theme = -1;
@@ -230,8 +243,9 @@ bool bongo_cat_preferences_reload_fonts(BongoCatPreferences *value) {
     PreferenceFonts fonts;
     font_paths(value, &fonts);
     bool reloaded = bongo_cat_ui_font_atlas_reload(&value->ui, fonts.body,
-        fonts.body_fallback, fonts.heading, fonts.heading_fallback,
-        fonts.ranges, value->ui.raster_scale);
+        fonts.body_fallback, fonts.body_korean_fallback, fonts.heading,
+        fonts.heading_fallback, fonts.heading_korean_fallback, fonts.ranges,
+        value->ui.raster_scale);
     if (reloaded) value->font_reload_pending = false;
     return reloaded;
 }
@@ -244,8 +258,9 @@ bool bongo_cat_preferences_refresh_raster(BongoCatPreferences *value) {
     PreferenceFonts fonts;
     font_paths(value, &fonts);
     if (!bongo_cat_ui_font_atlas_reload(&value->ui, fonts.body,
-        fonts.body_fallback, fonts.heading, fonts.heading_fallback,
-        fonts.ranges, raster_scale)) {
+        fonts.body_fallback, fonts.body_korean_fallback, fonts.heading,
+        fonts.heading_fallback, fonts.heading_korean_fallback, fonts.ranges,
+        raster_scale)) {
         value->raster_retry_ns = now + 1000000000ull;
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
             "Preferences font atlas could not be rebuilt for %.2fx", raster_scale);

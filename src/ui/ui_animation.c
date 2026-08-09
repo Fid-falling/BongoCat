@@ -14,6 +14,7 @@ typedef struct AnimationSlot {
     float duration_ms;
     uint64_t start_ns;
     uint64_t last_ns;
+    uint64_t hold_until_ns;
     BongoCatUIEasing easing;
     bool used;
 } AnimationSlot;
@@ -112,11 +113,44 @@ float bongo_cat_ui_animate(struct nk_context *context, const char *id,
         BONGO_CAT_UI_EASE_OUT_CUBIC);
 }
 
+float bongo_cat_ui_animate_pulse(struct nk_context *context,
+    const char *id, bool triggered, float hold_ms, float fade_ms) {
+    AnimationSlot *slot = slot_for(context, id, 0.0f);
+    if (!slot) return triggered ? 1.0f : 0.0f;
+    uint64_t now = SDL_GetTicksNS();
+    slot->last_ns = now;
+    slot->easing = BONGO_CAT_UI_EASE_STANDARD;
+    if (triggered) {
+        slot->current = slot->start = slot->target = 1.0f;
+        slot->duration_ms = fade_ms;
+        slot->start_ns = now;
+        slot->hold_until_ns = now + (uint64_t)(hold_ms * 1000000.0f);
+        return 1.0f;
+    }
+    if (now < slot->hold_until_ns) return 1.0f;
+    if (slot->target != 0.0f) {
+        slot->start = slot->current;
+        slot->target = 0.0f;
+        slot->duration_ms = fade_ms;
+        slot->start_ns = now;
+    }
+    if (slot->current == 0.0f) return 0.0f;
+    float elapsed_ms = (float)(now - slot->start_ns) / 1000000.0f;
+    float progress = slot->duration_ms > 0.0f ?
+        elapsed_ms / slot->duration_ms : 1.0f;
+    progress = NK_CLAMP(0.0f, progress, 1.0f);
+    slot->current = slot->start * (1.0f - bongo_cat_ui_ease(
+        slot->easing, progress));
+    if (progress >= 1.0f || slot->current < .001f) slot->current = 0.0f;
+    return slot->current;
+}
+
 bool bongo_cat_ui_animations_active(const struct nk_context *context) {
     uint64_t now = SDL_GetTicksNS();
     for (size_t i = 0; i < sizeof(slots) / sizeof(slots[0]); ++i) {
         AnimationSlot *slot = &slots[i];
         if (!slot->used || slot->context != context) continue;
+        if (now < slot->hold_until_ns) return true;
         uint64_t stale_ns = (uint64_t)(slot->duration_ms + 50.0f) * 1000000ULL;
         if (now - slot->last_ns > stale_ns) {
             slot->current = slot->target;

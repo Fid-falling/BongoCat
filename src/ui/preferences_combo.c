@@ -103,9 +103,10 @@ int bongo_cat_pref_control_combo(struct nk_context *context, const char *id,
     bool was_open = context->current->popup.win &&
         context->current->popup.type == NK_PANEL_COMBO &&
         context->current->popup.name == combo_index;
-    char hover_id[80], open_id[80];
+    char hover_id[80], open_id[80], scroll_id[80];
     snprintf(hover_id, sizeof(hover_id), "combo-hover-%s", id);
     snprintf(open_id, sizeof(open_id), "combo-open-%s", id);
+    snprintf(scroll_id, sizeof(scroll_id), "combo-scroll-%s", id);
     float hover_amount = bongo_cat_ui_animate_eased(context, hover_id,
         was_open || hover ? 1.0f : 0.0f, 200, BONGO_CAT_UI_EASE_STANDARD);
     float open_amount = bongo_cat_ui_animate_eased(context, open_id,
@@ -114,6 +115,7 @@ int bongo_cat_pref_control_combo(struct nk_context *context, const char *id,
     if (hover) bongo_cat_ui_cursor_hover_rect(context, bounds,
         BONGO_CAT_UI_CURSOR_POINTER);
     struct nk_style_combo saved_combo = context->style.combo;
+    struct nk_style_scrollbar saved_scrollv = context->style.scrollv;
     struct nk_style_window saved_window = context->style.window;
     struct nk_color clear = nk_rgba(0, 0, 0, 0);
     context->style.combo.normal = context->style.combo.hover =
@@ -140,6 +142,18 @@ int bongo_cat_pref_control_combo(struct nk_context *context, const char *id,
         nk_vec2(widget.w, popup_height));
     if (open) {
         struct nk_rect popup = nk_window_get_bounds(context);
+        bool wheel_scrolling = context->input.mouse.scroll_delta.y != 0.0f;
+        float scroll_amount = bongo_cat_ui_animate_pulse(context, scroll_id,
+            wheel_scrolling, 180, 160);
+        struct nk_rect scrollbar_hit = nk_rect(popup.x + popup.w - 14,
+            popup.y, 14, popup.h);
+        bool scrollbar_hover = nk_input_is_mouse_hovering_rect(
+            &context->input, scrollbar_hit);
+        context->style.scrollv.padding.x = scrollbar_hover ? 0.0f : 2.0f;
+        context->style.scrollv.cursor_hover = nk_style_item_color(p.accent);
+        context->style.scrollv.cursor_active = nk_style_item_color(p.accent);
+        if (scroll_amount > .001f)
+            context->style.scrollv.cursor_normal = nk_style_item_color(p.accent);
         float scale = .98f + .02f * open_amount;
         struct nk_rect menu = nk_rect(popup.x + popup.w * (1.0f - scale),
             popup.y + 8.0f - 6.0f * (1.0f - open_amount), popup.w * scale,
@@ -157,6 +171,7 @@ int bongo_cat_pref_control_combo(struct nk_context *context, const char *id,
         nk_combo_end(context);
     }
     context->style.combo = saved_combo;
+    context->style.scrollv = saved_scrollv;
     context->style.window = saved_window;
     return selected;
 }

@@ -49,6 +49,11 @@ static bool present_live(BongoCatPreferences *value) {
     return result;
 }
 
+static void pump_pet(BongoCatPreferences *value) {
+    if (value && value->live_resize_modal_ready)
+        bongo_cat_modal_frame_tick(&value->live_resize_modal_frame);
+}
+
 static LRESULT CALLBACK live_resize_proc(HWND window, UINT message,
     WPARAM wparam, LPARAM lparam) {
     WNDPROC original = (WNDPROC)GetPropW(window, original_property);
@@ -56,8 +61,7 @@ static LRESULT CALLBACK live_resize_proc(HWND window, UINT message,
         window, value_property);
     bool enter = value && message == WM_ENTERSIZEMOVE;
     bool resize = value && value->live_resize_active && message == WM_SIZE;
-    bool tick = value && value->live_resize_active &&
-        value->live_resize_pending && message == WM_TIMER &&
+    bool timer = value && value->live_resize_active && message == WM_TIMER &&
         wparam == BONGO_CAT_LIVE_RESIZE_TIMER;
     LRESULT result = CallWindowProcW(original ? original : DefWindowProcW,
         window, message, wparam, lparam);
@@ -67,7 +71,11 @@ static LRESULT CALLBACK live_resize_proc(HWND window, UINT message,
         value->live_resize_timer = SetTimer(window,
             BONGO_CAT_LIVE_RESIZE_TIMER,
             BONGO_CAT_LIVE_RESIZE_INTERVAL_MS, NULL) != 0;
+        bongo_cat_modal_frame_init(&value->live_resize_modal_frame,
+            value->app);
+        value->live_resize_modal_ready = true;
         capture_live(value);
+        pump_pet(value);
     }
     if (resize) {
         value->live_resize_pending = true;
@@ -76,11 +84,15 @@ static LRESULT CALLBACK live_resize_proc(HWND window, UINT message,
             render_live(value);
             capture_live(value);
         }
+        pump_pet(value);
     }
-    if (tick) {
-        value->live_resize_pending = false;
-        render_live(value);
-        capture_live(value);
+    if (timer) {
+        if (value->live_resize_pending) {
+            value->live_resize_pending = false;
+            render_live(value);
+            capture_live(value);
+        }
+        pump_pet(value);
     }
     if (value && message == WM_EXITSIZEMOVE) {
         KillTimer(window, BONGO_CAT_LIVE_RESIZE_TIMER);
@@ -88,6 +100,8 @@ static LRESULT CALLBACK live_resize_proc(HWND window, UINT message,
         value->live_resize_pending = false;
         value->live_resize_timer = false;
         render_live(value);
+        pump_pet(value);
+        value->live_resize_modal_ready = false;
         if (SDL_GL_MakeCurrent(value->window, value->gl_context)) {
             bongo_cat_ui_resize_cache_destroy(&value->ui);
             SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
@@ -124,6 +138,7 @@ void bongo_cat_preferences_live_resize_uninstall(BongoCatPreferences *value) {
     value->live_resize_active = false;
     value->live_resize_pending = false;
     value->live_resize_timer = false;
+    value->live_resize_modal_ready = false;
     value->ui.live_resize_fast = false;
     value->live_resize_rendering = false;
 }

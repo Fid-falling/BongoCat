@@ -33,6 +33,9 @@ static LRESULT CALLBACK borderless_window_proc(HWND window, UINT message,
     WindowsDragBinding *drag = GetPropW(window, drag_binding_property);
     if (message == WM_NCHITTEST && GetPropW(window, click_through_property)) {
         return HTTRANSPARENT;
+    } else if (message == WM_SYSCOMMAND &&
+        (wparam & 0xFFF0u) == SC_MINIMIZE) {
+        return 0;
     } else if (message == WM_STYLECHANGING && wparam == (WPARAM)GWL_STYLE && lparam) {
         STYLESTRUCT *styles = (STYLESTRUCT *)lparam;
         styles->styleNew = (DWORD)borderless_style(styles->styleNew);
@@ -139,6 +142,10 @@ void bongo_cat_windows_borderless_set_click_through(HWND window, bool enabled) {
     LONG_PTR style = GetWindowLongPtrW(window, GWL_EXSTYLE);
     LONG_PTR next = enabled ? style | WS_EX_TRANSPARENT :
         style & ~WS_EX_TRANSPARENT;
-    if (next != style) SetWindowLongPtrW(window, GWL_EXSTYLE, next);
+    if (next != style) {
+        SetWindowLongPtrW(window, GWL_EXSTYLE, next);
+        SetWindowPos(window, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE |
+            SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+    }
 }
 #endif

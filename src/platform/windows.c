@@ -203,15 +203,45 @@ void bongo_cat_platform_shutdown(BongoCatPlatform *platform) {
     platform->native = NULL;
 }
 
+static HWND desktop_anchor(void) {
+    HWND program_manager = FindWindowW(L"Progman", NULL);
+    if (!program_manager) return NULL;
+    HWND worker = NULL;
+    while ((worker = FindWindowExW(NULL, worker, L"WorkerW", NULL)) != NULL)
+        if (FindWindowExW(worker, NULL, L"SHELLDLL_DefView", NULL))
+            return worker;
+    return program_manager;
+}
+
+static void apply_window_level(HWND window, bool topmost) {
+    if (!window) return;
+    RECT before = {0};
+    bool positioned = GetWindowRect(window, &before) != FALSE;
+    HWND owner = topmost ? NULL : desktop_anchor();
+    SetWindowLongPtrW(window, GWLP_HWNDPARENT, (LONG_PTR)owner);
+    SetWindowPos(window, topmost ? HWND_TOPMOST : HWND_NOTOPMOST,
+        0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE |
+        SWP_FRAMECHANGED);
+    if (!topmost)
+        SetWindowPos(window, HWND_TOP, 0, 0, 0, 0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    if (positioned) {
+        RECT after = {0};
+        if (GetWindowRect(window, &after) &&
+            (after.left != before.left || after.top != before.top))
+            SetWindowPos(window, NULL, before.left, before.top, 0, 0,
+                SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+}
+
 void bongo_cat_platform_set_always_on_top(BongoCatPlatform *platform, bool enabled) {
     if (!platform || !platform->window) return;
-    if (SDL_SetWindowAlwaysOnTop(platform->window, enabled)) {
-        bongo_cat_windows_layered_set_always_on_top(platform, enabled);
-        return;
-    }
+    bool applied = SDL_SetWindowAlwaysOnTop(platform->window, enabled);
     HWND window = native_window(platform);
-    if (window) SetWindowPos(window, enabled ? HWND_TOPMOST : HWND_NOTOPMOST,
-        0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    if (!applied && window)
+        SetWindowPos(window, enabled ? HWND_TOPMOST : HWND_NOTOPMOST,
+            0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    apply_window_level(window, enabled);
     bongo_cat_windows_layered_set_always_on_top(platform, enabled);
 }
 void bongo_cat_platform_begin_drag(BongoCatPlatform *platform,

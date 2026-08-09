@@ -39,26 +39,8 @@ void bongo_cat_window_capture_pointer_hit(BongoCatApp *app) {
     float local_x, local_y;
     bool inside = bongo_cat_platform_pointer_local(&app->platform,
         app->pointer_x, app->pointer_y, &local_x, &local_y);
-    app->pointer_transparent = false;
-    if (inside) {
-        int width, height, pixel_width, pixel_height;
-        if (SDL_GetWindowSize(app->window, &width, &height) &&
-            SDL_GetWindowSizeInPixels(app->window, &pixel_width, &pixel_height) &&
-            width > 0 && height > 0 && pixel_width > 0 && pixel_height > 0) {
-            int pixel_x = SDL_clamp((int)(local_x * pixel_width / width),
-                0, pixel_width - 1);
-            int pixel_y = pixel_height - 1 - SDL_clamp(
-                (int)(local_y * pixel_height / height), 0, pixel_height - 1);
-            GLint previous_buffer;
-            GLubyte pixel[4] = {0};
-            glGetIntegerv(GL_READ_BUFFER, &previous_buffer);
-            glReadBuffer(GL_BACK);
-            glReadPixels(pixel_x, pixel_y, 1, 1, GL_RGBA,
-                GL_UNSIGNED_BYTE, pixel);
-            glReadBuffer((GLenum)previous_buffer);
-            app->pointer_transparent = pixel[3] <= 8;
-        }
-    }
+    app->pointer_transparent = inside &&
+        !bongo_cat_window_visible_at_pointer(app, local_x, local_y);
     app->pointer_hit_dirty = false;
     app->pointer_hit_deadline_ns = 0;
 }

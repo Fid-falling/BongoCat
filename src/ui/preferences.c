@@ -65,6 +65,7 @@ void bongo_cat_preferences_close(BongoCatPreferences *value) {
         bongo_cat_ui_cursor_destroy(&value->ui);
         bongo_cat_ui_destroy(&value->ui);
     }
+    if (value->chrome_dragging) SDL_CaptureMouse(false);
     if (value->owns_gl_context && value->gl_context)
         SDL_GL_DestroyContext(value->gl_context);
     SDL_DestroyWindow(value->window);
@@ -105,7 +106,7 @@ bool bongo_cat_preferences_needs_frame(const BongoCatPreferences *value) {
     if (value->render_retry_ns > now) return false;
     bool raster_due = value->pending_raster_scale > 0.0f &&
         value->raster_retry_ns <= now;
-    return value->render_dirty || raster_due; }
+    return value->render_dirty || raster_due || value->chrome_dragging; }
 void bongo_cat_preferences_input_begin(BongoCatPreferences *value) {
     if (!value || !value->window || value->input_active) return;
     bongo_cat_ui_input_begin(&value->ui);
@@ -128,6 +129,26 @@ static Uint32 event_window(const SDL_Event *event) {
     case SDL_EVENT_DROP_FILE: return event->drop.windowID;
     default: return 0;
     }
+}
+
+void bongo_cat_preferences_drag_tick(BongoCatPreferences *value) {
+    if (!value || !value->window || !value->chrome_dragging) return;
+    float pointer_x = 0.0f, pointer_y = 0.0f;
+    SDL_MouseButtonFlags buttons = SDL_GetGlobalMouseState(
+        &pointer_x, &pointer_y);
+    if (!(buttons & SDL_BUTTON_LMASK)) {
+        SDL_CaptureMouse(false);
+        value->chrome_dragging = false;
+        return;
+    }
+    int current_x = 0, current_y = 0;
+    if (!SDL_GetWindowPosition(value->window, &current_x, &current_y)) return;
+    int next_x = value->drag_window_x +
+        (int)(pointer_x - value->drag_pointer_x);
+    int next_y = value->drag_window_y +
+        (int)(pointer_y - value->drag_pointer_y);
+    if (next_x != current_x || next_y != current_y)
+        SDL_SetWindowPosition(value->window, next_x, next_y);
 }
 
 static bool chrome_event(BongoCatPreferences *value, const SDL_Event *event) {
@@ -157,20 +178,21 @@ static bool chrome_event(BongoCatPreferences *value, const SDL_Event *event) {
             &value->drag_window_y);
         SDL_GetGlobalMouseState(&value->drag_pointer_x, &value->drag_pointer_y);
         value->chrome_dragging = true;
+        if (!SDL_CaptureMouse(true))
+            SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
+                "Mouse capture is unavailable during preferences drag: %s",
+                SDL_GetError());
         return true;
     }
     if (event->type == SDL_EVENT_MOUSE_BUTTON_UP &&
         event->button.button == SDL_BUTTON_LEFT && value->chrome_dragging) {
+        SDL_CaptureMouse(false);
         value->chrome_dragging = false;
         return true;
     }
     if (event->type != SDL_EVENT_MOUSE_MOTION || !value->chrome_dragging)
         return false;
-    float pointer_x = 0.0f, pointer_y = 0.0f;
-    SDL_GetGlobalMouseState(&pointer_x, &pointer_y);
-    SDL_SetWindowPosition(value->window,
-        value->drag_window_x + (int)(pointer_x - value->drag_pointer_x),
-        value->drag_window_y + (int)(pointer_y - value->drag_pointer_y));
+    bongo_cat_preferences_drag_tick(value);
     return true;
 }
 
@@ -185,8 +207,11 @@ bool bongo_cat_preferences_event(BongoCatPreferences *value, const SDL_Event *ev
     }
     if (event_window(event) != SDL_GetWindowID(value->window)) return false;
     if (bongo_cat_preferences_scale_event(value, event)) return true;
-    if (event->type == SDL_EVENT_WINDOW_FOCUS_LOST)
+    if (event->type == SDL_EVENT_WINDOW_FOCUS_LOST) {
+        if (value->chrome_dragging) SDL_CaptureMouse(false);
+        value->chrome_dragging = false;
         bongo_cat_pref_controls_reset(&value->ui.context);
+    }
     if (value->app->smoke_input_audit && (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
         event->type == SDL_EVENT_MOUSE_BUTTON_UP)) SDL_Log("Preferences mouse %s at %.1f,%.1f",
             event->button.down ? "down" : "up", event->button.x, event->button.y);

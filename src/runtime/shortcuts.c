@@ -99,6 +99,8 @@ void bongo_cat_app_shortcuts(BongoCatApp *app, const BongoCatInputEvent *event) 
         shortcuts->always_on_top)) {
         app->config.window.always_on_top = !app->config.window.always_on_top;
         bongo_cat_platform_set_always_on_top(&app->platform, app->config.window.always_on_top);
+        bongo_cat_window_mark_hit_dirty(app);
+        bongo_cat_window_sync_click_through(app);
         bongo_cat_preferences_invalidate(app->preferences);
     } else behavior_shortcut(app, event);
 }

@@ -238,6 +238,7 @@ void bongo_cat_preferences_record_frame(BongoCatPreferences *value) {
 
 void bongo_cat_preferences_render(BongoCatPreferences *value) {
     if (!value || !value->window) return;
+    bongo_cat_preferences_drag_tick(value);
     uint64_t now = SDL_GetTicksNS();
     bool raster_due = value->pending_raster_scale > 0.0f &&
         value->raster_retry_ns <= now;
