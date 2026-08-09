@@ -15,6 +15,7 @@ typedef struct RemoveDialog {
     char model_id[BONGO_CAT_ID_CAP];
     uint64_t opened_ns;
     uint64_t closing_ns;
+    bool just_opened;
 } RemoveDialog;
 
 static RemoveDialog remove_dialog;
@@ -59,6 +60,7 @@ void bongo_cat_preferences_remove_dialog_open(BongoCatApp *app,
     snprintf(remove_dialog.model_id, sizeof(remove_dialog.model_id), "%s", id);
     remove_dialog.opened_ns = SDL_GetTicksNS();
     remove_dialog.closing_ns = 0;
+    remove_dialog.just_opened = true;
     if (app->preferences) app->preferences->render_dirty = true;
 }
 
@@ -160,8 +162,9 @@ void bongo_cat_preferences_remove_dialog_draw(BongoCatApp *app,
         p, opacity, enabled)) close = true;
     if (button(app, context, canvas, remove_bounds, remove, true,
         p, opacity, enabled)) remove_model(app);
-    bool outside = hit(context, region, enabled) &&
+    bool outside = !remove_dialog.just_opened && hit(context, region, enabled) &&
         !nk_input_is_mouse_hovering_rect(&context->input, frame.panel);
+    remove_dialog.just_opened = false;
     if (close || outside) bongo_cat_preferences_remove_dialog_close(app);
     if (frame.visibility < 1.0f || closing) app->preferences->render_dirty = true;
 }
