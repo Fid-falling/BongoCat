@@ -122,6 +122,14 @@ jobs:
           & ./.github/scripts/build-windows.ps1
           cmake --build build --config Release --parallel 2
 
+      - name: Build Windows validation tools
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: >-
+          & ./.github/scripts/build-windows.ps1
+          cmake --build build --config Release
+          --target bongo_cat_validation_tools --parallel 2
+
       - name: Build Unix release
         if: runner.os != 'Windows'
         run: bash .github/scripts/build-unix.sh cmake --build build --parallel 2

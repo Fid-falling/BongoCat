@@ -7,15 +7,17 @@ A diagnostic drawing never counts as a Live2D visual pass.
 
 ## Current evidence
 
-- Windows Cubism Release build: `build-cubism/Release/BongoCat.exe` - PASS.
-- Native tests: `ctest --test-dir build-cubism -C Release` - PASS, 7/7.
-- Source policy: `check-lines` - PASS, every checked file is at most 300 lines.
+- Windows Cubism Release build: `build-delivery-final/Release/BongoCat.exe` - PASS.
+- Native tests: `ctest --test-dir build-delivery-final -C Release` - PASS, 5/5.
+- Source policy: `check-lines` - PASS; the default is 300 lines and reviewed
+  file-specific limits are declared in `cmake/CheckLines.cmake`.
 - Preferences matrix: `build-cubism/visual-audit-preferences/audit.csv` - PASS, 50/50.
 - Real Live2D matrix: `build-cubism/visual-audit-cubism/audit.csv` - PASS, 14/14.
 - Pointer/mouse-mirror matrix: `build-cubism/visual-audit-mouse/audit.csv` - PASS, 5/5.
-- Visible Cubism working set: 57.32 MiB - PASS, below 100 MiB.
+- Visible Cubism memory baseline: PENDING remeasurement on the current Release
+  build; working set and private committed memory are reported separately.
 - Standalone smoke: 22 embedded shaders, `renderer=cubism-native`, GL error 0.
-- Desktop binary SHA-256 matches `build-cubism/Release/BongoCat.exe` - PASS.
+- Release ZIP and SHA-256 sidecar generation - PASS.
 - Cubism Native SDK under `vendor/CubismSdkForNative` - PASS, SDK 5 r.5.
 - Tauri-parity pointer mapping and frame-rate-independent damping - PASS.
 
@@ -85,7 +87,7 @@ A diagnostic drawing never counts as a Live2D visual pass.
 
 | Requirement | Status | Evidence or remaining proof |
 |---|---|---|
-| Working set below 100 MiB | PASS | Real Cubism desktop process uses 57.32 MiB. |
+| Working set below 100 MiB | PENDING | Repeat the current Release measurement with working set and private committed memory reported separately. |
 | Diagnostic idle CPU | PASS | Visible average 0.0324%; hidden average 0.0182%. |
 | Cubism visible resource use | PASS | At the parity 60 FPS default: 0.94% total CPU on the current 4-CPU environment. |
 | Five-minute bounded-memory runs | PASS | Visible, preferences and hidden modes remain bounded. |
@@ -96,5 +98,6 @@ A diagnostic drawing never counts as a Live2D visual pass.
 | Linux Wayland reduced-mode reporting | PENDING | Requires a Wayland session. |
 
 The Windows implementation has no remaining Cubism or visual blocker. The
-remaining `PENDING` rows require external hardware, long-duration execution,
-or operating systems that are not present on the current machine.
+remaining `PENDING` rows require a current memory rebaseline, external
+hardware, long-duration execution, or operating systems that are not present
+on the current machine.

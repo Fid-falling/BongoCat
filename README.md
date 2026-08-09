@@ -48,9 +48,9 @@ instead of a diagnostic build.
 - Transparent borderless window, click-through, always-on-top, hover hiding,
   monitor clamping, scaling, opacity, tray integration, and Shift + right-drag
   resizing.
-- Preferences, light/dark themes, and five shipped locales: English,
-  Simplified Chinese, Traditional Chinese, Brazilian Portuguese, and
-  Vietnamese.
+- Preferences, light/dark themes, and ten shipped locales: Simplified Chinese,
+  Traditional Chinese, English, French, German, Japanese, Korean, Brazilian
+  Portuguese, Russian, and Spanish.
 
 ## How the Runtime Is Split
 
@@ -212,9 +212,10 @@ ctest --test-dir build --output-on-failure
 cmake --build build --target check-lines
 ```
 
-`check-lines` enforces a maximum of 300 physical lines for native C, C++,
-Objective-C, header, CMake module, and native test files. The rule is a review
-aid, not a claim that shorter files are automatically better.
+`check-lines` enforces a default maximum of 300 physical lines for native C,
+C++, Objective-C, header, CMake module, and native test files. A small set of
+mechanically dense files has reviewed, explicit limits in the policy. The rule
+is a review aid, not a claim that shorter files are automatically better.
 
 ## Continuous Integration
 

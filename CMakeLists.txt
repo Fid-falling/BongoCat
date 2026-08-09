@@ -175,7 +175,7 @@ set_target_properties(bongo_cat PROPERTIES OUTPUT_NAME "BongoCat")
 bongo_cat_enable_release_ipo(Framework bongo_cat_core bongo_cat_runtime bongo_cat)
 
 if(WIN32)
-  add_library(bongo_cat_tool_support STATIC src/tools/windows_tool.c)
+  add_library(bongo_cat_tool_support STATIC EXCLUDE_FROM_ALL src/tools/windows_tool.c)
   target_include_directories(bongo_cat_tool_support PUBLIC src/tools)
   target_link_libraries(bongo_cat_tool_support PUBLIC bongo_cat_warnings)
 
@@ -185,7 +185,7 @@ if(WIN32)
   target_link_libraries(cubism_viewer_desktop_capture PRIVATE
     bongo_cat_tool_support bongo_cat_warnings d3d11 dxgi dxguid user32)
 
-  add_library(bongo_cat_validation_image STATIC
+  add_library(bongo_cat_validation_image STATIC EXCLUDE_FROM_ALL
     src/tools/validation_image.c src/tools/validation_gdiplus.c)
   target_include_directories(bongo_cat_validation_image PUBLIC src/tools)
   target_link_libraries(bongo_cat_validation_image PUBLIC

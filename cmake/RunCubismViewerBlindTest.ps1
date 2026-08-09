@@ -2,7 +2,7 @@ param(
     [Parameter(Mandatory = $true)][string]$ViewerDirectory,
     [Parameter(Mandatory = $true)][string]$NativeDirectory,
     [Parameter(Mandatory = $true)][string]$OutputDirectory,
-    [int]$Seed = 0,
+    [int]$Seed = 20260807,
     [string]$ToolPath = ""
 )
 

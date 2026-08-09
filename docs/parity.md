@@ -51,7 +51,8 @@ desktop runtime.
 - Idle CPU is below 0.3 percent on the reference machine.
 - Working set is below 100 MiB with one bundled model active.
 - Hidden rendering is suspended and a 24-hour run has no unbounded growth.
-- Every hand-written file is at most 300 physical lines.
+- Every hand-written file passes the configured source-size policy, whose
+  default is 300 physical lines with reviewed file-specific limits.
 
 ## Cubism Viewer animation equivalence
 
