@@ -6,6 +6,16 @@
 
 enum { OVERLAY_OPEN_MS = 200, OVERLAY_CLOSE_MS = 180 };
 
+bool bongo_cat_preferences_overlay_input_ready(struct nk_context *context,
+    bool *armed) {
+    if (!context || !armed) return false;
+    if (*armed) return true;
+    const struct nk_mouse_button *left =
+        &context->input.mouse.buttons[NK_BUTTON_LEFT];
+    if (!left->down && !left->clicked) *armed = true;
+    return false;
+}
+
 struct nk_color bongo_cat_preferences_overlay_alpha(
     struct nk_color color, float visibility) {
     color.a = (nk_byte)(color.a * NK_CLAMP(0.0f, visibility, 1.0f) + .5f);

@@ -15,7 +15,7 @@ typedef struct RemoveDialog {
     char model_id[BONGO_CAT_ID_CAP];
     uint64_t opened_ns;
     uint64_t closing_ns;
-    bool just_opened;
+    bool input_armed;
 } RemoveDialog;
 
 static RemoveDialog remove_dialog;
@@ -60,7 +60,7 @@ void bongo_cat_preferences_remove_dialog_open(BongoCatApp *app,
     snprintf(remove_dialog.model_id, sizeof(remove_dialog.model_id), "%s", id);
     remove_dialog.opened_ns = SDL_GetTicksNS();
     remove_dialog.closing_ns = 0;
-    remove_dialog.just_opened = true;
+    remove_dialog.input_armed = false;
     if (app->preferences) app->preferences->render_dirty = true;
 }
 
@@ -155,16 +155,16 @@ void bongo_cat_preferences_remove_dialog_draw(BongoCatApp *app,
         frame.panel.y + frame.panel.h - 56, 88, 36);
     struct nk_rect cancel_bounds = nk_rect(remove_bounds.x - 98,
         remove_bounds.y, 88, 36);
-    bool enabled = !closing;
+    bool enabled = !closing && bongo_cat_preferences_overlay_input_ready(
+        context, &remove_dialog.input_armed);
     bool close = close_button(app, context, canvas, frame.panel,
         p, opacity, enabled);
     if (button(app, context, canvas, cancel_bounds, cancel, false,
         p, opacity, enabled)) close = true;
     if (button(app, context, canvas, remove_bounds, remove, true,
         p, opacity, enabled)) remove_model(app);
-    bool outside = !remove_dialog.just_opened && hit(context, region, enabled) &&
+    bool outside = hit(context, region, enabled) &&
         !nk_input_is_mouse_hovering_rect(&context->input, frame.panel);
-    remove_dialog.just_opened = false;
     if (close || outside) bongo_cat_preferences_remove_dialog_close(app);
     if (frame.visibility < 1.0f || closing) app->preferences->render_dirty = true;
 }

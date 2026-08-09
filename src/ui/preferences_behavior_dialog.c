@@ -58,6 +58,7 @@ void bongo_cat_preferences_behavior_dialog_open(
     SDL_Log("Preferences behavior dialog opened with %llu behaviors",
         (unsigned long long)value->app->behaviors.count);
     value->behavior_dialog = true;
+    value->behavior_dialog_input_armed = false;
     value->behavior_dialog_opened_ns = SDL_GetTicksNS();
     value->behavior_dialog_closing_ns = 0;
     value->render_dirty = true;
@@ -190,8 +191,8 @@ void bongo_cat_preferences_behavior_dialog_draw(
     BongoCatUIPalette p = bongo_cat_ui_palette(bongo_cat_ui_dark(context));
     bongo_cat_preferences_overlay_draw(context, region, &frame, p);
     bool closing = value->behavior_dialog_closing_ns != 0;
-    bool input_ready = SDL_GetTicksNS() - value->behavior_dialog_opened_ns >=
-        50000000ULL;
+    bool input_ready = bongo_cat_preferences_overlay_input_ready(context,
+        &value->behavior_dialog_input_armed);
     float opacity = closing ? frame.visibility : 1.0f;
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     nk_fill_rect(canvas, frame.panel, 18, alpha(p.surface, opacity));

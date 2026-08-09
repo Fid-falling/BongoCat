@@ -55,6 +55,7 @@ struct BongoCatPreferences {
     uint64_t page_transition_ns;
     BongoCatPreferenceNotice notices[4];
     bool behavior_dialog;
+    bool behavior_dialog_input_armed;
     int behavior_tab;
     uint64_t behavior_dialog_opened_ns;
     uint64_t behavior_dialog_closing_ns;
