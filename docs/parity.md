@@ -125,6 +125,20 @@ frames, and metrics for the full model, face, hair, and hands. Dynamic metrics
 also report each side's change from `track-000`, preventing a high static image
 score from hiding a different interaction response curve.
 
+The blind-test entry point is a PowerShell wrapper around the native C target
+`cubism_viewer_blind_test`; build it with:
+
+```powershell
+cmake --build build-delivery-final --config Release --target bongo_cat_validation_tools
+```
+
+The standalone C metric tools are `mver_blind_metrics` and
+`mver_phase_metrics`. The former accepts two image paths and optional mask and
+threshold arguments; the latter accepts two frame directories and searches
+their phase lag. The Viewer capture helpers (`cubism_viewer_desktop_capture`
+and `cubism_viewer_drag_capture`) are also C targets and keep their existing
+command-line arguments and trace formats.
+
 ## Live2D texture quality
 
 Live2D atlases retain their authored pixel dimensions for both bundled and

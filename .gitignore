@@ -54,3 +54,4 @@ Desktop.ini
 
 # Local Windows audit tools
 /cmake/*.ps1
+!/cmake/RunCubismViewerBlindTest.ps1

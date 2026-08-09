@@ -175,10 +175,50 @@ set_target_properties(bongo_cat PROPERTIES OUTPUT_NAME "BongoCat")
 bongo_cat_enable_release_ipo(Framework bongo_cat_core bongo_cat_runtime bongo_cat)
 
 if(WIN32)
+  add_library(bongo_cat_tool_support STATIC src/tools/windows_tool.c)
+  target_include_directories(bongo_cat_tool_support PUBLIC src/tools)
+  target_link_libraries(bongo_cat_tool_support PUBLIC bongo_cat_warnings)
+
   add_executable(cubism_viewer_desktop_capture EXCLUDE_FROM_ALL
-    cmake/CubismViewerDesktopCapture.cpp)
-  target_compile_features(cubism_viewer_desktop_capture PRIVATE cxx_std_17)
-  target_link_libraries(cubism_viewer_desktop_capture PRIVATE d3d11 dxgi user32)
+    src/tools/cubism_viewer_desktop_capture.c)
+  target_compile_definitions(cubism_viewer_desktop_capture PRIVATE _CRT_SECURE_NO_WARNINGS)
+  target_link_libraries(cubism_viewer_desktop_capture PRIVATE
+    bongo_cat_tool_support bongo_cat_warnings d3d11 dxgi dxguid user32)
+
+  add_library(bongo_cat_validation_image STATIC
+    src/tools/validation_image.c src/tools/validation_gdiplus.c)
+  target_include_directories(bongo_cat_validation_image PUBLIC src/tools)
+  target_link_libraries(bongo_cat_validation_image PUBLIC
+    bongo_cat_warnings windowscodecs gdiplus ole32)
+
+  add_executable(cubism_viewer_drag_capture EXCLUDE_FROM_ALL
+    src/tools/cubism_viewer_drag_capture.c)
+  target_compile_definitions(cubism_viewer_drag_capture PRIVATE _CRT_SECURE_NO_WARNINGS)
+  target_link_libraries(cubism_viewer_drag_capture PRIVATE
+    bongo_cat_validation_image bongo_cat_tool_support bongo_cat_warnings
+    user32 gdi32 ole32)
+
+  add_executable(cubism_viewer_blind_test EXCLUDE_FROM_ALL
+    src/tools/cubism_viewer_blind_test.c)
+  target_compile_definitions(cubism_viewer_blind_test PRIVATE _CRT_SECURE_NO_WARNINGS)
+  target_link_libraries(cubism_viewer_blind_test PRIVATE
+    bongo_cat_validation_image bongo_cat_tool_support bongo_cat_warnings ole32)
+
+  add_executable(mver_blind_metrics EXCLUDE_FROM_ALL
+    src/tools/mver_blind_metrics.c)
+  target_compile_definitions(mver_blind_metrics PRIVATE _CRT_SECURE_NO_WARNINGS)
+  target_link_libraries(mver_blind_metrics PRIVATE
+    bongo_cat_validation_image bongo_cat_warnings ole32)
+
+  add_executable(mver_phase_metrics EXCLUDE_FROM_ALL
+    src/tools/mver_phase_metrics.c)
+  target_compile_definitions(mver_phase_metrics PRIVATE _CRT_SECURE_NO_WARNINGS)
+  target_link_libraries(mver_phase_metrics PRIVATE
+    bongo_cat_validation_image bongo_cat_warnings ole32)
+
+  add_custom_target(bongo_cat_validation_tools
+    DEPENDS cubism_viewer_desktop_capture cubism_viewer_drag_capture
+      cubism_viewer_blind_test mver_blind_metrics mver_phase_metrics)
 endif()
 if(APPLE)
   set_source_files_properties(resources/icons/icon.icns PROPERTIES
@@ -201,7 +241,8 @@ endif()
 
 if(WIN32)
   target_sources(bongo_cat_runtime PRIVATE src/platform/windows_keys.c)
-  add_executable(bongo_cat_asset_packer src/tools/asset_packer.cpp)
+  add_executable(bongo_cat_asset_packer src/tools/asset_packer.c)
+  target_compile_definitions(bongo_cat_asset_packer PRIVATE _CRT_SECURE_NO_WARNINGS)
   target_link_libraries(bongo_cat_asset_packer PRIVATE bongo_cat_warnings)
   set(BONGO_CAT_ASSET_STAGE "${CMAKE_CURRENT_BINARY_DIR}/embedded-assets")
   set(BONGO_CAT_ASSET_PACK "${CMAKE_CURRENT_BINARY_DIR}/bongo-cat-assets.pak")
