@@ -109,7 +109,7 @@ add_library(bongo_cat_runtime STATIC
   src/ui/nuklear_impl.c
   src/ui/ui_backend.c src/ui/ui_resize_cache.c src/ui/ui_scale.c src/ui/ui_cursor.c
   src/ui/ui_animation.c src/ui/ui_paint.c src/ui/ui_paint_cache.c src/ui/ui_paint_border.c src/ui/ui_paint_shell.c
-  src/ui/ui_font.c src/ui/ui_font_atlas.c src/ui/ui_font_reload.c
+  src/ui/ui_font.c src/ui/ui_font_atlas.c src/ui/ui_font_atlas_sources.c src/ui/ui_font_atlas_ranges.c src/ui/ui_font_atlas_upload.c src/ui/ui_font_reload.c
   src/ui/ui_input.c
   src/ui/ui_catime.c src/ui/ui_catime_tabs.c src/ui/ui_catime_theme.c src/ui/ui_catime_icons.c
   src/ui/ui_native_theme.c
