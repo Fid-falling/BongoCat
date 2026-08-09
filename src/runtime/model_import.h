@@ -32,6 +32,11 @@ typedef struct BongoCatImportDiscovery {
     bool ambiguous;
 } BongoCatImportDiscovery;
 
+typedef struct BongoCatImportReceipt {
+    char ids[BONGO_CAT_IMPORT_CANDIDATE_CAP][BONGO_CAT_ID_CAP];
+    size_t count;
+} BongoCatImportReceipt;
+
 typedef BongoCatResult (*BongoCatPortableVisitor)(void *userdata,
     const char *source, BongoCatImportDiscovery *discovery, BongoCatError *error);
 
@@ -73,5 +78,8 @@ BongoCatResult bongo_cat_import_nearby_mver(BongoCatApp *app,
     const char *root, BongoCatError *error);
 BongoCatResult bongo_cat_import_portable_scan(const char *root,
     BongoCatPortableVisitor visitor, void *userdata, BongoCatError *error);
+BongoCatResult bongo_cat_import_install(const char *source,
+    const char *data_root, BongoCatImportReceipt *receipt,
+    BongoCatError *error);
 
 #endif

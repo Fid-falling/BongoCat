@@ -6,6 +6,41 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stb_image_write.h>
+
+typedef struct CoverWriter { FILE *file; bool ok; } CoverWriter;
+
+static void cover_write(void *context, void *data, int size) {
+    CoverWriter *writer = context;
+    if (writer->ok && fwrite(data, 1, (size_t)size, writer->file) != (size_t)size)
+        writer->ok = false;
+}
+
+void bongo_cat_frame_capture_pending(BongoCatApp *app, int width, int height) {
+    if (!app || !app->pending_model_cover_path[0]) return;
+    char path[BONGO_CAT_PATH_CAP];
+    snprintf(path, sizeof(path), "%s", app->pending_model_cover_path);
+    app->pending_model_cover_path[0] = '\0';
+    if (width < 2 || height < 2 || width > 2048 || height > 2048) return;
+    size_t pitch = (size_t)width * 4, bytes = pitch * (size_t)height;
+    unsigned char *pixels = malloc(bytes);
+    if (!pixels) return;
+    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    for (int y = 0; y < height / 2; ++y) {
+        unsigned char *top = pixels + (size_t)y * pitch;
+        unsigned char *bottom = pixels + (size_t)(height - y - 1) * pitch;
+        for (size_t i = 0; i < pitch; ++i) {
+            unsigned char value = top[i]; top[i] = bottom[i]; bottom[i] = value;
+        }
+    }
+    FILE *file = bongo_cat_file_open(path, "wb");
+    CoverWriter writer = {file, file != NULL};
+    bool ok = file && stbi_write_png_to_func(cover_write, &writer,
+        width, height, 4, pixels, (int)pitch) && writer.ok;
+    if (file && fclose(file) != 0) ok = false;
+    if (!ok) bongo_cat_file_remove(path);
+    free(pixels);
+}
 
 typedef struct FrameStats {
     unsigned visible;

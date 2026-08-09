@@ -206,6 +206,7 @@ static void render(BongoCatApp *app) {
     if (app->config.model.mouse_centered && app->pointer_known && !app->model_pointer_anchor_ready) bongo_cat_app_apply_mouse_position(app, app->pointer_x, app->pointer_y, 0.0f);
     bongo_cat_overlay_draw_keys(app->overlay, app->config.model.mirror);
     bongo_cat_overlay_draw_effect(app->overlay, app->config.model.mirror); if (!app->model_mouse_parameters) bongo_cat_overlay_draw_pointer_after_keys(app->overlay);
+    bongo_cat_frame_capture_pending(app, width, height);
     bongo_cat_frame_audit(app, width, height);
     bongo_cat_window_capture_pointer_hit(app);
     if (!bongo_cat_platform_present(&app->platform, width, height)) {

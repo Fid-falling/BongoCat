@@ -15,9 +15,9 @@ typedef struct ImportInstall {
     bool committed;
 } ImportInstall;
 
-static bool custom_root(BongoCatApp *app, char *path, size_t capacity) {
-    return app->data_root[0] &&
-        bongo_cat_path_join(path, capacity, app->data_root, "custom-models") &&
+static bool custom_root(const char *data_root, char *path, size_t capacity) {
+    return data_root && data_root[0] &&
+        bongo_cat_path_join(path, capacity, data_root, "custom-models") &&
         bongo_cat_path_create_directory(path);
 }
 
@@ -58,6 +58,14 @@ static bool preview_file_exists(const char *directory, const char *name) {
         bongo_cat_path_is_file(path);
 }
 
+static void mark_preview_fallback(const char *resources) {
+    char path[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_path_join(path, sizeof(path), resources,
+        ".bongo-cat-cover-fallback")) return;
+    FILE *file = bongo_cat_file_open(path, "wb");
+    if (file) fclose(file);
+}
+
 static bool copy_preview(const BongoCatImportCandidate *candidate, const char *target,
     BongoCatError *error) {
     char source_resources[BONGO_CAT_PATH_CAP], target_resources[BONGO_CAT_PATH_CAP];
@@ -76,12 +84,16 @@ static bool copy_preview(const BongoCatImportCandidate *candidate, const char *t
         "tabletbg.png"};
     const char *backgrounds[] = {"background.png", "bg.png", "mousebg.png",
         "tabletbg.png"};
+    bool authored_cover = preview_file_exists(source_resources, "cover.png") ||
+        preview_file_exists(candidate->assets, "cover.png");
     bool ok = (preview_file_exists(target_resources, "cover.png") ||
         copy_preview_file(source_resources, candidate->assets, covers, 5,
             target_resources, "cover.png")) &&
         (preview_file_exists(target_resources, "background.png") ||
         copy_preview_file(source_resources, candidate->assets, backgrounds, 4,
             target_resources, "background.png"));
+    if (ok && !authored_cover && preview_file_exists(target_resources, "cover.png"))
+        mark_preview_fallback(target_resources);
     if (!ok) bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
         "Cannot copy model preview assets: %s", SDL_GetError());
     return ok;
@@ -143,9 +155,11 @@ static bool prepare_install(const BongoCatImportCandidate *candidate,
         installed.setting, error);
 }
 
-BongoCatResult bongo_cat_app_import_model(BongoCatApp *app, const char *source,
-    BongoCatError *error) {
-    if (!app || !source || !bongo_cat_path_is_dir(source)) return BONGO_CAT_ERROR_ARGUMENT;
+BongoCatResult bongo_cat_import_install(const char *source, const char *data_root,
+    BongoCatImportReceipt *receipt, BongoCatError *error) {
+    if (receipt) memset(receipt, 0, sizeof(*receipt));
+    if (!source || !data_root || !bongo_cat_path_is_dir(source))
+        return BONGO_CAT_ERROR_ARGUMENT;
     BongoCatImportDiscovery *discovery = calloc(1, sizeof(*discovery));
     ImportInstall *installs = calloc(BONGO_CAT_IMPORT_CANDIDATE_CAP, sizeof(*installs));
     if (!discovery || !installs) {
@@ -158,7 +172,7 @@ BongoCatResult bongo_cat_app_import_model(BongoCatApp *app, const char *source,
         free(discovery); free(installs); return BONGO_CAT_ERROR_FORMAT;
     }
     char root[BONGO_CAT_PATH_CAP];
-    if (!custom_root(app, root, sizeof(root)) ||
+    if (!custom_root(data_root, root, sizeof(root)) ||
         !bongo_cat_model_cleanup_imports(root, error)) {
         free(discovery); free(installs); return BONGO_CAT_ERROR_IO;
     }
@@ -181,28 +195,55 @@ BongoCatResult bongo_cat_app_import_model(BongoCatApp *app, const char *source,
         }
         installs[i].committed = true;
     }
-    char previous[BONGO_CAT_PATH_CAP];
-    snprintf(previous, sizeof(previous), "%s", app->config.current_model);
-    bongo_cat_app_rescan_models(app);
-    if (bongo_cat_app_select_model(app, installs[0].id)) {
-        free(discovery); free(installs); return BONGO_CAT_OK;
-    }
-#ifndef BONGO_CAT_HAS_CUBISM
-    const BongoCatModelEntry *entry = bongo_cat_models_find(&app->models, installs[0].id);
-    if (entry) {
-        snprintf(app->config.current_model, sizeof(app->config.current_model),
-            "%s", installs[0].id);
-        app->config.current_mode = entry->mode;
+    if (receipt) {
+        receipt->count = discovery->count;
+        for (size_t i = 0; i < discovery->count; ++i)
+            snprintf(receipt->ids[i], sizeof(receipt->ids[i]), "%s", installs[i].id);
     }
     free(discovery); free(installs);
     return BONGO_CAT_OK;
+}
+
+static void remove_receipt(const char *data_root,
+    const BongoCatImportReceipt *receipt) {
+    char root[BONGO_CAT_PATH_CAP], path[BONGO_CAT_PATH_CAP];
+    if (!receipt || !custom_root(data_root, root, sizeof(root))) return;
+    for (size_t i = 0; i < receipt->count; ++i)
+        if (bongo_cat_path_join(path, sizeof(path), root, receipt->ids[i]))
+            bongo_cat_model_remove_tree(path, NULL);
+}
+
+BongoCatResult bongo_cat_app_import_model(BongoCatApp *app, const char *source,
+    BongoCatError *error) {
+    if (!app || !source) return BONGO_CAT_ERROR_ARGUMENT;
+    BongoCatImportReceipt receipt;
+    BongoCatResult result = bongo_cat_import_install(source, app->data_root,
+        &receipt, error);
+    if (result != BONGO_CAT_OK) {
+        if (error && !error->message[0]) bongo_cat_error_set(error, result,
+            "Model import failed while installing: %s", source);
+        return result;
+    }
+    char previous[BONGO_CAT_PATH_CAP];
+    snprintf(previous, sizeof(previous), "%s", app->config.current_model);
+    bongo_cat_app_rescan_models(app);
+    if (receipt.count && bongo_cat_app_select_model(app, receipt.ids[0]))
+        return BONGO_CAT_OK;
+#ifndef BONGO_CAT_HAS_CUBISM
+    const BongoCatModelEntry *entry = receipt.count ?
+        bongo_cat_models_find(&app->models, receipt.ids[0]) : NULL;
+    if (entry) {
+        snprintf(app->config.current_model, sizeof(app->config.current_model),
+            "%s", receipt.ids[0]);
+        app->config.current_mode = entry->mode;
+    }
+    return BONGO_CAT_OK;
 #else
-    cleanup(installs, discovery->count, true);
+    remove_receipt(app->data_root, &receipt);
     bongo_cat_app_rescan_models(app);
     if (previous[0]) bongo_cat_app_select_model(app, previous);
     bongo_cat_error_set(error, BONGO_CAT_ERROR_CUBISM,
         "Model import was rolled back because the Live2D model could not be loaded");
-    free(discovery); free(installs);
     return BONGO_CAT_ERROR_CUBISM;
 #endif
 }

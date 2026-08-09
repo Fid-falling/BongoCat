@@ -3,6 +3,7 @@
 #include "bongo_cat/memory.h"
 #include "bongo_cat/platform.h"
 #include "preferences_controls.h"
+#include "preferences_model_cover.h"
 #include "preferences_state.h"
 #include "ui_animation.h"
 #include "ui_catime.h"
@@ -36,6 +37,9 @@ BongoCatPreferences *bongo_cat_preferences_create(BongoCatApp *app) {
 }
 void bongo_cat_preferences_show(BongoCatPreferences *value) {
     if (!value) return;
+    const BongoCatModelEntry *entry = bongo_cat_models_find(
+        &value->app->models, value->app->config.current_model);
+    bongo_cat_preferences_model_cover_capture(value->app, entry);
     if (!value->window && !bongo_cat_preferences_open_window(value)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Preferences failed: %s", SDL_GetError());
         bongo_cat_preferences_close(value);

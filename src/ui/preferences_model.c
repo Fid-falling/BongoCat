@@ -21,21 +21,19 @@ static const char *tr(BongoCatApp *app, const char *key,
     return bongo_cat_i18n_get(app->i18n, key, fallback);
 }
 
-void bongo_cat_preferences_import_path(BongoCatApp *app,
-    SDL_Window *window, const char *path) {
-    (void)window;
-    if (!app || !path || !path[0]) return;
-    BongoCatError error = {0};
-    BongoCatResult result = bongo_cat_app_import_model(app, path, &error);
+void bongo_cat_preferences_import_complete(BongoCatApp *app,
+    BongoCatResult result, const BongoCatError *error, size_t imported_count) {
+    if (!app || !app->preferences) return;
     const char *message = result == BONGO_CAT_OK ? tr(app,
         "pages.preference.model.hints.importSuccess", "Model imported") :
-        error.message;
+        (error && error->message[0] ? error->message : "Model import failed");
     if (app->smoke) {
         if (result != BONGO_CAT_OK) app->exit_code = 1;
-    } else bongo_cat_preferences_notice_show(app, message,
-        result != BONGO_CAT_OK);
-    if (result == BONGO_CAT_OK)
+    } else bongo_cat_preferences_notice_show(app, message, result != BONGO_CAT_OK);
+    if (result == BONGO_CAT_OK) {
         bongo_cat_preferences_reload_fonts(app->preferences);
+        SDL_Log("Imported %zu model variant(s)", imported_count);
+    }
     bongo_cat_preferences_invalidate(app->preferences);
     bongo_cat_preferences_render(app->preferences);
 }
@@ -114,6 +112,7 @@ static void select_model(BongoCatPreferences *value,
     const BongoCatModelEntry *entry) {
     BongoCatError error = {0};
     if (bongo_cat_app_select_model_with_error(value->app, entry->id, &error)) {
+        bongo_cat_preferences_model_cover_capture(value->app, entry);
         bongo_cat_preferences_reload_fonts(value);
         bongo_cat_preferences_invalidate(value);
         return;
