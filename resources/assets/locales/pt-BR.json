@@ -80,7 +80,7 @@
         },
         "hints": {
           "deleteSuccess": "Excluído com sucesso",
-          "deleteModel": "Tem certeza de que deseja excluir este modelo?",
+          "deleteModel": "Tem certeza de que deseja excluir \"%s\"?",
           "importSuccess": "Importação bem-sucedida",
           "clickOrDragToImport": "Clique ou arraste para importar",
           "openDirectoryFailed": "Não foi possível abrir a pasta do modelo"

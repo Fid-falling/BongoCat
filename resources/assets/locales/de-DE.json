@@ -80,7 +80,7 @@
         },
         "hints": {
           "deleteSuccess": "Erfolgreich gelöscht",
-          "deleteModel": "Möchten Sie dieses Modell wirklich löschen?",
+          "deleteModel": "Möchten Sie \"%s\" wirklich löschen?",
           "importSuccess": "Erfolgreich importiert",
           "clickOrDragToImport": "Zum Importieren klicken oder hierher ziehen",
           "openDirectoryFailed": "Modellordner konnte nicht geöffnet werden"

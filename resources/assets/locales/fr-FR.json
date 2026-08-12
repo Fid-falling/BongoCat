@@ -80,7 +80,7 @@
         },
         "hints": {
           "deleteSuccess": "Suppression réussie",
-          "deleteModel": "Voulez-vous vraiment supprimer ce modèle ?",
+          "deleteModel": "Voulez-vous vraiment supprimer \"%s\" ?",
           "importSuccess": "Importation réussie",
           "clickOrDragToImport": "Cliquez ou déposez ici pour importer",
           "openDirectoryFailed": "Impossible d'ouvrir le dossier du modèle"

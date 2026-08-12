@@ -80,7 +80,7 @@
         },
         "hints": {
           "deleteSuccess": "Eliminado correctamente",
-          "deleteModel": "¿Seguro que quiere eliminar este modelo?",
+          "deleteModel": "¿Seguro que quiere eliminar \"%s\"?",
           "importSuccess": "Importado correctamente",
           "clickOrDragToImport": "Haga clic o arrastre aquí para importar",
           "openDirectoryFailed": "No se pudo abrir la carpeta del modelo"

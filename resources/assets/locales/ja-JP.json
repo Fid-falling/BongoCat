@@ -80,7 +80,7 @@
         },
         "hints": {
           "deleteSuccess": "削除しました",
-          "deleteModel": "このモデルを削除しますか？",
+          "deleteModel": "「%s」を削除しますか？",
           "importSuccess": "インポートしました",
           "clickOrDragToImport": "クリックまたはここへドラッグしてインポート",
           "openDirectoryFailed": "モデルフォルダーを開けません"

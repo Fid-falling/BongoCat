@@ -80,7 +80,7 @@
         },
         "hints": {
           "deleteSuccess": "삭제 완료",
-          "deleteModel": "이 모델을 삭제하시겠습니까?",
+          "deleteModel": "\"%s\" 모델을 삭제하시겠습니까?",
           "importSuccess": "가져오기 완료",
           "clickOrDragToImport": "클릭하거나 여기로 끌어와 가져오기",
           "openDirectoryFailed": "모델 폴더를 열 수 없습니다"

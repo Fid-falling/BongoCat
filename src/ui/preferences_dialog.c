@@ -13,6 +13,7 @@
 typedef struct RemoveDialog {
     BongoCatApp *app;
     char model_id[BONGO_CAT_ID_CAP];
+    char model_name[BONGO_CAT_ID_CAP];
     uint64_t opened_ns;
     uint64_t closing_ns;
     bool input_armed;
@@ -27,6 +28,11 @@ static const char *tr(BongoCatApp *app, const char *key,
 
 static struct nk_color alpha(struct nk_color color, float amount) {
     return bongo_cat_preferences_overlay_alpha(color, amount);
+}
+
+static const char *model_name(const BongoCatModelEntry *entry) {
+    return entry && entry->display_name[0] ? entry->display_name :
+        (entry ? entry->id : "model");
 }
 
 static void text(struct nk_command_buffer *canvas, struct nk_rect bounds,
@@ -58,6 +64,9 @@ void bongo_cat_preferences_remove_dialog_open(BongoCatApp *app,
     if (!app || !id || !id[0]) return;
     remove_dialog.app = app;
     snprintf(remove_dialog.model_id, sizeof(remove_dialog.model_id), "%s", id);
+    const BongoCatModelEntry *entry = bongo_cat_models_find(&app->models, id);
+    snprintf(remove_dialog.model_name, sizeof(remove_dialog.model_name), "%s",
+        model_name(entry));
     remove_dialog.opened_ns = SDL_GetTicksNS();
     remove_dialog.closing_ns = 0;
     remove_dialog.input_armed = false;
@@ -85,8 +94,8 @@ static bool button(BongoCatApp *app, struct nk_context *context,
     struct nk_color foreground = danger ? nk_rgb(255, 255, 255) :
         (hover ? p.accent : p.text);
     nk_fill_rect(canvas, bounds, 10, alpha(background, opacity));
-    nk_stroke_rect(canvas, bounds, 10, 1, alpha(danger ? p.danger :
-        (hover ? p.accent : p.border_subtle), opacity));
+    if (danger) nk_stroke_rect(canvas, bounds, 10, 1,
+        alpha(p.danger, opacity));
     centered(canvas, bounds, label, app->preferences->ui.caption_font,
         alpha(foreground, opacity));
     if (hover) bongo_cat_ui_cursor_hover_rect(context, bounds,
@@ -138,10 +147,12 @@ void bongo_cat_preferences_remove_dialog_draw(BongoCatApp *app,
     text(canvas, nk_rect(frame.panel.x + 20, frame.panel.y + 21,
         frame.panel.w - 74, 24), tr(app, "native.delete", "Delete"),
         app->preferences->ui.label_font, alpha(p.text, opacity));
-    text(canvas, nk_rect(frame.panel.x + 20, frame.panel.y + 75,
-        frame.panel.w - 40, 44), tr(app,
+    char prompt[sizeof(remove_dialog.model_name) + 128];
+    snprintf(prompt, sizeof(prompt), tr(app,
         "pages.preference.model.hints.deleteModel",
-        "Delete this custom model?"), app->preferences->ui.body_font,
+        "Are you sure you want to delete \"%s\"?"), remove_dialog.model_name);
+    text(canvas, nk_rect(frame.panel.x + 20, frame.panel.y + 75,
+        frame.panel.w - 40, 44), prompt, app->preferences->ui.body_font,
         alpha(p.text, opacity));
     const char *cancel = tr(app, "native.cancel", "Cancel");
     const char *remove = tr(app, "native.delete", "Delete");

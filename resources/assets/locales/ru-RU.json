@@ -80,7 +80,7 @@
         },
         "hints": {
           "deleteSuccess": "Успешно удалено",
-          "deleteModel": "Удалить эту модель?",
+          "deleteModel": "Удалить модель \"%s\"?",
           "importSuccess": "Успешно импортировано",
           "clickOrDragToImport": "Щёлкните или перетащите сюда для импорта",
           "openDirectoryFailed": "Не удалось открыть папку модели"
