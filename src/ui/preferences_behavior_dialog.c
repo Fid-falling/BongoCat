@@ -81,14 +81,8 @@ static bool draw_header(BongoCatPreferences *value, struct nk_context *context,
         tr(value, "pages.preference.model.behaviorModal.title",
         "Motions and expressions"), value->ui.label_font, alpha(p.text, opacity));
     struct nk_rect close = nk_rect(panel.x + panel.w - 52, panel.y + 17, 32, 32);
-    bool hover = enabled && nk_input_is_mouse_hovering_rect(&context->input, close);
-    nk_fill_rect(canvas, close, 8, alpha(hover ? p.hover : p.field, opacity));
-    bongo_cat_preferences_icon_draw(value, canvas, BONGO_CAT_UI_ICON_CLOSE,
-        nk_rect(close.x + 7, close.y + 7, 18, 18),
-        alpha(hover ? p.accent : p.muted, opacity));
-    if (hover) bongo_cat_ui_cursor_hover_rect(context, close,
-        BONGO_CAT_UI_CURSOR_POINTER);
-    return hit(context, close, enabled);
+    return bongo_cat_ui_close_button(context, canvas, close,
+        alpha(p.muted, opacity), alpha(p.accent, opacity), enabled);
 }
 
 static void draw_segments(BongoCatPreferences *value,

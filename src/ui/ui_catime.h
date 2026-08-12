@@ -44,6 +44,9 @@ bool bongo_cat_ui_header(struct nk_context *context, const char *title,
     bool *title_clicked, bool interactive, bool dark);
 bool bongo_cat_ui_content_header(struct nk_context *context,
     const char *title, int icon, bool interactive, bool dark);
+bool bongo_cat_ui_close_button(struct nk_context *context,
+    struct nk_command_buffer *canvas, struct nk_rect bounds,
+    struct nk_color normal, struct nk_color hover, bool interactive);
 void bongo_cat_ui_tabs(struct nk_context *context, const char *const *labels,
     int count, int *active, bool interactive, bool dark,
     float available_height,

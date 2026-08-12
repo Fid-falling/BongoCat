@@ -80,10 +80,10 @@ static bool button(BongoCatApp *app, struct nk_context *context,
     struct nk_command_buffer *canvas, struct nk_rect bounds, const char *label,
     bool danger, BongoCatUIPalette p, float opacity, bool enabled) {
     bool hover = enabled && nk_input_is_mouse_hovering_rect(&context->input, bounds);
-    struct nk_color background = danger ?
-        (hover ? p.danger : p.danger_background) : (hover ? p.hover : p.field);
-    struct nk_color foreground = danger ? (hover ? nk_rgb(255, 255, 255) :
-        p.danger) : (hover ? p.accent : p.text);
+    struct nk_color background = danger ? p.danger :
+        (hover ? p.hover : p.field);
+    struct nk_color foreground = danger ? nk_rgb(255, 255, 255) :
+        (hover ? p.accent : p.text);
     nk_fill_rect(canvas, bounds, 10, alpha(background, opacity));
     nk_stroke_rect(canvas, bounds, 10, 1, alpha(danger ? p.danger :
         (hover ? p.accent : p.border_subtle), opacity));
@@ -94,19 +94,13 @@ static bool button(BongoCatApp *app, struct nk_context *context,
     return hit(context, bounds, enabled);
 }
 
-static bool close_button(BongoCatApp *app, struct nk_context *context,
+static bool close_button(struct nk_context *context,
     struct nk_command_buffer *canvas, struct nk_rect panel,
     BongoCatUIPalette p, float opacity, bool enabled) {
     struct nk_rect bounds = nk_rect(panel.x + panel.w - 52,
         panel.y + 17, 32, 32);
-    bool hover = enabled && nk_input_is_mouse_hovering_rect(&context->input, bounds);
-    nk_fill_rect(canvas, bounds, 8, alpha(hover ? p.hover : p.field, opacity));
-    bongo_cat_preferences_icon_draw(app->preferences, canvas,
-        BONGO_CAT_UI_ICON_CLOSE, nk_rect(bounds.x + 7,
-        bounds.y + 7, 18, 18), alpha(hover ? p.accent : p.muted, opacity));
-    if (hover) bongo_cat_ui_cursor_hover_rect(context, bounds,
-        BONGO_CAT_UI_CURSOR_POINTER);
-    return hit(context, bounds, enabled);
+    return bongo_cat_ui_close_button(context, canvas, bounds,
+        alpha(p.muted, opacity), alpha(p.accent, opacity), enabled);
 }
 
 static void remove_model(BongoCatApp *app) {
@@ -157,7 +151,7 @@ void bongo_cat_preferences_remove_dialog_draw(BongoCatApp *app,
         remove_bounds.y, 88, 36);
     bool enabled = !closing && bongo_cat_preferences_overlay_input_ready(
         context, &remove_dialog.input_armed);
-    bool close = close_button(app, context, canvas, frame.panel,
+    bool close = close_button(context, canvas, frame.panel,
         p, opacity, enabled);
     if (button(app, context, canvas, cancel_bounds, cancel, false,
         p, opacity, enabled)) close = true;

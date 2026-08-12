@@ -166,19 +166,30 @@ bool bongo_cat_ui_content_header(struct nk_context *context,
     nk_draw_text(canvas, text, title, nk_strlen(title), font,
         nk_rgba(0, 0, 0, 0), p.accent);
     struct nk_rect close = nk_rect(bounds.x + bounds.w - 48, bounds.y + 11, 34, 34);
-    bool hover = interactive && nk_input_is_mouse_hovering_rect(&context->input, close);
-    struct nk_color color = hover ? p.accent : p.muted;
-    if (!bongo_cat_ui_draw_icon(canvas, BONGO_CAT_UI_ICON_CLOSE,
-        nk_rect(close.x + 7, close.y + 7, 20, 20), color)) {
-        nk_stroke_line(canvas, close.x + 10, close.y + 10,
-            close.x + 24, close.y + 24, 2, color);
-        nk_stroke_line(canvas, close.x + 24, close.y + 10,
-            close.x + 10, close.y + 24, 2, color);
+    return bongo_cat_ui_close_button(context, canvas, close, p.muted,
+        p.accent, interactive);
+}
+
+bool bongo_cat_ui_close_button(struct nk_context *context,
+    struct nk_command_buffer *canvas, struct nk_rect bounds,
+    struct nk_color normal, struct nk_color hover, bool interactive) {
+    bool is_hovered = interactive && nk_input_is_mouse_hovering_rect(
+        &context->input, bounds);
+    struct nk_color color = is_hovered ? hover : normal;
+    float icon_size = NK_MAX(0.0f, NK_MIN(bounds.w, bounds.h) - 14.0f);
+    struct nk_rect icon = nk_rect(bounds.x + (bounds.w - icon_size) * .5f,
+        bounds.y + (bounds.h - icon_size) * .5f, icon_size, icon_size);
+    if (!bongo_cat_ui_draw_icon(canvas, BONGO_CAT_UI_ICON_CLOSE, icon, color)) {
+        float inset = icon_size * .22f;
+        nk_stroke_line(canvas, icon.x + inset, icon.y + inset,
+            icon.x + icon.w - inset, icon.y + icon.h - inset, 2, color);
+        nk_stroke_line(canvas, icon.x + icon.w - inset, icon.y + inset,
+            icon.x + inset, icon.y + icon.h - inset, 2, color);
     }
-    if (hover) bongo_cat_ui_cursor_hover_rect(context, close,
+    if (is_hovered) bongo_cat_ui_cursor_hover_rect(context, bounds,
         BONGO_CAT_UI_CURSOR_POINTER);
-    return hover && nk_input_is_mouse_click_in_rect(&context->input,
-        NK_BUTTON_LEFT, close);
+    return is_hovered && nk_input_is_mouse_click_in_rect(&context->input,
+        NK_BUTTON_LEFT, bounds);
 }
 
 bool bongo_cat_ui_close_hit(float x, float y, float width) {
