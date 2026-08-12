@@ -2,6 +2,7 @@
 #include "model_import.h"
 #include "model_storage.h"
 #include "bongo_cat/file.h"
+#include "bongo_cat/audio.h"
 #include "bongo_cat/overlay.h"
 #include "bongo_cat/path.h"
 
@@ -54,7 +55,10 @@ static void apply_model_aspect(BongoCatApp *app,
 }
 
 static void commit_model(BongoCatApp *app,
-    const BongoCatModelEntry *entry) {
+    const BongoCatModelEntry *entry, bool force_refresh) {
+    bool changed = strcmp(app->config.current_model, entry->id) != 0 ||
+        app->config.current_mode != entry->mode;
+    if (!changed && !force_refresh) return;
     select_model_state(app, entry);
     app->model_selection_serial++;
     request_model_frame(app);
@@ -77,7 +81,7 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
         return false;
     }
     if (app->loaded_model[0] && strcmp(app->loaded_model, entry->id) == 0) {
-        commit_model(app, entry);
+        commit_model(app, entry, false);
         return true;
     }
     BongoCatError optional = {0};
@@ -138,16 +142,23 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     free(behaviors);
     optional = (BongoCatError){0};
     if (bongo_cat_overlay_load(app->overlay, entry->adapter_directory,
-        &optional) != BONGO_CAT_OK && optional.message[0])
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", optional.message);
+        &optional) != BONGO_CAT_OK) {
+        if (optional.message[0])
+            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", optional.message);
+        bongo_cat_overlay_clear(app->overlay);
+    }
     snprintf(app->loaded_model, sizeof(app->loaded_model), "%s", entry->id);
     app->pointer_known = false;
     bongo_cat_live2d_resize(app->live2d, pixel_width, pixel_height);
+    bongo_cat_audio_stop(app->audio);
+    commit_model(app, entry, true);
+    bongo_cat_app_reapply_input(app);
+    bongo_cat_app_apply_mouse(app);
     if (restore_context && previous_window && previous_context &&
         !SDL_GL_MakeCurrent(previous_window, previous_context))
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
             "Cannot restore the previous OpenGL context: %s", SDL_GetError());
-    bongo_cat_memory_policy_model_loaded(); commit_model(app, entry);
+    bongo_cat_memory_policy_model_loaded();
     return true;
 }
 
@@ -279,20 +290,38 @@ BongoCatResult bongo_cat_app_remove_model(BongoCatApp *app, const char *id,
             "Built-in models cannot be removed: %s", id);
         return BONGO_CAT_ERROR_ARGUMENT;
     }
-    bool selected = strcmp(id, app->config.current_model) == 0;
+    bool selected = strcmp(id, app->config.current_model) == 0 ||
+        strcmp(id, app->loaded_model) == 0;
     char directory[BONGO_CAT_PATH_CAP];
     snprintf(directory, sizeof(directory), "%s", entry->storage_directory);
-    if (!bongo_cat_model_remove_tree(directory, error)) return BONGO_CAT_ERROR_IO;
-    bongo_cat_app_rescan_models(app);
     if (selected) {
         BongoCatError load_error = {0};
+        bool replacement = false;
         for (size_t i = 0; i < app->models.count; ++i)
-            if (bongo_cat_app_select_model_with_error(app,
-                app->models.entries[i].id, &load_error)) return BONGO_CAT_OK;
-        bongo_cat_error_set(error, BONGO_CAT_ERROR_CUBISM,
-            "Model was removed, but no replacement could be displayed: %s",
-            load_error.message[0] ? load_error.message : "no installed models");
-        return BONGO_CAT_ERROR_CUBISM;
+            if (strcmp(app->models.entries[i].id, id) != 0 &&
+                bongo_cat_app_select_model_with_error(app,
+                    app->models.entries[i].id, &load_error)) {
+                replacement = true;
+                break;
+            }
+        if (!replacement) {
+            bongo_cat_error_set(error, BONGO_CAT_ERROR_CUBISM,
+                "Cannot delete the active model because no replacement could be displayed: %s",
+                load_error.message[0] ? load_error.message : "no installed models");
+            return BONGO_CAT_ERROR_CUBISM;
+        }
     }
+    if (!bongo_cat_model_remove_tree(directory, error)) {
+        bongo_cat_app_rescan_models(app);
+        if (selected && bongo_cat_models_find(&app->models, id)) {
+            BongoCatError restore_error = {0};
+            if (!bongo_cat_app_select_model_with_error(app, id, &restore_error))
+                SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "Unable to restore model after deletion failed: %s",
+                    restore_error.message[0] ? restore_error.message : "unknown error");
+        }
+        return BONGO_CAT_ERROR_IO;
+    }
+    bongo_cat_app_rescan_models(app);
     return BONGO_CAT_OK;
 }

@@ -63,6 +63,7 @@ static void clear_textures(BongoCatOverlay *value) {
     value->composite = 0;
     value->clean_paws = false;
     value->composed_cover = false;
+    value->composite_dirty = false;
     for (size_t i = 0; i < 4; ++i) {
         if (value->cache[i].texture) glDeleteTextures(1, &value->cache[i].texture);
         memset(&value->cache[i], 0, sizeof(value->cache[i]));
@@ -72,6 +73,7 @@ static void clear_textures(BongoCatOverlay *value) {
     value->left_name[0] = value->right_name[0] = '\0';
     value->left_path[0] = value->right_path[0] = '\0';
     value->effect_path[0] = '\0';
+    value->background_path[0] = '\0';
 }
 
 BongoCatOverlay *bongo_cat_overlay_create(BongoCatError *error) {
@@ -115,25 +117,75 @@ void bongo_cat_overlay_destroy(BongoCatOverlay *value) {
     free(value);
 }
 
-BongoCatResult bongo_cat_overlay_load(BongoCatOverlay *value, const char *directory, BongoCatError *error) {
-    if (!value || !directory) return BONGO_CAT_ERROR_ARGUMENT;
+void bongo_cat_overlay_clear(BongoCatOverlay *value) {
+    if (!value) return;
     clear_textures(value);
-    snprintf(value->directory, sizeof(value->directory), "%s", directory);
+    bongo_cat_mver_pointer_overlay_clear(value->mver_pointer);
+    value->directory[0] = '\0';
+}
+
+BongoCatResult bongo_cat_overlay_load(BongoCatOverlay *value, const char *directory, BongoCatError *error) {
+    if (!value || !directory) {
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_ARGUMENT,
+            "Missing model overlay state or directory");
+        return BONGO_CAT_ERROR_ARGUMENT;
+    }
+    BongoCatError local = {0};
+    BongoCatError *failure = error ? error : &local;
+    *failure = (BongoCatError){0};
+    BongoCatMverPointerOverlay *pointer =
+        bongo_cat_mver_pointer_overlay_create(failure);
+    if (!pointer) return failure->code ? failure->code : BONGO_CAT_ERROR_MEMORY;
     char path[BONGO_CAT_PATH_CAP];
     /* Without the licensed Cubism runtime there is no model renderer.  Use the
        model's composed preview so the desktop pet remains visually complete;
        Cubism builds keep the background-only layer behind the animated model. */
 #ifdef BONGO_CAT_HAS_CUBISM
-    bongo_cat_path_join(path, sizeof(path), directory, "resources/background.png");
+    if (!bongo_cat_path_join(path, sizeof(path), directory,
+        "resources/background.png")) {
+        bongo_cat_mver_pointer_overlay_destroy(pointer);
+        bongo_cat_error_set(failure, BONGO_CAT_ERROR_IO, "Model overlay path is too long");
+        return BONGO_CAT_ERROR_IO;
+    }
 #else
-    bongo_cat_path_join(path, sizeof(path), directory, "resources/cover.png");
+    if (!bongo_cat_path_join(path, sizeof(path), directory,
+        "resources/cover.png")) {
+        bongo_cat_mver_pointer_overlay_destroy(pointer);
+        bongo_cat_error_set(failure, BONGO_CAT_ERROR_IO, "Model overlay path is too long");
+        return BONGO_CAT_ERROR_IO;
+    }
+#endif
+    GLuint background = 0;
+    BongoCatError background_error = {0};
+    if (bongo_cat_path_is_file(path)) background = bongo_cat_image_texture(path,
+        NULL, NULL, &background_error);
+    BongoCatError pointer_error = {0};
+    if (!bongo_cat_mver_pointer_overlay_load(pointer, directory, &pointer_error)) {
+        bongo_cat_mver_pointer_overlay_destroy(pointer);
+        if (background) glDeleteTextures(1, &background);
+        *failure = pointer_error;
+        if (!failure->message[0] && background_error.message[0])
+            *failure = background_error;
+        if (!failure->message[0]) bongo_cat_error_set(failure, BONGO_CAT_ERROR_IO,
+            "Unable to load model overlay");
+        return BONGO_CAT_ERROR_IO;
+    }
+    if (!background && background_error.message[0])
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", background_error.message);
+    BongoCatMverPointerOverlay *previous_pointer = value->mver_pointer;
+    clear_textures(value);
+    value->mver_pointer = pointer;
+    value->background = background;
+    value->composed_cover = false;
+    value->clean_paws = false;
+#ifndef BONGO_CAT_HAS_CUBISM
     value->composed_cover = true;
     value->clean_paws = true;
 #endif
+    snprintf(value->directory, sizeof(value->directory), "%s", directory);
     snprintf(value->background_path, sizeof(value->background_path), "%s", path);
-    if (bongo_cat_path_is_file(path)) value->background = bongo_cat_image_texture(path, NULL, NULL, error);
-    return bongo_cat_mver_pointer_overlay_load(value->mver_pointer,
-        directory, error) ? BONGO_CAT_OK : BONGO_CAT_ERROR_IO;
+    if (previous_pointer) bongo_cat_mver_pointer_overlay_destroy(previous_pointer);
+    return BONGO_CAT_OK;
 }
 
 #ifdef BONGO_CAT_HAS_CUBISM

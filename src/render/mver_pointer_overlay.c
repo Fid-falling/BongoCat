@@ -72,6 +72,10 @@ void bongo_cat_mver_pointer_overlay_destroy(BongoCatMverPointerOverlay *value) {
     free(value);
 }
 
+void bongo_cat_mver_pointer_overlay_clear(BongoCatMverPointerOverlay *value) {
+    if (value) clear_textures(value);
+}
+
 static bool safe_relative(const char *path) {
     if (!path || !path[0] || path[0] == '/' || path[0] == '\\' || strchr(path, ':'))
         return false;

@@ -121,11 +121,15 @@ typedef struct BongoCatApp {
     float left_stick_x, left_stick_y;
     float right_stick_x, right_stick_y;
     bool left_stick_pressed, right_stick_pressed;
+    BongoCatInputEvent active_inputs[
+        BONGO_CAT_INPUT_KEY_STATE_CAP + BONGO_CAT_INPUT_RECOVERY_CAP];
+    size_t active_input_count;
     uint32_t active_gamepad;
 } BongoCatApp;
 
 int bongo_cat_app_run(int argc, char **argv);
 void bongo_cat_app_apply_input(BongoCatApp *app, const BongoCatInputEvent *event);
+void bongo_cat_app_reapply_input(BongoCatApp *app);
 void bongo_cat_app_reset_gamepad(BongoCatApp *app);
 void bongo_cat_gamepad_event(BongoCatApp *app, const void *sdl_event);
 void bongo_cat_app_shortcuts(BongoCatApp *app, const BongoCatInputEvent *event);

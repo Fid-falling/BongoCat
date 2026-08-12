@@ -2,6 +2,7 @@
 #include "window_menu.h"
 #include "bongo_cat/i18n.h"
 #include "bongo_cat/preferences.h"
+#include "../ui/preferences_notice.h"
 
 #include <SDL3/SDL_opengl.h>
 #include <stdio.h>
@@ -101,6 +102,20 @@ static const char *tr(BongoCatApp *app, const char *key, const char *fallback) {
     return bongo_cat_i18n_get(app->i18n, key, fallback);
 }
 
+static bool select_model_action(BongoCatApp *app, const char *id) {
+    BongoCatError error = {0};
+    if (bongo_cat_app_select_model_with_error(app, id, &error)) return true;
+    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Model switch failed: %s",
+        error.message[0] ? error.message : "unknown error");
+    const char *message = tr(app, "native.modelLoadFailed",
+        "Unable to display this model");
+    if (app->preferences && bongo_cat_preferences_visible(app->preferences))
+        bongo_cat_preferences_notice_show(app, message, true);
+    else SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, BONGO_CAT_NAME,
+        message, app->window);
+    return false;
+}
+
 static void context_menu(BongoCatApp *app) {
     BongoCatWindowMenuPreview preview;
     bongo_cat_window_menu_preview_init(&preview, app);
@@ -177,7 +192,7 @@ void bongo_cat_window_menu_action(BongoCatApp *app, BongoCatMenuAction action) {
         action < BONGO_CAT_MENU_MODEL_FIRST + BONGO_CAT_MODEL_CAP) {
         size_t index = (size_t)(action - BONGO_CAT_MENU_MODEL_FIRST);
         if (index < app->models.count)
-            bongo_cat_app_select_model(app, app->models.entries[index].id);
+            select_model_action(app, app->models.entries[index].id);
     } else if (action == BONGO_CAT_MENU_EXIT) app->running = false;
     bongo_cat_preferences_invalidate(app->preferences);
 }

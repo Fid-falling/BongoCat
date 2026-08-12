@@ -8,6 +8,7 @@ typedef struct BongoCatMverPointerOverlay BongoCatMverPointerOverlay;
 BongoCatMverPointerOverlay *bongo_cat_mver_pointer_overlay_create(
     BongoCatError *error);
 void bongo_cat_mver_pointer_overlay_destroy(BongoCatMverPointerOverlay *value);
+void bongo_cat_mver_pointer_overlay_clear(BongoCatMverPointerOverlay *value);
 bool bongo_cat_mver_pointer_overlay_load(BongoCatMverPointerOverlay *value,
     const char *directory, BongoCatError *error);
 bool bongo_cat_mver_pointer_overlay_enabled(
