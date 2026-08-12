@@ -3,6 +3,7 @@
 #include "bongo_cat/image.h"
 #include "bongo_cat/path.h"
 #include "mver_pointer_overlay.h"
+#include <SDL3/SDL_log.h>
 #include <SDL3/SDL_opengl.h>
 #include <stdio.h>
 #include <stdlib.h>
