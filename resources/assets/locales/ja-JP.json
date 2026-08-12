@@ -79,7 +79,7 @@
           "nearbyModels": "近くのフォルダー"
         },
         "hints": {
-          "deleteSuccess": "削除しました",
+          "deleteSuccess": "「%s」を削除しました",
           "deleteModel": "「%s」を削除しますか？",
           "importSuccess": "インポートしました",
           "clickOrDragToImport": "クリックまたはここへドラッグしてインポート",

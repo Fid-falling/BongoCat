@@ -79,7 +79,7 @@
           "nearbyModels": "Dossiers voisins"
         },
         "hints": {
-          "deleteSuccess": "Suppression réussie",
+          "deleteSuccess": "« %s » a été supprimé",
           "deleteModel": "Voulez-vous vraiment supprimer \"%s\" ?",
           "importSuccess": "Importation réussie",
           "clickOrDragToImport": "Cliquez ou déposez ici pour importer",

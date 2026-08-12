@@ -79,7 +79,7 @@
           "nearbyModels": "附近資料夾"
         },
         "hints": {
-          "deleteSuccess": "刪除成功",
+          "deleteSuccess": "已刪除「%s」",
           "deleteModel": "您確定要刪除「%s」嗎？",
           "importSuccess": "匯入成功",
           "clickOrDragToImport": "點擊或拖曳至此區域匯入",

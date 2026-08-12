@@ -79,7 +79,7 @@
           "nearbyModels": "Соседние папки"
         },
         "hints": {
-          "deleteSuccess": "Успешно удалено",
+          "deleteSuccess": "Модель \"%s\" удалена",
           "deleteModel": "Удалить модель \"%s\"?",
           "importSuccess": "Успешно импортировано",
           "clickOrDragToImport": "Щёлкните или перетащите сюда для импорта",

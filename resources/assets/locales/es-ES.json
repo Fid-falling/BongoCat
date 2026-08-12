@@ -79,7 +79,7 @@
           "nearbyModels": "Carpetas cercanas"
         },
         "hints": {
-          "deleteSuccess": "Eliminado correctamente",
+          "deleteSuccess": "Se eliminó \"%s\"",
           "deleteModel": "¿Seguro que quiere eliminar \"%s\"?",
           "importSuccess": "Importado correctamente",
           "clickOrDragToImport": "Haga clic o arrastre aquí para importar",

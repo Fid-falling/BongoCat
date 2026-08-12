@@ -79,7 +79,7 @@
           "nearbyModels": "주변 폴더"
         },
         "hints": {
-          "deleteSuccess": "삭제 완료",
+          "deleteSuccess": "\"%s\" 모델을 삭제했습니다",
           "deleteModel": "\"%s\" 모델을 삭제하시겠습니까?",
           "importSuccess": "가져오기 완료",
           "clickOrDragToImport": "클릭하거나 여기로 끌어와 가져오기",

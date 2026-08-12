@@ -79,7 +79,7 @@
           "nearbyModels": "Nearby folders"
         },
         "hints": {
-          "deleteSuccess": "Deleted Successfully",
+          "deleteSuccess": "Deleted \"%s\"",
           "deleteModel": "Are you sure you want to delete \"%s\"?",
           "importSuccess": "Imported Successfully",
           "clickOrDragToImport": "Click or drag here to import",

@@ -79,7 +79,7 @@
           "nearbyModels": "Pastas próximas"
         },
         "hints": {
-          "deleteSuccess": "Excluído com sucesso",
+          "deleteSuccess": "Modelo \"%s\" excluído",
           "deleteModel": "Tem certeza de que deseja excluir \"%s\"?",
           "importSuccess": "Importação bem-sucedida",
           "clickOrDragToImport": "Clique ou arraste para importar",

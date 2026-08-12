@@ -79,7 +79,7 @@
           "nearbyModels": "Benachbarte Ordner"
         },
         "hints": {
-          "deleteSuccess": "Erfolgreich gelöscht",
+          "deleteSuccess": "\"%s\" wurde gelöscht",
           "deleteModel": "Möchten Sie \"%s\" wirklich löschen?",
           "importSuccess": "Erfolgreich importiert",
           "clickOrDragToImport": "Zum Importieren klicken oder hierher ziehen",

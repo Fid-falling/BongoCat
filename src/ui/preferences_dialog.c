@@ -118,9 +118,11 @@ static void remove_model(BongoCatApp *app) {
         &error) != BONGO_CAT_OK) {
         bongo_cat_preferences_notice_show(app, error.message, true);
     } else {
-        bongo_cat_preferences_notice_show(app, tr(app,
+        char message[sizeof(remove_dialog.model_name) + 128];
+        snprintf(message, sizeof(message), tr(app,
             "pages.preference.model.hints.deleteSuccess",
-            "Deleted successfully"), false);
+            "Deleted \"%s\""), remove_dialog.model_name);
+        bongo_cat_preferences_notice_show(app, message, false);
     }
     bongo_cat_preferences_remove_dialog_close(app);
 }
