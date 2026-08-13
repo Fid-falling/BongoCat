@@ -122,15 +122,17 @@ static void context_menu(BongoCatApp *app) {
     const char *model_names[BONGO_CAT_MODEL_CAP];
     size_t current_model = app->models.count;
     for (size_t i = 0; i < app->models.count; ++i) {
-        model_names[i] = app->models.entries[i].id;
+        model_names[i] = bongo_cat_model_name(&app->config,
+            &app->models.entries[i]);
         if (strcmp(app->models.entries[i].id, app->config.current_model) == 0)
             current_model = i;
     }
-    const char *motion_names[BONGO_CAT_BEHAVIOR_CAP];
-    const char *expression_names[BONGO_CAT_BEHAVIOR_CAP];
+    char motion_names[BONGO_CAT_BEHAVIOR_CAP][BONGO_CAT_MENU_LABEL_CAP];
+    char expression_names[BONGO_CAT_BEHAVIOR_CAP][BONGO_CAT_MENU_LABEL_CAP];
+    bool motion_checked[BONGO_CAT_BEHAVIOR_CAP] = {false};
     size_t motion_count, expression_count, current_expression;
-    bongo_cat_window_behavior_labels(app, motion_names, &motion_count,
-        expression_names, &expression_count, &current_expression);
+    bongo_cat_window_behavior_labels(app, motion_names, motion_checked,
+        &motion_count, expression_names, &expression_count, &current_expression);
     bool dark_theme = app->config.app.theme == BONGO_CAT_THEME_DARK ||
         (app->config.app.theme == BONGO_CAT_THEME_AUTO &&
             SDL_GetSystemTheme() == SDL_SYSTEM_THEME_DARK);
@@ -149,15 +151,18 @@ static void context_menu(BongoCatApp *app) {
         tr(app, "composables.useAppMenu.labels.motion", "Motions"),
         tr(app, "composables.useAppMenu.labels.expression", "Expressions"),
         model_names, motion_names, expression_names,
-        app->models.count, current_model, motion_count, expression_count,
-        current_expression,
+        motion_checked,
+        app->models.count, current_model, motion_count,
+        expression_count, current_expression,
         app->config.window.scale_percent, app->config.window.opacity_percent,
         app->config.window.pass_through, app->config.window.always_on_top,
         dark_theme,
         bongo_cat_window_menu_preview, bongo_cat_window_menu_preview_tick,
         bongo_cat_window_menu_restore, &preview};
     BongoCatMenuAction action = bongo_cat_platform_context_menu(&app->platform, &labels);
-    bongo_cat_window_menu_action(app, action);
+    if (bongo_cat_window_menu_preview_applied(&preview, action))
+        bongo_cat_preferences_invalidate(app->preferences);
+    else bongo_cat_window_menu_action(app, action);
 }
 
 void bongo_cat_window_show_context_menu(BongoCatApp *app) { context_menu(app); }

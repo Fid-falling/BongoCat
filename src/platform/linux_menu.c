@@ -197,9 +197,14 @@ BongoCatMenuAction bongo_cat_linux_context_menu(BongoCatPlatform *platform,
             (int)labels->model_count + 1, labels);
     } else if (action == LINUX_MENU_MOTIONS) {
         LinuxMenuRow rows[BONGO_CAT_BEHAVIOR_CAP];
-        for (size_t i = 0; i < labels->motion_count; ++i)
-            rows[i] = (LinuxMenuRow){labels->motion_names[i],
+        char text[BONGO_CAT_BEHAVIOR_CAP][BONGO_CAT_MENU_LABEL_CAP];
+        for (size_t i = 0; i < labels->motion_count; ++i) {
+            snprintf(text[i], sizeof(text[i]), "%s%s",
+                labels->motion_checked && labels->motion_checked[i] ? "[x] " : "",
+                labels->motion_names[i]);
+            rows[i] = (LinuxMenuRow){text[i],
                 BONGO_CAT_MENU_MOTION_FIRST + (int)i};
+        }
         action = popup_rows(display, owner, rows, (int)labels->motion_count, labels);
     } else if (action == LINUX_MENU_EXPRESSIONS) {
         LinuxMenuRow rows[BONGO_CAT_BEHAVIOR_CAP];

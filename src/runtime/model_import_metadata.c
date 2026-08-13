@@ -84,7 +84,7 @@ void bongo_cat_import_apply_metadata(BongoCatApp *app, const char *model_id,
                 snprintf(existing->label, sizeof(existing->label), "%s", label);
             continue;
         }
-        if (app->config.behavior_shortcut_count >= BONGO_CAT_BEHAVIOR_CAP) break;
+        if (app->config.behavior_shortcut_count >= BONGO_CAT_BEHAVIOR_BINDING_CAP) break;
         BongoCatBehaviorShortcut *value =
             &app->config.behavior_shortcuts[app->config.behavior_shortcut_count++];
         snprintf(value->id, sizeof(value->id), "%s", id);

@@ -135,9 +135,9 @@ static size_t behavior_indexes(const BongoCatApp *app, BongoCatBehaviorKind kind
     return count;
 }
 
-static bool lock_motion_matrix(FILE *file, BongoCatApp *app,
+static bool motion_replay_matrix(FILE *file, BongoCatApp *app,
     const BongoCatBehaviorEntry *entry, bool mver) {
-    BongoCatLive2DVisualState active = {0}, stable = {0}, reset = {0};
+    BongoCatLive2DVisualState active = {0}, stable = {0}, replayed = {0};
     if (!bongo_cat_live2d_start_motion(app->live2d, entry->group, entry->index))
         return false;
     advance(app, 1);
@@ -150,12 +150,12 @@ static bool lock_motion_matrix(FILE *file, BongoCatApp *app,
     if (!bongo_cat_live2d_start_motion(app->live2d, entry->group, entry->index))
         return false;
     advance(app, 1);
-    snprintf(label, sizeof(label), "motion-%d-reset", entry->index);
-    passed = record(file, app, label, !mver, &reset) && passed;
-    if (mver) passed = !active.fitted && !stable.fitted && !reset.fitted &&
+    snprintf(label, sizeof(label), "motion-%d-replayed", entry->index);
+    passed = record(file, app, label, !mver, &replayed) && passed;
+    if (mver) passed = !active.fitted && !stable.fitted && !replayed.fitted &&
         close_scale(active.fit_scale, 1.0f) &&
         close_scale(stable.fit_scale, 1.0f) &&
-        close_scale(reset.fit_scale, 1.0f) && passed;
+        close_scale(replayed.fit_scale, 1.0f) && passed;
     return passed;
 }
 
@@ -210,7 +210,7 @@ bool bongo_cat_live2d_visual_audit_run(BongoCatApp *app) {
             const BongoCatBehaviorEntry *entry = &app->behaviors.entries[i];
             if (entry->kind != BONGO_CAT_BEHAVIOR_MOTION ||
                 strstr(entry->group, "_lock") == NULL) continue;
-            passed = lock_motion_matrix(file, app, entry, true) && passed;
+            passed = motion_replay_matrix(file, app, entry, true) && passed;
         }
     }
     bongo_cat_live2d_set_dragging(app->live2d, 0.0f, 0.0f);

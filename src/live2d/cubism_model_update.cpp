@@ -11,7 +11,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
-
 namespace bongo_cat {
 
 void NativeModel::resize(int width, int height) {
@@ -165,14 +164,15 @@ bool NativeModel::parameter(const char *id, float *minimum, float *maximum, floa
 bool NativeModel::start_motion(const char *group, int index) {
     if (!group || index < 0) return false;
     std::string key = std::string(group) + "_" + std::to_string(index);
-    auto found = motions_.find(key);
+    bool selected = false;
+    std::string playback = motion_to_play(key, &selected);
+    auto found = motions_.find(playback);
     if (found == motions_.end()) return false;
-    if (lock_motions_.find(key) != lock_motions_.end())
-        return toggle_lock_motion(key, found->second);
     constexpr int priority = 2;
-    if (!_motionManager->ReserveMotion(priority)) return false;
-    _motionManager->StartMotionPriority(found->second, false, priority);
-    return true;
+    bool started = _motionManager->StartMotionPriority(found->second, false,
+        priority) != Csm::InvalidMotionQueueEntryHandleValue;
+    if (started) select_motion(key, selected);
+    return started;
 }
 
 void NativeModel::start_idle_motion() {
@@ -188,33 +188,99 @@ void NativeModel::start_idle_motion() {
         _motionManager->StartMotionPriority(found->second, false, priority);
 }
 
-bool NativeModel::toggle_lock_motion(const std::string &key,
-    Csm::ACubismMotion *motion) {
-    LockMotion &lock = lock_motions_.at(key);
-    if (lock.enabled) {
-        _motionManager->StopAllMotions();
-        _motionManager->UpdateMotion(_model, 0.0f);
-        for (size_t i = 0; i < lock.parameters.size(); ++i) {
-            int parameter = lock.parameters[i];
-            float value = lock.initial_values[i];
-            pending_parameter_values_[(size_t)parameter] = value;
-            pending_parameters_[(size_t)parameter] = 1;
-        }
-        lock.initial_values.clear();
-        lock.enabled = false;
-        external_parameters_dirty_ = true;
-        return true;
+void NativeModel::capture_motion_preview() {
+    if (!_model || motion_preview_active_) return;
+    const int parameter_count = _model->GetParameterCount();
+    std::vector<float> current_parameters((size_t)parameter_count);
+    for (int i = 0; i < parameter_count; ++i)
+        current_parameters[(size_t)i] = _model->GetParameterValue(i);
+    _model->LoadParameters();
+    motion_preview_parameters_.resize((size_t)parameter_count);
+    for (int i = 0; i < parameter_count; ++i) {
+        motion_preview_parameters_[(size_t)i] = _model->GetParameterValue(i);
+        _model->SetParameterValue(i, current_parameters[(size_t)i]);
     }
+    const int part_count = _model->GetPartCount();
+    motion_preview_parts_.resize((size_t)part_count);
+    for (int i = 0; i < part_count; ++i)
+        motion_preview_parts_[(size_t)i] = _model->GetPartOpacity(i);
+    motion_preview_opacity_ = _model->GetModelOpacity();
+    motion_preview_active_ = true;
+}
+
+void NativeModel::restore_motion_preview_state() {
+    if (!_model || !motion_preview_active_) return;
+    _motionManager->StopAllMotions();
+    const int parameter_count = _model->GetParameterCount();
+    for (int i = 0; i < parameter_count &&
+        (size_t)i < motion_preview_parameters_.size(); ++i) {
+        _model->SetParameterValue(i, motion_preview_parameters_[(size_t)i]);
+        pending_parameters_[(size_t)i] = 0;
+    }
+    _model->SaveParameters();
+    const int part_count = _model->GetPartCount();
+    for (int i = 0; i < part_count &&
+        (size_t)i < motion_preview_parts_.size(); ++i)
+        _model->SetPartOpacity(i, motion_preview_parts_[(size_t)i]);
+    _model->SetModelOpacity(motion_preview_opacity_);
+    _opacity = motion_preview_opacity_;
+    external_parameters_dirty_ = true;
+}
+
+bool NativeModel::preview_motion(const char *group, int index) {
+    if (!_model || !group || index < 0) return false;
+    if (motion_preview_active_) restore_motion_preview_state();
+    else capture_motion_preview();
+    std::string key = std::string(group) + "_" + std::to_string(index);
+    std::string playback = motion_to_play(key, &motion_preview_selected_);
+    auto found = motions_.find(playback);
+    if (found == motions_.end()) return false;
+    auto owner = motion_toggle_owners_.find(key);
+    motion_preview_key_ = owner == motion_toggle_owners_.end() ? key : owner->second;
     constexpr int priority = 2;
-    if (!_motionManager->ReserveMotion(priority)) return false;
-    lock.initial_values.reserve(lock.parameters.size());
-    for (int parameter : lock.parameters)
-        lock.initial_values.push_back(_model->GetParameterValue(parameter));
-    lock.enabled = true;
-    _motionManager->StartMotionPriority(motion, false, priority);
+    return _motionManager->StartMotionPriority(found->second, false, priority) !=
+        Csm::InvalidMotionQueueEntryHandleValue;
+}
+
+bool NativeModel::commit_motion_preview(const char *group, int index) {
+    if (!motion_preview_active_ || !group || index < 0) return false;
+    std::string key = std::string(group) + "_" + std::to_string(index);
+    auto owner = motion_toggle_owners_.find(key);
+    const std::string &canonical = owner == motion_toggle_owners_.end() ?
+        key : owner->second;
+    if (canonical != motion_preview_key_) return false;
+    select_motion(canonical, motion_preview_selected_);
+    motion_preview_parameters_.clear();
+    motion_preview_parts_.clear();
+    motion_preview_key_.clear();
+    motion_preview_active_ = false;
     return true;
 }
 
+bool NativeModel::restore_motion_preview() {
+    if (!motion_preview_active_) return false;
+    restore_motion_preview_state();
+    motion_preview_parameters_.clear();
+    motion_preview_parts_.clear();
+    motion_preview_key_.clear();
+    motion_preview_active_ = false;
+    return true;
+}
+
+bool NativeModel::motion_selected(const char *group, int index) const {
+    if (!group || index < 0) return false;
+    std::string key = std::string(group) + "_" + std::to_string(index);
+    auto owner = motion_toggle_owners_.find(key);
+    if (owner != motion_toggle_owners_.end()) key = owner->second;
+    return selected_motion_keys_.find(key) != selected_motion_keys_.end();
+}
+
+bool NativeModel::motion_visible(const char *group, int index) const {
+    if (!group || index < 0) return false;
+    std::string key = std::string(group) + "_" + std::to_string(index);
+    auto owner = motion_toggle_owners_.find(key);
+    return owner == motion_toggle_owners_.end() || owner->second == key;
+}
 bool NativeModel::set_expression(int index) {
     if (index == -1) {
         _expressionManager->StopAllMotions();
@@ -224,11 +290,11 @@ bool NativeModel::set_expression(int index) {
     if (index < 0 || (size_t)index >= expression_names_.size()) return false;
     auto found = expressions_.find(expression_names_[(size_t)index]);
     if (found == expressions_.end()) return false;
-    Csm::CubismMotionQueueEntryHandle handle =
-        _expressionManager->StartMotion(found->second, false);
+    _expressionManager->StopAllMotions();
+    Csm::CubismMotionQueueEntryHandle handle = _expressionManager->StartMotion(
+        found->second, false);
     if (handle == Csm::InvalidMotionQueueEntryHandleValue) return false;
     expression_index_ = index;
     return true;
 }
-
 } // namespace bongo_cat

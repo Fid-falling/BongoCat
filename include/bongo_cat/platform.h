@@ -62,8 +62,12 @@ typedef struct BongoCatMenuLabels {
     const char *preferences, *hide, *pass_through, *always_on_top;
     const char *window_size, *opacity, *model, *add_model, *exit;
     const char *wheel_size_hint, *wheel_opacity_hint, *motion, *expression;
-    const char *const *model_names, *const *motion_names, *const *expression_names;
-    size_t model_count, current_model, motion_count, expression_count, current_expression;
+    const char *const *model_names;
+    const char (*motion_names)[BONGO_CAT_MENU_LABEL_CAP];
+    const char (*expression_names)[BONGO_CAT_MENU_LABEL_CAP];
+    const bool *motion_checked;
+    size_t model_count, current_model, motion_count;
+    size_t expression_count, current_expression;
     float scale_percent, opacity_percent;
     bool pass_through_checked, always_on_top_checked, dark_theme;
     BongoCatMenuPreview preview;

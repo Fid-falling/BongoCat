@@ -11,6 +11,7 @@
 #include <Rendering/OpenGL/CubismRenderer_OpenGLES2.hpp>
 #include <SDL3/SDL_opengl.h>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -39,23 +40,34 @@ public:
     bool set_parameter(const char *id, float value);
     bool parameter(const char *id, float *minimum, float *maximum, float *value);
     bool start_motion(const char *group, int index);
+    bool preview_motion(const char *group, int index);
+    bool restore_motion_preview();
+    bool commit_motion_preview(const char *group, int index);
+    bool motion_selected(const char *group, int index) const;
+    bool motion_visible(const char *group, int index) const;
     bool set_expression(int index);
     int expression() const { return expression_index_; }
     bool visual_state(BongoCatLive2DVisualState *state) const;
 
-private:
+public:
     using MotionMap = std::map<std::string, Csm::ACubismMotion *>;
+    using MotionSignatures = std::map<std::string, std::string>;
+    struct MotionStateCurve {
+        std::string target, id;
+        float start = 0.0f, end = 0.0f;
+    };
+    struct MotionState {
+        std::string group;
+        int index = -1;
+        std::vector<MotionStateCurve> curves;
+    };
+private:
     struct ModelBounds {
         float min_x = 0.0f;
         float min_y = 0.0f;
         float max_x = 0.0f;
         float max_y = 0.0f;
         bool valid = false;
-    };
-    struct LockMotion {
-        std::vector<int> parameters;
-        std::vector<float> initial_values;
-        bool enabled = false;
     };
     bool load_model(BongoCatError *error);
     void load_expressions();
@@ -64,9 +76,13 @@ private:
     void start_idle_motion();
     ModelBounds capture_visible_bounds() const;
     void record_visible_state(Csm::CubismMatrix44 &projection);
-    void load_lock_motion(const std::string &key,
+    void capture_motion_preview();
+    void restore_motion_preview_state();
+    void load_motion_state(const std::string &key, const char *group, int index,
         const std::vector<unsigned char> &bytes);
-    bool toggle_lock_motion(const std::string &key, Csm::ACubismMotion *motion);
+    void pair_motion_states();
+    std::string motion_to_play(const std::string &key, bool *selected) const;
+    void select_motion(const std::string &key, bool selected);
     void release_textures();
     void release_renderer();
     void bind_textures();
@@ -76,7 +92,11 @@ private:
 
     Csm::CubismModelSettingJson *setting_ = nullptr;
     MotionMap motions_;
-    std::map<std::string, LockMotion> lock_motions_;
+    MotionSignatures motion_signatures_;
+    std::map<std::string, MotionState> motion_states_;
+    std::map<std::string, std::string> motion_toggle_partners_;
+    std::map<std::string, std::string> motion_toggle_owners_;
+    std::set<std::string> selected_motion_keys_;
     MotionMap expressions_;
     std::vector<std::string> expression_names_;
     std::vector<GLuint> textures_;
@@ -85,6 +105,8 @@ private:
     std::vector<float> part_snapshot_;
     std::vector<float> pending_parameter_values_;
     std::vector<unsigned char> pending_parameters_;
+    std::vector<float> motion_preview_parameters_;
+    std::vector<float> motion_preview_parts_;
     Csm::csmVector<Csm::CubismIdHandle> eye_blink_ids_;
     Csm::csmVector<Csm::CubismIdHandle> lip_sync_ids_;
     std::string directory_;
@@ -106,6 +128,10 @@ private:
     ViewerLookUpdater *viewer_look_ = nullptr;
     int last_idle_motion_ = -1;
     float opacity_snapshot_ = -1.0f;
+    float motion_preview_opacity_ = 1.0f;
+    std::string motion_preview_key_;
+    bool motion_preview_selected_ = false;
+    bool motion_preview_active_ = false;
 };
 
 } // namespace bongo_cat

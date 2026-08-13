@@ -1,5 +1,7 @@
 #include "model_import.h"
+#include "preferences_internal.h"
 #include "preferences_overlay.h"
+#include "preferences_state.h"
 #include "bongo_cat/json.h"
 #include "bongo_cat/path.h"
 
@@ -7,6 +9,7 @@
 #include <yyjson.h>
 
 static bool overlay_input_self_test(void);
+static bool overlay_chrome_self_test(void);
 
 const char *test_mver_pointer_config(bool live2d) {
     const char *prefix = "{\"decoration\":{\"l2d_correct\":1.987,"
@@ -40,7 +43,7 @@ bool test_mver_pointer_fixture_assets(const char *standard,
 }
 
 bool test_mver_pointer_adapter(const char *adapter, bool expected_enabled) {
-    if (!overlay_input_self_test()) return false;
+    if (!overlay_input_self_test() || !overlay_chrome_self_test()) return false;
     char path[BONGO_CAT_PATH_CAP];
     bool files = bongo_cat_path_join(path, sizeof(path), adapter,
         "resources/mver-pointer/arm.png") && bongo_cat_path_is_file(path) &&
@@ -74,9 +77,25 @@ static bool overlay_input_self_test(void) {
     left->clicked = 0;
     if (bongo_cat_preferences_overlay_input_ready(&context, &armed) || armed)
         return false;
-    left->down = nk_false;
+    left->down = nk_false; left->clicked = 1;
     if (bongo_cat_preferences_overlay_input_ready(&context, &armed) || !armed)
         return false;
-    left->down = nk_true; left->clicked = 1;
+    left->clicked = 2;
     return bongo_cat_preferences_overlay_input_ready(&context, &armed);
+}
+
+static bool overlay_chrome_self_test(void) {
+    BongoCatApp *app = SDL_calloc(1, sizeof(*app));
+    BongoCatPreferences *preferences = SDL_calloc(1, sizeof(*preferences));
+    bool passed = app && preferences;
+    if (passed) {
+        preferences->app = app;
+        passed = bongo_cat_preferences_chrome_drag_allowed(preferences);
+        preferences->behavior_dialog = true;
+        passed = passed &&
+            !bongo_cat_preferences_chrome_drag_allowed(preferences);
+    }
+    SDL_free(preferences);
+    SDL_free(app);
+    return passed;
 }

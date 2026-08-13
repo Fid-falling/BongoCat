@@ -46,14 +46,6 @@ static const char *mode_label(BongoCatApp *app, BongoCatModelMode mode) {
     return tr(app, "native.modeStandard", "Standard");
 }
 
-static const char *model_name(const BongoCatModelEntry *entry) {
-    if (!strcmp(entry->id, "standard")) return "Standard";
-    if (!strcmp(entry->id, "keyboard")) return "Keyboard";
-    if (!strcmp(entry->id, "gamepad")) return "Gamepad";
-    if (entry->display_name[0]) return entry->display_name;
-    return entry->id;
-}
-
 static void text(struct nk_context *context, struct nk_command_buffer *canvas,
     struct nk_rect bounds, const char *value, struct nk_color color,
     const struct nk_user_font *font) {
@@ -172,8 +164,10 @@ static void model_card(BongoCatPreferences *value, struct nk_context *context,
         nk_draw_image(canvas, image, &texture, nk_rgb(255, 255, 255));
     }
     float info_y = preview.y + preview.h + 8;
-    text(context, canvas, nk_rect(bounds.x + 13, info_y, bounds.w - 26, 22),
-        model_name(entry), p.text, value->ui.label_font);
+    struct nk_rect name_bounds = nk_rect(bounds.x + 9, info_y - 3,
+        bounds.w - 18, 28);
+    bool name_consumes_click = bongo_cat_preferences_model_name_draw(value,
+        context, canvas, entry, name_bounds, p);
     text(context, canvas, nk_rect(bounds.x + 13, info_y + 24, bounds.w - 26, 20),
         mode_label(app, entry->mode), p.muted, value->ui.caption_font);
     struct nk_rect actions = nk_rect(bounds.x + 1, bounds.y + bounds.h - 39,
@@ -211,7 +205,8 @@ static void model_card(BongoCatPreferences *value, struct nk_context *context,
         bongo_cat_ui_color_mix(p.border_subtle, p.accent, lift);
     nk_stroke_rect(canvas, outline, 14.0f - outline_width * .5f,
         outline_width, outline_color);
-    if (first_hover || second_hover || third_hover || hover)
+    if (!name_consumes_click &&
+        (first_hover || second_hover || third_hover || hover))
         bongo_cat_ui_cursor_hover_rect(context, bounds,
             BONGO_CAT_UI_CURSOR_POINTER);
     if (first_hover && nk_input_is_mouse_click_in_rect(&context->input,
@@ -224,8 +219,9 @@ static void model_card(BongoCatPreferences *value, struct nk_context *context,
     else if (third_hover && nk_input_is_mouse_click_in_rect(&context->input,
         NK_BUTTON_LEFT, third))
         bongo_cat_preferences_remove_dialog_open(app, entry->id);
-    else if (hover && nk_input_is_mouse_click_in_rect(&context->input,
-        NK_BUTTON_LEFT, bounds)) select_model(value, entry);
+    else if (!name_consumes_click && hover &&
+        nk_input_is_mouse_click_in_rect(
+        &context->input, NK_BUTTON_LEFT, bounds)) select_model(value, entry);
 }
 
 static bool is_builtin(const char *id) {
@@ -244,11 +240,11 @@ static void smoke_model_behavior(BongoCatPreferences *value) {
     if (app->smoke_preference_model_select) {
         for (size_t i = 0; i < app->models.count; ++i) {
             BongoCatModelEntry *entry = &app->models.entries[i];
-            if (!entry->managed || !strcmp(entry->id,
+            if (is_builtin(entry->id) || !strcmp(entry->id,
                 app->config.current_model)) continue;
             app->smoke_preference_model_select = false;
             value->smoke_behavior_open_pending = true;
-            SDL_Log("Preferences smoke selecting nearby model %s", entry->id);
+            SDL_Log("Preferences smoke selecting model %s", entry->id);
             select_model(value, entry);
             return;
         }

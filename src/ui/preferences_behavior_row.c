@@ -1,5 +1,4 @@
 #include "preferences_state.h"
-#include "preferences_notice.h"
 #include "preferences_overlay.h"
 #include "preferences_shortcut_clear.h"
 #include "ui_animation.h"
@@ -32,7 +31,7 @@ static BongoCatBehaviorShortcut *binding_for(BongoCatConfig *config,
     for (size_t i = 0; i < config->behavior_shortcut_count; ++i)
         if (!strcmp(config->behavior_shortcuts[i].id, id))
             return &config->behavior_shortcuts[i];
-    if (config->behavior_shortcut_count >= BONGO_CAT_BEHAVIOR_CAP) return NULL;
+    if (config->behavior_shortcut_count >= BONGO_CAT_BEHAVIOR_BINDING_CAP) return NULL;
     BongoCatBehaviorShortcut *binding =
         &config->behavior_shortcuts[config->behavior_shortcut_count++];
     memset(binding, 0, sizeof(*binding));
@@ -105,17 +104,23 @@ static void draw_name(BongoCatPreferences *value, struct nk_context *context,
             alpha(renaming ? p.pink : p.accent, opacity));
     }
     const char *shown = renaming ? value->behavior_rename_text : label;
-    text(canvas, nk_rect(bounds.x + 8, bounds.y + 9, bounds.w - 16, 21),
-        shown, value->ui.caption_font, alpha(p.text, opacity));
+    struct nk_rect text_bounds = nk_rect(bounds.x + 8,
+        bounds.y + 9, bounds.w - 16, 21);
+    if (renaming && value->behavior_rename_select_all)
+        nk_fill_rect(canvas, text_bounds, 4,
+            alpha(p.selection, opacity));
+    text(canvas, text_bounds, shown, value->ui.caption_font,
+        alpha(p.text, opacity));
     if (renaming) {
         value->behavior_rename_bounds = bounds;
         float caret = value->ui.caption_font->width(
             value->ui.caption_font->userdata, value->ui.caption_font->height,
-            shown, nk_strlen(shown));
+            shown, (int)value->behavior_rename_cursor);
         caret = NK_MIN(caret, bounds.w - 18);
-        nk_stroke_line(canvas, bounds.x + 8 + caret, bounds.y + 8,
-            bounds.x + 8 + caret, bounds.y + bounds.h - 8, 1,
-            alpha(p.pink, opacity));
+        if (!value->behavior_rename_select_all)
+            nk_stroke_line(canvas, bounds.x + 8 + caret, bounds.y + 8,
+                bounds.x + 8 + caret, bounds.y + bounds.h - 8, 1,
+                alpha(p.pink, opacity));
     } else if (hover) {
         bongo_cat_ui_cursor_hover_rect(context, bounds, BONGO_CAT_UI_CURSOR_TEXT);
         if (hit(context, bounds, enabled) && binding)
@@ -145,13 +150,8 @@ void bongo_cat_preferences_behavior_row_draw(BongoCatPreferences *value,
         alpha(play_hover ? p.accent : p.text, opacity));
     if (play_hover) bongo_cat_ui_cursor_hover_rect(context, play,
         BONGO_CAT_UI_CURSOR_POINTER);
-    if (hit(context, play, enabled)) {
-        const char *label = display_label(entry, binding);
+    if (hit(context, play, enabled))
         bongo_cat_app_run_behavior(value->app, entry);
-        char message[BONGO_CAT_ID_CAP + 5];
-        snprintf(message, sizeof(message), "%s \xE2\x9C\x93", label);
-        bongo_cat_preferences_notice_show(value->app, message, false);
-    }
     if (!binding) return;
     char id[BONGO_CAT_ID_CAP + 16];
     snprintf(id, sizeof(id), "behavior-%.*s", (int)sizeof(id) - 10, entry->id);

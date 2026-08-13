@@ -13,14 +13,11 @@
 #include <Motion/CubismPoseUpdater.hpp>
 #include <Motion/ICubismUpdater.hpp>
 #include <Physics/CubismPhysics.hpp>
-#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
 #include <new>
-#include <utility>
-#include <yyjson.h>
 
 namespace bongo_cat {
 
@@ -155,6 +152,11 @@ void NativeModel::load_effects() {
 
 void NativeModel::load_motions() {
     idle_motion_keys_.clear();
+    motion_signatures_.clear();
+    motion_states_.clear();
+    motion_toggle_partners_.clear();
+    motion_toggle_owners_.clear();
+    selected_motion_keys_.clear();
     for (int group_index = 0; group_index < setting_->GetMotionGroupCount(); ++group_index) {
         const char *group = setting_->GetMotionGroupName(group_index);
         for (int i = 0; i < setting_->GetMotionCount(group); ++i) {
@@ -167,36 +169,12 @@ void NativeModel::load_motions() {
             if (!motion) continue;
             motion->SetEffectIds(eye_blink_ids_, lip_sync_ids_);
             motions_[key] = motion;
+            load_motion_state(key, group, i, bytes);
             if (std::strcmp(group, "Idle") == 0) idle_motion_keys_.push_back(key);
-            size_t suffix = std::strlen(group);
-            if (suffix >= 5 && std::strcmp(group + suffix - 5, "_lock") == 0)
-                load_lock_motion(key, bytes);
         }
     }
+    pair_motion_states();
     _motionManager->StopAllMotions();
-}
-
-void NativeModel::load_lock_motion(const std::string &key,
-    const std::vector<unsigned char> &bytes) {
-    yyjson_doc *document = yyjson_read(
-        reinterpret_cast<const char *>(bytes.data()), bytes.size(), 0);
-    yyjson_val *root = document ? yyjson_doc_get_root(document) : nullptr;
-    yyjson_val *curves = yyjson_is_obj(root) ? yyjson_obj_get(root, "Curves") : nullptr;
-    LockMotion lock;
-    size_t index, count;
-    yyjson_val *curve;
-    if (yyjson_is_arr(curves)) yyjson_arr_foreach(curves, index, count, curve) {
-        const char *target = yyjson_get_str(yyjson_obj_get(curve, "Target"));
-        const char *id = yyjson_get_str(yyjson_obj_get(curve, "Id"));
-        if (!target || std::strcmp(target, "Parameter") != 0 || !id) continue;
-        Csm::CubismIdHandle handle = Csm::CubismFramework::GetIdManager()->GetId(id);
-        int parameter = _model->GetParameterIndex(handle);
-        if (parameter < 0 || parameter >= _model->GetParameterCount()) continue;
-        if (std::find(lock.parameters.begin(), lock.parameters.end(), parameter) ==
-            lock.parameters.end()) lock.parameters.push_back(parameter);
-    }
-    if (document) yyjson_doc_free(document);
-    if (!lock.parameters.empty()) lock_motions_[key] = std::move(lock);
 }
 
 bool NativeModel::load_textures(BongoCatError *error) {

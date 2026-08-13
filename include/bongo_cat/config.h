@@ -68,18 +68,25 @@ typedef struct BongoCatShortcutOptions {
 } BongoCatShortcutOptions;
 
 typedef struct BongoCatBehaviorShortcut {
-    char id[BONGO_CAT_PATH_CAP];
+    char id[BONGO_CAT_BEHAVIOR_ID_CAP];
     char shortcut[BONGO_CAT_SHORTCUT_CAP];
     char label[BONGO_CAT_ID_CAP];
 } BongoCatBehaviorShortcut;
+
+typedef struct BongoCatModelLabel {
+    char id[BONGO_CAT_ID_CAP];
+    char label[BONGO_CAT_ID_CAP];
+} BongoCatModelLabel;
 
 typedef struct BongoCatConfig {
     BongoCatModelOptions model;
     BongoCatWindowOptions window;
     BongoCatAppOptions app;
     BongoCatShortcutOptions shortcuts;
-    BongoCatBehaviorShortcut behavior_shortcuts[BONGO_CAT_BEHAVIOR_CAP];
+    BongoCatBehaviorShortcut behavior_shortcuts[BONGO_CAT_BEHAVIOR_BINDING_CAP];
     size_t behavior_shortcut_count;
+    BongoCatModelLabel model_labels[BONGO_CAT_MODEL_CAP];
+    size_t model_label_count;
     char current_model[BONGO_CAT_PATH_CAP];
     BongoCatModelMode current_mode;
 } BongoCatConfig;
@@ -92,6 +99,10 @@ void bongo_cat_config_defaults(BongoCatConfig *config);
 void bongo_cat_config_validate(BongoCatConfig *config);
 bool bongo_cat_config_shortcut_conflicts(const BongoCatConfig *config,
     const char *shortcut, const char *exclude);
+const char *bongo_cat_config_model_label(const BongoCatConfig *config,
+    const char *id);
+bool bongo_cat_config_set_model_label(BongoCatConfig *config,
+    const char *id, const char *label);
 BongoCatResult bongo_cat_preferences_load(const char *path,
     BongoCatConfig *config, BongoCatError *error);
 BongoCatResult bongo_cat_preferences_save(const char *path,

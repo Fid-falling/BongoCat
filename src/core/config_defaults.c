@@ -2,6 +2,7 @@
 #include "bongo_cat/utf8.h"
 
 #include <ctype.h>
+#include <stdio.h>
 #include <string.h>
 
 static float clampf(float value, float low, float high) {
@@ -31,6 +32,50 @@ bool bongo_cat_config_shortcut_conflicts(const BongoCatConfig *config,
         if (bound != exclude && shortcut_equal(bound, shortcut)) return true;
     }
     return false;
+}
+
+const char *bongo_cat_config_model_label(const BongoCatConfig *config,
+    const char *id) {
+    if (!config || !id) return NULL;
+    for (size_t i = 0; i < config->model_label_count; ++i)
+        if (!strcmp(config->model_labels[i].id, id))
+            return config->model_labels[i].label;
+    return NULL;
+}
+
+bool bongo_cat_config_set_model_label(BongoCatConfig *config,
+    const char *id, const char *label) {
+    if (!config || !id || !id[0]) return false;
+    size_t index = config->model_label_count;
+    for (size_t i = 0; i < config->model_label_count; ++i)
+        if (!strcmp(config->model_labels[i].id, id)) {
+            index = i; break;
+        }
+    if (!label || !label[0]) {
+        if (index == config->model_label_count) return false;
+        if (index + 1 < config->model_label_count)
+            memmove(&config->model_labels[index],
+                &config->model_labels[index + 1],
+                (config->model_label_count - index - 1) *
+                sizeof(config->model_labels[0]));
+        config->model_label_count--;
+        memset(&config->model_labels[config->model_label_count], 0,
+            sizeof(config->model_labels[0]));
+        return true;
+    }
+    if (index < config->model_label_count) {
+        if (!strcmp(config->model_labels[index].label, label)) return false;
+        snprintf(config->model_labels[index].label,
+            sizeof(config->model_labels[index].label), "%s", label);
+        return true;
+    }
+    if (config->model_label_count >= BONGO_CAT_MODEL_CAP) return false;
+    BongoCatModelLabel *value =
+        &config->model_labels[config->model_label_count++];
+    memset(value, 0, sizeof(*value));
+    snprintf(value->id, sizeof(value->id), "%s", id);
+    snprintf(value->label, sizeof(value->label), "%s", label);
+    return true;
 }
 
 static void validate_shortcuts(BongoCatConfig *config) {
@@ -93,10 +138,11 @@ void bongo_cat_config_validate(BongoCatConfig *config) {
         config->app.language = BONGO_CAT_LANG_EN_US;
     if (config->current_mode > BONGO_CAT_MODE_GAMEPAD) config->current_mode = BONGO_CAT_MODE_STANDARD;
     config->current_model[sizeof(config->current_model) - 1] = '\0';
-    if (config->behavior_shortcut_count > BONGO_CAT_BEHAVIOR_CAP)
-        config->behavior_shortcut_count = BONGO_CAT_BEHAVIOR_CAP;
+    if (config->behavior_shortcut_count > BONGO_CAT_BEHAVIOR_BINDING_CAP)
+        config->behavior_shortcut_count = BONGO_CAT_BEHAVIOR_BINDING_CAP;
     for (size_t i = 0; i < config->behavior_shortcut_count; ++i) {
-        config->behavior_shortcuts[i].id[BONGO_CAT_PATH_CAP - 1] = '\0';
+        config->behavior_shortcuts[i].id[
+            sizeof(config->behavior_shortcuts[i].id) - 1] = '\0';
         config->behavior_shortcuts[i].shortcut[BONGO_CAT_SHORTCUT_CAP - 1] = '\0';
         config->behavior_shortcuts[i].label[BONGO_CAT_ID_CAP - 1] = '\0';
         char normalized[BONGO_CAT_ID_CAP] = {0};
@@ -106,6 +152,18 @@ void bongo_cat_config_validate(BongoCatConfig *config) {
             memcpy(config->behavior_shortcuts[i].label, normalized,
                 sizeof(normalized));
         else config->behavior_shortcuts[i].label[0] = '\0';
+    }
+    if (config->model_label_count > BONGO_CAT_MODEL_CAP)
+        config->model_label_count = BONGO_CAT_MODEL_CAP;
+    for (size_t i = 0; i < config->model_label_count; ++i) {
+        config->model_labels[i].id[BONGO_CAT_ID_CAP - 1] = '\0';
+        config->model_labels[i].label[BONGO_CAT_ID_CAP - 1] = '\0';
+        char normalized[BONGO_CAT_ID_CAP] = {0};
+        if (config->model_labels[i].id[0] && bongo_cat_utf8_normalize_legacy(
+            config->model_labels[i].label, normalized, sizeof(normalized)))
+            memcpy(config->model_labels[i].label, normalized,
+                sizeof(normalized));
+        else config->model_labels[i].label[0] = '\0';
     }
     validate_shortcuts(config);
 }

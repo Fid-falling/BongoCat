@@ -52,6 +52,9 @@ BongoCatResult bongo_cat_models_scan(BongoCatModelCatalog *catalog, const char *
     bool preset, BongoCatError *error);
 const BongoCatModelEntry *bongo_cat_models_find(const BongoCatModelCatalog *catalog,
     const char *id);
+const char *bongo_cat_model_default_name(const BongoCatModelEntry *entry);
+const char *bongo_cat_model_name(const BongoCatConfig *config,
+    const BongoCatModelEntry *entry);
 BongoCatResult bongo_cat_behaviors_load(BongoCatBehaviorCatalog *catalog,
     const BongoCatModelEntry *model, BongoCatError *error);
 
@@ -102,6 +105,15 @@ bool bongo_cat_live2d_set_parameter(BongoCatLive2D *live2d, const char *id, floa
 bool bongo_cat_live2d_parameter(BongoCatLive2D *live2d, const char *id,
     BongoCatParameterRange *range);
 bool bongo_cat_live2d_start_motion(BongoCatLive2D *live2d, const char *group, int index);
+bool bongo_cat_live2d_preview_motion(BongoCatLive2D *live2d,
+    const char *group, int index);
+bool bongo_cat_live2d_restore_motion_preview(BongoCatLive2D *live2d);
+bool bongo_cat_live2d_commit_motion_preview(BongoCatLive2D *live2d,
+    const char *group, int index);
+bool bongo_cat_live2d_motion_selected(const BongoCatLive2D *live2d,
+    const char *group, int index);
+bool bongo_cat_live2d_motion_visible(const BongoCatLive2D *live2d,
+    const char *group, int index);
 bool bongo_cat_live2d_set_expression(BongoCatLive2D *live2d, int index);
 int bongo_cat_live2d_expression(const BongoCatLive2D *live2d);
 bool bongo_cat_live2d_visual_state(const BongoCatLive2D *live2d,

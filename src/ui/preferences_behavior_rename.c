@@ -1,4 +1,5 @@
 #include "preferences_state.h"
+#include "preferences_text_edit.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
@@ -9,7 +10,7 @@ static BongoCatBehaviorShortcut *binding_for(BongoCatConfig *config,
     for (size_t i = 0; i < config->behavior_shortcut_count; ++i)
         if (!strcmp(config->behavior_shortcuts[i].id, id))
             return &config->behavior_shortcuts[i];
-    if (config->behavior_shortcut_count >= BONGO_CAT_BEHAVIOR_CAP) return NULL;
+    if (config->behavior_shortcut_count >= BONGO_CAT_BEHAVIOR_BINDING_CAP) return NULL;
     BongoCatBehaviorShortcut *binding =
         &config->behavior_shortcuts[config->behavior_shortcut_count++];
     memset(binding, 0, sizeof(*binding));
@@ -54,6 +55,7 @@ void bongo_cat_preferences_behavior_rename_finish(
     }
     value->behavior_rename_id[0] = '\0';
     value->behavior_rename_text[0] = '\0';
+    value->behavior_rename_cursor = 0;
     value->behavior_rename_select_all = false;
     SDL_StopTextInput(value->window);
     if (label_changed) bongo_cat_preferences_reload_fonts(value);
@@ -69,60 +71,43 @@ void bongo_cat_preferences_behavior_rename_begin(BongoCatPreferences *value,
     snprintf(value->behavior_rename_text, sizeof(value->behavior_rename_text),
         "%s", display_label(entry, binding));
     value->behavior_rename_bounds = bounds;
-    value->behavior_rename_select_all = true;
+    bongo_cat_text_edit_begin(value->behavior_rename_text,
+        &value->behavior_rename_cursor, &value->behavior_rename_select_all);
     SDL_StartTextInput(value->window);
     value->render_dirty = true;
-}
-
-static void append_text(BongoCatPreferences *value, const char *text) {
-    if (!text) return;
-    if (value->behavior_rename_select_all) {
-        value->behavior_rename_text[0] = '\0';
-        value->behavior_rename_select_all = false;
-    }
-    size_t used = strlen(value->behavior_rename_text);
-    for (const char *source = text; *source;) {
-        nk_rune rune = 0;
-        int decoded = nk_utf_decode(source, &rune, (int)strlen(source));
-        if (decoded <= 0) { source++; continue; }
-        size_t bytes = (size_t)decoded;
-        if (used + bytes >= sizeof(value->behavior_rename_text)) break;
-        if (rune < 32) { source += bytes; continue; }
-        memcpy(value->behavior_rename_text + used, source, bytes);
-        used += bytes; source += bytes;
-    }
-    value->behavior_rename_text[used] = '\0';
-}
-
-static void erase_text(BongoCatPreferences *value, SDL_Keycode key) {
-    size_t length = strlen(value->behavior_rename_text);
-    if (value->behavior_rename_select_all) length = 0;
-    else if (length && key == SDLK_BACKSPACE) {
-        do length--; while (length &&
-            ((unsigned char)value->behavior_rename_text[length] & 0xc0) == 0x80);
-    }
-    value->behavior_rename_text[length] = '\0';
-    value->behavior_rename_select_all = false;
 }
 
 static void clipboard_event(BongoCatPreferences *value, SDL_Keycode key) {
     if (key == SDLK_V) {
         char *clipboard = SDL_GetClipboardText();
-        append_text(value, clipboard);
+        bongo_cat_text_edit_insert(value->behavior_rename_text,
+            sizeof(value->behavior_rename_text),
+            &value->behavior_rename_cursor,
+            &value->behavior_rename_select_all, clipboard);
         SDL_free(clipboard);
         return;
     }
     if (value->behavior_rename_select_all)
         SDL_SetClipboardText(value->behavior_rename_text);
     if (key == SDLK_X && value->behavior_rename_select_all)
-        value->behavior_rename_text[0] = '\0';
+        bongo_cat_text_edit_clear(value->behavior_rename_text,
+            &value->behavior_rename_cursor,
+            &value->behavior_rename_select_all);
+}
+
+static float measure(const void *userdata, const char *text, size_t length) {
+    const struct nk_user_font *font = userdata;
+    return font->width(font->userdata, font->height, text, (int)length);
 }
 
 bool bongo_cat_preferences_behavior_rename_event(
     BongoCatPreferences *value, const SDL_Event *event) {
     if (!value || !event || !value->behavior_rename_id[0]) return false;
     if (event->type == SDL_EVENT_TEXT_INPUT) {
-        append_text(value, event->text.text);
+        bongo_cat_text_edit_insert(value->behavior_rename_text,
+            sizeof(value->behavior_rename_text),
+            &value->behavior_rename_cursor,
+            &value->behavior_rename_select_all, event->text.text);
         value->render_dirty = true; return true;
     }
     if (event->type == SDL_EVENT_WINDOW_FOCUS_LOST) {
@@ -137,6 +122,15 @@ bool bongo_cat_preferences_behavior_rename_event(
             value->behavior_rename_bounds.y, value->behavior_rename_bounds.w,
             value->behavior_rename_bounds.h))
             bongo_cat_preferences_behavior_rename_finish(value, true);
+        else {
+            value->behavior_rename_cursor = bongo_cat_text_edit_nearest(
+                value->behavior_rename_text,
+                x - value->behavior_rename_bounds.x - 8.0f, measure,
+                value->ui.caption_font);
+            value->behavior_rename_select_all = false;
+            value->render_dirty = true;
+            return true;
+        }
         return false;
     }
     if (event->type != SDL_EVENT_KEY_DOWN &&
@@ -148,12 +142,24 @@ bool bongo_cat_preferences_behavior_rename_event(
         bongo_cat_preferences_behavior_rename_finish(value, false);
     else if (key == SDLK_RETURN || key == SDLK_KP_ENTER)
         bongo_cat_preferences_behavior_rename_finish(value, true);
-    else if (control && key == SDLK_A) value->behavior_rename_select_all = true;
+    else if (control && key == SDLK_A)
+        bongo_cat_text_edit_select_all(value->behavior_rename_text,
+            &value->behavior_rename_cursor,
+            &value->behavior_rename_select_all);
     else if (control && (key == SDLK_C || key == SDLK_X || key == SDLK_V))
         clipboard_event(value, key);
-    else if (key == SDLK_BACKSPACE || key == SDLK_DELETE) erase_text(value, key);
+    else if (key == SDLK_BACKSPACE || key == SDLK_DELETE)
+        bongo_cat_text_edit_erase(value->behavior_rename_text,
+            &value->behavior_rename_cursor,
+            &value->behavior_rename_select_all, key == SDLK_DELETE);
     else if (key == SDLK_LEFT || key == SDLK_RIGHT || key == SDLK_HOME ||
-        key == SDLK_END) value->behavior_rename_select_all = false;
+        key == SDLK_END)
+        bongo_cat_text_edit_move(value->behavior_rename_text,
+            &value->behavior_rename_cursor,
+            &value->behavior_rename_select_all,
+            key == SDLK_LEFT ? BONGO_CAT_TEXT_EDIT_LEFT :
+            key == SDLK_RIGHT ? BONGO_CAT_TEXT_EDIT_RIGHT :
+            key == SDLK_HOME ? BONGO_CAT_TEXT_EDIT_HOME : BONGO_CAT_TEXT_EDIT_END);
     value->render_dirty = true;
     return true;
 }

@@ -34,15 +34,19 @@ static bool hit(struct nk_context *context, struct nk_rect bounds, bool enabled)
     return enabled && nk_input_is_mouse_hovering_rect(&context->input, bounds) &&
         nk_input_is_mouse_click_in_rect(&context->input, NK_BUTTON_LEFT, bounds);
 }
-static bool matches(const BongoCatBehaviorEntry *entry, int tab) {
-    return tab == 0 ? entry->kind == BONGO_CAT_BEHAVIOR_MOTION :
-        entry->kind == BONGO_CAT_BEHAVIOR_EXPRESSION;
+static bool matches(const BongoCatPreferences *value,
+    const BongoCatBehaviorEntry *entry, int tab) {
+    if (tab == 0) return entry->kind == BONGO_CAT_BEHAVIOR_MOTION &&
+        bongo_cat_live2d_motion_visible(value->app->live2d,
+            entry->group, entry->index);
+    return entry->kind == BONGO_CAT_BEHAVIOR_EXPRESSION;
 }
 
 static size_t row_count(const BongoCatPreferences *value) {
     size_t count = 0;
     for (size_t i = 0; i < value->app->behaviors.count; ++i)
-        if (matches(&value->app->behaviors.entries[i], value->behavior_tab))
+        if (matches(value, &value->app->behaviors.entries[i],
+            value->behavior_tab))
             count++;
     return count;
 }
@@ -69,6 +73,7 @@ void bongo_cat_preferences_behavior_dialog_close(
     if (!value || !value->behavior_dialog || value->behavior_dialog_closing_ns)
         return;
     value->behavior_dialog_closing_ns = SDL_GetTicksNS();
+    bongo_cat_preferences_scrollbar_reset(&value->behavior_scrollbar);
     bongo_cat_preferences_behavior_rename_finish(value, true);
     bongo_cat_preferences_shortcut_cancel(value);
     value->render_dirty = true;
@@ -117,6 +122,8 @@ static void draw_segments(BongoCatPreferences *value,
             BONGO_CAT_UI_CURSOR_POINTER);
         if (hit(context, button, enabled) && value->behavior_tab != i) {
             value->behavior_tab = i;
+            bongo_cat_preferences_scrollbar_reset(
+                &value->behavior_scrollbar);
             value->behavior_tab_transition_ns = SDL_GetTicksNS();
             bongo_cat_preferences_shortcut_cancel(value);
         }
@@ -128,15 +135,21 @@ static void draw_rows(BongoCatPreferences *value, struct nk_context *context,
     BongoCatUIPalette p, float opacity, bool enabled, size_t count) {
     struct nk_rect viewport = nk_rect(panel.x + 20, panel.y + 144,
         panel.w - 40, panel.h - 164);
-    float maximum = NK_MAX(0.0f, count * 56.0f - viewport.h);
-    if (enabled && nk_input_is_mouse_hovering_rect(&context->input, viewport) &&
-        context->input.mouse.scroll_delta.y != 0) {
-        value->behavior_scroll[value->behavior_tab] = NK_CLAMP(0.0f,
-            value->behavior_scroll[value->behavior_tab] -
-            context->input.mouse.scroll_delta.y * 48.0f, maximum);
+    float content_height = count * 56.0f;
+    float maximum = NK_MAX(0.0f, content_height - viewport.h);
+    float saved_offset = value->behavior_scroll[value->behavior_tab];
+    BongoCatPreferencesScrollbarResult scroll =
+        bongo_cat_preferences_scrollbar_draw(context, canvas, viewport,
+            content_height, saved_offset, &value->behavior_scrollbar, p.accent,
+            opacity, enabled);
+    if (scroll.changed) {
+        value->behavior_scroll[value->behavior_tab] = scroll.offset;
         value->render_dirty = true;
     }
-    float offset = NK_CLAMP(0.0f, value->behavior_scroll[value->behavior_tab], maximum);
+    float offset = NK_CLAMP(0.0f, scroll.offset, maximum);
+    float render_offset = offset;
+    float row_width = bongo_cat_preferences_scrollbar_content_width(
+        viewport, content_height);
     float content_opacity = opacity;
     if (value->behavior_tab_transition_ns) {
         float progress = (float)(SDL_GetTicksNS() -
@@ -145,7 +158,8 @@ static void draw_rows(BongoCatPreferences *value, struct nk_context *context,
         else {
             float eased = bongo_cat_ui_ease(BONGO_CAT_UI_EASE_SWIFT,
                 NK_CLAMP(0.0f, progress, 1.0f));
-            content_opacity *= eased; offset += 5.0f * (1.0f - eased);
+            content_opacity *= eased;
+            render_offset += 5.0f * (1.0f - eased);
             value->render_dirty = true;
         }
     }
@@ -153,9 +167,9 @@ static void draw_rows(BongoCatPreferences *value, struct nk_context *context,
     size_t shown = 0;
     for (size_t i = 0; i < value->app->behaviors.count; ++i) {
         BongoCatBehaviorEntry *entry = &value->app->behaviors.entries[i];
-        if (!matches(entry, value->behavior_tab)) continue;
+        if (!matches(value, entry, value->behavior_tab)) continue;
         struct nk_rect row = nk_rect(viewport.x,
-            viewport.y + shown++ * 56.0f - offset, viewport.w, 56);
+            viewport.y + shown++ * 56.0f - render_offset, row_width, 56);
         if (row.y + row.h >= viewport.y && row.y <= viewport.y + viewport.h)
             bongo_cat_preferences_behavior_row_draw(value, context, canvas,
                 row, entry, p,

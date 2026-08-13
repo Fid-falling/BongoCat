@@ -79,12 +79,28 @@ static void read_behaviors(yyjson_val *array, BongoCatConfig *config) {
         const char *shortcut = get_string(item, "shortcut");
         const char *label = get_string(item, "label");
         if (!id || (!shortcut && !label) ||
-            config->behavior_shortcut_count >= BONGO_CAT_BEHAVIOR_CAP)
+            config->behavior_shortcut_count >= BONGO_CAT_BEHAVIOR_BINDING_CAP)
             continue;
         BongoCatBehaviorShortcut *entry =
             &config->behavior_shortcuts[config->behavior_shortcut_count++];
         copy_string(entry->id, sizeof(entry->id), id);
         copy_string(entry->shortcut, sizeof(entry->shortcut), shortcut);
+        copy_string(entry->label, sizeof(entry->label), label);
+    }
+}
+
+static void read_model_labels(yyjson_val *array, BongoCatConfig *config) {
+    if (!yyjson_is_arr(array)) return;
+    config->model_label_count = 0;
+    size_t index, count; yyjson_val *item;
+    yyjson_arr_foreach(array, index, count, item) {
+        const char *id = get_string(item, "id");
+        const char *label = get_string(item, "label");
+        if (!id || !id[0] || !label || !label[0] ||
+            config->model_label_count >= BONGO_CAT_MODEL_CAP) continue;
+        BongoCatModelLabel *entry =
+            &config->model_labels[config->model_label_count++];
+        copy_string(entry->id, sizeof(entry->id), id);
         copy_string(entry->label, sizeof(entry->label), label);
     }
 }
@@ -102,6 +118,7 @@ BongoCatResult bongo_cat_preferences_load(const char *path,
     read_app(yyjson_obj_get(root, "app"), &loaded.app);
     read_shortcuts(yyjson_obj_get(root, "shortcuts"), &loaded.shortcuts);
     read_behaviors(yyjson_obj_get(root, "behaviorShortcuts"), &loaded);
+    read_model_labels(yyjson_obj_get(root, "modelLabels"), &loaded);
     yyjson_doc_free(document);
     bongo_cat_config_validate(&loaded);
     *config = loaded;
@@ -157,6 +174,20 @@ static void write_behaviors(yyjson_mut_doc *doc, yyjson_mut_val *root,
     }
 }
 
+static void write_model_labels(yyjson_mut_doc *doc, yyjson_mut_val *root,
+    const BongoCatConfig *config) {
+    yyjson_mut_val *array = yyjson_mut_arr(doc);
+    yyjson_mut_obj_add_val(doc, root, "modelLabels", array);
+    for (size_t i = 0; i < config->model_label_count; ++i) {
+        const BongoCatModelLabel *value = &config->model_labels[i];
+        if (!value->id[0] || !value->label[0]) continue;
+        yyjson_mut_val *item = yyjson_mut_obj(doc);
+        yyjson_mut_obj_add_strcpy(doc, item, "id", value->id);
+        yyjson_mut_obj_add_strcpy(doc, item, "label", value->label);
+        yyjson_mut_arr_add_val(array, item);
+    }
+}
+
 BongoCatResult bongo_cat_preferences_save(const char *path,
     const BongoCatConfig *config, BongoCatError *error) {
     if (!path || !config) return BONGO_CAT_ERROR_ARGUMENT;
@@ -170,6 +201,7 @@ BongoCatResult bongo_cat_preferences_save(const char *path,
     write_app(doc, yyjson_mut_obj_add_obj(doc, root, "app"), &config->app);
     write_shortcuts(doc, yyjson_mut_obj_add_obj(doc, root, "shortcuts"), &config->shortcuts);
     write_behaviors(doc, root, config);
+    write_model_labels(doc, root, config);
     BongoCatResult result = bongo_cat_config_write_document(path, doc,
         "preferences file", error);
     yyjson_mut_doc_free(doc);

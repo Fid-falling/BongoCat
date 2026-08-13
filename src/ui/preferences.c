@@ -54,6 +54,7 @@ void bongo_cat_preferences_close(BongoCatPreferences *value) {
     bongo_cat_preferences_live_resize_uninstall(value);
     if (bongo_cat_preferences_behavior_dialog_active(value))
         bongo_cat_preferences_behavior_dialog_close(value);
+    bongo_cat_preferences_model_rename_finish(value, true);
     bongo_cat_preferences_shortcut_cancel(value);
     if (value->gl_context) SDL_GL_MakeCurrent(value->window, value->gl_context);
     if (value->ui_initialized && value->input_active)
@@ -135,6 +136,13 @@ static Uint32 event_window(const SDL_Event *event) {
     }
 }
 
+bool bongo_cat_preferences_chrome_drag_allowed(
+    const BongoCatPreferences *value) {
+    return value && value->app && !value->native_drag &&
+        !bongo_cat_preferences_behavior_dialog_active(value) &&
+        !bongo_cat_preferences_remove_dialog_active(value->app);
+}
+
 void bongo_cat_preferences_drag_tick(BongoCatPreferences *value) {
     if (!value || !value->window || !value->chrome_dragging) return;
     float pointer_x = 0.0f, pointer_y = 0.0f;
@@ -170,7 +178,15 @@ static bool chrome_event(BongoCatPreferences *value, const SDL_Event *event) {
         bongo_cat_preferences_close(value);
         return true;
     }
-    if (value->native_drag) return false;
+    if (!bongo_cat_preferences_chrome_drag_allowed(value)) {
+        if (event->type == SDL_EVENT_MOUSE_BUTTON_UP &&
+            event->button.button == SDL_BUTTON_LEFT && value->chrome_dragging) {
+            SDL_CaptureMouse(false);
+            value->chrome_dragging = false;
+            return true;
+        }
+        return false;
+    }
     if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
         event->button.button == SDL_BUTTON_LEFT) {
         int width = 0;
@@ -219,6 +235,7 @@ bool bongo_cat_preferences_event(BongoCatPreferences *value, const SDL_Event *ev
     if (value->app->smoke_input_audit && (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
         event->type == SDL_EVENT_MOUSE_BUTTON_UP)) SDL_Log("Preferences mouse %s at %.1f,%.1f",
             event->button.down ? "down" : "up", event->button.x, event->button.y);
+    if (bongo_cat_preferences_model_rename_event(value, event)) return true;
     if (bongo_cat_preferences_behavior_rename_event(value, event)) return true;
     if (bongo_cat_preferences_shortcut_event(value, event)) return true;
     if (event->type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {

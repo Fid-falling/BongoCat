@@ -30,11 +30,6 @@ static struct nk_color alpha(struct nk_color color, float amount) {
     return bongo_cat_preferences_overlay_alpha(color, amount);
 }
 
-static const char *model_name(const BongoCatModelEntry *entry) {
-    return entry && entry->display_name[0] ? entry->display_name :
-        (entry ? entry->id : "model");
-}
-
 static void text(struct nk_command_buffer *canvas, struct nk_rect bounds,
     const char *value, const struct nk_user_font *font, struct nk_color color) {
     nk_draw_text(canvas, bounds, value, nk_strlen(value), font,
@@ -66,7 +61,7 @@ void bongo_cat_preferences_remove_dialog_open(BongoCatApp *app,
     snprintf(remove_dialog.model_id, sizeof(remove_dialog.model_id), "%s", id);
     const BongoCatModelEntry *entry = bongo_cat_models_find(&app->models, id);
     snprintf(remove_dialog.model_name, sizeof(remove_dialog.model_name), "%s",
-        model_name(entry));
+        bongo_cat_model_name(&app->config, entry));
     remove_dialog.opened_ns = SDL_GetTicksNS();
     remove_dialog.closing_ns = 0;
     remove_dialog.input_armed = false;

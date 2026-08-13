@@ -44,7 +44,7 @@ if(EXISTS "${CUBISM_CORE_HEADER}")
     include(cmake/Cubism.cmake)
     set(BONGO_CAT_LIVE2D_SOURCES
       src/live2d/cubism_bridge.cpp src/live2d/cubism_model_load.cpp
-      src/live2d/cubism_model_update.cpp src/live2d/cubism_viewer_look.cpp
+      src/live2d/cubism_model_update.cpp src/live2d/cubism_motion_state.cpp src/live2d/cubism_viewer_look.cpp
       src/live2d/cubism_model_bounds.cpp
       src/live2d/cubism_model_validate.cpp)
     set(BONGO_CAT_CUBISM_ENABLED ON)
@@ -94,6 +94,8 @@ add_library(bongo_cat_runtime STATIC
   src/runtime/model_import_discovery.c
   src/runtime/model_import_format.c
   src/runtime/model_import_portable.c src/runtime/model_import_portable_scan.c
+  src/runtime/model_import_portable_identity.c
+  src/runtime/model_import_portable_migration.c
   src/runtime/model_import_mver_patch.c
   src/runtime/model_import_mver.c src/runtime/model_import_mver_image.c
   src/runtime/model_import_mver_shortcut.c src/runtime/model_import_mver_effect.c
@@ -117,9 +119,10 @@ add_library(bongo_cat_runtime STATIC
   src/ui/preferences_assets.c src/ui/preferences_about.c src/ui/preferences_about_community.c
   src/ui/preferences_live_resize.c
   src/ui/preferences_dialog.c src/ui/preferences_import.c src/ui/preferences_overlay.c
-  src/ui/preferences_behavior_dialog.c src/ui/preferences_behavior_rename.c src/ui/preferences_behavior_row.c
+  src/ui/preferences_behavior_dialog.c src/ui/preferences_behavior_rename.c src/ui/preferences_behavior_row.c src/ui/preferences_scrollbar.c
+  src/ui/preferences_text_edit.c
   src/ui/preferences_notice.c
-  src/ui/preferences_model.c src/ui/preferences_model_cover.c src/ui/preferences_model_glyphs.c
+  src/ui/preferences_model.c src/ui/preferences_model_rename.c src/ui/preferences_model_cover.c src/ui/preferences_model_glyphs.c
   src/ui/preferences_pages.c src/ui/preferences_theme.c
   src/ui/preferences_shortcuts.c src/ui/preferences_shortcut_clear.c src/ui/preferences_smoke.c
   src/ui/preferences_widgets.c src/ui/preferences_controls.c src/ui/preferences_combo.c src/ui/preferences_toggle.c
@@ -319,7 +322,7 @@ if(BUILD_TESTING)
   target_link_libraries(bongo_cat_mver_import_tests PRIVATE bongo_cat_runtime)
   target_compile_definitions(bongo_cat_mver_import_tests PRIVATE BONGO_CAT_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   if(MSVC)
-    set_property(SOURCE tests/test_mver_import.c tests/test_windows_capture.c APPEND PROPERTY COMPILE_OPTIONS "/experimental:c11atomics")
+    set_property(SOURCE tests/test_mver_import.c tests/test_mver_pointer_import.c tests/test_windows_capture.c APPEND PROPERTY COMPILE_OPTIONS "/experimental:c11atomics")
   endif()
   add_test(NAME model-import-unit COMMAND bongo_cat_mver_import_tests)
   if(WIN32)

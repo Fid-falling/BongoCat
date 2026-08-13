@@ -183,3 +183,19 @@ const BongoCatModelEntry *bongo_cat_models_find(const BongoCatModelCatalog *cata
     }
     return NULL;
 }
+
+const char *bongo_cat_model_default_name(const BongoCatModelEntry *entry) {
+    if (!entry) return "model";
+    if (entry->display_name[0]) return entry->display_name;
+    if (!strcmp(entry->id, "standard")) return "Standard";
+    if (!strcmp(entry->id, "keyboard")) return "Keyboard";
+    if (!strcmp(entry->id, "gamepad")) return "Gamepad";
+    return entry->id;
+}
+
+const char *bongo_cat_model_name(const BongoCatConfig *config,
+    const BongoCatModelEntry *entry) {
+    if (!entry) return "model";
+    const char *custom = bongo_cat_config_model_label(config, entry->id);
+    return custom && custom[0] ? custom : bongo_cat_model_default_name(entry);
+}

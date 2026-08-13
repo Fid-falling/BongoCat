@@ -1,5 +1,6 @@
 #include "test.h"
 #include "bongo_cat/config.h"
+#include "bongo_cat/model.h"
 #include "bongo_cat/file.h"
 #include "bongo_cat/path.h"
 #include "bongo_cat/utf8.h"
@@ -76,6 +77,10 @@ void test_config(void) {
         sizeof("keyboard:motion:Tap:0"));
     memcpy(value.behavior_shortcuts[0].shortcut, "Control+1", sizeof("Control+1"));
     memcpy(value.behavior_shortcuts[0].label, "Happy tap", sizeof("Happy tap"));
+    memcpy(value.model_labels[0].id, "mver-demo-standard",
+        sizeof("mver-demo-standard"));
+    memcpy(value.model_labels[0].label, "Lucia", sizeof("Lucia"));
+    value.model_label_count = 1;
 
     const char *preferences = "bongo-cat-\xE5\x81\x8F\xE5\xA5\xBD.json";
     const char *session = "bongo-cat-\xE4\xBC\x9A\xE8\xAF\x9D.json";
@@ -101,6 +106,20 @@ void test_config(void) {
     CHECK(loaded.behavior_shortcut_count == 1);
     CHECK(strcmp(loaded.behavior_shortcuts[0].shortcut, "Control+1") == 0);
     CHECK(strcmp(loaded.behavior_shortcuts[0].label, "Happy tap") == 0);
+    CHECK(loaded.model_label_count == 1);
+    CHECK(strcmp(bongo_cat_config_model_label(&loaded,
+        "mver-demo-standard"), "Lucia") == 0);
+    CHECK(strcmp(bongo_cat_model_name(&loaded,
+        &(BongoCatModelEntry){.id = "mver-demo-standard",
+        .display_name = "Nearby"}), "Lucia") == 0);
+    CHECK(bongo_cat_config_set_model_label(&loaded,
+        "mver-demo-standard", "New name"));
+    CHECK(strcmp(bongo_cat_config_model_label(&loaded,
+        "mver-demo-standard"), "New name") == 0);
+    CHECK(bongo_cat_config_set_model_label(&loaded,
+        "mver-demo-standard", ""));
+    CHECK(bongo_cat_config_model_label(&loaded,
+        "mver-demo-standard") == NULL);
 
     for (int language = 0; language < BONGO_CAT_LANG_COUNT; ++language) {
         value.app.language = (BongoCatLanguage)language;

@@ -56,10 +56,12 @@ static LRESULT CALLBACK borderless_window_proc(HWND window, UINT message,
         UINT id = LOWORD(wparam), flags = HIWORD(wparam);
         if (flags == 0xffff && !lparam) return CallWindowProcW(
             original ? original : DefWindowProcW, window, message, wparam, lparam);
-        if ((flags & (MF_POPUP | MF_SEPARATOR)) || !id)
+        if ((flags & (MF_POPUP | MF_SEPARATOR)) || !id) {
             menu->preview(menu->userdata, BONGO_CAT_MENU_NONE);
-        else
-            menu->preview(menu->userdata, (BongoCatMenuAction)id);
+        } else {
+            BongoCatMenuAction action = (BongoCatMenuAction)id;
+            menu->preview(menu->userdata, action);
+        }
     } else if (message == WM_TIMER &&
         wparam == BONGO_CAT_MENU_PREVIEW_TIMER && menu && menu->tick) {
         menu->tick(menu->userdata);

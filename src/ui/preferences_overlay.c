@@ -12,7 +12,7 @@ bool bongo_cat_preferences_overlay_input_ready(struct nk_context *context,
     if (*armed) return true;
     const struct nk_mouse_button *left =
         &context->input.mouse.buttons[NK_BUTTON_LEFT];
-    if (!left->down && !left->clicked) *armed = true;
+    if (!left->down) *armed = true;
     return false;
 }
 

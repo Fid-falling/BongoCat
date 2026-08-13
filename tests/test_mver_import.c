@@ -2,6 +2,7 @@
 #include "model_storage.h"
 #include "preferences_model_glyphs.h"
 #include "preferences_state.h"
+#include "preferences_text_edit.h"
 #include "ui_font_atlas.h"
 #include "runtime.h"
 #include "bongo_cat/file.h"
@@ -22,6 +23,45 @@ static int failures;
 const char *test_mver_pointer_config(bool live2d);
 bool test_mver_pointer_fixture_assets(const char *standard, const char *source);
 bool test_mver_pointer_adapter(const char *adapter, bool expected_enabled);
+
+static float fixed_width(const void *userdata, const char *text, size_t length) {
+    (void)userdata; (void)text; return (float)length;
+}
+
+static void rename_text_edit(void) {
+    char text[32] = "A\xE4\xB8\xAD" "B";
+    size_t cursor = 0;
+    bool selected = false;
+    bongo_cat_text_edit_begin(text, &cursor, &selected);
+    CHECK(cursor == 5 && !selected);
+    CHECK(bongo_cat_text_edit_move(text, &cursor, &selected,
+        BONGO_CAT_TEXT_EDIT_LEFT));
+    CHECK(cursor == 4);
+    CHECK(bongo_cat_text_edit_insert(text, sizeof(text), &cursor, &selected,
+        "\xE6\x96\xB0"));
+    CHECK(strcmp(text, "A\xE4\xB8\xAD\xE6\x96\xB0" "B") == 0 &&
+        cursor == 7);
+    CHECK(bongo_cat_text_edit_erase(text, &cursor, &selected, false));
+    CHECK(strcmp(text, "A\xE4\xB8\xAD" "B") == 0 && cursor == 4);
+    CHECK(bongo_cat_text_edit_move(text, &cursor, &selected,
+        BONGO_CAT_TEXT_EDIT_HOME));
+    CHECK(bongo_cat_text_edit_erase(text, &cursor, &selected, true));
+    CHECK(strcmp(text, "\xE4\xB8\xAD" "B") == 0 && cursor == 0);
+    CHECK(bongo_cat_text_edit_move(text, &cursor, &selected,
+        BONGO_CAT_TEXT_EDIT_RIGHT));
+    CHECK(cursor == 3);
+    CHECK(bongo_cat_text_edit_nearest(text, 1.4f, fixed_width, NULL) == 0);
+    CHECK(bongo_cat_text_edit_nearest(text, 1.6f, fixed_width, NULL) == 3);
+    bongo_cat_text_edit_select_all(text, &cursor, &selected);
+    CHECK(selected && cursor == strlen(text));
+    CHECK(bongo_cat_text_edit_insert(text, sizeof(text), &cursor, &selected,
+        "\xE6\x9B\xBF\xE6\x8D\xA2"));
+    CHECK(strcmp(text, "\xE6\x9B\xBF\xE6\x8D\xA2") == 0 &&
+        cursor == 6 && !selected);
+    bongo_cat_text_edit_select_all(text, &cursor, &selected);
+    CHECK(bongo_cat_text_edit_erase(text, &cursor, &selected, false));
+    CHECK(text[0] == '\0' && cursor == 0 && !selected);
+}
 
 static bool chord(const char *json, bool gamepad, const char *expected) {
     yyjson_doc *document = yyjson_read(json, strlen(json), 0);
@@ -199,6 +239,78 @@ static bool portable_fixture(const char *root) {
     return test_mver_pointer_fixture_assets(standard, source);
 }
 
+static void portable_identity_migration(void) {
+    char *temporary = SDL_GetCurrentDirectory();
+    CHECK(temporary != NULL);
+    if (!temporary) return;
+    char root[BONGO_CAT_PATH_CAP], data[BONGO_CAT_PATH_CAP];
+    char source[BONGO_CAT_PATH_CAP], moved[BONGO_CAT_PATH_CAP];
+    char again[BONGO_CAT_PATH_CAP], duplicate[BONGO_CAT_PATH_CAP];
+    unsigned long long nonce = (unsigned long long)SDL_GetTicksNS();
+    snprintf(root, sizeof(root), "%s/bongo-cat-portable-move-%llu",
+        temporary, nonce);
+    snprintf(data, sizeof(data), "%s/bongo-cat-portable-data-%llu",
+        temporary, nonce);
+    CHECK(SDL_CreateDirectory(root));
+    CHECK(SDL_CreateDirectory(data));
+    CHECK(child(source, sizeof(source), root, "source", false));
+    CHECK(child(moved, sizeof(moved), root, "moved", false));
+    CHECK(child(again, sizeof(again), root, "again", false));
+    CHECK(child(duplicate, sizeof(duplicate), root, "duplicate", false));
+    CHECK(portable_fixture(source));
+    BongoCatApp *app = calloc(1, sizeof(*app));
+    CHECK(app != NULL);
+    if (!app) goto cleanup;
+    bongo_cat_config_defaults(&app->config);
+    bongo_cat_models_init(&app->models);
+    snprintf(app->data_root, sizeof(app->data_root), "%s", data);
+    BongoCatError error = {0};
+    CHECK(bongo_cat_import_portable_mver(app, source, &error) == BONGO_CAT_OK);
+    CHECK(app->models.count == 1);
+    char old_id[BONGO_CAT_ID_CAP];
+    snprintf(old_id, sizeof(old_id), "%s", app->models.entries[0].id);
+    CHECK(bongo_cat_config_set_model_label(&app->config, old_id,
+        "Portable custom name"));
+    BongoCatBehaviorShortcut *binding =
+        &app->config.behavior_shortcuts[app->config.behavior_shortcut_count++];
+    snprintf(binding->id, sizeof(binding->id), "%s:expression:2", old_id);
+    snprintf(binding->shortcut, sizeof(binding->shortcut), "Alt+3");
+    snprintf(binding->label, sizeof(binding->label), "Custom expression");
+    CHECK(bongo_cat_path_rename(source, moved));
+    bongo_cat_models_init(&app->models);
+    CHECK(bongo_cat_import_portable_mver(app, moved, &error) == BONGO_CAT_OK);
+    CHECK(app->models.count == 1);
+    const char *new_id = app->models.entries[0].id;
+    CHECK(strcmp(old_id, new_id) != 0);
+    CHECK(strcmp(app->config.current_model, new_id) == 0);
+    CHECK(strcmp(bongo_cat_config_model_label(&app->config, new_id),
+        "Portable custom name") == 0);
+    CHECK(bongo_cat_config_model_label(&app->config, old_id) == NULL);
+    CHECK(app->config.behavior_shortcut_count == 1);
+    CHECK(strncmp(app->config.behavior_shortcuts[0].id, new_id,
+        strlen(new_id)) == 0);
+    CHECK(strcmp(app->config.behavior_shortcuts[0].shortcut, "Alt+3") == 0);
+    CHECK(strcmp(app->config.behavior_shortcuts[0].label,
+        "Custom expression") == 0);
+    char ambiguous_id[BONGO_CAT_ID_CAP];
+    snprintf(ambiguous_id, sizeof(ambiguous_id), "%s", new_id);
+    CHECK(bongo_cat_config_set_model_label(&app->config, ambiguous_id,
+        "Must remain here"));
+    CHECK(bongo_cat_path_rename(moved, again));
+    CHECK(portable_fixture(duplicate));
+    bongo_cat_models_init(&app->models);
+    CHECK(bongo_cat_import_portable_mver(app, root, &error) == BONGO_CAT_OK);
+    CHECK(app->models.count == 2);
+    CHECK(strcmp(app->config.current_model, ambiguous_id) == 0);
+    CHECK(strcmp(bongo_cat_config_model_label(&app->config, ambiguous_id),
+        "Must remain here") == 0);
+    free(app);
+cleanup:
+    CHECK(bongo_cat_model_remove_tree(root, NULL));
+    CHECK(bongo_cat_model_remove_tree(data, NULL));
+    SDL_free(temporary);
+}
+
 static void portable_model(void) {
     char root[BONGO_CAT_PATH_CAP], package[BONGO_CAT_PATH_CAP];
     char data[BONGO_CAT_PATH_CAP], mode[BONGO_CAT_PATH_CAP];
@@ -312,6 +424,7 @@ static void portable_model(void) {
 }
 
 int main(void) {
+    rename_text_edit();
     CHECK(chord("[17,65]", true, "Control+A"));
     CHECK(chord("[0]", true, "Gamepad:South"));
     CHECK(chord("[15]", true, "Gamepad:Select"));
@@ -329,6 +442,7 @@ int main(void) {
     metadata_backfills_labels();
     behavior_labels_add_font_glyphs();
     font_reload_defers_during_frame();
+    portable_identity_migration();
     portable_model();
     return failures ? 1 : 0;
 }

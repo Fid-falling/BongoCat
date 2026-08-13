@@ -34,7 +34,7 @@ void bongo_cat_preferences_model_glyphs(const BongoCatApp *app,
     for (size_t i = 0; i < app->models.count; ++i) {
         const BongoCatModelEntry *entry = &app->models.entries[i];
         add_text(ranges, capacity, &used,
-            entry->display_name[0] ? entry->display_name : entry->id);
+            bongo_cat_model_name(&app->config, entry));
     }
     for (size_t i = 0; i < app->behaviors.count; ++i)
         add_text(ranges, capacity, &used, app->behaviors.entries[i].label);

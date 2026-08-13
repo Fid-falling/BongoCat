@@ -29,6 +29,9 @@ static uint64_t preferences_hash(const BongoCatConfig *config) {
     HASH_FIELD(config->behavior_shortcut_count);
     hash = hash_bytes(hash, config->behavior_shortcuts,
         config->behavior_shortcut_count * sizeof(config->behavior_shortcuts[0]));
+    HASH_FIELD(config->model_label_count);
+    hash = hash_bytes(hash, config->model_labels,
+        config->model_label_count * sizeof(config->model_labels[0]));
 #undef HASH_FIELD
     return hash;
 }

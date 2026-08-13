@@ -2,6 +2,7 @@
 #define BONGO_CAT_PREFERENCES_STATE_H
 
 #include "preferences_internal.h"
+#include "preferences_scrollbar.h"
 #include "ui_backend.h"
 #include "bongo_cat/i18n.h"
 #include "bongo_cat/preferences.h"
@@ -61,10 +62,17 @@ struct BongoCatPreferences {
     uint64_t behavior_dialog_closing_ns;
     uint64_t behavior_tab_transition_ns;
     float behavior_scroll[2];
+    BongoCatPreferencesScrollbar behavior_scrollbar;
     char behavior_rename_id[BONGO_CAT_PATH_CAP];
     char behavior_rename_text[BONGO_CAT_ID_CAP];
     struct nk_rect behavior_rename_bounds;
+    size_t behavior_rename_cursor;
     bool behavior_rename_select_all;
+    char model_rename_id[BONGO_CAT_ID_CAP];
+    char model_rename_text[BONGO_CAT_ID_CAP];
+    struct nk_rect model_rename_bounds;
+    size_t model_rename_cursor;
+    bool model_rename_select_all;
     bool native_drag;
     bool chrome_dragging;
     bool live_resize_active;

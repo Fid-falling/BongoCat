@@ -75,11 +75,17 @@ BongoCatMenuAction bongo_cat_platform_context_menu(BongoCatPlatform *platform,
     menu_text(opacity, MF_STRING | MF_DISABLED | MF_GRAYED, 0,
         labels->wheel_opacity_hint);
     for (size_t i = 0; i < labels->motion_count; ++i)
-        menu_text(motions, MF_STRING, BONGO_CAT_MENU_MOTION_FIRST + i,
+        menu_text(motions, MF_STRING |
+            (labels->motion_checked && labels->motion_checked[i] ? MF_CHECKED : 0),
+            BONGO_CAT_MENU_MOTION_FIRST + i,
             labels->motion_names[i]);
     for (size_t i = 0; i < labels->expression_count; ++i)
-        menu_text(expressions, MF_STRING | (i == labels->current_expression ? MF_CHECKED : 0),
-            BONGO_CAT_MENU_EXPRESSION_FIRST + i, labels->expression_names[i]);
+        menu_text(expressions, MF_STRING, BONGO_CAT_MENU_EXPRESSION_FIRST + i,
+            labels->expression_names[i]);
+    if (labels->current_expression < labels->expression_count)
+        CheckMenuItem(expressions,
+            (UINT)(BONGO_CAT_MENU_EXPRESSION_FIRST + labels->current_expression),
+            MF_BYCOMMAND | MF_CHECKED);
     for (size_t i = 0; i < labels->model_count; ++i)
         menu_text(models, MF_STRING | (i == labels->current_model ? MF_CHECKED : 0),
             BONGO_CAT_MENU_MODEL_FIRST + i, labels->model_names[i]);

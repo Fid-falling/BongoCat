@@ -24,7 +24,10 @@ static int preview_group(const BongoCatApp *app, BongoCatMenuAction action) {
     if (action >= BONGO_CAT_MENU_OPACITY_10 &&
         action <= BONGO_CAT_MENU_OPACITY_100) return 2;
     if (menu_model(app, action)) return 3;
-    if (bongo_cat_window_behavior_menu_action(action)) return 4;
+    if (action >= BONGO_CAT_MENU_MOTION_FIRST &&
+        action < BONGO_CAT_MENU_MOTION_FIRST + BONGO_CAT_BEHAVIOR_CAP) return 4;
+    if (action >= BONGO_CAT_MENU_EXPRESSION_FIRST &&
+        action < BONGO_CAT_MENU_EXPRESSION_FIRST + BONGO_CAT_BEHAVIOR_CAP) return 5;
     return 0;
 }
 
@@ -35,7 +38,7 @@ void bongo_cat_window_menu_preview_init(BongoCatWindowMenuPreview *state,
         .scale = app ? app->config.window.scale_percent : 100.0f,
         .opacity = app ? app->config.window.opacity_percent : 100.0f,
         .expression = app ? bongo_cat_live2d_expression(app->live2d) : -1,
-        .last = BONGO_CAT_MENU_NONE};
+        .last = BONGO_CAT_MENU_NONE, .applied = BONGO_CAT_MENU_NONE};
     bongo_cat_modal_frame_init(&state->modal_frame, app);
     if (app) snprintf(state->model, sizeof(state->model), "%.*s",
         (int)sizeof(state->model) - 1, app->config.current_model);
@@ -83,7 +86,12 @@ void bongo_cat_window_menu_preview(void *userdata, BongoCatMenuAction action) {
             (float)(10 * (action - BONGO_CAT_MENU_OPACITY_10 + 1));
         bongo_cat_platform_set_opacity(&app->platform,
             app->config.window.opacity_percent / 100.0f);
-    } else if (bongo_cat_window_behavior_action(app, action)) {
+    } else if (action == state->applied &&
+        bongo_cat_window_behavior_menu_action(action)) {
+        bongo_cat_modal_frame_tick(&state->modal_frame);
+        return;
+    } else if (bongo_cat_window_behavior_preview(app, action)) {
+        state->applied = action;
         bongo_cat_modal_frame_tick(&state->modal_frame);
         return;
     }
@@ -100,6 +108,17 @@ void bongo_cat_window_menu_restore(void *userdata, BongoCatMenuAction selected) 
     if (!state || !state->app) return;
     BongoCatApp *app = state->app;
     bool changed = false;
+    bool keep_motion = selected >= BONGO_CAT_MENU_MOTION_FIRST &&
+        selected < BONGO_CAT_MENU_MOTION_FIRST + BONGO_CAT_BEHAVIOR_CAP;
+    bool committed_motion = keep_motion &&
+        bongo_cat_window_behavior_commit_preview(app, selected);
+    if (!committed_motion && bongo_cat_live2d_restore_motion_preview(app->live2d)) {
+        state->applied = BONGO_CAT_MENU_NONE;
+        changed = true;
+    }
+    if (committed_motion) { state->applied = selected; changed = true; }
+    if (selected == BONGO_CAT_MENU_NONE)
+        state->applied = BONGO_CAT_MENU_NONE;
     bool keep_model = menu_model(app, selected) != NULL;
     bool keep_scale = selected >= BONGO_CAT_MENU_SCALE_50 &&
         selected <= BONGO_CAT_MENU_SCALE_200;
@@ -136,4 +155,10 @@ void bongo_cat_window_menu_restore(void *userdata, BongoCatMenuAction selected) 
         changed = true;
     }
     if (changed) bongo_cat_app_render_now(app);
+}
+
+bool bongo_cat_window_menu_preview_applied(
+    const BongoCatWindowMenuPreview *state, BongoCatMenuAction selected) {
+    return state && bongo_cat_window_behavior_menu_action(selected) &&
+        state->applied == selected;
 }

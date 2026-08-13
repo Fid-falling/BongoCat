@@ -25,6 +25,16 @@ void bongo_cat_preferences_behavior_rename_begin(BongoCatPreferences *value,
     struct nk_rect bounds);
 void bongo_cat_preferences_behavior_rename_finish(
     BongoCatPreferences *value, bool save);
+bool bongo_cat_preferences_model_rename_event(
+    BongoCatPreferences *value, const SDL_Event *event);
+void bongo_cat_preferences_model_rename_begin(BongoCatPreferences *value,
+    const BongoCatModelEntry *entry, struct nk_rect bounds);
+void bongo_cat_preferences_model_rename_finish(
+    BongoCatPreferences *value, bool save);
+bool bongo_cat_preferences_model_name_draw(BongoCatPreferences *value,
+    struct nk_context *context, struct nk_command_buffer *canvas,
+    const BongoCatModelEntry *entry, struct nk_rect bounds,
+    BongoCatUIPalette palette);
 void bongo_cat_preferences_behavior_row_draw(BongoCatPreferences *value,
     struct nk_context *context, struct nk_command_buffer *canvas,
     struct nk_rect row, BongoCatBehaviorEntry *entry, BongoCatUIPalette palette,
@@ -52,6 +62,8 @@ void bongo_cat_preferences_remove_dialog_draw(BongoCatApp *app,
     struct nk_context *context);
 void bongo_cat_preferences_remove_dialog_clear(const BongoCatApp *app);
 void bongo_cat_preferences_remove_dialog_close(BongoCatApp *app);
+bool bongo_cat_preferences_chrome_drag_allowed(
+    const BongoCatPreferences *value);
 
 typedef struct BongoCatImportDialog BongoCatImportDialog;
 BongoCatImportDialog *bongo_cat_preferences_import_create(void);
