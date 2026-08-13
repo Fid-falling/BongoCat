@@ -1,47 +1,11 @@
-#include "bongo_cat/overlay.h"
-#include "bongo_cat/gl_api.h"
+#include "overlay_internal.h"
 #include "bongo_cat/image.h"
 #include "bongo_cat/path.h"
-#include "mver_pointer_overlay.h"
 #include <SDL3/SDL_log.h>
 #include <SDL3/SDL_opengl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-typedef struct TextureSlot {
-    char path[BONGO_CAT_PATH_CAP];
-    GLuint texture;
-    uint64_t used;
-} TextureSlot;
-struct BongoCatOverlay {
-    BongoCatGL gl;
-    BongoCatMverPointerOverlay *mver_pointer;
-    GLuint program;
-    GLint mirror_location;
-    GLint image_location;
-    GLint erase_left_location;
-    GLint erase_right_location;
-    GLuint vao;
-    GLuint vbo;
-    GLuint background;
-    GLuint composite;
-    bool composed_cover;
-    bool clean_paws;
-    bool composite_dirty;
-    TextureSlot cache[4];
-    GLuint left;
-    GLuint right;
-    GLuint effect;
-    char left_name[BONGO_CAT_ID_CAP];
-    char right_name[BONGO_CAT_ID_CAP];
-    char background_path[BONGO_CAT_PATH_CAP];
-    char left_path[BONGO_CAT_PATH_CAP];
-    char right_path[BONGO_CAT_PATH_CAP];
-    char effect_path[BONGO_CAT_PATH_CAP];
-    char directory[BONGO_CAT_PATH_CAP];
-    uint64_t clock;
-};
 
 static const char *vertex_source =
     "#version 330 core\n"
@@ -285,69 +249,4 @@ bool bongo_cat_overlay_effect(BongoCatOverlay *value, const char *path) {
 #endif
     snprintf(value->effect_path, sizeof(value->effect_path), "%s", path);
     return value->effect != 0;
-}
-
-static void draw(BongoCatOverlay *value, GLuint texture, bool mirror, bool blend) {
-    if (!value || !texture) return;
-    if (blend) {
-        glEnable(GL_BLEND);
-        value->gl.blend_func_separate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA,
-            GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-    } else glDisable(GL_BLEND);
-    value->gl.use_program(value->program);
-    value->gl.uniform_1i(value->mirror_location, mirror);
-    value->gl.uniform_1i(value->image_location, 0);
-    value->gl.uniform_1i(value->erase_left_location,
-        !blend && value->composed_cover && !value->composite && value->left != 0);
-    value->gl.uniform_1i(value->erase_right_location,
-        !blend && value->composed_cover && !value->composite && value->right != 0);
-    value->gl.active_texture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    value->gl.bind_vertex_array(value->vao);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    value->gl.bind_vertex_array(0);
-}
-
-void bongo_cat_overlay_draw_background(BongoCatOverlay *value, bool mirror) {
-    if (value) {
-#ifndef BONGO_CAT_HAS_CUBISM
-        if (value->composite_dirty) {
-            value->composite_dirty = false;
-            if (value->left || value->right) {
-                BongoCatError ignored = {0};
-                value->composite = bongo_cat_image_composite_texture(value->background_path,
-                    value->left_path, value->right_path, value->composite,
-                    value->clean_paws && value->left,
-                    value->clean_paws && value->right, &ignored);
-            }
-        }
-#endif
-        bool active = value->left || value->right;
-        draw(value, active && value->composite ? value->composite : value->background,
-            mirror, false);
-    }
-}
-
-void bongo_cat_overlay_draw_keys(BongoCatOverlay *value, bool mirror) {
-    if (!value) return;
-#ifdef BONGO_CAT_HAS_CUBISM
-    draw(value, value->left, mirror, true);
-    draw(value, value->right, mirror, true);
-#else
-    (void)mirror;
-#endif
-}
-void bongo_cat_overlay_draw_pointer_before_keys(BongoCatOverlay *value) {
-    if (value) bongo_cat_mver_pointer_overlay_draw_before_keys(value->mver_pointer);
-}
-void bongo_cat_overlay_draw_effect(BongoCatOverlay *value, bool mirror) {
-    if (!value) return;
-#ifdef BONGO_CAT_HAS_CUBISM
-    draw(value, value->effect, mirror, true);
-#else
-    (void)mirror;
-#endif
-}
-void bongo_cat_overlay_draw_pointer_after_keys(BongoCatOverlay *value) {
-    if (value) bongo_cat_mver_pointer_overlay_draw_after_keys(value->mver_pointer);
 }

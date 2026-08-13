@@ -52,6 +52,17 @@ static void write_window_handle(BongoCatPreferences *value) {
     fclose(file);
 }
 
+void bongo_cat_preferences_record_frame(BongoCatPreferences *value) {
+    if (!value->app->smoke_frame_series) return;
+    char path[BONGO_CAT_PATH_CAP];
+    bongo_cat_path_join(path, sizeof(path), value->app->data_root,
+        "preferences-frames.csv");
+    FILE *file = bongo_cat_file_open(path, "ab");
+    if (!file) return;
+    fprintf(file, "%llu\n", (unsigned long long)SDL_GetTicksNS());
+    fclose(file);
+}
+
 void bongo_cat_preferences_smoke_frame(BongoCatPreferences *value) {
     if (!value) return;
     write_window_handle(value);

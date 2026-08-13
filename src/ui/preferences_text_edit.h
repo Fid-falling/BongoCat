@@ -22,6 +22,7 @@ bool bongo_cat_text_edit_move(const char *text, size_t *cursor,
 void bongo_cat_text_edit_select_all(const char *text, size_t *cursor,
     bool *select_all);
 void bongo_cat_text_edit_clear(char *text, size_t *cursor, bool *select_all);
+void bongo_cat_text_edit_trim(char *text);
 size_t bongo_cat_text_edit_nearest(const char *text, float target,
     float (*measure)(const void *userdata, const char *text, size_t length),
     const void *userdata);

@@ -1,36 +1,15 @@
 #include "preferences_state.h"
+#include "preferences_fonts.h"
 #include "ui_catime.h"
-#include "ui_font.h"
-#include "ui_font_atlas.h"
-#include "preferences_model_glyphs.h"
-#include "ui_paint.h"
-#include "bongo_cat/i18n.h"
 #include "bongo_cat/memory_policy.h"
 #include <SDL3/SDL_opengl.h>
 #include <math.h>
-#include <string.h>
 
 #define PREF_WIDTH 900.0f
 #define PREF_HEIGHT 680.0f
 #define PREF_MIN_WIDTH 720.0f
 #define PREF_MIN_HEIGHT 560.0f
 #define PREF_SCREEN_MARGIN 48.0f
-
-typedef struct PreferenceFonts {
-    char body_path[BONGO_CAT_PATH_CAP];
-    char body_fallback_path[BONGO_CAT_PATH_CAP];
-    char body_korean_fallback_path[BONGO_CAT_PATH_CAP];
-    char heading_path[BONGO_CAT_PATH_CAP];
-    char heading_fallback_path[BONGO_CAT_PATH_CAP];
-    char heading_korean_fallback_path[BONGO_CAT_PATH_CAP];
-    const char *body;
-    const char *body_fallback;
-    const char *body_korean_fallback;
-    const char *heading;
-    const char *heading_fallback;
-    const char *heading_korean_fallback;
-    const nk_rune *ranges;
-} PreferenceFonts;
 
 static SDL_DisplayID window_display(SDL_Window *window) {
     SDL_DisplayID display = window ? SDL_GetDisplayForWindow(window) : 0;
@@ -71,33 +50,6 @@ static void fit_position(SDL_Window *window, SDL_DisplayID display,
     int next_y = SDL_clamp(y, usable.y, maximum_y);
     if (next_x != x || next_y != y)
         SDL_SetWindowPosition(window, next_x, next_y);
-}
-
-static void font_paths(BongoCatPreferences *value, PreferenceFonts *fonts) {
-    memset(fonts, 0, sizeof(*fonts));
-    fonts->body = bongo_cat_ui_system_font(fonts->body_path,
-        sizeof(fonts->body_path), false);
-    fonts->body_fallback = bongo_cat_ui_system_font(fonts->body_fallback_path,
-        sizeof(fonts->body_fallback_path), true);
-    fonts->body_korean_fallback = bongo_cat_ui_system_korean_font(
-        fonts->body_korean_fallback_path,
-        sizeof(fonts->body_korean_fallback_path));
-    fonts->heading = bongo_cat_ui_system_heading_font(fonts->heading_path,
-        sizeof(fonts->heading_path), false);
-    fonts->heading_fallback = bongo_cat_ui_system_heading_font(
-        fonts->heading_fallback_path,
-        sizeof(fonts->heading_fallback_path), true);
-    fonts->heading_korean_fallback = bongo_cat_ui_system_korean_heading_font(
-        fonts->heading_korean_fallback_path,
-        sizeof(fonts->heading_korean_fallback_path));
-    if (!fonts->heading) fonts->heading = fonts->body;
-    if (!fonts->heading_fallback) fonts->heading_fallback = fonts->body_fallback;
-    if (!value->app->i18n) return;
-    bongo_cat_i18n_glyph_ranges(value->app->i18n, value->glyph_ranges,
-        sizeof(value->glyph_ranges) / sizeof(value->glyph_ranges[0]));
-    bongo_cat_preferences_model_glyphs(value->app, value->glyph_ranges,
-        sizeof(value->glyph_ranges) / sizeof(value->glyph_ranges[0]));
-    fonts->ranges = value->glyph_ranges;
 }
 
 static SDL_HitTestResult SDLCALL preference_hit_test(SDL_Window *window,
@@ -201,8 +153,8 @@ bool bongo_cat_preferences_open_window(BongoCatPreferences *value) {
         context_ready = attach_gl_context(value);
     }
     if (!context_ready) return false;
-    PreferenceFonts fonts;
-    font_paths(value, &fonts);
+    BongoCatPreferenceFonts fonts;
+    bongo_cat_preferences_fonts_resolve(value, &fonts);
     BongoCatError error = {0};
     if (!bongo_cat_ui_init(&value->ui, value->window, fonts.body,
         fonts.body_fallback, fonts.body_korean_fallback, fonts.heading,
@@ -230,48 +182,6 @@ bool bongo_cat_preferences_open_window(BongoCatPreferences *value) {
     value->render_dirty = true;
     bongo_cat_preferences_live_resize_install(value);
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
-    return true;
-}
-
-bool bongo_cat_preferences_reload_fonts(BongoCatPreferences *value) {
-    if (!value || !value->ui_initialized) return false;
-    if (value->ui.frame_building) {
-        value->font_reload_pending = true;
-        value->render_dirty = true;
-        return true;
-    }
-    PreferenceFonts fonts;
-    font_paths(value, &fonts);
-    bool reloaded = bongo_cat_ui_font_atlas_reload(&value->ui, fonts.body,
-        fonts.body_fallback, fonts.body_korean_fallback, fonts.heading,
-        fonts.heading_fallback, fonts.heading_korean_fallback, fonts.ranges,
-        value->ui.raster_scale);
-    if (reloaded) value->font_reload_pending = false;
-    return reloaded;
-}
-
-bool bongo_cat_preferences_refresh_raster(BongoCatPreferences *value) {
-    if (!value || value->pending_raster_scale <= 0.0f) return true;
-    uint64_t now = SDL_GetTicksNS();
-    if (value->raster_retry_ns > now) return false;
-    float raster_scale = value->pending_raster_scale;
-    PreferenceFonts fonts;
-    font_paths(value, &fonts);
-    if (!bongo_cat_ui_font_atlas_reload(&value->ui, fonts.body,
-        fonts.body_fallback, fonts.body_korean_fallback, fonts.heading,
-        fonts.heading_fallback, fonts.heading_korean_fallback, fonts.ranges,
-        raster_scale)) {
-        value->raster_retry_ns = now + 1000000000ull;
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-            "Preferences font atlas could not be rebuilt for %.2fx", raster_scale);
-        return false;
-    }
-    value->pending_raster_scale = 0.0f;
-    value->raster_retry_ns = 0;
-    bongo_cat_ui_paint_destroy(&value->ui);
-    bongo_cat_preferences_model_cover_cache_clear(value->app);
-    bongo_cat_preferences_assets_clear(value);
-    bongo_cat_preferences_assets_load(value);
     return true;
 }
 

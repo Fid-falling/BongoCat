@@ -1,0 +1,90 @@
+#include "preferences_text_edit.h"
+#include "preferences_text_session.h"
+
+#include <SDL3/SDL.h>
+#include <stdio.h>
+#include <string.h>
+
+static int failures;
+#define CHECK(value) do { if (!(value)) { \
+    fprintf(stderr, "%s:%d: check failed: %s\n", __FILE__, __LINE__, #value); \
+    failures++; \
+} } while (0)
+
+static float fixed_width(const void *userdata, const char *text, size_t length) {
+    (void)userdata;
+    (void)text;
+    return (float)length;
+}
+
+static void text_edit(void) {
+    char text[32] = "A\xE4\xB8\xAD" "B";
+    size_t cursor = 0;
+    bool selected = false;
+    bongo_cat_text_edit_begin(text, &cursor, &selected);
+    CHECK(cursor == 5 && !selected);
+    CHECK(bongo_cat_text_edit_move(text, &cursor, &selected,
+        BONGO_CAT_TEXT_EDIT_LEFT));
+    CHECK(cursor == 4);
+    CHECK(bongo_cat_text_edit_insert(text, sizeof(text), &cursor, &selected,
+        "\xE6\x96\xB0"));
+    CHECK(strcmp(text, "A\xE4\xB8\xAD\xE6\x96\xB0" "B") == 0 &&
+        cursor == 7);
+    CHECK(bongo_cat_text_edit_erase(text, &cursor, &selected, false));
+    CHECK(strcmp(text, "A\xE4\xB8\xAD" "B") == 0 && cursor == 4);
+    CHECK(bongo_cat_text_edit_move(text, &cursor, &selected,
+        BONGO_CAT_TEXT_EDIT_HOME));
+    CHECK(bongo_cat_text_edit_erase(text, &cursor, &selected, true));
+    CHECK(strcmp(text, "\xE4\xB8\xAD" "B") == 0 && cursor == 0);
+    CHECK(bongo_cat_text_edit_move(text, &cursor, &selected,
+        BONGO_CAT_TEXT_EDIT_RIGHT));
+    CHECK(cursor == 3);
+    CHECK(bongo_cat_text_edit_nearest(text, 1.4f, fixed_width, NULL) == 0);
+    CHECK(bongo_cat_text_edit_nearest(text, 1.6f, fixed_width, NULL) == 3);
+    bongo_cat_text_edit_select_all(text, &cursor, &selected);
+    CHECK(bongo_cat_text_edit_insert(text, sizeof(text), &cursor, &selected,
+        "\xE6\x9B\xBF\xE6\x8D\xA2"));
+    CHECK(strcmp(text, "\xE6\x9B\xBF\xE6\x8D\xA2") == 0 &&
+        cursor == 6 && !selected);
+    bongo_cat_text_edit_select_all(text, &cursor, &selected);
+    CHECK(bongo_cat_text_edit_erase(text, &cursor, &selected, false));
+    CHECK(text[0] == '\0' && cursor == 0 && !selected);
+    snprintf(text, sizeof(text), "  label\t ");
+    bongo_cat_text_edit_trim(text);
+    CHECK(strcmp(text, "label") == 0);
+}
+
+static void text_session(void) {
+    BongoCatPreferencesTextSession session = {0};
+    bongo_cat_preferences_text_session_begin(&session, "model", "Name",
+        nk_rect(10, 20, 100, 30));
+    CHECK(bongo_cat_preferences_text_session_active(&session));
+    SDL_Event event = {.type = SDL_EVENT_KEY_DOWN};
+    event.key.key = SDLK_A;
+    event.key.mod = SDL_KMOD_CTRL;
+    BongoCatPreferencesTextSessionEvent result =
+        bongo_cat_preferences_text_session_event(&session, &event,
+            1.0f, NULL, 5.0f);
+    CHECK(result.handled && !result.finish && session.select_all);
+    event.key.key = SDLK_DELETE;
+    event.key.mod = SDL_KMOD_NONE;
+    result = bongo_cat_preferences_text_session_event(&session, &event,
+        1.0f, NULL, 5.0f);
+    CHECK(result.handled && session.text[0] == '\0' && !session.select_all);
+    event.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    event.button.button = SDL_BUTTON_LEFT;
+    event.button.x = 200;
+    event.button.y = 200;
+    result = bongo_cat_preferences_text_session_event(&session, &event,
+        1.0f, NULL, 5.0f);
+    CHECK(!result.handled && result.finish && result.save);
+    bongo_cat_preferences_text_session_reset(&session);
+    CHECK(!bongo_cat_preferences_text_session_active(&session));
+}
+
+int test_preferences_text(void) {
+    failures = 0;
+    text_edit();
+    text_session();
+    return failures;
+}

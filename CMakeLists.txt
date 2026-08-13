@@ -73,60 +73,9 @@ if(WIN32)
   target_sources(bongo_cat_core PRIVATE src/core/windows_utf8.c)
 endif()
 
+include(cmake/RuntimeSources.cmake)
 add_library(bongo_cat_runtime STATIC
-  src/core/app_state.c
-  src/media/audio.c
-  src/media/image.c src/media/image_resize.c src/media/image_alpha.c
-  src/media/stb_image_impl.c
-  src/platform/memory.c src/render/gl_api.c
-  src/render/overlay.c src/render/mver_pointer_overlay.c src/render/mver_pointer_overlay_draw.c
-  src/runtime/app.c src/runtime/config_store.c
-  src/runtime/assets.c src/runtime/startup.c
-  src/runtime/frame_audit.c src/runtime/frame_clock.c src/runtime/modal_frame.c
-  src/runtime/gamepad.c
-  src/runtime/live2d_audit.c src/runtime/live2d_visual_audit.c
-  src/runtime/live2d_viewer_audit.c
-  src/runtime/memory_policy.c src/runtime/mouse.c src/runtime/mouse_mapping.c
-  src/runtime/model_files.c src/runtime/model_update.c
-  src/runtime/model_storage.c
-  src/runtime/model_import.c
-  src/runtime/model_import_package.c
-  src/runtime/model_import_discovery.c
-  src/runtime/model_import_format.c
-  src/runtime/model_import_portable.c src/runtime/model_import_portable_scan.c
-  src/runtime/model_import_portable_identity.c
-  src/runtime/model_import_portable_migration.c
-  src/runtime/model_import_mver_patch.c
-  src/runtime/model_import_mver.c src/runtime/model_import_mver_image.c
-  src/runtime/model_import_mver_shortcut.c src/runtime/model_import_mver_effect.c
-  src/runtime/model_import_mver_motion.c src/runtime/model_import_mver_labels.c src/runtime/model_import_report.c
-  src/runtime/model_import_mver_metadata.c src/runtime/model_import_metadata.c
-  src/runtime/runtime_flow.c
-  src/runtime/shortcuts.c
-  src/runtime/tray.c
-  src/runtime/window.c src/runtime/window_display.c src/runtime/window_drag.c
-  src/runtime/window_geometry.c
-  src/runtime/window_menu_behavior.c src/runtime/window_menu_preview.c
-  src/runtime/window_hit.c src/runtime/window_wheel.c
-  src/ui/nuklear_impl.c
-  src/ui/ui_backend.c src/ui/ui_resize_cache.c src/ui/ui_scale.c src/ui/ui_cursor.c
-  src/ui/ui_animation.c src/ui/ui_paint.c src/ui/ui_paint_cache.c src/ui/ui_paint_border.c src/ui/ui_paint_shell.c
-  src/ui/ui_font.c src/ui/ui_font_atlas.c src/ui/ui_font_atlas_sources.c src/ui/ui_font_atlas_ranges.c src/ui/ui_font_atlas_upload.c src/ui/ui_font_reload.c
-  src/ui/ui_input.c
-  src/ui/ui_catime.c src/ui/ui_catime_tabs.c src/ui/ui_catime_theme.c src/ui/ui_catime_icons.c
-  src/ui/ui_native_theme.c
-  src/ui/preferences.c src/ui/preferences_scale.c src/ui/preferences_render.c src/ui/preferences_language.c
-  src/ui/preferences_assets.c src/ui/preferences_about.c src/ui/preferences_about_community.c
-  src/ui/preferences_live_resize.c
-  src/ui/preferences_dialog.c src/ui/preferences_import.c src/ui/preferences_overlay.c
-  src/ui/preferences_behavior_dialog.c src/ui/preferences_behavior_rename.c src/ui/preferences_behavior_row.c src/ui/preferences_scrollbar.c
-  src/ui/preferences_text_edit.c
-  src/ui/preferences_notice.c
-  src/ui/preferences_model.c src/ui/preferences_model_rename.c src/ui/preferences_model_cover.c src/ui/preferences_model_glyphs.c
-  src/ui/preferences_pages.c src/ui/preferences_theme.c
-  src/ui/preferences_shortcuts.c src/ui/preferences_shortcut_clear.c src/ui/preferences_smoke.c
-  src/ui/preferences_widgets.c src/ui/preferences_controls.c src/ui/preferences_combo.c src/ui/preferences_toggle.c
-  ${BONGO_CAT_LIVE2D_SOURCES})
+  ${BONGO_CAT_RUNTIME_SOURCES} ${BONGO_CAT_LIVE2D_SOURCES})
 target_include_directories(bongo_cat_runtime PUBLIC include)
 target_include_directories(bongo_cat_runtime SYSTEM PRIVATE
   ${BONGO_CAT_STB_INCLUDE_DIR} ${BONGO_CAT_NUKLEAR_INCLUDE_DIR})
@@ -316,13 +265,23 @@ if(BUILD_TESTING)
   target_link_libraries(bongo_cat_app_state_tests PRIVATE bongo_cat_warnings)
   target_include_directories(bongo_cat_app_state_tests PRIVATE include)
   add_test(NAME app-state COMMAND bongo_cat_app_state_tests)
-  add_executable(bongo_cat_mver_import_tests tests/test_mver_import.c tests/test_mver_pointer_import.c)
+  set(BONGO_CAT_MVER_IMPORT_TEST_SOURCES
+    tests/test_mver_import.c
+    tests/test_mver_pointer_import.c
+    tests/test_preferences_text.c
+    tests/test_mver_portable_identity.c
+    tests/test_mver_support.c)
+  add_executable(bongo_cat_mver_import_tests
+    ${BONGO_CAT_MVER_IMPORT_TEST_SOURCES})
   target_include_directories(bongo_cat_mver_import_tests PRIVATE src/runtime src/ui)
   target_include_directories(bongo_cat_mver_import_tests SYSTEM PRIVATE ${BONGO_CAT_NUKLEAR_INCLUDE_DIR})
   target_link_libraries(bongo_cat_mver_import_tests PRIVATE bongo_cat_runtime)
   target_compile_definitions(bongo_cat_mver_import_tests PRIVATE BONGO_CAT_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   if(MSVC)
-    set_property(SOURCE tests/test_mver_import.c tests/test_mver_pointer_import.c tests/test_windows_capture.c APPEND PROPERTY COMPILE_OPTIONS "/experimental:c11atomics")
+    set_property(SOURCE ${BONGO_CAT_MVER_IMPORT_TEST_SOURCES}
+      APPEND PROPERTY COMPILE_OPTIONS "/experimental:c11atomics")
+    set_property(SOURCE tests/test_windows_capture.c APPEND PROPERTY
+      COMPILE_OPTIONS "/experimental:c11atomics")
   endif()
   add_test(NAME model-import-unit COMMAND bongo_cat_mver_import_tests)
   if(WIN32)

@@ -4,9 +4,7 @@
 #include "ui_catime.h"
 #include "ui_animation.h"
 #include "ui_paint.h"
-#include "bongo_cat/file.h"
 #include "bongo_cat/memory_policy.h"
-#include "bongo_cat/path.h"
 #include "bongo_cat/tray.h"
 #include <SDL3/SDL_opengl.h>
 #include <math.h>
@@ -223,17 +221,6 @@ static bool draw_frame(BongoCatPreferences *value, float width, float height,
     nk_end(context);
     root_style_restore(context, &saved);
     return close_requested;
-}
-
-void bongo_cat_preferences_record_frame(BongoCatPreferences *value) {
-    if (!value->app->smoke_frame_series) return;
-    char path[BONGO_CAT_PATH_CAP];
-    bongo_cat_path_join(path, sizeof(path), value->app->data_root,
-        "preferences-frames.csv");
-    FILE *file = bongo_cat_file_open(path, "ab");
-    if (!file) return;
-    fprintf(file, "%llu\n", (unsigned long long)SDL_GetTicksNS());
-    fclose(file);
 }
 
 void bongo_cat_preferences_render(BongoCatPreferences *value) {

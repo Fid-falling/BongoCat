@@ -7,22 +7,12 @@
 #include "bongo_cat/sha256.h"
 
 #include <SDL3/SDL.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <yyjson.h>
 
 #define PORTABLE_DIRECTORY "portable-mver"
-
-typedef struct PortableStamp {
-    uint64_t sum, exclusive, bytes, latest, files, entries;
-} PortableStamp;
-
-typedef struct StampWalk {
-    PortableStamp *stamp;
-    int depth;
-} StampWalk;
 
 static bool parent_path(const char *path, char *parent, size_t capacity) {
     size_t length = path ? strlen(path) : 0;
@@ -46,75 +36,6 @@ static void candidate_name(const char *source,
         if (variant[0]) value = variant;
     }
     snprintf(name, capacity, "%s", value[0] ? value : "Nearby model");
-}
-
-static uint64_t text_hash(const char *value) {
-    uint64_t hash = 1469598103934665603ull;
-    for (const unsigned char *cursor = (const unsigned char *)value; *cursor; ++cursor) {
-        hash ^= *cursor;
-        hash *= 1099511628211ull;
-    }
-    return hash;
-}
-
-static uint64_t mix(uint64_t value) {
-    value ^= value >> 30; value *= 0xbf58476d1ce4e5b9ull;
-    value ^= value >> 27; value *= 0x94d049bb133111ebull;
-    return value ^ (value >> 31);
-}
-
-static bool stamp_path(const char *path, PortableStamp *stamp, int depth);
-
-static BongoCatPathVisit stamp_item(void *userdata,
-    const char *dirname, const char *name) {
-    StampWalk *walk = userdata;
-    char path[BONGO_CAT_PATH_CAP];
-    return ++walk->stamp->entries <= 16384 &&
-        bongo_cat_path_join(path, sizeof(path), dirname, name) &&
-        stamp_path(path, walk->stamp, walk->depth)
-        ? BONGO_CAT_PATH_CONTINUE : BONGO_CAT_PATH_FAILURE;
-}
-
-static bool stamp_path(const char *path, PortableStamp *stamp, int depth) {
-    if (bongo_cat_path_is_dir(path)) {
-        if (depth >= 24) return false;
-        StampWalk walk = {stamp, depth + 1};
-        return bongo_cat_path_enumerate(path, stamp_item, &walk);
-    }
-    uint64_t size, modified;
-    if (!bongo_cat_path_file_info(path, &size, &modified)) return false;
-    if (stamp->files >= 8192 || size > 1073741824ull - stamp->bytes)
-        return false;
-    uint64_t value = text_hash(path) ^ mix(size) ^ mix(modified);
-    value = mix(value);
-    stamp->sum += value;
-    stamp->exclusive ^= value;
-    stamp->bytes += size;
-    if (modified > stamp->latest) stamp->latest = modified;
-    stamp->files++;
-    return true;
-}
-
-static bool candidate_signature(const BongoCatImportCandidate *candidate,
-    char output[65], BongoCatError *error) {
-    char config_hash[65], summary[256];
-    if (bongo_cat_sha256_file(candidate->config, config_hash, error) !=
-        BONGO_CAT_OK) return false;
-    PortableStamp stamp = {0};
-    if (!stamp_path(candidate->directory, &stamp, 0) ||
-        !stamp_path(candidate->assets, &stamp, 0) ||
-        (candidate->overrides[0] && !stamp_path(candidate->overrides, &stamp, 0))) {
-        bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
-            "Cannot inspect portable Mver model assets: %s", candidate->package_root);
-        return false;
-    }
-    int length = snprintf(summary, sizeof(summary), "%s|%016llx|%016llx|%llu|%llu|%llu",
-        config_hash, (unsigned long long)stamp.sum,
-        (unsigned long long)stamp.exclusive, (unsigned long long)stamp.bytes,
-        (unsigned long long)stamp.latest, (unsigned long long)stamp.files);
-    if (length < 0 || (size_t)length >= sizeof(summary)) return false;
-    bongo_cat_sha256_bytes(summary, (size_t)length, output);
-    return true;
 }
 
 static bool marker_matches(const char *target, const char *source,
@@ -260,7 +181,8 @@ static bool add_candidate(BongoCatApp *app, const char *cache_root,
     snprintf(id, sizeof(id), "mver-%.16s-%s", source_hash,
         bongo_cat_mode_name(candidate->mode));
     if (bongo_cat_models_find(&app->models, id)) return true;
-    if (!candidate_signature(candidate, signature, error)) return false;
+    if (!bongo_cat_portable_signature(candidate, signature, error))
+        return false;
     char target[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_join(target, sizeof(target), cache_root, id) ||
         (!cached_identity(target, source, signature, identity) &&

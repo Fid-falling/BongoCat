@@ -94,7 +94,8 @@ static void draw_name(BongoCatPreferences *value, struct nk_context *context,
     BongoCatBehaviorEntry *entry, BongoCatBehaviorShortcut *binding,
     BongoCatUIPalette p, float opacity, bool enabled) {
     const char *label = display_label(entry, binding);
-    bool renaming = !strcmp(value->behavior_rename_id, entry->id);
+    BongoCatPreferencesTextSession *session = &value->behavior_rename;
+    bool renaming = !strcmp(session->id, entry->id);
     bool hover = enabled && nk_input_is_mouse_hovering_rect(
         &context->input, bounds);
     if (renaming || hover) {
@@ -103,21 +104,21 @@ static void draw_name(BongoCatPreferences *value, struct nk_context *context,
         nk_stroke_rect(canvas, bounds, 8, 1,
             alpha(renaming ? p.pink : p.accent, opacity));
     }
-    const char *shown = renaming ? value->behavior_rename_text : label;
+    const char *shown = renaming ? session->text : label;
     struct nk_rect text_bounds = nk_rect(bounds.x + 8,
         bounds.y + 9, bounds.w - 16, 21);
-    if (renaming && value->behavior_rename_select_all)
+    if (renaming && session->select_all)
         nk_fill_rect(canvas, text_bounds, 4,
             alpha(p.selection, opacity));
     text(canvas, text_bounds, shown, value->ui.caption_font,
         alpha(p.text, opacity));
     if (renaming) {
-        value->behavior_rename_bounds = bounds;
+        session->bounds = bounds;
         float caret = value->ui.caption_font->width(
             value->ui.caption_font->userdata, value->ui.caption_font->height,
-            shown, (int)value->behavior_rename_cursor);
+            shown, (int)session->cursor);
         caret = NK_MIN(caret, bounds.w - 18);
-        if (!value->behavior_rename_select_all)
+        if (!session->select_all)
             nk_stroke_line(canvas, bounds.x + 8 + caret, bounds.y + 8,
                 bounds.x + 8 + caret, bounds.y + bounds.h - 8, 1,
                 alpha(p.pink, opacity));

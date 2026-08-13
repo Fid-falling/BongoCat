@@ -126,6 +126,16 @@ void bongo_cat_text_edit_clear(char *text, size_t *cursor, bool *select_all) {
     if (select_all) *select_all = false;
 }
 
+void bongo_cat_text_edit_trim(char *text) {
+    if (!text) return;
+    size_t start = 0, end = strlen(text);
+    while (start < end && (text[start] == ' ' || text[start] == '\t')) start++;
+    while (end > start && (text[end - 1] == ' ' || text[end - 1] == '\t'))
+        end--;
+    if (start) memmove(text, text + start, end - start);
+    text[end - start] = '\0';
+}
+
 size_t bongo_cat_text_edit_nearest(const char *text, float target,
     float (*measure)(const void *userdata, const char *text, size_t length),
     const void *userdata) {

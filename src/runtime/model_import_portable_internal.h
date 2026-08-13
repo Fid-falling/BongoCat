@@ -8,6 +8,8 @@
 
 bool bongo_cat_portable_identity(const BongoCatImportCandidate *candidate,
     char output[65], BongoCatError *error);
+bool bongo_cat_portable_signature(const BongoCatImportCandidate *candidate,
+    char output[65], BongoCatError *error);
 void bongo_cat_portable_migrate_config(BongoCatApp *app,
     const char *cache_root);
 
