@@ -6,6 +6,7 @@
 #include "ui_catime.h"
 #include "ui_icons.h"
 #include "ui_paint.h"
+#include "ui_tooltip.h"
 #include <SDL3/SDL.h>
 #include <math.h>
 #include <stdio.h>
@@ -184,13 +185,14 @@ bool bongo_cat_pref_toggle(struct nk_context *context, const char *id,
     form_end(context, &saved); return changed;
 }
 bool bongo_cat_pref_obs_background(struct nk_context *context, const char *id,
-    const char *title, const char *detail, bool *enabled,
+    const char *title, const char *question, const char *reply, bool *enabled,
     BongoCatObsBackgroundColor *color) {
-    int lines = detail_lines(context, detail); FormStyle saved;
+    int lines = question && question[0] ? 1 : 0; FormStyle saved;
     if (!form_begin(context, id, lines, &saved)) return false;
     form_title_sized(context, title, 230.0f);
     bool changed = bongo_cat_pref_control_obs_background(context, id, enabled, color);
-    nk_layout_row_end(context); description(context, detail, lines);
+    nk_layout_row_end(context);
+    bongo_cat_ui_question_tooltip(context, question, reply);
     form_end(context, &saved); return changed;
 }
 bool bongo_cat_pref_float(struct nk_context *context, const char *id,

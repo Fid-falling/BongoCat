@@ -215,6 +215,7 @@ static void render(BongoCatApp *app) {
             "Main frame presentation failed: %s", SDL_GetError());
         return;
     }
+    bongo_cat_frame_presented_audit(app);
     bongo_cat_startup_ready(app); bongo_cat_memory_policy_frame_presented(); app->dirty = false;
     bongo_cat_window_sync_click_through(app); bongo_cat_window_schedule_hit_check(app);
 }

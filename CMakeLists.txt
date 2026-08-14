@@ -102,7 +102,8 @@ if(WIN32)
     src/platform/windows_startup.c src/platform/windows_borderless.c src/platform/windows_capture.c
     src/platform/windows_pointer.c src/platform/windows_direct_input.c src/platform/windows_input.c src/platform/windows_popup.c
     src/platform/windows_layered.c src/platform/windows_tray.c
-    src/platform/windows_assets.c src/platform/windows_diagnostics.c)
+    src/platform/windows_assets.c src/platform/windows_diagnostics.c
+    src/platform/windows_capture_probe.c)
   target_link_libraries(bongo_cat_runtime PRIVATE dinput8 dxguid dwmapi ole32 shell32
     user32 uuid windowscodecs advapi32)
 elseif(APPLE)

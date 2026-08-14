@@ -82,6 +82,9 @@ void bongo_cat_live2d_audit_run(BongoCatApp *app);
 bool bongo_cat_live2d_visual_audit_run(BongoCatApp *app);
 bool bongo_cat_live2d_viewer_audit_run(BongoCatApp *app);
 void bongo_cat_frame_audit(BongoCatApp *app, int width, int height);
+void bongo_cat_frame_presentation_prepare(BongoCatApp *app,
+    const unsigned char *pixels, int width, int height, bool visible);
+void bongo_cat_frame_presented_audit(BongoCatApp *app);
 void bongo_cat_window_clear_background(BongoCatApp *app);
 void bongo_cat_frame_capture_pending(BongoCatApp *app, int width, int height);
 void bongo_cat_app_render_now(BongoCatApp *app);

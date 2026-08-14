@@ -9,7 +9,7 @@ void bongo_cat_pref_section(struct nk_context *context, const char *title);
 bool bongo_cat_pref_toggle(struct nk_context *context, const char *id,
     const char *title, const char *description, bool *value);
 bool bongo_cat_pref_obs_background(struct nk_context *context, const char *id,
-    const char *title, const char *description, bool *enabled,
+    const char *title, const char *question, const char *reply, bool *enabled,
     BongoCatObsBackgroundColor *color);
 bool bongo_cat_pref_float(struct nk_context *context, const char *id,
     const char *title, const char *description, float minimum, float *value,

@@ -22,7 +22,7 @@
           "keepInScreen": "Manter na Tela",
           "windowSize": "Tamanho da Janela",
           "opacity": "Opacidade",
-          "obsBackground": "Fundo do OBS",
+          "obsBackground": "Fundo sólido",
           "autoReleaseDelay": "Atraso de Liberação Automática",
           "hideOnHover": "Ocultar ao Passar o Mouse",
           "maxFPS": "Taxa Máxima de Quadros"
@@ -31,7 +31,8 @@
           "passThrough": "Quando ativado, a janela não afetará operações em outros aplicativos.",
           "alwaysOnTop": "Quando ativado, a janela sempre ficará acima de outros aplicativos.",
           "keepInScreen": "Quando ativado, a janela permanece automaticamente dentro dos limites da tela.",
-          "obsBackground": "Ative se a captura de janela do OBS ficar preta.\nUse o método de compatibilidade com o Windows 7 e remova o fundo com um filtro de chave de cor.",
+          "obsBackground": "A captura da janela está preta?",
+          "obsBackgroundHelp": "OBS: ative esta opção, use o método compatível com o Windows 7 e remova o fundo com um filtro de chave de cor.",
           "windowSize": "Mova o mouse para a borda da janela ou segure Shift e arraste com o botão direito para redimensionar.",
           "hideOnHover": "Quando ativado, a janela se oculta automaticamente ao passar o mouse. Você pode definir um atraso; 0 significa ocultar imediatamente."
         }

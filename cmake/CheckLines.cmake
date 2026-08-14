@@ -31,6 +31,8 @@ foreach(FILE IN LISTS FILES)
     set(LIMIT 396)
   elseif(RELATIVE_FILE STREQUAL "src/tools/mver_phase_metrics.c")
     set(LIMIT 321)
+  elseif(RELATIVE_FILE STREQUAL "src/ui/preferences_widgets.c")
+    set(LIMIT 350)
   endif()
 
   if(COUNT GREATER LIMIT)

@@ -22,7 +22,7 @@
           "keepInScreen": "Auf dem Bildschirm halten",
           "windowSize": "Fenstergröße",
           "opacity": "Deckkraft",
-          "obsBackground": "OBS-Hintergrund",
+          "obsBackground": "Einfarbiger Hintergrund",
           "autoReleaseDelay": "Verzögerung der automatischen Freigabe",
           "hideOnHover": "Beim Darüberfahren ausblenden",
           "maxFPS": "Maximale Bildrate"
@@ -31,7 +31,8 @@
           "passThrough": "Wenn aktiviert, gehen Klicks durch das Fenster hindurch, ohne es zu beeinflussen.",
           "alwaysOnTop": "Wenn aktiviert, bleibt das Fenster über allen anderen Fenstern.",
           "keepInScreen": "Wenn aktiviert, bleibt das Fenster automatisch innerhalb der Bildschirmgrenzen.",
-          "obsBackground": "Bei schwarzer OBS-Fensteraufnahme aktivieren.\nMit der Windows-7-Kompatibilitätsmethode aufnehmen und den Hintergrund per Farbschlüssel-Filter entfernen.",
+          "obsBackground": "Fensteraufnahme schwarz?",
+          "obsBackgroundHelp": "OBS: Diese Option aktivieren, die Windows-7-Kompatibilitätsmethode verwenden und den Hintergrund mit einem Farbschlüssel-Filter entfernen.",
           "windowSize": "Bewegen Sie die Maus an den Fensterrand oder halten Sie Umschalt gedrückt und ziehen Sie mit der rechten Maustaste.",
           "hideOnHover": "Wenn aktiviert, wird das Fenster beim Darüberfahren mit der Maus automatisch ausgeblendet. Die Verzögerung 0 blendet es sofort aus."
         }

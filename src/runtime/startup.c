@@ -17,27 +17,48 @@ static char startup_log_path[BONGO_CAT_PATH_CAP];
 static char desktop_log_path[BONGO_CAT_PATH_CAP];
 static bool startup_is_ready;
 
-static void append_log(const char *path, int category,
-    SDL_LogPriority priority, const char *message) {
+static void format_timestamp(char *target, size_t capacity) {
+    if (!target || !capacity) return;
+    SDL_Time ticks = 0;
+    SDL_DateTime date = {0};
+    if (SDL_GetCurrentTime(&ticks) && SDL_TimeToDateTime(ticks, &date, true)) {
+        int offset_minutes = date.utc_offset >= 0 ? (date.utc_offset + 30) / 60 : -((-date.utc_offset + 30) / 60);
+        char sign = offset_minutes < 0 ? '-' : '+';
+        if (offset_minutes < 0) offset_minutes = -offset_minutes;
+        snprintf(target, capacity, "%04d-%02d-%02d %02d:%02d:%02d.%03d %c%02d:%02d",
+            date.year, date.month, date.day, date.hour, date.minute,
+            date.second, date.nanosecond / 1000000, sign,
+            offset_minutes / 60, offset_minutes % 60);
+    } else {
+        snprintf(target, capacity, "%lld", (long long)time(NULL));
+    }
+    target[capacity - 1] = '\0';
+}
+
+static void append_log(const char *path, const char *timestamp,
+    int category, SDL_LogPriority priority, const char *message) {
     FILE *file = path && path[0] ? bongo_cat_file_open(path, "ab") : NULL;
     if (!file) return;
-    fprintf(file, "%lld [%d:%d] %s\n", (long long)time(NULL), category,
-        (int)priority, message ? message : "");
+    fprintf(file, "%s [%d:%d] %s\n", timestamp ? timestamp : "unknown-time", category, (int)priority, message ? message : "");
     fclose(file);
 }
 
 static void SDLCALL log_output(void *userdata, int category,
     SDL_LogPriority priority, const char *message) {
     (void)userdata;
-    append_log(startup_log_path, category, priority, message);
-    append_log(desktop_log_path, category, priority, message);
-    fprintf(stderr, "%s\n", message ? message : "");
+    char timestamp[64];
+    format_timestamp(timestamp, sizeof(timestamp));
+    append_log(startup_log_path, timestamp, category, priority, message);
+    append_log(desktop_log_path, timestamp, category, priority, message);
+    fprintf(stderr, "%s [%d:%d] %s\n", timestamp, category, (int)priority, message ? message : "");
 }
 
 static bool reset_log(const char *path) {
     FILE *file = path && path[0] ? bongo_cat_file_open(path, "wb") : NULL;
     if (!file) return false;
-    fprintf(file, "BongoCat %s startup log\n", BONGO_CAT_VERSION);
+    char timestamp[64];
+    format_timestamp(timestamp, sizeof(timestamp));
+    fprintf(file, "%s BongoCat %s startup log\n", timestamp, BONGO_CAT_VERSION);
     return fclose(file) == 0;
 }
 

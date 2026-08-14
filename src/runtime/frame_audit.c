@@ -117,6 +117,8 @@ static void log_first_frame(BongoCatApp *app, int width, int height) {
     else if (!visible_colored) SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
         "First-frame diagnosis: framebuffer has RGB content but no visible color alpha");
     else SDL_Log("First-frame diagnosis: OpenGL framebuffer contains visible content");
+    bongo_cat_frame_presentation_prepare(app, pixels, width, height,
+        after == GL_NO_ERROR && visible_colored > 0);
     if (app->smoke) {
         const int points[][2] = {{0, 0}, {width - 1, 0}, {0, height - 1},
             {width - 1, height - 1}, {width / 2, height / 2}};

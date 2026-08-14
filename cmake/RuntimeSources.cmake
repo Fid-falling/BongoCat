@@ -8,7 +8,8 @@ set(BONGO_CAT_RUNTIME_SOURCES
   src/render/mver_pointer_overlay.c src/render/mver_pointer_overlay_draw.c
   src/runtime/app.c src/runtime/config_store.c
   src/runtime/assets.c src/runtime/startup.c
-  src/runtime/frame_audit.c src/runtime/frame_clock.c src/runtime/modal_frame.c
+  src/runtime/frame_audit.c src/runtime/frame_presentation_audit.c
+  src/runtime/frame_clock.c src/runtime/modal_frame.c
   src/runtime/gamepad.c
   src/runtime/live2d_audit.c src/runtime/live2d_visual_audit.c
   src/runtime/live2d_viewer_audit.c
@@ -34,7 +35,8 @@ set(BONGO_CAT_RUNTIME_SOURCES
   src/runtime/window_menu_behavior.c src/runtime/window_menu_preview.c
   src/runtime/window_hit.c src/runtime/window_wheel.c
   src/ui/nuklear_impl.c
-  src/ui/ui_backend.c src/ui/ui_resize_cache.c src/ui/ui_scale.c
+  src/ui/ui_backend.c src/ui/ui_tooltip.c src/ui/ui_resize_cache.c
+  src/ui/ui_scale.c
   src/ui/ui_cursor.c src/ui/ui_animation.c src/ui/ui_paint.c
   src/ui/ui_paint_cache.c src/ui/ui_paint_border.c src/ui/ui_paint_shell.c
   src/ui/ui_font.c src/ui/ui_font_atlas.c src/ui/ui_font_atlas_sources.c

@@ -42,10 +42,11 @@ void bongo_cat_preferences_page_cat(BongoCatApp *app, struct nk_context *context
         &window->keep_in_screen) && window->keep_in_screen)
         bongo_cat_window_clamp_to_display(app);
     if (bongo_cat_pref_obs_background(context, "obs-background", tr(app,
-        "pages.preference.cat.labels.obsBackground", "OBS Background"), tr(app,
-        "pages.preference.cat.hints.obsBackground", "Enable when OBS Window "
-        "Capture is black.\nUse the Windows 7 compatibility method and remove "
-        "the background with a color key filter."),
+        "pages.preference.cat.labels.obsBackground", "Solid Background"), tr(app,
+        "pages.preference.cat.hints.obsBackground", "Window capture is black?"), tr(app,
+        "pages.preference.cat.hints.obsBackgroundHelp", "OBS: enable this option, use "
+        "the Windows 7 compatibility method, and remove the background with a "
+        "color key filter."),
         &window->obs_background, &window->obs_background_color))
         app->dirty = true;
     float old_scale = window->scale_percent;

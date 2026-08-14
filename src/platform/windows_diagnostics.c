@@ -4,6 +4,7 @@
 #include <SDL3/SDL.h>
 #include <dwmapi.h>
 #include <stdlib.h>
+#include <wchar.h>
 #include <windows.h>
 
 static void utf8(const wchar_t *source, char *target, size_t capacity) {
@@ -78,6 +79,85 @@ static void log_process(void) {
         elevation.TokenIsElevated != 0, (unsigned long)integrity, executable);
 }
 
+static void log_monitor(HWND window) {
+    HMONITOR monitor = MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST);
+    MONITORINFOEXW info = {.cbSize = sizeof(info)};
+    if (!monitor || !GetMonitorInfoW(monitor, (MONITORINFO *)&info)) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
+            "Window monitor lookup failed (Win32 error %lu)",
+            (unsigned long)GetLastError());
+        return;
+    }
+    char device[128];
+    utf8(info.szDevice, device, sizeof(device));
+    DEVMODEW mode = {.dmSize = sizeof(mode)};
+    bool mode_known = EnumDisplaySettingsExW(info.szDevice,
+        ENUM_CURRENT_SETTINGS, &mode, 0) != FALSE;
+    SDL_Log("Window monitor: handle=%p device=%s primary=%d "
+        "monitor=%ld,%ld %ldx%ld work=%ld,%ld %ldx%ld "
+        "mode_known=%d mode_position=%ld,%ld mode_size=%lux%lu "
+        "frequency=%lu orientation=%lu",
+        (void *)monitor, device, (info.dwFlags & MONITORINFOF_PRIMARY) != 0,
+        (long)info.rcMonitor.left, (long)info.rcMonitor.top,
+        (long)(info.rcMonitor.right - info.rcMonitor.left),
+        (long)(info.rcMonitor.bottom - info.rcMonitor.top),
+        (long)info.rcWork.left, (long)info.rcWork.top,
+        (long)(info.rcWork.right - info.rcWork.left),
+        (long)(info.rcWork.bottom - info.rcWork.top), mode_known,
+        mode_known ? (long)mode.dmPosition.x : 0,
+        mode_known ? (long)mode.dmPosition.y : 0,
+        mode_known ? (unsigned long)mode.dmPelsWidth : 0,
+        mode_known ? (unsigned long)mode.dmPelsHeight : 0,
+        mode_known ? (unsigned long)mode.dmDisplayFrequency : 0,
+        mode_known ? (unsigned long)mode.dmDisplayOrientation : 0);
+    for (DWORD index = 0; index < 32; ++index) {
+        DISPLAY_DEVICEW adapter = {.cb = sizeof(adapter)};
+        if (!EnumDisplayDevicesW(NULL, index, &adapter, 0)) break;
+        if (wcscmp(adapter.DeviceName, info.szDevice) != 0) continue;
+        char description[256], id[512];
+        utf8(adapter.DeviceString, description, sizeof(description));
+        utf8(adapter.DeviceID, id, sizeof(id));
+        SDL_Log("Window monitor adapter: index=%lu description=%s id=%s "
+            "flags=0x%lx", (unsigned long)index, description, id,
+            (unsigned long)adapter.StateFlags);
+        break;
+    }
+}
+
+static void log_device_context(HWND window) {
+    HDC dc = GetDC(window);
+    if (!dc) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
+            "Window device context lookup failed (Win32 error %lu)",
+            (unsigned long)GetLastError());
+        return;
+    }
+    int format = GetPixelFormat(dc);
+    PIXELFORMATDESCRIPTOR pixel_format = {0};
+    bool described = format > 0 && DescribePixelFormat(dc, format,
+        sizeof(pixel_format), &pixel_format) != 0;
+    HDC current_dc = wglGetCurrentDC();
+    HGLRC current_context = wglGetCurrentContext();
+    HWND current_window = current_dc ? WindowFromDC(current_dc) : NULL;
+    SDL_Log("Window device context: pixel_format=%d described=%d "
+        "pfd_flags=0x%lx color_bits=%u alpha_bits=%u depth_bits=%u "
+        "stencil_bits=%u layer_type=%u technology=%d bits_pixel=%d "
+        "planes=%d raster_caps=0x%x current_gl_context=%p current_dc=%p "
+        "current_dc_window=%p matches_window=%d",
+        format, described,
+        described ? (unsigned long)pixel_format.dwFlags : 0,
+        described ? (unsigned)pixel_format.cColorBits : 0,
+        described ? (unsigned)pixel_format.cAlphaBits : 0,
+        described ? (unsigned)pixel_format.cDepthBits : 0,
+        described ? (unsigned)pixel_format.cStencilBits : 0,
+        described ? (unsigned)pixel_format.iLayerType : 0,
+        GetDeviceCaps(dc, TECHNOLOGY), GetDeviceCaps(dc, BITSPIXEL),
+        GetDeviceCaps(dc, PLANES), (unsigned)GetDeviceCaps(dc, RASTERCAPS),
+        (void *)current_context, (void *)current_dc, (void *)current_window,
+        current_window == window);
+    ReleaseDC(window, dc);
+}
+
 static void log_window(HWND window) {
     char class_name[128], title[256];
     wchar_t class_wide[128] = {0}, title_wide[256] = {0};
@@ -100,13 +180,22 @@ static void log_window(HWND window) {
         GetProcAddress(user32, "GetDpiForWindow") : NULL;
     UINT dpi = get_dpi ? get_dpi(window) : 0;
     DWORD pid = 0; DWORD thread = GetWindowThreadProcessId(window, &pid);
+    RECT client = {0}; POINT client_origin = {0};
+    bool client_known = GetClientRect(window, &client) != FALSE &&
+        ClientToScreen(window, &client_origin) != FALSE;
     SDL_Log("Capture window details: class=%s title=%s pid=%lu thread=%lu "
         "dpi=%u frame_known=%d frame=%ld,%ld %ldx%ld "
+        "client_known=%d client=%ld,%ld %ldx%ld "
         "layered_known=%d alpha=%u layered_flags=0x%lx", class_name, title,
         (unsigned long)pid, (unsigned long)thread, dpi,
         SUCCEEDED(frame_result), (long)frame.left, (long)frame.top,
         (long)(frame.right - frame.left), (long)(frame.bottom - frame.top),
+        client_known, (long)client_origin.x, (long)client_origin.y,
+        (long)(client.right - client.left),
+        (long)(client.bottom - client.top),
         layered_known, (unsigned)alpha, (unsigned long)flags);
+    log_monitor(window);
+    log_device_context(window);
 }
 
 void bongo_cat_windows_diagnostics_log(HWND window) {
@@ -131,4 +220,5 @@ void bongo_cat_windows_diagnostics_log(HWND window) {
     log_displays();
     if (window) log_window(window);
 }
+
 #endif

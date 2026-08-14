@@ -22,7 +22,7 @@
           "keepInScreen": "Keep on Screen",
           "windowSize": "Window Size",
           "opacity": "Opacity",
-          "obsBackground": "OBS Background",
+          "obsBackground": "Solid Background",
           "autoReleaseDelay": "Auto Release Delay",
           "hideOnHover": "Hide on Hover",
           "maxFPS": "Max Frame Rate"
@@ -31,7 +31,8 @@
           "passThrough": "When enabled, clicks pass through the window without affecting it.",
           "alwaysOnTop": "When enabled, the window stays above all other windows.",
           "keepInScreen": "When enabled, the window automatically stays within the screen boundaries.",
-          "obsBackground": "Enable when OBS Window Capture is black.\nUse the Windows 7 compatibility method and remove the background with a color key filter.",
+          "obsBackground": "Window capture is black?",
+          "obsBackgroundHelp": "OBS: enable this option, use the Windows 7 compatibility method, and remove the background with a color key filter.",
           "windowSize": "Move mouse to window edge, or hold Shift and right-drag to resize.",
           "hideOnHover": "When enabled, the window hides automatically on mouse hover. You can set a delay; 0 means hide immediately."
         }

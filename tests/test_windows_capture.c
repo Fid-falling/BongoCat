@@ -1,4 +1,5 @@
 #include "windows_capture.h"
+#include "windows_diagnostics.h"
 #include "windows_direct_input.h"
 #include "windows_input.h"
 #include "windows_popup.h"
@@ -92,6 +93,7 @@ static void test_capture_styles(void) {
         NULL, NULL, GetModuleHandleW(NULL), NULL);
     CHECK(window != NULL);
     if (window) {
+        CHECK(bongo_cat_windows_diagnostics_probe_capture(window, "unit-test"));
         CHECK(bongo_cat_windows_capture_configure(window));
         LONG_PTR style = GetWindowLongPtrW(window, GWL_EXSTYLE);
         CHECK((style & WS_EX_APPWINDOW) == 0);
