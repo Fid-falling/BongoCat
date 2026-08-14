@@ -27,6 +27,13 @@ typedef enum BongoCatModelMode {
     BONGO_CAT_MODE_KEYBOARD,
     BONGO_CAT_MODE_GAMEPAD
 } BongoCatModelMode;
+typedef enum BongoCatObsBackgroundColor {
+    BONGO_CAT_OBS_BACKGROUND_GREEN,
+    BONGO_CAT_OBS_BACKGROUND_BLUE,
+    BONGO_CAT_OBS_BACKGROUND_RED,
+    BONGO_CAT_OBS_BACKGROUND_MAGENTA,
+    BONGO_CAT_OBS_BACKGROUND_COLOR_COUNT
+} BongoCatObsBackgroundColor;
 
 typedef struct BongoCatModelOptions {
     bool mirror;
@@ -43,6 +50,8 @@ typedef struct BongoCatWindowOptions {
     bool always_on_top;
     bool hide_on_hover;
     bool keep_in_screen;
+    bool obs_background;
+    BongoCatObsBackgroundColor obs_background_color;
     float scale_percent;
     float opacity_percent;
     float hide_delay_seconds;
@@ -114,6 +123,10 @@ BongoCatResult bongo_cat_session_save(const char *path,
 const char *bongo_cat_theme_name(BongoCatTheme value);
 const char *bongo_cat_language_name(BongoCatLanguage value);
 const char *bongo_cat_mode_name(BongoCatModelMode value);
+const char *bongo_cat_obs_background_color_name(
+    BongoCatObsBackgroundColor value);
+uint32_t bongo_cat_obs_background_color_rgb(
+    BongoCatObsBackgroundColor value);
 
 #ifdef __cplusplus
 }

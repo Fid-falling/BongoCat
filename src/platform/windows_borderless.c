@@ -1,5 +1,6 @@
 #include "windows_borderless.h"
 #include "windows_capture.h"
+#include "windows_tray.h"
 
 #ifdef _WIN32
 #include <stdlib.h>
@@ -29,6 +30,7 @@ static LONG_PTR borderless_style(LONG_PTR style) {
 
 static LRESULT CALLBACK borderless_window_proc(HWND window, UINT message,
     WPARAM wparam, LPARAM lparam) {
+    bongo_cat_windows_tray_handle_message(message);
     WNDPROC original = (WNDPROC)GetPropW(window, original_proc_property);
     WindowsMenuBinding *menu = GetPropW(window, menu_binding_property);
     WindowsDragBinding *drag = GetPropW(window, drag_binding_property);

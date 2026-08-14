@@ -2,6 +2,7 @@
 #include "windows_direct_input.h"
 #include "windows_input.h"
 #include "windows_popup.h"
+#include "windows_tray.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
@@ -63,20 +64,76 @@ static void test_direct_input_rebase(void) {
     DestroyWindow(window);
 }
 
-int main(void) {
-    HWND window = CreateWindowExW(WS_EX_TOOLWINDOW, L"STATIC",
+static void count_tray_restore(void *userdata) {
+    int *count = userdata;
+    (*count)++;
+}
+
+static void test_tray_restart_notification(void) {
+    int restores = 0;
+    void *tray = &restores;
+    bongo_cat_platform_set_tray_callbacks(
+        tray, NULL, NULL, count_tray_restore, &restores);
+    bongo_cat_windows_tray_handle_message(WM_NULL);
+    CHECK(restores == 0);
+    UINT taskbar_created = RegisterWindowMessageW(L"TaskbarCreated");
+    CHECK(taskbar_created != 0);
+    bongo_cat_windows_tray_handle_message(taskbar_created);
+    CHECK(restores == 1);
+    bongo_cat_platform_set_tray_callbacks(tray, NULL, NULL, NULL, NULL);
+    bongo_cat_windows_tray_handle_message(taskbar_created);
+    CHECK(restores == 1);
+}
+
+static void test_capture_styles(void) {
+    HWND window = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_LAYERED |
+        WS_EX_TRANSPARENT, L"STATIC",
         L"BongoCat capture test", WS_POPUP, 0, 0, 32, 32,
         NULL, NULL, GetModuleHandleW(NULL), NULL);
     CHECK(window != NULL);
     if (window) {
         CHECK(bongo_cat_windows_capture_configure(window));
         LONG_PTR style = GetWindowLongPtrW(window, GWL_EXSTYLE);
-        CHECK((style & WS_EX_APPWINDOW) != 0);
+        CHECK((style & WS_EX_APPWINDOW) == 0);
         CHECK((style & WS_EX_TOOLWINDOW) == 0);
+        CHECK((style & WS_EX_NOREDIRECTIONBITMAP) == 0);
+        CHECK((style & WS_EX_LAYERED) != 0);
+        CHECK((style & WS_EX_TRANSPARENT) != 0);
+        CHECK(bongo_cat_windows_capture_configure(window));
+        CHECK(GetWindowLongPtrW(window, GWL_EXSTYLE) == style);
         CHECK(!bongo_cat_windows_capture_handle_message(window, WM_NULL, 0));
         CHECK(!bongo_cat_windows_capture_handle_message(window, WM_TIMER, 1));
         DestroyWindow(window);
     }
+    window = CreateWindowExW(WS_EX_NOREDIRECTIONBITMAP, L"STATIC",
+        L"BongoCat redirection test", WS_POPUP,
+        0, 0, 32, 32, NULL, NULL, GetModuleHandleW(NULL), NULL);
+    CHECK(window != NULL);
+    if (window) {
+        CHECK(!bongo_cat_windows_capture_configure(window));
+        LONG_PTR style = GetWindowLongPtrW(window, GWL_EXSTYLE);
+        CHECK((style & WS_EX_TOOLWINDOW) == 0);
+        CHECK((style & WS_EX_NOREDIRECTIONBITMAP) != 0);
+        DestroyWindow(window);
+    }
+    window = CreateWindowExW(WS_EX_APPWINDOW | WS_EX_LAYERED, L"STATIC",
+        L"BongoCat capture app-window test", WS_POPUP, 0, 0, 32, 32,
+        NULL, NULL, GetModuleHandleW(NULL), NULL);
+    CHECK(window != NULL);
+    if (window) {
+        LONG_PTR before = GetWindowLongPtrW(window, GWL_EXSTYLE);
+        CHECK(bongo_cat_windows_capture_configure(window));
+        LONG_PTR after = GetWindowLongPtrW(window, GWL_EXSTYLE);
+        CHECK((after & WS_EX_APPWINDOW) != 0);
+        CHECK((after & WS_EX_LAYERED) != 0);
+        CHECK(after == before);
+        DestroyWindow(window);
+    }
+}
+
+int main(void) {
+    test_capture_styles();
+    test_tray_restart_notification();
     test_popup_completion();
     test_input_startup();
     test_direct_input_rebase();

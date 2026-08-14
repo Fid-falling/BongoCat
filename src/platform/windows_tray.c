@@ -1,5 +1,6 @@
 #include "bongo_cat/platform.h"
 #include "windows_popup.h"
+#include "windows_tray.h"
 
 #ifdef _WIN32
 #include <stdlib.h>
@@ -7,6 +8,10 @@
 
 #define BONGO_CAT_TRAY_MODAL_TIMER ((UINT_PTR)0xBC4F)
 static const wchar_t tray_binding_property[] = L"BongoCat.TrayBinding";
+static UINT taskbar_created_message;
+static void *restore_tray;
+static BongoCatTrayRestore restore_callback;
+static void *restore_userdata;
 
 typedef struct WindowsTrayBinding {
     WNDPROC original;
@@ -86,10 +91,29 @@ static void bind_tray_window(HWND window, void *tray,
 
 void bongo_cat_platform_set_tray_callbacks(void *tray,
     BongoCatTrayClick left_click, BongoCatModalTick modal_tick,
-    void *userdata) {
+    BongoCatTrayRestore restore, void *userdata) {
+    if (!taskbar_created_message)
+        taskbar_created_message = RegisterWindowMessageW(L"TaskbarCreated");
+    if (tray && restore) {
+        restore_tray = tray;
+        restore_callback = restore;
+        restore_userdata = userdata;
+    } else if (!tray || tray == restore_tray) {
+        restore_tray = NULL;
+        restore_callback = NULL;
+        restore_userdata = NULL;
+    }
     /* Pinned SDL stores SDL_Tray* in its private message window userdata. */
     HWND window = NULL;
     while ((window = FindWindowExW(HWND_MESSAGE, window, L"Message", NULL)) != NULL)
         bind_tray_window(window, tray, left_click, modal_tick, userdata);
+}
+
+void bongo_cat_windows_tray_handle_message(UINT message) {
+    if (!taskbar_created_message)
+        taskbar_created_message = RegisterWindowMessageW(L"TaskbarCreated");
+    if (taskbar_created_message && message == taskbar_created_message &&
+        restore_callback)
+        restore_callback(restore_userdata);
 }
 #endif

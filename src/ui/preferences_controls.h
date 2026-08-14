@@ -2,6 +2,7 @@
 #define BONGO_CAT_PREFERENCES_CONTROLS_H
 
 #include <stdbool.h>
+#include "bongo_cat/config.h"
 #include "nuklear_config.h"
 
 bool bongo_cat_pref_control_float(struct nk_context *context, const char *id,
@@ -14,6 +15,8 @@ bool bongo_cat_pref_control_slider(struct nk_context *context, const char *id,
     float default_value);
 bool bongo_cat_pref_control_toggle(struct nk_context *context,
     const char *id, bool *value);
+bool bongo_cat_pref_control_obs_background(struct nk_context *context,
+    const char *id, bool *enabled, BongoCatObsBackgroundColor *color);
 int bongo_cat_pref_control_combo(struct nk_context *context, const char *id,
     const char *const *items, int count, int selected);
 bool bongo_cat_pref_controls_animating(struct nk_context *context);

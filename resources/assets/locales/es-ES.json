@@ -22,6 +22,7 @@
           "keepInScreen": "Mantener en pantalla",
           "windowSize": "Tamaño de la ventana",
           "opacity": "Opacidad",
+          "obsBackground": "Fondo de OBS",
           "autoReleaseDelay": "Retardo de liberación automática",
           "hideOnHover": "Ocultar al pasar el ratón",
           "maxFPS": "Frecuencia máxima de fotogramas"
@@ -30,6 +31,7 @@
           "passThrough": "Al activarlo, los clics atraviesan la ventana sin afectarla.",
           "alwaysOnTop": "Al activarlo, la ventana permanece por encima de las demás.",
           "keepInScreen": "Al activarlo, la ventana se mantiene automáticamente dentro de los límites de la pantalla.",
+          "obsBackground": "Actívalo si la captura de ventana de OBS aparece en negro.\nUsa el método compatible con Windows 7 y elimina el fondo con un filtro de clave de color.",
           "windowSize": "Mueva el ratón al borde de la ventana o mantenga Mayús y arrastre con el botón derecho para cambiar el tamaño.",
           "hideOnHover": "Al activarlo, la ventana se oculta automáticamente al pasar el ratón. Puede definir un retardo; 0 significa ocultar inmediatamente."
         }

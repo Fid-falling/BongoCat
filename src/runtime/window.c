@@ -63,9 +63,16 @@ BongoCatResult bongo_cat_window_create(BongoCatApp *app, BongoCatError *error) {
             int sample_buffers = 0, sample_count = 0;
             SDL_GL_GetAttribute(SDL_GL_MULTISAMPLEBUFFERS, &sample_buffers);
             SDL_GL_GetAttribute(SDL_GL_MULTISAMPLESAMPLES, &sample_count);
+            const GLubyte *vendor = glGetString(GL_VENDOR);
+            const GLubyte *renderer = glGetString(GL_RENDERER);
+            const GLubyte *version = glGetString(GL_VERSION);
             SDL_Log("OpenGL window ready (transparent=%d, MSAA=%d, "
                 "sample_buffers=%d, sample_count=%d)", options[i][0], options[i][1],
                 sample_buffers, sample_count);
+            SDL_Log("OpenGL context: vendor=%s renderer=%s version=%s",
+                vendor ? (const char *)vendor : "unknown",
+                renderer ? (const char *)renderer : "unknown",
+                version ? (const char *)version : "unknown");
             if (!SDL_GL_SetSwapInterval(1)) SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
                 "Vertical sync unavailable: %s", SDL_GetError());
             return BONGO_CAT_OK;

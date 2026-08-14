@@ -245,8 +245,8 @@ bool bongo_cat_platform_open_directory(const char *path) {
 
 void bongo_cat_platform_set_tray_callbacks(void *tray,
     BongoCatTrayClick left_click, BongoCatModalTick modal_tick,
-    void *userdata) {
-    BongoCatSDLTray *native = tray;
+    BongoCatTrayRestore restore, void *userdata) {
+    (void)restore; BongoCatSDLTray *native = tray;
     if (tray_target) {
         [tray_target unbind]; [tray_target release]; tray_target = nil;
     }

@@ -20,7 +20,9 @@ struct BongoCatTray {
     SDL_TrayEntry *exit;
     BongoCatImage icon;
     BongoCatModalFrame modal_frame;
-    bool state_valid;
+    bool state_valid, restore_requested;
+    uint64_t restore_after_ns;
+    unsigned restore_count;
     bool last_visible, last_pass_through, last_always_on_top;
     BongoCatLanguage last_language;
 };
@@ -78,11 +80,73 @@ static void on_exit(void *userdata, SDL_TrayEntry *entry) {
     ((BongoCatTray *)userdata)->app->running = false;
 }
 
+static void on_tray_restore(void *userdata) {
+    BongoCatTray *tray = userdata;
+    if (!tray) return;
+    if (!tray->restore_requested)
+        SDL_Log("Windows shell restarted; scheduling tray restoration");
+    tray->restore_requested = true;
+    tray->restore_after_ns = 0;
+}
+
 static SDL_TrayEntry *add(SDL_TrayMenu *menu, const char *label,
     SDL_TrayEntryFlags flags, SDL_TrayCallback callback, BongoCatTray *tray) {
     SDL_TrayEntry *entry = SDL_InsertTrayEntryAt(menu, -1, label, flags);
     if (entry && callback) SDL_SetTrayEntryCallback(entry, callback, tray);
     return entry;
+}
+
+static void destroy_native_tray(BongoCatTray *tray) {
+    if (!tray || !tray->handle) return;
+    bongo_cat_platform_set_tray_callbacks(
+        tray->handle, NULL, NULL, NULL, NULL);
+    SDL_DestroyTray(tray->handle);
+    tray->handle = NULL;
+    tray->visible = tray->pass_through = tray->always_on_top = NULL;
+    tray->preferences = tray->exit = NULL;
+    tray->state_valid = false;
+}
+
+static bool create_native_tray(BongoCatTray *tray, BongoCatError *error) {
+    tray->handle = SDL_CreateTray(tray->icon.surface, BONGO_CAT_NAME);
+    if (!tray->handle) {
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM,
+            "Tray creation failed: %s", SDL_GetError());
+        return false;
+    }
+    SDL_TrayMenu *menu = SDL_CreateTrayMenu(tray->handle);
+    SDL_TrayEntry *separator1 = NULL, *separator2 = NULL;
+    if (menu) {
+        tray->preferences = add(menu, bongo_cat_i18n_get(tray->app->i18n,
+            "composables.useAppMenu.labels.preference", "Preferences"),
+            SDL_TRAYENTRY_BUTTON, on_preferences, tray);
+        separator1 = add(menu, NULL, 0, NULL, tray);
+        tray->visible = add(menu, bongo_cat_i18n_get(tray->app->i18n,
+            "composables.useAppMenu.labels.showCat", "Show BongoCat"),
+            SDL_TRAYENTRY_CHECKBOX, on_visible, tray);
+        tray->pass_through = add(menu, bongo_cat_i18n_get(tray->app->i18n,
+            "composables.useAppMenu.labels.passThrough", "Mouse pass-through"),
+            SDL_TRAYENTRY_CHECKBOX, on_pass_through, tray);
+        tray->always_on_top = add(menu, bongo_cat_i18n_get(tray->app->i18n,
+            "composables.useAppMenu.labels.alwaysOnTop", "Always on top"),
+            SDL_TRAYENTRY_CHECKBOX, on_always_on_top, tray);
+        separator2 = add(menu, NULL, 0, NULL, tray);
+        tray->exit = add(menu, bongo_cat_i18n_get(tray->app->i18n,
+            "composables.useAppMenu.labels.quitApp", "Exit"),
+            SDL_TRAYENTRY_BUTTON, on_exit, tray);
+    }
+    if (!menu || !tray->preferences || !separator1 || !tray->visible ||
+        !tray->pass_through || !tray->always_on_top || !separator2 ||
+        !tray->exit) {
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM,
+            "Tray menu creation failed: %s", SDL_GetError());
+        destroy_native_tray(tray);
+        return false;
+    }
+    bongo_cat_platform_set_tray_callbacks(tray->handle,
+        on_tray_left_click, on_tray_modal_frame, on_tray_restore, tray);
+    tray->state_valid = false;
+    return true;
 }
 
 BongoCatTray *bongo_cat_tray_create(BongoCatApp *app, BongoCatError *error) {
@@ -102,38 +166,37 @@ BongoCatTray *bongo_cat_tray_create(BongoCatApp *app, BongoCatError *error) {
         bongo_cat_tray_destroy(tray);
         return NULL;
     }
-    tray->handle = SDL_CreateTray(tray->icon.surface, BONGO_CAT_NAME);
-    bongo_cat_image_free(&tray->icon);
-    if (!tray->handle) {
-        bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM, "Tray creation failed: %s", SDL_GetError());
+    if (!create_native_tray(tray, error)) {
         bongo_cat_tray_destroy(tray);
         return NULL;
     }
-    SDL_TrayMenu *menu = SDL_CreateTrayMenu(tray->handle);
-    tray->preferences = add(menu, bongo_cat_i18n_get(app->i18n,
-        "composables.useAppMenu.labels.preference", "Preferences"), SDL_TRAYENTRY_BUTTON,
-        on_preferences, tray);
-    add(menu, NULL, 0, NULL, tray);
-    tray->visible = add(menu, bongo_cat_i18n_get(app->i18n,
-        "composables.useAppMenu.labels.showCat", "Show BongoCat"), SDL_TRAYENTRY_CHECKBOX,
-        on_visible, tray);
-    tray->pass_through = add(menu, bongo_cat_i18n_get(app->i18n,
-        "composables.useAppMenu.labels.passThrough", "Mouse pass-through"), SDL_TRAYENTRY_CHECKBOX,
-        on_pass_through, tray);
-    tray->always_on_top = add(menu, bongo_cat_i18n_get(app->i18n,
-        "composables.useAppMenu.labels.alwaysOnTop", "Always on top"), SDL_TRAYENTRY_CHECKBOX,
-        on_always_on_top, tray);
-    add(menu, NULL, 0, NULL, tray);
-    tray->exit = add(menu, bongo_cat_i18n_get(app->i18n,
-        "composables.useAppMenu.labels.quitApp", "Exit"), SDL_TRAYENTRY_BUTTON, on_exit, tray);
-    bongo_cat_platform_set_tray_callbacks(tray->handle,
-        on_tray_left_click, on_tray_modal_frame, tray);
+    SDL_Log("Tray created");
     bongo_cat_tray_sync(tray);
     return tray;
 }
 
+static bool restore_native_tray(BongoCatTray *tray) {
+    if (!tray->restore_requested) return tray->handle != NULL;
+    uint64_t now = SDL_GetTicksNS();
+    if (now < tray->restore_after_ns) return tray->handle != NULL;
+    destroy_native_tray(tray);
+    BongoCatError error = {0};
+    if (!create_native_tray(tray, &error)) {
+        tray->restore_requested = true;
+        tray->restore_after_ns = now + 1000000000ull;
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+            "Tray restoration failed; retrying: %s", error.message);
+        return false;
+    }
+    tray->restore_requested = false;
+    tray->restore_count++;
+    SDL_Log("Tray restored after Windows shell restart (count=%u)",
+        tray->restore_count);
+    return true;
+}
+
 void bongo_cat_tray_sync(BongoCatTray *tray) {
-    if (!tray) return;
+    if (!tray || !restore_native_tray(tray)) return;
     BongoCatApp *app = tray->app;
     if (tray->state_valid && tray->last_visible == app->config.window.visible &&
         tray->last_pass_through == app->config.window.pass_through &&
@@ -170,6 +233,14 @@ bool bongo_cat_tray_self_test(BongoCatTray *tray) {
     const SDL_TrayEntry **entries = SDL_GetTrayEntries(
         SDL_GetTrayEntryParent(tray->preferences), &count);
     if (!entries || count < 1 || entries[0] != tray->preferences) return false;
+#ifdef _WIN32
+    on_tray_restore(tray);
+    bongo_cat_tray_sync(tray);
+    if (tray->restore_requested || !tray->handle || !tray->preferences ||
+        !tray->visible || !tray->pass_through || !tray->always_on_top ||
+        !tray->exit) return false;
+    SDL_Log("Tray self-test: shell restart restored");
+#endif
     BongoCatApp *app = tray->app;
     bool visible = app->config.window.visible;
     bool pass_through = app->config.window.pass_through;
@@ -195,8 +266,7 @@ bool bongo_cat_tray_self_test(BongoCatTray *tray) {
 
 void bongo_cat_tray_destroy(BongoCatTray *tray) {
     if (!tray) return;
-    bongo_cat_platform_set_tray_callbacks(tray->handle, NULL, NULL, NULL);
-    if (tray->handle) SDL_DestroyTray(tray->handle);
+    destroy_native_tray(tray);
     bongo_cat_image_free(&tray->icon);
     free(tray);
 }

@@ -28,7 +28,8 @@ set(BONGO_CAT_RUNTIME_SOURCES
   src/runtime/model_import_report.c src/runtime/model_import_mver_metadata.c
   src/runtime/model_import_metadata.c src/runtime/runtime_flow.c
   src/runtime/shortcuts.c src/runtime/tray.c
-  src/runtime/window.c src/runtime/window_display.c src/runtime/window_drag.c
+  src/runtime/window.c src/runtime/window_background.c
+  src/runtime/window_display.c src/runtime/window_drag.c
   src/runtime/window_geometry.c src/runtime/window_menu_actions.c
   src/runtime/window_menu_behavior.c src/runtime/window_menu_preview.c
   src/runtime/window_hit.c src/runtime/window_wheel.c

@@ -31,15 +31,27 @@ void test_config(void) {
     CHECK(value.window.width == 612 && value.window.height == 354);
     CHECK(value.window.visible && value.window.always_on_top);
     CHECK(!value.window.keep_in_screen);
+    CHECK(!value.window.obs_background);
+    CHECK(value.window.obs_background_color == BONGO_CAT_OBS_BACKGROUND_GREEN);
+    const uint32_t obs_colors[] = {
+        0x00ff00, 0x0000ff, 0xff0000, 0xff00ff};
+    const char *obs_names[] = {
+        "#00ff00", "#0000ff", "#ff0000", "#ff00ff"};
+    for (int i = 0; i < BONGO_CAT_OBS_BACKGROUND_COLOR_COUNT; ++i) {
+        CHECK(bongo_cat_obs_background_color_rgb(i) == obs_colors[i]);
+        CHECK(strcmp(bongo_cat_obs_background_color_name(i), obs_names[i]) == 0);
+    }
     CHECK(value.model.mouse_centered);
 
     value.model.max_fps = 900;
     value.window.scale_percent = -2.0f;
     value.window.opacity_percent = 123.0f;
+    value.window.obs_background_color = BONGO_CAT_OBS_BACKGROUND_COLOR_COUNT;
     bongo_cat_config_validate(&value);
     CHECK(value.model.max_fps == 240);
     CHECK(value.window.scale_percent == 10.0f);
     CHECK(value.window.opacity_percent == 100.0f);
+    CHECK(value.window.obs_background_color == BONGO_CAT_OBS_BACKGROUND_GREEN);
 
     BongoCatConfig duplicates;
     bongo_cat_config_defaults(&duplicates);
@@ -67,6 +79,8 @@ void test_config(void) {
     value.model.mirror = true;
     value.model.mouse_centered = false;
     value.window.pass_through = true;
+    value.window.obs_background = true;
+    value.window.obs_background_color = BONGO_CAT_OBS_BACKGROUND_BLUE;
     value.window.x = -321;
     value.window.opacity_percent = 75.0f;
     value.app.language = BONGO_CAT_LANG_ZH_CN;
@@ -89,6 +103,8 @@ void test_config(void) {
     CHECK(!contains_text(preferences, "\"motionSound\""));
     CHECK(!contains_text(preferences, "\"behavior\""));
     CHECK(!contains_text(preferences, "\"taskbarVisible\""));
+    CHECK(contains_text(preferences, "\"obsBackground\": true"));
+    CHECK(contains_text(preferences, "\"obsBackgroundColor\": \"#0000ff\""));
     CHECK(bongo_cat_session_save(session, &value, &error) == BONGO_CAT_OK);
     CHECK(bongo_cat_path_is_file(preferences));
     CHECK(bongo_cat_path_is_file(session));
@@ -99,6 +115,8 @@ void test_config(void) {
     CHECK(loaded.model.max_fps == 30 && loaded.model.mirror);
     CHECK(!loaded.model.mouse_centered);
     CHECK(loaded.window.pass_through);
+    CHECK(loaded.window.obs_background);
+    CHECK(loaded.window.obs_background_color == BONGO_CAT_OBS_BACKGROUND_BLUE);
     CHECK(loaded.window.x == 0);
     CHECK(loaded.window.opacity_percent == 100.0f);
     CHECK(loaded.app.language == BONGO_CAT_LANG_ZH_CN);

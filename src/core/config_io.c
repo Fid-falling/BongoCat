@@ -36,6 +36,14 @@ static BongoCatLanguage parse_language(const char *value) {
             return (BongoCatLanguage)i;
     return BONGO_CAT_LANG_EN_US;
 }
+static BongoCatObsBackgroundColor parse_obs_background_color(
+    const char *value, BongoCatObsBackgroundColor fallback) {
+    if (value) for (int i = 0; i < BONGO_CAT_OBS_BACKGROUND_COLOR_COUNT; ++i)
+        if (strcmp(value, bongo_cat_obs_background_color_name(
+            (BongoCatObsBackgroundColor)i)) == 0)
+            return (BongoCatObsBackgroundColor)i;
+    return fallback;
+}
 
 static void read_model(yyjson_val *obj, BongoCatModelOptions *value) {
     if (!yyjson_is_obj(obj)) return;
@@ -52,6 +60,9 @@ static void read_window(yyjson_val *obj, BongoCatWindowOptions *value) {
     value->always_on_top = get_bool(obj, "alwaysOnTop", value->always_on_top);
     value->hide_on_hover = get_bool(obj, "hideOnHover", value->hide_on_hover);
     value->keep_in_screen = get_bool(obj, "keepInScreen", value->keep_in_screen);
+    value->obs_background = get_bool(obj, "obsBackground", value->obs_background);
+    value->obs_background_color = parse_obs_background_color(
+        get_string(obj, "obsBackgroundColor"), value->obs_background_color);
     value->hide_delay_seconds = get_float(obj, "hideOnHoverDelay", value->hide_delay_seconds);
 }
 static void read_app(yyjson_val *obj, BongoCatAppOptions *value) {
@@ -140,6 +151,9 @@ static void write_window(yyjson_mut_doc *doc, yyjson_mut_val *obj,
     yyjson_mut_obj_add_bool(doc, obj, "alwaysOnTop", v->always_on_top);
     yyjson_mut_obj_add_bool(doc, obj, "hideOnHover", v->hide_on_hover);
     yyjson_mut_obj_add_bool(doc, obj, "keepInScreen", v->keep_in_screen);
+    yyjson_mut_obj_add_bool(doc, obj, "obsBackground", v->obs_background);
+    yyjson_mut_obj_add_strcpy(doc, obj, "obsBackgroundColor",
+        bongo_cat_obs_background_color_name(v->obs_background_color));
     yyjson_mut_obj_add_real(doc, obj, "hideOnHoverDelay", v->hide_delay_seconds);
 }
 static void write_app(yyjson_mut_doc *doc, yyjson_mut_val *obj,

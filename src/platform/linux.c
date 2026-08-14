@@ -184,8 +184,9 @@ bool bongo_cat_platform_open_directory(const char *path) {
 
 void bongo_cat_platform_set_tray_callbacks(void *tray,
     BongoCatTrayClick left_click, BongoCatModalTick modal_tick,
-    void *userdata) {
-    (void)tray; (void)left_click; (void)modal_tick; (void)userdata;
+    BongoCatTrayRestore restore, void *userdata) {
+    (void)tray; (void)left_click; (void)modal_tick;
+    (void)restore; (void)userdata;
 }
 bool bongo_cat_platform_single_instance_begin(void) {
     char path[96]; snprintf(path, sizeof(path), "/tmp/bongo-cat-%lu.lock",

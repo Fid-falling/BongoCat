@@ -109,6 +109,7 @@ void bongo_cat_config_defaults(BongoCatConfig *config) {
     config->window.visible = true;
     config->window.always_on_top = true;
     config->window.keep_in_screen = false;
+    config->window.obs_background_color = BONGO_CAT_OBS_BACKGROUND_GREEN;
     config->window.scale_percent = BONGO_CAT_DEFAULT_WINDOW_SCALE_PERCENT;
     config->window.opacity_percent =
         BONGO_CAT_DEFAULT_WINDOW_OPACITY_PERCENT;
@@ -129,6 +130,9 @@ void bongo_cat_config_validate(BongoCatConfig *config) {
     config->window.scale_percent = clampf(config->window.scale_percent, 10.0f, 500.0f);
     config->window.opacity_percent = clampf(config->window.opacity_percent, 10.0f, 100.0f);
     config->window.hide_delay_seconds = clampf(config->window.hide_delay_seconds, 0.0f, 60.0f);
+    if ((unsigned)config->window.obs_background_color >=
+        BONGO_CAT_OBS_BACKGROUND_COLOR_COUNT)
+        config->window.obs_background_color = BONGO_CAT_OBS_BACKGROUND_GREEN;
     if (config->window.width < 64) config->window.width = 64;
     if (config->window.height < 64) config->window.height = 64;
     if (config->window.width > 8192) config->window.width = 8192;
@@ -182,4 +186,20 @@ const char *bongo_cat_language_name(BongoCatLanguage value) {
 const char *bongo_cat_mode_name(BongoCatModelMode value) {
     const char *names[] = {"standard", "keyboard", "gamepad"};
     return value <= BONGO_CAT_MODE_GAMEPAD ? names[value] : names[0];
+}
+
+const char *bongo_cat_obs_background_color_name(
+    BongoCatObsBackgroundColor value) {
+    static const char *names[] = {
+        "#00ff00", "#0000ff", "#ff0000", "#ff00ff"};
+    return (unsigned)value < BONGO_CAT_OBS_BACKGROUND_COLOR_COUNT ?
+        names[value] : names[BONGO_CAT_OBS_BACKGROUND_GREEN];
+}
+
+uint32_t bongo_cat_obs_background_color_rgb(
+    BongoCatObsBackgroundColor value) {
+    static const uint32_t colors[] = {
+        0x00ff00, 0x0000ff, 0xff0000, 0xff00ff};
+    return (unsigned)value < BONGO_CAT_OBS_BACKGROUND_COLOR_COUNT ?
+        colors[value] : colors[BONGO_CAT_OBS_BACKGROUND_GREEN];
 }

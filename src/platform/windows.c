@@ -9,7 +9,6 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_properties.h>
 #include <SDL3/SDL_video.h>
-#include <dwmapi.h>
 #include <string.h>
 #include <windows.h>
 static HWND native_window(BongoCatPlatform *platform) {
@@ -50,12 +49,9 @@ BongoCatResult bongo_cat_platform_init(BongoCatPlatform *platform, SDL_Window *w
         SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
             "Borderless resize is unavailable: %s", SDL_GetError());
     }
-    if (SDL_GetWindowFlags(window) & SDL_WINDOW_TRANSPARENT) {
-        MARGINS margins = {-1, -1, -1, -1};
-        DwmExtendFrameIntoClientArea(hwnd, &margins);
-    }
     SetWindowPos(hwnd, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE |
         SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    bongo_cat_windows_capture_log(hwnd, "initialized");
     return BONGO_CAT_OK;
 }
 void bongo_cat_platform_shutdown(BongoCatPlatform *platform) {
@@ -108,6 +104,7 @@ void bongo_cat_platform_set_always_on_top(BongoCatPlatform *platform, bool enabl
     apply_window_level(window, enabled);
     bongo_cat_windows_layered_set_always_on_top(platform, enabled);
     bongo_cat_windows_capture_configure(window);
+    bongo_cat_windows_capture_log(window, "window-level");
 }
 void bongo_cat_platform_begin_drag(BongoCatPlatform *platform,
     BongoCatModalTick modal_tick, void *userdata) {

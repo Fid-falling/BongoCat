@@ -6,6 +6,8 @@
 #include <windows.h>
 
 bool bongo_cat_windows_capture_configure(HWND window);
+bool bongo_cat_windows_capture_restore_transparency(HWND window);
+void bongo_cat_windows_capture_log(HWND window, const char *stage);
 bool bongo_cat_windows_capture_handle_message(
     HWND window, UINT message, WPARAM wparam);
 #endif

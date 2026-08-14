@@ -14,19 +14,31 @@
 #endif
 
 static char startup_log_path[BONGO_CAT_PATH_CAP];
+static char desktop_log_path[BONGO_CAT_PATH_CAP];
 static bool startup_is_ready;
+
+static void append_log(const char *path, int category,
+    SDL_LogPriority priority, const char *message) {
+    FILE *file = path && path[0] ? bongo_cat_file_open(path, "ab") : NULL;
+    if (!file) return;
+    fprintf(file, "%lld [%d:%d] %s\n", (long long)time(NULL), category,
+        (int)priority, message ? message : "");
+    fclose(file);
+}
 
 static void SDLCALL log_output(void *userdata, int category,
     SDL_LogPriority priority, const char *message) {
     (void)userdata;
-    FILE *file = startup_log_path[0]
-        ? bongo_cat_file_open(startup_log_path, "ab") : NULL;
-    if (file) {
-        fprintf(file, "%lld [%d:%d] %s\n", (long long)time(NULL), category,
-            (int)priority, message ? message : "");
-        fclose(file);
-    }
+    append_log(startup_log_path, category, priority, message);
+    append_log(desktop_log_path, category, priority, message);
     fprintf(stderr, "%s\n", message ? message : "");
+}
+
+static bool reset_log(const char *path) {
+    FILE *file = path && path[0] ? bongo_cat_file_open(path, "wb") : NULL;
+    if (!file) return false;
+    fprintf(file, "BongoCat %s startup log\n", BONGO_CAT_VERSION);
+    return fclose(file) == 0;
 }
 
 static bool store_argument(char *target, size_t capacity, const char *value,
@@ -167,10 +179,21 @@ static void begin_log(BongoCatApp *app) {
     }
     if (bongo_cat_path_is_file(startup_log_path))
         bongo_cat_file_replace(startup_log_path, previous, true);
-    FILE *file = bongo_cat_file_open(startup_log_path, "wb");
-    if (file) { fprintf(file, "BongoCat %s startup log\n", BONGO_CAT_VERSION); fclose(file); }
+    reset_log(startup_log_path);
+#ifdef _WIN32
+    const char *desktop = SDL_GetUserFolder(SDL_FOLDER_DESKTOP);
+    if (!desktop || !bongo_cat_path_join(desktop_log_path,
+        sizeof(desktop_log_path), desktop, "BongoCat-OBS-diagnostic.log") ||
+        !reset_log(desktop_log_path)) desktop_log_path[0] = '\0';
+#endif
     SDL_SetLogOutputFunction(log_output, NULL);
     SDL_Log("Startup on %s; data=%s", SDL_GetPlatform(), app->data_root);
+#ifdef _WIN32
+    if (desktop_log_path[0])
+        SDL_Log("Desktop diagnostic log: %s", desktop_log_path);
+    else SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+        "Desktop diagnostic log is unavailable; using the application data log");
+#endif
     if (interrupted[0]) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
         "Previous startup ended before readiness at stage: %s", interrupted);
 }

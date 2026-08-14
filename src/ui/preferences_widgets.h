@@ -2,11 +2,15 @@
 #define BONGO_CAT_PREFERENCES_WIDGETS_H
 
 #include <stdbool.h>
+#include "bongo_cat/config.h"
 #include "nuklear_config.h"
 
 void bongo_cat_pref_section(struct nk_context *context, const char *title);
 bool bongo_cat_pref_toggle(struct nk_context *context, const char *id,
     const char *title, const char *description, bool *value);
+bool bongo_cat_pref_obs_background(struct nk_context *context, const char *id,
+    const char *title, const char *description, bool *enabled,
+    BongoCatObsBackgroundColor *color);
 bool bongo_cat_pref_float(struct nk_context *context, const char *id,
     const char *title, const char *description, float minimum, float *value,
     float maximum, float step, float default_value);

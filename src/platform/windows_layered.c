@@ -1,17 +1,14 @@
 #include "windows_layered.h"
 #include "windows_capture.h"
-
 #ifdef _WIN32
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
 #include <SDL3/SDL_properties.h>
-#include <dwmapi.h>
 #include <stb_image_resize2.h>
 #include <stdlib.h>
 #include <windows.h>
 static const wchar_t proxy_class[] = L"BongoCat.LayeredPresenter";
 static const wchar_t proxy_property[] = L"BongoCat.LayeredProxy";
-
 /* SDL's OpenGL window owns a DC, so a separate layered window presents frames. */
 typedef struct BongoCatWindowsLayered {
     HDC memory_dc;
@@ -22,7 +19,7 @@ typedef struct BongoCatWindowsLayered {
     size_t readback_capacity;
     HWND proxy;
     int width, height, source_width, source_height;
-    bool readback_valid, active, has_frame;
+    bool readback_valid, active, has_frame, mode_logged;
     bool source_transparent, visible, topmost;
 } BongoCatWindowsLayered;
 static HWND native_window(BongoCatPlatform *platform) {
@@ -30,7 +27,6 @@ static HWND native_window(BongoCatPlatform *platform) {
         SDL_GetWindowProperties(platform->window),
         SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL) : NULL;
 }
-
 void *bongo_cat_windows_layered_create(void) {
     BongoCatWindowsLayered *value = calloc(1, sizeof(*value));
     if (!value) return NULL;
@@ -49,7 +45,6 @@ static void release_bitmap(BongoCatWindowsLayered *value) {
     value->pixels = NULL;
     value->width = value->height = 0;
 }
-
 static void restore_source(BongoCatPlatform *platform) {
     BongoCatWindowsLayered *value = platform ? platform->presenter : NULL;
     HWND source = native_window(platform);
@@ -59,12 +54,11 @@ static void restore_source(BongoCatPlatform *platform) {
         style & ~(WS_EX_LAYERED | WS_EX_TRANSPARENT));
     SetWindowPos(source, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE |
         SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
-    MARGINS margins = {-1, -1, -1, -1};
-    DwmExtendFrameIntoClientArea(source, &margins);
     value->source_transparent = false;
     SDL_SetWindowOpacity(platform->window, platform->window_opacity);
+    bongo_cat_windows_capture_restore_transparency(source);
+    bongo_cat_windows_capture_log(source, "layered-source-restored");
 }
-
 void bongo_cat_windows_layered_destroy(BongoCatPlatform *platform) {
     BongoCatWindowsLayered *value = platform ? platform->presenter : NULL;
     if (!value) return;
@@ -78,7 +72,6 @@ void bongo_cat_windows_layered_destroy(BongoCatPlatform *platform) {
     free(value);
     platform->presenter = NULL;
 }
-
 static bool register_proxy_class(void) {
     WNDCLASSEXW existing = {.cbSize = sizeof(existing)};
     HINSTANCE instance = GetModuleHandleW(NULL);
@@ -91,7 +84,6 @@ static bool register_proxy_class(void) {
     type.lpszClassName = proxy_class;
     return RegisterClassExW(&type) != 0;
 }
-
 static bool ensure_proxy(BongoCatPlatform *platform) {
     BongoCatWindowsLayered *value = platform ? platform->presenter : NULL;
     HWND source = native_window(platform);
@@ -112,9 +104,9 @@ static bool ensure_proxy(BongoCatPlatform *platform) {
     if (small_icon)
         SendMessageW(value->proxy, WM_SETICON, ICON_SMALL, (LPARAM)small_icon);
     SetPropW(source, proxy_property, value->proxy);
+    bongo_cat_windows_capture_log(value->proxy, "layered-proxy-created");
     return true;
 }
-
 static bool update_proxy(BongoCatPlatform *platform,
     BongoCatWindowsLayered *value) {
     HWND source_window = native_window(platform);
@@ -153,21 +145,28 @@ static bool make_source_transparent(BongoCatPlatform *platform) {
     SetWindowPos(source, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE |
         SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
     value->source_transparent = true;
+    bongo_cat_windows_capture_log(source, "layered-source-suppressed");
     return true;
 }
 
 void bongo_cat_windows_layered_set_click_through(
     BongoCatPlatform *platform, bool enabled) {
     BongoCatWindowsLayered *value = platform ? platform->presenter : NULL;
-    if (!value || value->active == enabled) return;
+    if (!value || (value->mode_logged && value->active == enabled)) return;
+    value->mode_logged = true;
     value->active = enabled;
+    SDL_Log("Windows presentation path: forced_click_through=%d", enabled);
     if (enabled) {
         value->has_frame = false;
         ensure_proxy(platform);
         if (value->proxy) ShowWindow(value->proxy, SW_HIDE);
+        bongo_cat_windows_capture_log(native_window(platform),
+            "layered-presenter-ready");
     } else {
         if (value->proxy) ShowWindow(value->proxy, SW_HIDE);
         restore_source(platform);
+        bongo_cat_windows_capture_log(native_window(platform),
+            "direct-opengl-presenter");
     }
 }
 
@@ -216,7 +215,11 @@ void bongo_cat_platform_set_visible(BongoCatPlatform *platform, bool visible) {
     if (value) value->visible = visible;
     if (!visible && value && value->proxy) ShowWindow(value->proxy, SW_HIDE);
     visible ? SDL_ShowWindow(platform->window) : SDL_HideWindow(platform->window);
-    if (visible) bongo_cat_windows_capture_configure(native_window(platform));
+    if (visible) {
+        HWND source = native_window(platform);
+        bongo_cat_windows_capture_configure(source);
+        bongo_cat_windows_capture_log(source, "visible");
+    }
 }
 
 static bool resize_bitmap(BongoCatWindowsLayered *value, int width, int height) {

@@ -78,6 +78,7 @@ typedef struct BongoCatMenuLabels {
 
 typedef void (*BongoCatTrayClick)(void *userdata);
 typedef void (*BongoCatModalTick)(void *userdata);
+typedef void (*BongoCatTrayRestore)(void *userdata);
 
 BongoCatResult bongo_cat_platform_init(BongoCatPlatform *platform, SDL_Window *window,
     BongoCatInputState *input, BongoCatError *error);
@@ -105,7 +106,7 @@ void bongo_cat_platform_begin_drag(BongoCatPlatform *platform,
 bool bongo_cat_platform_dynamic_hit_supported(void);
 void bongo_cat_platform_set_tray_callbacks(void *tray,
     BongoCatTrayClick left_click, BongoCatModalTick modal_tick,
-    void *userdata);
+    BongoCatTrayRestore restore, void *userdata);
 bool bongo_cat_platform_single_instance_begin(void);
 bool bongo_cat_platform_single_instance_take_wake(void);
 void bongo_cat_platform_single_instance_end(void);

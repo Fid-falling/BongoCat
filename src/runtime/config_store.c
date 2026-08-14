@@ -23,6 +23,8 @@ static uint64_t preferences_hash(const BongoCatConfig *config) {
     HASH_FIELD(config->window.always_on_top);
     HASH_FIELD(config->window.hide_on_hover);
     HASH_FIELD(config->window.keep_in_screen);
+    HASH_FIELD(config->window.obs_background);
+    HASH_FIELD(config->window.obs_background_color);
     HASH_FIELD(config->window.hide_delay_seconds);
     HASH_FIELD(config->app);
     HASH_FIELD(config->shortcuts);
