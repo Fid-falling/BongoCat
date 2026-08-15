@@ -16,6 +16,7 @@
 
 #define MODEL_PROGRESS_ARC_SEGMENTS 16
 #define MODEL_PROGRESS_POINT_CAP 80
+#define MODEL_SELECTION_FADE_MS 240.0f
 
 static const char *tr(BongoCatApp *app, const char *key,
     const char *fallback) {
@@ -255,12 +256,21 @@ void bongo_cat_preferences_model_card(BongoCatPreferences *value,
     snprintf(animation_id, sizeof(animation_id), "model-hover-%s", entry->id);
     float lift = bongo_cat_ui_animate_eased(context, animation_id,
         hover ? 1.0f : 0.0f, 250.0f, BONGO_CAT_UI_EASE_SWIFT);
+    char selection_animation_id[BONGO_CAT_ID_CAP + 28];
+    snprintf(selection_animation_id, sizeof(selection_animation_id),
+        "model-selected-%s", entry->id);
+    float selection_amount = bongo_cat_ui_animate_eased(context,
+        selection_animation_id, selected_visual ? 1.0f : 0.0f,
+        MODEL_SELECTION_FADE_MS, BONGO_CAT_UI_EASE_STANDARD);
     bounds.y -= 3.0f * lift;
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
-    if (selected_visual && p.effects) bongo_cat_ui_paint_shadow(context, bounds,
-        14, 0, 8, 20, 0, nk_rgba(p.pink.r, p.pink.g, p.pink.b, 89));
-    else if (hover && p.effects) bongo_cat_ui_paint_shadow(context, bounds,
-        14, 0, 10, 28, 0, nk_rgba(p.accent.r, p.accent.g, p.accent.b, 46));
+    if (selection_amount > .001f && p.effects)
+        bongo_cat_ui_paint_shadow(context, bounds, 14, 0, 8, 20, 0,
+            bongo_cat_ui_color_alpha(nk_rgba(p.pink.r, p.pink.g,
+                p.pink.b, 89), selection_amount));
+    else if (!selected_visual && hover && p.effects)
+        bongo_cat_ui_paint_shadow(context, bounds, 14, 0, 10, 28, 0,
+            nk_rgba(p.accent.r, p.accent.g, p.accent.b, 46));
     nk_fill_rect(canvas, bounds, 14, p.surface);
     float preview_height = NK_MIN(128.0f, bounds.w * 354.0f / 612.0f);
     struct nk_rect preview = nk_rect(bounds.x + 1, bounds.y + 1,
@@ -275,12 +285,14 @@ void bongo_cat_preferences_model_card(BongoCatPreferences *value,
     bool action_hover = false;
     draw_actions(value, context, canvas, bounds, entry, p, selected_visual,
         &action_hover);
-    float outline_width = selected_visual ? 2.0f : 1.0f;
+    float outline_width = 1.0f + selection_amount;
     struct nk_rect outline = outline_bounds(bounds, outline_width);
     float progress = selected_visual ? 1.0f : transition_target ?
         value->model_load_progress : 0.0f;
     struct nk_color outline_color = progress >= .999f ? p.pink :
-        bongo_cat_ui_color_mix(p.border_subtle, p.accent, lift);
+        bongo_cat_ui_color_mix(
+            bongo_cat_ui_color_mix(p.border_subtle, p.accent, lift),
+            p.pink, selection_amount);
     nk_stroke_rect(canvas, outline, 14.0f - outline_width * .5f,
         outline_width, outline_color);
     draw_progress_outline(canvas, outline, 14.0f - outline_width * .5f,
