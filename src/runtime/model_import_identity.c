@@ -69,9 +69,9 @@ bool bongo_cat_import_prepare_package_metadata(
             return false;
         used += (size_t)written;
         snprintf(item->package_id, sizeof(item->package_id), "model-%s-%s",
-            item->content_digest, bongo_cat_mode_name(candidate->mode));
+            item->content_digest, bongo_cat_mode_name(candidate.mode));
         char parent[BONGO_CAT_PATH_CAP];
-        const char *name = bongo_cat_path_name(display_source(candidate, parent));
+        const char *name = bongo_cat_path_name(display_source(&candidate, parent));
         snprintf(item->source_name, sizeof(item->source_name), "%s",
             name && name[0] ? name : "Imported model");
         snprintf(item->display_name, sizeof(item->display_name), "%s",
