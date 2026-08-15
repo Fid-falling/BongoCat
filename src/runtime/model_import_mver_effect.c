@@ -53,10 +53,8 @@ bool bongo_cat_mver_effects(void *raw_output, void *raw_items, void *raw_root,
         snprintf(name, sizeof(name), "%zu.png", index);
         if (!bongo_cat_mver_chord(candidate, row, shortcut, sizeof(shortcut))) return false;
         if (!effect_source(candidate, name, source, sizeof(source))) continue;
-        BongoCatImage image;
-        if (bongo_cat_image_load(source, &image, NULL) != BONGO_CAT_OK) return false;
-        bongo_cat_image_free(&image);
-        if (!bongo_cat_path_join(destination, sizeof(destination), target_effects, name) ||
+        if (!bongo_cat_image_info(source, NULL, NULL) ||
+            !bongo_cat_path_join(destination, sizeof(destination), target_effects, name) ||
             !bongo_cat_path_copy_file(source, destination)) return false;
         yyjson_mut_val *item = yyjson_mut_arr_add_obj(output, items);
         char relative[BONGO_CAT_PATH_CAP];

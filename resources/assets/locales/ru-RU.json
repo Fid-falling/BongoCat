@@ -78,8 +78,7 @@
       "model": {
         "title": "Модель",
         "labels": {
-          "deleteModel": "Удалить модель",
-          "nearbyModels": "Соседние папки"
+          "deleteModel": "Удалить модель"
         },
         "hints": {
           "deleteSuccess": "Модель \"%s\" удалена",

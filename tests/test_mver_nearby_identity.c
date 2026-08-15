@@ -35,7 +35,7 @@ int test_mver_nearby_identity(void) {
     CHECK(child(moved, sizeof(moved), root, "moved", false));
     CHECK(child(again, sizeof(again), root, "again", false));
     CHECK(child(duplicate, sizeof(duplicate), root, "duplicate", false));
-    CHECK(nearby_fixture(source));
+    CHECK(mver_fixture(source));
     BongoCatApp *app = calloc(1, sizeof(*app));
     CHECK(app != NULL);
     if (!app) goto cleanup;
@@ -45,36 +45,9 @@ int test_mver_nearby_identity(void) {
     snprintf(app->data_root, sizeof(app->data_root), "%s", data);
     snprintf(app->cache_root, sizeof(app->cache_root), "%s", data);
     BongoCatError error = {0};
-    BongoCatImportReceipt first_install = {0}, repeated_install = {0};
-    CHECK(bongo_cat_import_install(source, data, &first_install, &error) ==
+    CHECK(bongo_cat_import_nearby_root(app, source, &error) ==
         BONGO_CAT_OK);
-    CHECK(first_install.count == 1 && first_install.installed_count == 1 &&
-        first_install.installed[0]);
-    CHECK(bongo_cat_import_install(source, data, &repeated_install, &error) ==
-        BONGO_CAT_OK);
-    CHECK(repeated_install.count == 1 && repeated_install.installed_count == 0 &&
-        !repeated_install.installed[0] &&
-        strcmp(first_install.ids[0], repeated_install.ids[0]) == 0);
-    char custom_root[BONGO_CAT_PATH_CAP], adapter_metadata[BONGO_CAT_PATH_CAP];
-    CHECK(child(custom_root, sizeof(custom_root), data, "models", false));
-    BongoCatModelCatalog *installed = calloc(1, sizeof(*installed));
-    CHECK(installed != NULL);
-    if (installed) {
-        CHECK(bongo_cat_models_scan(installed, custom_root, false, &error) ==
-            BONGO_CAT_OK);
-        CHECK(installed->count == 1 && installed->entries[0].package_schema == 2 &&
-            installed->entries[0].source_format == BONGO_CAT_MODEL_SOURCE_MVER &&
-            installed->entries[0].content_digest[0] != '\0' &&
-            (installed->entries[0].capabilities &
-                BONGO_CAT_MODEL_CAPABILITY_MVER_PROJECTION));
-        CHECK(child(adapter_metadata, sizeof(adapter_metadata),
-            installed->entries[0].adapter_directory,
-            ".bongo-cat-adapter.json", false));
-        CHECK(bongo_cat_path_is_file(adapter_metadata));
-        free(installed);
-    }
-    CHECK(bongo_cat_import_nearby_mver_root(app, source, &error) == BONGO_CAT_OK);
-    CHECK(app->models.count == 1);
+    CHECK(app->models.count == 1 && app->models.entries[0].managed);
     char old_id[BONGO_CAT_ID_CAP];
     snprintf(old_id, sizeof(old_id), "%s", app->models.entries[0].id);
     CHECK(bongo_cat_settings_set_model_label(&app->settings, old_id,
@@ -86,8 +59,9 @@ int test_mver_nearby_identity(void) {
     snprintf(binding->label, sizeof(binding->label), "Custom expression");
     CHECK(bongo_cat_path_rename(source, moved));
     bongo_cat_models_init(&app->models);
-    CHECK(bongo_cat_import_nearby_mver_root(app, moved, &error) == BONGO_CAT_OK);
-    CHECK(app->models.count == 1);
+    CHECK(bongo_cat_import_nearby_root(app, moved, &error) ==
+        BONGO_CAT_OK);
+    CHECK(app->models.count == 1 && app->models.entries[0].managed);
     const char *new_id = app->models.entries[0].id;
     CHECK(strcmp(old_id, new_id) != 0);
     CHECK(strcmp(app->session.active_model_id, old_id) == 0);
@@ -98,17 +72,16 @@ int test_mver_nearby_identity(void) {
     CHECK(strncmp(app->settings.behavior_shortcuts[0].id, old_id,
         strlen(old_id)) == 0);
     CHECK(strcmp(app->settings.behavior_shortcuts[0].shortcut, "Alt+3") == 0);
-    CHECK(strcmp(app->settings.behavior_shortcuts[0].label,
-        "Custom expression") == 0);
     char ambiguous_id[BONGO_CAT_ID_CAP];
     snprintf(ambiguous_id, sizeof(ambiguous_id), "%s", new_id);
     CHECK(bongo_cat_settings_set_model_label(&app->settings, ambiguous_id,
         "Must remain here"));
     CHECK(bongo_cat_path_rename(moved, again));
-    CHECK(nearby_fixture(duplicate));
+    CHECK(mver_fixture(duplicate));
     bongo_cat_models_init(&app->models);
-    CHECK(bongo_cat_import_nearby_mver_root(app, root, &error) == BONGO_CAT_OK);
-    CHECK(app->models.count == 1);
+    CHECK(bongo_cat_import_nearby_root(app, root, &error) ==
+        BONGO_CAT_OK);
+    CHECK(app->models.count == 1 && app->models.entries[0].managed);
     CHECK(strcmp(app->session.active_model_id, old_id) == 0);
     CHECK(strcmp(bongo_cat_settings_model_label(&app->settings, ambiguous_id),
         "Must remain here") == 0);

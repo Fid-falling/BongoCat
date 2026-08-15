@@ -4,6 +4,8 @@
 #include "bongo_cat/path.h"
 
 #include <SDL3/SDL.h>
+#include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,13 +27,20 @@ static bool compose(const char *base_path, const char *hand_path,
         bongo_cat_image_free(&base); return false;
     }
     int width = SDL_max(base.width, hand.width), height = SDL_max(base.height, hand.height);
-    size_t bytes = (size_t)width * (size_t)height * 4;
-    unsigned char *pixels = width > 0 && height > 0 ? malloc(bytes) : NULL;
-    bool allocated = pixels != NULL;
-    if (pixels) memset(pixels, 0, bytes);
-    if (pixels) for (int y = 0; y < base.height; ++y)
-        memcpy(pixels + (size_t)y * width * 4,
-            base.pixels + (size_t)y * base.width * 4, (size_t)base.width * 4);
+    bool dimensions_valid = width > 0 && height > 0 && width <= INT_MAX / 4 &&
+        (size_t)width <= SIZE_MAX / (size_t)height / 4;
+    size_t bytes = dimensions_valid ? (size_t)width * (size_t)height * 4 : 0;
+    bool in_place = dimensions_valid && width == base.width &&
+        height == base.height;
+    unsigned char *pixels = in_place ? base.pixels :
+        (dimensions_valid ? malloc(bytes) : NULL);
+    if (pixels && !in_place) {
+        memset(pixels, 0, bytes);
+        for (int y = 0; y < base.height; ++y)
+            memcpy(pixels + (size_t)y * width * 4,
+                base.pixels + (size_t)y * base.width * 4,
+                (size_t)base.width * 4);
+    }
     if (pixels) for (int y = 0; y < hand.height; ++y) for (int x = 0; x < hand.width; ++x) {
         unsigned char *dst = pixels + ((size_t)y * width + x) * 4;
         const unsigned char *src = hand.pixels + ((size_t)y * hand.width + x) * 4;
@@ -47,11 +56,13 @@ static bool compose(const char *base_path, const char *hand_path,
     }
     FILE *file = pixels ? bongo_cat_file_open(target, "wb") : NULL;
     PngWriter writer = {file, file != NULL};
+    bool buffer_ready = pixels != NULL;
     bool ok = file && stbi_write_png_to_func(write_png, &writer, width, height, 4,
         pixels, width * 4) && writer.ok;
     if (file && fclose(file) != 0) ok = false;
-    free(pixels); bongo_cat_image_free(&hand); bongo_cat_image_free(&base);
-    if (!ok) bongo_cat_error_set(error, allocated ? BONGO_CAT_ERROR_IO : BONGO_CAT_ERROR_MEMORY,
+    if (!in_place) free(pixels);
+    bongo_cat_image_free(&hand); bongo_cat_image_free(&base);
+    if (!ok) bongo_cat_error_set(error, buffer_ready ? BONGO_CAT_ERROR_IO : BONGO_CAT_ERROR_MEMORY,
         "Cannot compose Mver input image: %s", target);
     return ok;
 }
@@ -66,10 +77,8 @@ bool bongo_cat_mver_emit_pair(const char *hand, const char *keyboard,
     bool ok;
     if (keyboard) ok = compose(keyboard, hand, first, error);
     else {
-        BongoCatImage image;
-        ok = bongo_cat_image_load(hand, &image, error) == BONGO_CAT_OK;
-        if (ok) { bongo_cat_image_free(&image);
-            ok = bongo_cat_path_copy_file(hand, first); }
+        ok = bongo_cat_image_info(hand, NULL, NULL) &&
+            bongo_cat_path_copy_file(hand, first);
     }
     if (!ok && error && !error->message[0])
         bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,

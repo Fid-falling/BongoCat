@@ -78,8 +78,7 @@
       "model": {
         "title": "모델",
         "labels": {
-          "deleteModel": "모델 삭제",
-          "nearbyModels": "주변 폴더"
+          "deleteModel": "모델 삭제"
         },
         "hints": {
           "deleteSuccess": "\"%s\" 모델을 삭제했습니다",

@@ -78,8 +78,7 @@
       "model": {
         "title": "Modèle",
         "labels": {
-          "deleteModel": "Supprimer le modèle",
-          "nearbyModels": "Dossiers voisins"
+          "deleteModel": "Supprimer le modèle"
         },
         "hints": {
           "deleteSuccess": "« %s » a été supprimé",

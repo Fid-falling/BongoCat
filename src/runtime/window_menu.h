@@ -5,11 +5,9 @@
 
 typedef struct BongoCatWindowMenuPreview {
     BongoCatApp *app;
-    char model[BONGO_CAT_ID_CAP];
     float scale, opacity;
     int expression;
-    BongoCatMenuAction last, applied, pending_model;
-    uint64_t pending_model_since_ns;
+    BongoCatMenuAction last, applied;
     BongoCatModalFrame modal_frame;
 } BongoCatWindowMenuPreview;
 

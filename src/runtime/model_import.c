@@ -174,8 +174,11 @@ static bool prepare_install(const BongoCatImportCandidate *candidate,
 BongoCatResult bongo_cat_import_install(const char *source, const char *data_root,
     BongoCatImportReceipt *receipt, BongoCatError *error) {
     if (receipt) memset(receipt, 0, sizeof(*receipt));
-    if (!source || !data_root || !bongo_cat_path_is_dir(source))
-        return BONGO_CAT_ERROR_ARGUMENT;
+    if (!source || !data_root) return BONGO_CAT_ERROR_ARGUMENT;
+    char source_directory[BONGO_CAT_PATH_CAP];
+    BongoCatResult source_result = bongo_cat_import_source_directory(source,
+        source_directory, sizeof(source_directory), error);
+    if (source_result != BONGO_CAT_OK) return source_result;
     BongoCatImportDiscovery *discovery = calloc(1, sizeof(*discovery));
     ImportInstall *installs = calloc(BONGO_CAT_IMPORT_CANDIDATE_CAP, sizeof(*installs));
     BongoCatPackageMetadata *metadata = calloc(BONGO_CAT_IMPORT_CANDIDATE_CAP,
@@ -187,7 +190,7 @@ BongoCatResult bongo_cat_import_install(const char *source, const char *data_roo
             "Cannot allocate model import workspace");
         return BONGO_CAT_ERROR_MEMORY;
     }
-    if (!bongo_cat_import_discover(source, discovery, error)) {
+    if (!bongo_cat_import_discover(source_directory, discovery, error)) {
         free(discovery); free(installs); free(metadata); free(existing);
         return BONGO_CAT_ERROR_FORMAT;
     }

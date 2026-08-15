@@ -56,7 +56,7 @@ else()
 endif()
 
 add_library(bongo_cat_core STATIC
-  src/core/config_defaults.c src/core/config_io.c
+  src/core/config_defaults.c src/core/config_names.c src/core/config_fields.c src/core/config_io.c src/core/config_settings_save.c
   src/core/config_file.c src/core/config_session_io.c
   src/core/error.c
   src/core/file.c src/core/i18n.c
@@ -272,6 +272,7 @@ if(BUILD_TESTING)
     tests/test_mver_pointer_import.c
     tests/test_preferences_text.c
     tests/test_mver_nearby_identity.c
+    tests/test_model_import_identity.c
     tests/test_mver_support.c)
   add_executable(bongo_cat_mver_import_tests
     ${BONGO_CAT_MVER_IMPORT_TEST_SOURCES})

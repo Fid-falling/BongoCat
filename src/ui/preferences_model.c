@@ -41,12 +41,6 @@ void bongo_cat_preferences_import_complete(BongoCatApp *app,
     bongo_cat_preferences_render(app->preferences);
 }
 
-static bool has_nearby(const BongoCatApp *app) {
-    for (size_t i = 0; i < app->models.count; ++i)
-        if (app->models.entries[i].managed) return true;
-    return false;
-}
-
 static void smoke_model_behavior(BongoCatPreferences *value) {
     BongoCatApp *app = value->app;
     if (app->smoke_preference_model_select) {
@@ -67,12 +61,10 @@ static void smoke_model_behavior(BongoCatPreferences *value) {
     }
 }
 
-static void draw_models(BongoCatPreferences *value, struct nk_context *context,
-    bool managed) {
+static void draw_models(BongoCatPreferences *value, struct nk_context *context) {
     for (size_t i = 0; i < value->app->models.count; ++i) {
         const BongoCatModelEntry *entry = &value->app->models.entries[i];
-        if (entry->managed == managed)
-            bongo_cat_preferences_model_card(value, context, entry);
+        bongo_cat_preferences_model_card(value, context, entry);
     }
 }
 
@@ -90,16 +82,8 @@ void bongo_cat_preferences_page_model(BongoCatPreferences *value,
     nk_layout_row_dynamic(context, MODEL_CARD_HEIGHT, columns);
     if (bongo_cat_preferences_model_import_card(value, context))
         bongo_cat_preferences_request_model_import(app->preferences);
-    draw_models(value, context, false);
+    draw_models(value, context);
     context->style.window.spacing = old_spacing;
-    if (has_nearby(app)) {
-        bongo_cat_pref_section(context, tr(app,
-            "pages.preference.model.labels.nearbyModels", "Nearby folders"));
-        context->style.window.spacing = nk_vec2(14, 17);
-        nk_layout_row_dynamic(context, MODEL_CARD_HEIGHT, columns);
-        draw_models(value, context, true);
-        context->style.window.spacing = old_spacing;
-    }
     bongo_cat_preferences_model_covers_prune(app);
     if (bongo_cat_preferences_model_cover_generate_current(app))
         bongo_cat_preferences_invalidate(value);

@@ -1,6 +1,5 @@
 #include "preferences_internal.h"
 #include "preferences_state.h"
-#include "preferences_model_cover.h"
 #include "../runtime/model_import.h"
 
 #include <SDL3/SDL.h>
@@ -129,6 +128,11 @@ static BongoCatImportJob *copy_path(const char *path) {
 
 static int SDLCALL import_worker(void *userdata) {
     BongoCatImportJob *job = userdata;
+    if (!SDL_SetCurrentThreadPriority(SDL_THREAD_PRIORITY_LOW)) {
+        SDL_LogDebug(SDL_LOG_CATEGORY_APPLICATION,
+            "Cannot lower model import thread priority: %s", SDL_GetError());
+        SDL_ClearError();
+    }
     job->result = BONGO_CAT_ERROR_FORMAT;
     for (size_t i = 0; i < job->count; ++i) {
         BongoCatImportReceipt receipt;
@@ -227,6 +231,10 @@ static void SDLCALL import_callback(void *userdata, const char *const *files,
 
 bool bongo_cat_preferences_import_open(BongoCatImportDialog *dialog,
     SDL_Window *window) {
+    static const SDL_DialogFileFilter filters[] = {
+        {"BongoCat model files", "model3.json;json;png"},
+        {"All files", "*"}
+    };
     if (!dialog || !window) return false;
     SDL_LockMutex(dialog->mutex);
     if (!dialog->active || dialog->open || dialog->busy) {
@@ -237,7 +245,8 @@ bool bongo_cat_preferences_import_open(BongoCatImportDialog *dialog,
     dialog->window_id = SDL_GetWindowID(window);
     ++dialog->references;
     SDL_UnlockMutex(dialog->mutex);
-    SDL_ShowOpenFolderDialog(import_callback, dialog, window, NULL, true);
+    SDL_ShowOpenFileDialog(import_callback, dialog, window, filters,
+        (int)(sizeof(filters) / sizeof(filters[0])), NULL, true);
     return true;
 }
 
@@ -253,17 +262,14 @@ static void complete_job(BongoCatImportDialog *dialog, BongoCatApp *app,
     }
     SDL_UnlockMutex(dialog->mutex);
     if (worker) SDL_WaitThread(worker, NULL);
-    if (job->result == BONGO_CAT_OK && job->first_id[0]) {
+    if (job->result == BONGO_CAT_OK && job->first_id[0] &&
+        job->first_id_installed) {
         SDL_GL_MakeCurrent(app->window, app->gl_context);
         bongo_cat_app_rescan_models(app);
         if (!bongo_cat_app_select_model(app, job->first_id)) {
             job->result = BONGO_CAT_ERROR_CUBISM;
             bongo_cat_error_set(&job->error, job->result,
                 "Model imported but could not be loaded");
-        } else {
-            const BongoCatModelEntry *entry = bongo_cat_models_find(
-                &app->models, job->first_id);
-            bongo_cat_preferences_model_cover_capture(app, entry);
         }
     }
     bongo_cat_preferences_import_complete(app, job->result, &job->error,

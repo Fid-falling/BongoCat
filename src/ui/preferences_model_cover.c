@@ -19,6 +19,7 @@ typedef struct ModelCoverSlot {
 typedef struct ModelCoverAttempt {
     BongoCatApp *app;
     char model_id[BONGO_CAT_ID_CAP];
+    bool attempted;
 } ModelCoverAttempt;
 
 static ModelCoverSlot cover_cache[BONGO_CAT_MODEL_CAP];
@@ -94,7 +95,7 @@ const BongoCatModelCover *bongo_cat_preferences_model_cover(
     return &empty->image;
 }
 
-bool bongo_cat_preferences_model_cover_capture(BongoCatApp *app,
+static bool capture_model_cover(BongoCatApp *app,
     const BongoCatModelEntry *entry) {
     if (!app || !entry || !app->window || !app->gl_context ||
         app->window_minimized) return false;
@@ -142,23 +143,25 @@ static bool cover_needs_capture(const BongoCatModelEntry *entry) {
         (!bongo_cat_path_is_file(path) || bongo_cat_path_is_file(marker));
 }
 
-static bool cover_attempted(BongoCatApp *app, const char *model_id) {
+static ModelCoverAttempt *find_cover_attempt(BongoCatApp *app,
+    const char *model_id) {
     for (size_t i = 0; i < BONGO_CAT_MODEL_CAP; ++i)
         if (cover_attempts[i].app == app &&
-            !strcmp(cover_attempts[i].model_id, model_id)) return true;
-    return false;
+            !strcmp(cover_attempts[i].model_id, model_id))
+            return &cover_attempts[i];
+    return NULL;
 }
 
-static bool mark_cover_attempt(BongoCatApp *app, const char *model_id) {
-    if (cover_attempted(app, model_id)) return false;
+static ModelCoverAttempt *create_cover_attempt(BongoCatApp *app,
+    const char *model_id) {
     for (size_t i = 0; i < BONGO_CAT_MODEL_CAP; ++i) {
         ModelCoverAttempt *attempt = &cover_attempts[i];
         if (attempt->app) continue;
         attempt->app = app;
         snprintf(attempt->model_id, sizeof(attempt->model_id), "%s", model_id);
-        return true;
+        return attempt;
     }
-    return false;
+    return NULL;
 }
 
 static void forget_cached_cover(BongoCatApp *app,
@@ -181,9 +184,17 @@ bool bongo_cat_preferences_model_cover_generate_current(BongoCatApp *app) {
     const BongoCatModelEntry *entry = bongo_cat_models_find(
         &app->models, app->loaded_model);
     if (!entry || strcmp(app->session.active_model_id, entry->id) ||
-        !cover_needs_capture(entry) || !mark_cover_attempt(app, entry->id))
+        !cover_needs_capture(entry))
         return false;
-    bool captured = bongo_cat_preferences_model_cover_capture(app, entry);
+    ModelCoverAttempt *attempt = find_cover_attempt(app, entry->id);
+    if (!attempt) {
+        attempt = create_cover_attempt(app, entry->id);
+        if (!attempt) return false;
+        return true;
+    }
+    if (attempt->attempted) return false;
+    attempt->attempted = true;
+    bool captured = capture_model_cover(app, entry);
     if (captured) forget_cached_cover(app, entry);
     else SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
         "Cannot generate cover for model %s", entry->id);

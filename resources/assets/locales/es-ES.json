@@ -78,8 +78,7 @@
       "model": {
         "title": "Modelo",
         "labels": {
-          "deleteModel": "Eliminar modelo",
-          "nearbyModels": "Carpetas cercanas"
+          "deleteModel": "Eliminar modelo"
         },
         "hints": {
           "deleteSuccess": "Se eliminó \"%s\"",

@@ -7,6 +7,6 @@
 bool write_text(const char *path, const char *text);
 bool child(char *output, size_t capacity, const char *root,
     const char *name, bool directory);
-bool nearby_fixture(const char *root);
+bool mver_fixture(const char *root);
 
 #endif

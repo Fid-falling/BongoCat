@@ -18,10 +18,8 @@
 
 #ifdef _WIN32
 static bool needs_wic_scaling(const char *path, int limit) {
-    FILE *file = bongo_cat_file_open(path, "rb");
-    int width = 0, height = 0, channels = 0;
-    bool known = file && stbi_info_from_file(file, &width, &height, &channels);
-    if (file) fclose(file);
+    int width = 0, height = 0;
+    bool known = bongo_cat_image_info(path, &width, &height);
     return !known || width > limit || height > limit;
 }
 

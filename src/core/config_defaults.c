@@ -2,10 +2,12 @@
 #include "bongo_cat/utf8.h"
 
 #include <ctype.h>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
-static float clampf(float value, float low, float high) {
+static float clampf_or(float value, float low, float high, float fallback) {
+    if (!isfinite(value)) return fallback;
     return value < low ? low : value > high ? high : value;
 }
 
@@ -18,6 +20,17 @@ static bool shortcut_equal(const char *left, const char *right) {
     return *left == *right;
 }
 
+static bool normalize_text(char *text, size_t capacity) {
+    text[capacity - 1] = '\0';
+    if (!bongo_cat_utf8_valid(text)) {
+        memset(text, 0, capacity);
+        return false;
+    }
+    size_t length = strlen(text);
+    memset(text + length + 1, 0, capacity - length - 1);
+    return true;
+}
+
 bool bongo_cat_settings_shortcut_conflicts(const BongoCatSettings *config,
     const char *shortcut, const char *exclude) {
     if (!config || !shortcut || !shortcut[0]) return false;
@@ -27,7 +40,10 @@ bool bongo_cat_settings_shortcut_conflicts(const BongoCatSettings *config,
     for (size_t i = 0; i < sizeof(global) / sizeof(global[0]); ++i)
         if (global[i] != exclude && shortcut_equal(global[i], shortcut))
             return true;
-    for (size_t i = 0; i < config->behavior_shortcut_count; ++i) {
+    size_t behavior_count = config->behavior_shortcut_count;
+    if (behavior_count > BONGO_CAT_BEHAVIOR_BINDING_CAP)
+        behavior_count = BONGO_CAT_BEHAVIOR_BINDING_CAP;
+    for (size_t i = 0; i < behavior_count; ++i) {
         const char *bound = config->behavior_shortcuts[i].shortcut;
         if (bound != exclude && shortcut_equal(bound, shortcut)) return true;
     }
@@ -37,7 +53,9 @@ bool bongo_cat_settings_shortcut_conflicts(const BongoCatSettings *config,
 const char *bongo_cat_settings_model_label(const BongoCatSettings *config,
     const char *id) {
     if (!config || !id) return NULL;
-    for (size_t i = 0; i < config->model_label_count; ++i)
+    size_t count = config->model_label_count;
+    if (count > BONGO_CAT_MODEL_CAP) count = BONGO_CAT_MODEL_CAP;
+    for (size_t i = 0; i < count; ++i)
         if (!strcmp(config->model_labels[i].id, id))
             return config->model_labels[i].label;
     return NULL;
@@ -45,7 +63,9 @@ const char *bongo_cat_settings_model_label(const BongoCatSettings *config,
 
 bool bongo_cat_settings_set_model_label(BongoCatSettings *config,
     const char *id, const char *label) {
-    if (!config || !id || !id[0]) return false;
+    if (!config || !id || !id[0] || strlen(id) >= BONGO_CAT_ID_CAP ||
+        !bongo_cat_utf8_valid(id)) return false;
+    bongo_cat_settings_validate(config);
     size_t index = config->model_label_count;
     for (size_t i = 0; i < config->model_label_count; ++i)
         if (!strcmp(config->model_labels[i].id, id)) {
@@ -63,8 +83,12 @@ bool bongo_cat_settings_set_model_label(BongoCatSettings *config,
             sizeof(config->model_labels[0]));
         return true;
     }
+    if (strlen(label) >= BONGO_CAT_ID_CAP || !bongo_cat_utf8_valid(label))
+        return false;
     if (index < config->model_label_count) {
         if (!strcmp(config->model_labels[index].label, label)) return false;
+        memset(config->model_labels[index].label, 0,
+            sizeof(config->model_labels[index].label));
         snprintf(config->model_labels[index].label,
             sizeof(config->model_labels[index].label), "%s", label);
         return true;
@@ -83,9 +107,10 @@ static void validate_shortcuts(BongoCatSettings *config) {
         config->shortcuts.visible_preferences, config->shortcuts.mirror,
         config->shortcuts.pass_through, config->shortcuts.always_on_top};
     for (size_t i = 0; i < sizeof(global) / sizeof(global[0]); ++i) {
-        global[i][BONGO_CAT_SHORTCUT_CAP - 1] = '\0';
+        normalize_text(global[i], BONGO_CAT_SHORTCUT_CAP);
         for (size_t j = 0; j < i; ++j)
-            if (shortcut_equal(global[i], global[j])) global[i][0] = '\0';
+            if (shortcut_equal(global[i], global[j]))
+                memset(global[i], 0, BONGO_CAT_SHORTCUT_CAP);
     }
     for (size_t i = 0; i < config->behavior_shortcut_count; ++i) {
         char *shortcut = config->behavior_shortcuts[i].shortcut;
@@ -97,6 +122,94 @@ static void validate_shortcuts(BongoCatSettings *config) {
                 config->behavior_shortcuts[j].shortcut);
         if (duplicate) shortcut[0] = '\0';
     }
+}
+
+static void compact_behavior_overrides(BongoCatSettings *config) {
+    size_t input_count = config->behavior_shortcut_count;
+    if (input_count > BONGO_CAT_BEHAVIOR_BINDING_CAP)
+        input_count = BONGO_CAT_BEHAVIOR_BINDING_CAP;
+    size_t output_count = 0;
+    for (size_t i = 0; i < input_count; ++i) {
+        BongoCatBehaviorShortcut entry = config->behavior_shortcuts[i];
+        entry.id[sizeof(entry.id) - 1] = '\0';
+        entry.shortcut[sizeof(entry.shortcut) - 1] = '\0';
+        entry.label[sizeof(entry.label) - 1] = '\0';
+        if (!bongo_cat_utf8_valid(entry.id) ||
+            !bongo_cat_utf8_valid(entry.shortcut) ||
+            !bongo_cat_utf8_valid(entry.label)) continue;
+        if (!entry.id[0] || (!entry.shortcut[0] && !entry.label[0])) continue;
+        BongoCatBehaviorShortcut canonical = {0};
+        snprintf(canonical.id, sizeof(canonical.id), "%s", entry.id);
+        snprintf(canonical.shortcut, sizeof(canonical.shortcut), "%s",
+            entry.shortcut);
+        snprintf(canonical.label, sizeof(canonical.label), "%s", entry.label);
+        size_t existing = output_count;
+        for (size_t j = 0; j < output_count; ++j)
+            if (!strcmp(config->behavior_shortcuts[j].id, entry.id)) {
+                existing = j;
+                break;
+            }
+        if (existing < output_count) {
+            if (canonical.shortcut[0]) {
+                memset(config->behavior_shortcuts[existing].shortcut, 0,
+                    sizeof(config->behavior_shortcuts[existing].shortcut));
+                snprintf(
+                    config->behavior_shortcuts[existing].shortcut,
+                    sizeof(config->behavior_shortcuts[existing].shortcut),
+                    "%s", canonical.shortcut);
+            }
+            if (canonical.label[0]) {
+                memset(config->behavior_shortcuts[existing].label, 0,
+                    sizeof(config->behavior_shortcuts[existing].label));
+                snprintf(
+                    config->behavior_shortcuts[existing].label,
+                    sizeof(config->behavior_shortcuts[existing].label),
+                    "%s", canonical.label);
+            }
+            continue;
+        }
+        config->behavior_shortcuts[output_count++] = canonical;
+    }
+    memset(&config->behavior_shortcuts[output_count], 0,
+        (BONGO_CAT_BEHAVIOR_BINDING_CAP - output_count) *
+        sizeof(config->behavior_shortcuts[0]));
+    config->behavior_shortcut_count = output_count;
+}
+
+static void compact_model_overrides(BongoCatSettings *config) {
+    size_t input_count = config->model_label_count;
+    if (input_count > BONGO_CAT_MODEL_CAP) input_count = BONGO_CAT_MODEL_CAP;
+    size_t output_count = 0;
+    for (size_t i = 0; i < input_count; ++i) {
+        BongoCatModelLabel entry = config->model_labels[i];
+        entry.id[sizeof(entry.id) - 1] = '\0';
+        entry.label[sizeof(entry.label) - 1] = '\0';
+        if (!entry.id[0] || !entry.label[0] ||
+            !bongo_cat_utf8_valid(entry.id) ||
+            !bongo_cat_utf8_valid(entry.label)) continue;
+        BongoCatModelLabel canonical = {0};
+        snprintf(canonical.id, sizeof(canonical.id), "%s", entry.id);
+        snprintf(canonical.label, sizeof(canonical.label), "%s", entry.label);
+        size_t existing = output_count;
+        for (size_t j = 0; j < output_count; ++j)
+            if (!strcmp(config->model_labels[j].id, entry.id)) {
+                existing = j;
+                break;
+            }
+        if (existing < output_count) {
+            memset(config->model_labels[existing].label, 0,
+                sizeof(config->model_labels[existing].label));
+            snprintf(config->model_labels[existing].label,
+                sizeof(config->model_labels[existing].label), "%s",
+                canonical.label);
+            continue;
+        }
+        config->model_labels[output_count++] = canonical;
+    }
+    memset(&config->model_labels[output_count], 0,
+        (BONGO_CAT_MODEL_CAP - output_count) *
+        sizeof(config->model_labels[0]));
+    config->model_label_count = output_count;
 }
 
 void bongo_cat_settings_defaults(BongoCatSettings *config) {
@@ -129,81 +242,39 @@ void bongo_cat_session_defaults(BongoCatSessionState *session) {
 
 void bongo_cat_settings_validate(BongoCatSettings *config) {
     if (!config) return;
-    config->model.auto_release_seconds = clampf(config->model.auto_release_seconds, 0.05f, 30.0f);
+    config->model.auto_release_seconds = clampf_or(
+        config->model.auto_release_seconds, 0.05f, 30.0f,
+        BONGO_CAT_DEFAULT_AUTO_RELEASE_SECONDS);
     if (config->model.max_fps < 1) config->model.max_fps = 1;
     if (config->model.max_fps > 240) config->model.max_fps = 240;
-    config->window.hide_delay_seconds = clampf(config->window.hide_delay_seconds, 0.0f, 60.0f);
+    config->window.hide_delay_seconds = clampf_or(
+        config->window.hide_delay_seconds, 0.0f, 60.0f, 0.0f);
     if ((unsigned)config->window.obs_background_color >=
         BONGO_CAT_OBS_BACKGROUND_COLOR_COUNT)
         config->window.obs_background_color = BONGO_CAT_OBS_BACKGROUND_GREEN;
-    if (config->app.theme > BONGO_CAT_THEME_DARK) config->app.theme = BONGO_CAT_THEME_AUTO;
+    if ((unsigned)config->app.theme > BONGO_CAT_THEME_DARK)
+        config->app.theme = BONGO_CAT_THEME_AUTO;
     if ((unsigned)config->app.language >= BONGO_CAT_LANG_COUNT)
         config->app.language = BONGO_CAT_LANG_EN_US;
-    if (config->behavior_shortcut_count > BONGO_CAT_BEHAVIOR_BINDING_CAP)
-        config->behavior_shortcut_count = BONGO_CAT_BEHAVIOR_BINDING_CAP;
-    for (size_t i = 0; i < config->behavior_shortcut_count; ++i) {
-        config->behavior_shortcuts[i].id[
-            sizeof(config->behavior_shortcuts[i].id) - 1] = '\0';
-        config->behavior_shortcuts[i].shortcut[BONGO_CAT_SHORTCUT_CAP - 1] = '\0';
-        config->behavior_shortcuts[i].label[BONGO_CAT_ID_CAP - 1] = '\0';
-        if (!bongo_cat_utf8_valid(config->behavior_shortcuts[i].label))
-            config->behavior_shortcuts[i].label[0] = '\0';
-    }
-    if (config->model_label_count > BONGO_CAT_MODEL_CAP)
-        config->model_label_count = BONGO_CAT_MODEL_CAP;
-    for (size_t i = 0; i < config->model_label_count; ++i) {
-        config->model_labels[i].id[BONGO_CAT_ID_CAP - 1] = '\0';
-        config->model_labels[i].label[BONGO_CAT_ID_CAP - 1] = '\0';
-        if (!config->model_labels[i].id[0] ||
-            !bongo_cat_utf8_valid(config->model_labels[i].label))
-            config->model_labels[i].label[0] = '\0';
-    }
+    compact_behavior_overrides(config);
+    compact_model_overrides(config);
     validate_shortcuts(config);
+    compact_behavior_overrides(config);
 }
 
 void bongo_cat_session_validate(BongoCatSessionState *session) {
     if (!session) return;
-    session->window.scale_percent = clampf(session->window.scale_percent,
-        10.0f, 500.0f);
-    session->window.opacity_percent = clampf(session->window.opacity_percent,
-        10.0f, 100.0f);
+    session->window.scale_percent = clampf_or(session->window.scale_percent,
+        10.0f, 500.0f, BONGO_CAT_DEFAULT_WINDOW_SCALE_PERCENT);
+    session->window.opacity_percent = clampf_or(
+        session->window.opacity_percent, 10.0f, 100.0f,
+        BONGO_CAT_DEFAULT_WINDOW_OPACITY_PERCENT);
     if (session->window.width < 64) session->window.width = 64;
     if (session->window.height < 64) session->window.height = 64;
     if (session->window.width > 8192) session->window.width = 8192;
     if (session->window.height > 8192) session->window.height = 8192;
-    session->active_model_id[sizeof(session->active_model_id) - 1] = '\0';
-    if (!session->active_model_id[0])
+    if (!normalize_text(session->active_model_id,
+            sizeof(session->active_model_id)) ||
+        !session->active_model_id[0])
         memcpy(session->active_model_id, "standard", sizeof("standard"));
-}
-
-const char *bongo_cat_theme_name(BongoCatTheme value) {
-    const char *names[] = {"auto", "light", "dark"};
-    return value <= BONGO_CAT_THEME_DARK ? names[value] : names[0];
-}
-
-const char *bongo_cat_language_name(BongoCatLanguage value) {
-    const char *names[] = {"en-US", "zh-CN", "zh-TW", "fr-FR", "de-DE",
-        "ja-JP", "ko-KR", "pt-BR", "ru-RU", "es-ES"};
-    return (unsigned)value < BONGO_CAT_LANG_COUNT ? names[value] : names[0];
-}
-
-const char *bongo_cat_mode_name(BongoCatModelMode value) {
-    const char *names[] = {"standard", "keyboard", "gamepad"};
-    return value <= BONGO_CAT_MODE_GAMEPAD ? names[value] : names[0];
-}
-
-const char *bongo_cat_obs_background_color_name(
-    BongoCatObsBackgroundColor value) {
-    static const char *names[] = {
-        "#00ff00", "#0000ff", "#ff0000", "#ff00ff"};
-    return (unsigned)value < BONGO_CAT_OBS_BACKGROUND_COLOR_COUNT ?
-        names[value] : names[BONGO_CAT_OBS_BACKGROUND_GREEN];
-}
-
-uint32_t bongo_cat_obs_background_color_rgb(
-    BongoCatObsBackgroundColor value) {
-    static const uint32_t colors[] = {
-        0x00ff00, 0x0000ff, 0xff0000, 0xff00ff};
-    return (unsigned)value < BONGO_CAT_OBS_BACKGROUND_COLOR_COUNT ?
-        colors[value] : colors[BONGO_CAT_OBS_BACKGROUND_GREEN];
 }

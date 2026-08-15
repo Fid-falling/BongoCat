@@ -1,7 +1,8 @@
 set(BONGO_CAT_RUNTIME_SOURCES
   src/core/app_state.c
   src/media/audio.c
-  src/media/image.c src/media/image_resize.c src/media/image_alpha.c
+  src/media/image.c src/media/image_info.c
+  src/media/image_resize.c src/media/image_alpha.c
   src/media/stb_image_impl.c
   src/platform/memory.c src/render/gl_api.c
   src/render/overlay.c src/render/overlay_draw.c
@@ -17,10 +18,11 @@ set(BONGO_CAT_RUNTIME_SOURCES
   src/runtime/model_files.c src/runtime/model_catalog_runtime.c
   src/runtime/model_update.c src/runtime/model_storage.c
   src/runtime/model_import.c src/runtime/model_import_identity.c
+  src/runtime/model_import_digest.c src/runtime/model_import_source.c
   src/runtime/model_import_package.c
   src/runtime/model_import_discovery.c src/runtime/model_import_format.c
-  src/runtime/model_import_nearby.c src/runtime/model_import_nearby_scan.c
-  src/runtime/model_import_nearby_identity.c
+  src/runtime/model_import_scan.c src/runtime/model_import_tauri.c
+  src/runtime/model_import_nearby.c src/runtime/model_import_nearby_cache.c
   src/runtime/model_import_nearby_signature.c
   src/runtime/model_import_mver_patch.c
   src/runtime/model_import_mver.c src/runtime/model_import_mver_image.c

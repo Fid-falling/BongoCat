@@ -19,11 +19,9 @@ static int failures;
     failures++; \
 } } while (0)
 
-const char *test_mver_pointer_config(bool live2d);
-bool test_mver_pointer_fixture_assets(const char *standard, const char *source);
-bool test_mver_pointer_adapter(const char *adapter, bool expected_enabled);
 int test_preferences_text(void);
 int test_mver_nearby_identity(void);
+int test_model_import_identity(void);
 
 static bool chord(const char *json, bool gamepad, const char *expected) {
     yyjson_doc *document = yyjson_read(json, strlen(json), 0);
@@ -164,11 +162,10 @@ static void font_reload_defers_during_frame(void) {
         NULL, NULL, NULL, NULL, NULL, 1.0f));
 }
 
-static void nearby_model(void) {
+static void container_discovery(void) {
     char root[BONGO_CAT_PATH_CAP], package[BONGO_CAT_PATH_CAP];
-    char data[BONGO_CAT_PATH_CAP], mode[BONGO_CAT_PATH_CAP];
+    char mode[BONGO_CAT_PATH_CAP];
     char bundle[BONGO_CAT_PATH_CAP], nested_package[BONGO_CAT_PATH_CAP];
-    char launch[BONGO_CAT_PATH_CAP];
     char variant[BONGO_CAT_PATH_CAP], variant_model[BONGO_CAT_PATH_CAP];
     char variant_img[BONGO_CAT_PATH_CAP], variant_standard[BONGO_CAT_PATH_CAP];
     char variant_hand[BONGO_CAT_PATH_CAP], source_hand[BONGO_CAT_PATH_CAP];
@@ -176,20 +173,15 @@ static void nearby_model(void) {
     CHECK(temporary != NULL);
     if (!temporary) return;
     unsigned long long stamp = (unsigned long long)SDL_GetTicksNS();
-    snprintf(root, sizeof(root), "%s/bongo-cat-nearby-%llu", temporary,
-        stamp);
-    snprintf(data, sizeof(data), "%s/bongo-cat-nearby-data-%llu", temporary,
+    snprintf(root, sizeof(root), "%s/bongo-cat-container-%llu", temporary,
         stamp);
     bongo_cat_model_remove_tree(root, NULL);
-    bongo_cat_model_remove_tree(data, NULL);
     CHECK(SDL_CreateDirectory(root));
-    CHECK(SDL_CreateDirectory(data));
     CHECK(child(package, sizeof(package), root, "app", true));
-    CHECK(nearby_fixture(package));
+    CHECK(mver_fixture(package));
     CHECK(child(bundle, sizeof(bundle), root, "bundle", true));
-    CHECK(child(launch, sizeof(launch), root, "launch", true));
     CHECK(child(nested_package, sizeof(nested_package), bundle, "model", true));
-    CHECK(nearby_fixture(nested_package));
+    CHECK(mver_fixture(nested_package));
     CHECK(child(variant, sizeof(variant), bundle, "variant", true));
     CHECK(child(variant_model, sizeof(variant_model), variant, "model", true));
     CHECK(child(variant_img, sizeof(variant_img), variant_model, "img", true));
@@ -199,6 +191,11 @@ static void nearby_model(void) {
         "img/standard/hand/0.png", false));
     CHECK(child(mode, sizeof(mode), variant_hand, "0.png", false) &&
         SDL_CopyFile(source_hand, mode));
+    char normalized[BONGO_CAT_PATH_CAP];
+    BongoCatError source_error = {0};
+    CHECK(bongo_cat_import_source_directory(mode, normalized,
+        sizeof(normalized), &source_error) == BONGO_CAT_OK);
+    CHECK(strcmp(normalized, variant_model) == 0);
     BongoCatImportDiscovery discovery = {0};
     BongoCatError error = {0};
     CHECK(bongo_cat_import_mver_discover_exact(package, &discovery, &error) == 1);
@@ -215,66 +212,35 @@ static void nearby_model(void) {
         if (selected_container.candidates[i].format == BONGO_CAT_IMPORT_MVER_PATCH)
             patch_count++;
     CHECK(patch_count == 1);
-    BongoCatApp *app = calloc(1, sizeof(*app));
-    CHECK(app != NULL);
-    if (!app) { bongo_cat_model_remove_tree(root, NULL); SDL_free(temporary); return; }
-    bongo_cat_settings_defaults(&app->settings);
-    bongo_cat_session_defaults(&app->session);
-    bongo_cat_models_init(&app->models);
-    snprintf(app->data_root, sizeof(app->data_root), "%s", data);
-    snprintf(app->cache_root, sizeof(app->cache_root), "%s", data);
-    CHECK(bongo_cat_import_nearby_mver_root(app, package, &error) == BONGO_CAT_OK);
-    CHECK(app->models.count == 1);
-    CHECK(app->models.entries[0].managed && !app->models.entries[0].preset);
-    CHECK(strcmp(app->models.entries[0].display_name, "app") == 0);
-    CHECK(strcmp(app->models.entries[0].storage_directory, package) == 0);
-    CHECK(strcmp(app->session.active_model_id, app->models.entries[0].id) == 0);
-    char adapter_file[BONGO_CAT_PATH_CAP];
-    CHECK(child(adapter_file, sizeof(adapter_file),
-        app->models.entries[0].adapter_directory, "resources/left-keys/KeyA.png", false));
-    CHECK(bongo_cat_path_is_file(adapter_file));
-    CHECK(test_mver_pointer_adapter(
-        app->models.entries[0].adapter_directory, true));
-    BongoCatLive2DRenderOptions render = {0};
-    CHECK(bongo_cat_import_render_options(
-        app->models.entries[0].adapter_directory, &render));
-    CHECK(render.mver_projection && render.source_mirror);
-    CHECK(render.projection_scale > 1.986f && render.projection_scale < 1.988f);
-    CHECK(render.offset_y < -0.004f && render.offset_y > -0.006f);
-    CHECK(render.reference_width == 1400 && render.reference_height == 1400);
-    CHECK(render.custom_pointer_bounds && render.pointer_left == 100 &&
-        render.pointer_top == 200 && render.pointer_right == 2100 &&
-        render.pointer_bottom == 1400);
-    bongo_cat_models_init(&app->models);
-    CHECK(bongo_cat_import_nearby_mver_root(app, package, &error) == BONGO_CAT_OK);
-    CHECK(app->models.count == 1);
-    bongo_cat_models_init(&app->models);
-    CHECK(bongo_cat_import_nearby_mver_root(app, mode, &error) == BONGO_CAT_OK);
-    CHECK(app->models.count == 1);
-    CHECK(strcmp(app->models.entries[0].storage_directory, package) == 0);
-    bongo_cat_models_init(&app->models);
-    CHECK(bongo_cat_import_nearby_mver_root(app, root, &error) == BONGO_CAT_OK);
-    CHECK(app->models.count == 3);
-    bongo_cat_models_init(&app->models);
-    CHECK(bongo_cat_import_nearby_mver_scan(app, root, &error) == BONGO_CAT_OK);
-    CHECK(app->models.count == 3);
-    bongo_cat_models_init(&app->models);
-    CHECK(bongo_cat_import_nearby_mver(app, launch, &error) == BONGO_CAT_OK);
-    CHECK(app->models.count == 3);
-    for (size_t i = 0; i < app->models.count; ++i) {
-        CHECK(app->models.entries[i].display_name[0] != '\0');
-        CHECK(app->models.entries[i].managed);
-    }
-    CHECK(child(mode, sizeof(mode), package, "config.json", false));
-    CHECK(write_text(mode, test_mver_pointer_config(false)));
-    bongo_cat_models_init(&app->models);
-    CHECK(bongo_cat_import_nearby_mver_root(app, package, &error) == BONGO_CAT_OK);
-    CHECK(app->models.count == 1);
-    CHECK(test_mver_pointer_adapter(
-        app->models.entries[0].adapter_directory, true));
-    free(app);
     CHECK(bongo_cat_model_remove_tree(root, NULL));
-    CHECK(bongo_cat_model_remove_tree(data, NULL));
+    SDL_free(temporary);
+}
+
+static void tauri_exact_discovery(void) {
+    char *temporary = SDL_GetCurrentDirectory();
+    CHECK(temporary != NULL);
+    if (!temporary) return;
+    char root[BONGO_CAT_PATH_CAP], model[BONGO_CAT_PATH_CAP], path[BONGO_CAT_PATH_CAP];
+    snprintf(root, sizeof(root), "%s/bongo-cat-tauri-%llu", temporary,
+        (unsigned long long)SDL_GetTicksNS());
+    CHECK(SDL_CreateDirectory(root));
+    CHECK(child(model, sizeof(model), root, "model", true));
+    CHECK(child(path, sizeof(path), model, "cat.model3.json", false));
+    CHECK(write_text(path, "{\"Version\":3,\"FileReferences\":{"
+        "\"Moc\":\"cat.moc3\",\"Textures\":[\"texture.png\"]}}"));
+    CHECK(child(path, sizeof(path), model, "cat.moc3", false));
+    CHECK(write_text(path, "MOC3"));
+    CHECK(child(path, sizeof(path), model, "texture.png", false));
+    char tray[BONGO_CAT_PATH_CAP];
+    snprintf(tray, sizeof(tray), "%s/resources/assets/tray.png",
+        BONGO_CAT_NATIVE_SOURCE_DIR);
+    CHECK(SDL_CopyFile(tray, path));
+    BongoCatImportDiscovery discovery = {0};
+    BongoCatError error = {0};
+    CHECK(bongo_cat_import_tauri_discover_exact(model, &discovery, &error) == 1);
+    CHECK(discovery.count == 1 &&
+        discovery.candidates[0].format == BONGO_CAT_IMPORT_TAURI);
+    CHECK(bongo_cat_model_remove_tree(root, NULL));
     SDL_free(temporary);
 }
 
@@ -298,6 +264,8 @@ int main(void) {
     behavior_labels_add_font_glyphs();
     font_reload_defers_during_frame();
     failures += test_mver_nearby_identity();
-    nearby_model();
+    failures += test_model_import_identity();
+    container_discovery();
+    tauri_exact_discovery();
     return failures ? 1 : 0;
 }

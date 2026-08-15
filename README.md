@@ -32,9 +32,9 @@ instead of a diagnostic build.
 - Import and removal of custom model packages. A package is checked for a valid
   manifest and safe file references before it is installed under the user data
   directory.
-- Automatic discovery of Bongo-Cat-Mver packages in the executable directory
-  or its immediate parent, shown separately as nearby models. Packages may use
-  `config.json` + `img/` directly or an intact child directory.
+- Bounded automatic discovery of Bongo-Cat-Mver packages beside the executable.
+  Nearby sources and installed packages share one model list; packages may use
+  `config.json` + `img/` directly or an intact nested directory.
 - Mver 0.1.6 is the animation and input behavior baseline; standalone
   Tauri/Live2D model folders are loaded through a canvas and input adapter.
   Model containers with nested full packages and image-only variants (for
@@ -195,11 +195,11 @@ unreleased application has no configuration migration layer.
 ## Runtime Data and Test Switches
 
 Storage is separated into `config`, `data`, `cache`, `state`, and `logs`.
-Installed packages live under `data/models`; generated nearby-Mver adapters
-live under `cache/model-adapters`. A Bongo-Cat-Mver package can be used without
-installing it by placing its
-`config.json` and `img/` beside `BongoCat`, by placing the intact package
-directory there, or by keeping both under the same immediate parent directory.
+Installed packages live under `data/models`; generated nearby-model adapters
+live under `cache/model-adapters`. A Tauri or Bongo-Cat-Mver package can be used
+without installing it by placing its model directory beside `BongoCat`. Startup discovery scans at most three directory
+levels and 256 directories, with a 500 ms directory-work budget. Unchanged
+sources reuse their cached identity and generated adapter.
 A collection such as `露西亚-誓焰版` may be selected as one folder; its full
 package and nested image patches are discovered together.
 Tests and isolated launches may override the complete storage layout:

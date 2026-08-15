@@ -30,22 +30,39 @@ static const char *source_root(const BongoCatImportCandidate *candidate) {
         candidate->patch_root[0] ? candidate->patch_root : candidate->package_root;
 }
 
-static const char *mode_title(BongoCatModelMode mode) {
-    if (mode == BONGO_CAT_MODE_KEYBOARD) return "Keyboard";
-    if (mode == BONGO_CAT_MODE_GAMEPAD) return "Gamepad";
-    return "Standard";
+static bool parent_path(const char *path, char *parent, size_t capacity) {
+    size_t length = path ? strlen(path) : 0;
+    while (length && (path[length - 1] == '/' || path[length - 1] == '\\')) length--;
+    while (length && path[length - 1] != '/' && path[length - 1] != '\\') length--;
+    while (length && (path[length - 1] == '/' || path[length - 1] == '\\')) length--;
+    if (!length || length >= capacity) return false;
+    memcpy(parent, path, length); parent[length] = '\0';
+    return true;
+}
+
+static const char *display_source(const BongoCatImportCandidate *candidate,
+    char parent[BONGO_CAT_PATH_CAP]) {
+    const char *source = source_root(candidate);
+    if (candidate->format == BONGO_CAT_IMPORT_MVER_PATCH &&
+        parent_path(source, parent, BONGO_CAT_PATH_CAP) &&
+        !strcmp(bongo_cat_path_name(source),
+            bongo_cat_path_name(candidate->package_root))) return parent;
+    return source;
 }
 
 bool bongo_cat_import_prepare_package_metadata(
-    const BongoCatImportDiscovery *discovery,
+    BongoCatImportDiscovery *discovery,
     BongoCatPackageMetadata *metadata, BongoCatError *error) {
     char family_material[BONGO_CAT_IMPORT_CANDIDATE_CAP * 66 + 32];
-    size_t used = 0;
+    size_t used = 0, output = 0;
     for (size_t i = 0; i < discovery->count; ++i) {
-        const BongoCatImportCandidate *candidate = &discovery->candidates[i];
-        BongoCatPackageMetadata *item = &metadata[i];
-        if (!bongo_cat_import_candidate_digest(candidate,
-            item->content_digest, error)) return false;
+        BongoCatImportCandidate candidate = discovery->candidates[i];
+        BongoCatPackageMetadata *item = &metadata[output];
+        bool placeholder = false;
+        if (!bongo_cat_import_candidate_inspect(&candidate,
+            item->content_digest, &placeholder, error)) return false;
+        if (placeholder) continue;
+        discovery->candidates[output] = candidate;
         int written = snprintf(family_material + used,
             sizeof(family_material) - used, "%s|", item->content_digest);
         if (written < 0 || (size_t)written >= sizeof(family_material) - used)
@@ -53,20 +70,25 @@ bool bongo_cat_import_prepare_package_metadata(
         used += (size_t)written;
         snprintf(item->package_id, sizeof(item->package_id), "model-%s-%s",
             item->content_digest, bongo_cat_mode_name(candidate->mode));
-        const char *name = bongo_cat_path_name(source_root(candidate));
+        char parent[BONGO_CAT_PATH_CAP];
+        const char *name = bongo_cat_path_name(display_source(candidate, parent));
         snprintf(item->source_name, sizeof(item->source_name), "%s",
             name && name[0] ? name : "Imported model");
-        if (discovery->count > 1)
-            snprintf(item->display_name, sizeof(item->display_name), "%s - %s",
-                item->source_name, mode_title(candidate->mode));
-        else snprintf(item->display_name, sizeof(item->display_name), "%s",
+        snprintf(item->display_name, sizeof(item->display_name), "%s",
             item->source_name);
-        item->capabilities = candidate_capabilities(candidate);
+        item->capabilities = candidate_capabilities(&candidate);
+        output++;
     }
-    if (discovery->count > 1) {
+    discovery->count = output;
+    if (!output) {
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
+            "Selected Mver package contains only bundled placeholder modes");
+        return false;
+    }
+    if (output > 1) {
         char digest[65];
         bongo_cat_sha256_bytes(family_material, used, digest);
-        for (size_t i = 0; i < discovery->count; ++i)
+        for (size_t i = 0; i < output; ++i)
             snprintf(metadata[i].family_id, sizeof(metadata[i].family_id),
                 "family-%s", digest);
     }
@@ -93,14 +115,16 @@ void bongo_cat_import_describe_nearby_entry(BongoCatModelEntry *entry,
     snprintf(entry->id, sizeof(entry->id), "%s", id);
     snprintf(entry->package_id, sizeof(entry->package_id), "%s", id);
     snprintf(entry->content_digest, sizeof(entry->content_digest), "%s", identity);
-    snprintf(entry->family_id, sizeof(entry->family_id), "family-mver-%.16s",
+    snprintf(entry->family_id, sizeof(entry->family_id), "family-nearby-%.16s",
         source_hash);
     snprintf(entry->directory, sizeof(entry->directory), "%s", candidate->directory);
     snprintf(entry->adapter_directory, sizeof(entry->adapter_directory), "%s", adapter);
     snprintf(entry->storage_directory, sizeof(entry->storage_directory), "%s", source);
     snprintf(entry->setting_file, sizeof(entry->setting_file), "%s", candidate->setting);
     entry->mode = candidate->mode;
-    entry->source_format = candidate->format == BONGO_CAT_IMPORT_MVER_PATCH
+    entry->source_format = candidate->format == BONGO_CAT_IMPORT_TAURI
+        ? BONGO_CAT_MODEL_SOURCE_TAURI :
+        candidate->format == BONGO_CAT_IMPORT_MVER_PATCH
         ? BONGO_CAT_MODEL_SOURCE_MVER_PATCH : BONGO_CAT_MODEL_SOURCE_MVER;
     entry->capabilities = candidate_capabilities(candidate);
     entry->adapter_schema = BONGO_CAT_MODEL_ADAPTER_SCHEMA;

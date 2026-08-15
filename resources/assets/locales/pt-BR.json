@@ -78,8 +78,7 @@
       "model": {
         "title": "Modelo",
         "labels": {
-          "deleteModel": "Excluir modelo",
-          "nearbyModels": "Pastas próximas"
+          "deleteModel": "Excluir modelo"
         },
         "hints": {
           "deleteSuccess": "Modelo \"%s\" excluído",

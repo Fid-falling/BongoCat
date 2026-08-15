@@ -1,89 +1,132 @@
 #include "config_internal.h"
 #include "bongo_cat/path.h"
 
-#include <stdio.h>
+#include <string.h>
 
 #define SESSION_FORMAT "bongocat/session"
+#define type_error(error, field, expected) bongo_cat_config_type_error( \
+    "Session", error, field, expected)
+#define read_value(object, key, target, error) bongo_cat_config_read_value( \
+    "Session", object, key, target, error)
+#define read_object(object, key, target, error) bongo_cat_config_read_object( \
+    "Session", object, key, target, error)
+#define read_bool(object, key, target, error) bongo_cat_config_read_bool( \
+    "Session", object, key, target, error)
+#define read_int(object, key, target, required, error) \
+    bongo_cat_config_read_int( \
+        "Session", object, key, target, required, error)
+#define read_float(object, key, target, error) bongo_cat_config_read_float( \
+    "Session", object, key, target, error)
 
-static bool get_bool(yyjson_val *obj, const char *key, bool fallback) {
-    yyjson_val *value = yyjson_obj_get(obj, key);
-    return yyjson_is_bool(value) ? yyjson_get_bool(value) : fallback;
-}
-static int get_int(yyjson_val *obj, const char *key, int fallback) {
-    yyjson_val *value = yyjson_obj_get(obj, key);
-    return yyjson_is_num(value) ? (int)yyjson_get_sint(value) : fallback;
-}
-static float get_float(yyjson_val *obj, const char *key, float fallback) {
-    yyjson_val *value = yyjson_obj_get(obj, key);
-    return yyjson_is_num(value) ? (float)yyjson_get_num(value) : fallback;
+static bool read_active_model(yyjson_val *root,
+    BongoCatSessionState *session, BongoCatError *error) {
+    yyjson_val *value;
+    if (!read_value(root, "activeModelId", &value, error)) return false;
+    if (!value) return true;
+    if (!yyjson_is_str(value))
+        return type_error(error, "activeModelId", "a string");
+    const char *text = yyjson_get_str(value);
+    size_t length = yyjson_get_len(value);
+    if (!length || length >= sizeof(session->active_model_id) ||
+        strlen(text) != length)
+        return type_error(error, "activeModelId",
+            "a non-empty string within the supported length");
+    memset(session->active_model_id, 0, sizeof(session->active_model_id));
+    memcpy(session->active_model_id, text, length);
+    return true;
 }
 
 BongoCatResult bongo_cat_session_load(const char *path,
     BongoCatSessionState *session, BongoCatError *error) {
     if (!path || !session) return BONGO_CAT_ERROR_ARGUMENT;
     if (!bongo_cat_path_is_file(path)) return BONGO_CAT_OK;
-    yyjson_doc *document = bongo_cat_config_read_document(path,
-        SESSION_FORMAT, BONGO_CAT_SESSION_SCHEMA, error);
-    if (!document) return BONGO_CAT_ERROR_FORMAT;
+    yyjson_doc *document = NULL;
+    BongoCatResult result = bongo_cat_config_read_document(path,
+        SESSION_FORMAT, BONGO_CAT_SESSION_SCHEMA, &document, error);
+    if (result != BONGO_CAT_OK) return result;
     BongoCatSessionState loaded = *session;
     yyjson_val *root = yyjson_doc_get_root(document);
-    yyjson_val *window = yyjson_obj_get(root, "window");
-    if (yyjson_is_obj(window)) {
-        loaded.window.visible = get_bool(window, "visible", loaded.window.visible);
-        loaded.window.scale_percent = get_float(window, "scalePercent",
-            loaded.window.scale_percent);
-        loaded.window.opacity_percent = get_float(window, "opacityPercent",
-            loaded.window.opacity_percent);
-        yyjson_val *position = yyjson_obj_get(window, "position");
-        if (yyjson_is_obj(position)) {
-            yyjson_val *x = yyjson_obj_get(position, "x");
-            yyjson_val *y = yyjson_obj_get(position, "y");
-            if (yyjson_is_num(x) && yyjson_is_num(y)) {
-                loaded.window.x = (int)yyjson_get_sint(x);
-                loaded.window.y = (int)yyjson_get_sint(y);
-                loaded.window.position_known = true;
-            }
+    yyjson_val *window = NULL;
+    bool valid = read_object(root, "window", &window, error);
+    if (valid && window) {
+        valid = read_bool(window, "visible", &loaded.window.visible, error) &&
+            read_float(window, "scalePercent",
+                &loaded.window.scale_percent, error) &&
+            read_float(window, "opacityPercent",
+                &loaded.window.opacity_percent, error);
+        yyjson_val *position = NULL;
+        yyjson_val *size = NULL;
+        if (valid) valid = read_object(
+            window, "position", &position, error);
+        if (valid) valid = read_object(window, "size", &size, error);
+        if (valid && position) {
+            valid = read_int(position, "x", &loaded.window.x, true, error) &&
+                read_int(position, "y", &loaded.window.y, true, error);
+            if (valid) loaded.window.position_known = true;
         }
-        yyjson_val *size = yyjson_obj_get(window, "size");
-        if (yyjson_is_obj(size)) {
-            loaded.window.width = get_int(size, "width", loaded.window.width);
-            loaded.window.height = get_int(size, "height", loaded.window.height);
-        }
+        if (valid && size)
+            valid = read_int(size, "width", &loaded.window.width, true,
+                    error) &&
+                read_int(size, "height", &loaded.window.height, true, error);
     }
-    yyjson_val *model = yyjson_obj_get(root, "activeModelId");
-    if (yyjson_is_str(model)) snprintf(loaded.active_model_id,
-        sizeof(loaded.active_model_id), "%s", yyjson_get_str(model));
+    if (valid) valid = read_active_model(root, &loaded, error);
     yyjson_doc_free(document);
+    if (!valid) return BONGO_CAT_ERROR_FORMAT;
     bongo_cat_session_validate(&loaded);
     *session = loaded;
     return BONGO_CAT_OK;
 }
 
+static BongoCatResult build_error(BongoCatError *error) {
+    bongo_cat_error_set(error, BONGO_CAT_ERROR_MEMORY,
+        "Cannot allocate session JSON");
+    return BONGO_CAT_ERROR_MEMORY;
+}
+
 BongoCatResult bongo_cat_session_save(const char *path,
     const BongoCatSessionState *session, BongoCatError *error) {
     if (!path || !session) return BONGO_CAT_ERROR_ARGUMENT;
+    BongoCatSessionState canonical = *session;
+    bongo_cat_session_validate(&canonical);
     yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
-    if (!doc) return BONGO_CAT_ERROR_MEMORY;
-    yyjson_mut_val *root = yyjson_mut_obj(doc); yyjson_mut_doc_set_root(doc, root);
-    yyjson_mut_obj_add_strcpy(doc, root, "format", SESSION_FORMAT);
-    yyjson_mut_obj_add_int(doc, root, "schemaVersion", BONGO_CAT_SESSION_SCHEMA);
-    yyjson_mut_val *window = yyjson_mut_obj_add_obj(doc, root, "window");
-    yyjson_mut_obj_add_bool(doc, window, "visible", session->window.visible);
-    yyjson_mut_obj_add_real(doc, window, "scalePercent",
-        session->window.scale_percent);
-    yyjson_mut_obj_add_real(doc, window, "opacityPercent",
-        session->window.opacity_percent);
-    if (session->window.position_known) {
-        yyjson_mut_val *position = yyjson_mut_obj_add_obj(doc, window,
-            "position");
-        yyjson_mut_obj_add_int(doc, position, "x", session->window.x);
-        yyjson_mut_obj_add_int(doc, position, "y", session->window.y);
+    if (!doc) return build_error(error);
+    yyjson_mut_val *root = yyjson_mut_obj(doc);
+    if (!root) {
+        yyjson_mut_doc_free(doc);
+        return build_error(error);
     }
-    yyjson_mut_val *size = yyjson_mut_obj_add_obj(doc, window, "size");
-    yyjson_mut_obj_add_int(doc, size, "width", session->window.width);
-    yyjson_mut_obj_add_int(doc, size, "height", session->window.height);
-    yyjson_mut_obj_add_strcpy(doc, root, "activeModelId",
-        session->active_model_id);
+    yyjson_mut_doc_set_root(doc, root);
+    bool built = yyjson_mut_obj_add_strcpy(
+            doc, root, "format", SESSION_FORMAT) &&
+        yyjson_mut_obj_add_int(doc, root, "schemaVersion",
+            BONGO_CAT_SESSION_SCHEMA);
+    yyjson_mut_val *window = built ?
+        yyjson_mut_obj_add_obj(doc, root, "window") : NULL;
+    built = built && window &&
+        yyjson_mut_obj_add_bool(doc, window, "visible",
+            canonical.window.visible) &&
+        yyjson_mut_obj_add_real(doc, window, "scalePercent",
+            canonical.window.scale_percent) &&
+        yyjson_mut_obj_add_real(doc, window, "opacityPercent",
+            canonical.window.opacity_percent);
+    if (built && canonical.window.position_known) {
+        yyjson_mut_val *position =
+            yyjson_mut_obj_add_obj(doc, window, "position");
+        built = position &&
+            yyjson_mut_obj_add_int(doc, position, "x", canonical.window.x) &&
+            yyjson_mut_obj_add_int(doc, position, "y", canonical.window.y);
+    }
+    yyjson_mut_val *size = built ?
+        yyjson_mut_obj_add_obj(doc, window, "size") : NULL;
+    built = built && size &&
+        yyjson_mut_obj_add_int(doc, size, "width", canonical.window.width) &&
+        yyjson_mut_obj_add_int(doc, size, "height", canonical.window.height) &&
+        yyjson_mut_obj_add_strcpy(doc, root, "activeModelId",
+            canonical.active_model_id);
+    if (!built) {
+        yyjson_mut_doc_free(doc);
+        return build_error(error);
+    }
     BongoCatResult result = bongo_cat_config_write_document(path, doc,
         "session file", error);
     yyjson_mut_doc_free(doc);

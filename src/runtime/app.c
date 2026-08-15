@@ -43,20 +43,7 @@ static bool initialize(BongoCatApp *app, int argc, char **argv, BongoCatError *e
     bongo_cat_shortcut_init(&app->shortcut_state);
     bongo_cat_models_init(&app->models);
     if (!bongo_cat_startup_prepare(app, argc, argv, error)) return false;
-    BongoCatResult loaded = bongo_cat_settings_load(
-        app->settings_path, &app->settings, error);
-    app->settings_store_valid = loaded == BONGO_CAT_OK &&
-        bongo_cat_path_is_file(app->settings_path);
-    if (loaded != BONGO_CAT_OK)
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Settings ignored: %s", error->message);
-    *error = (BongoCatError){0};
-    loaded = bongo_cat_session_load(app->session_path, &app->session, error);
-    app->session_store_valid = loaded == BONGO_CAT_OK &&
-        bongo_cat_path_is_file(app->session_path);
-    if (loaded != BONGO_CAT_OK)
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Session ignored: %s", error->message);
-    *error = (BongoCatError){0};
-    bongo_cat_config_store_initialize(app);
+    bongo_cat_config_store_load(app);
     if (app->smoke_language >= 0)
         app->settings.app.language = (BongoCatLanguage)app->smoke_language;
     if (app->smoke_theme >= 0) app->settings.app.theme = (BongoCatTheme)app->smoke_theme;

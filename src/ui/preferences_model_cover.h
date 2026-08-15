@@ -16,8 +16,6 @@ void bongo_cat_preferences_model_cover_cache_clear(BongoCatApp *app);
 const BongoCatModelCover *bongo_cat_preferences_model_cover(
     BongoCatApp *app, const BongoCatModelEntry *entry,
     int pixel_width, int pixel_height);
-bool bongo_cat_preferences_model_cover_capture(BongoCatApp *app,
-    const BongoCatModelEntry *entry);
 bool bongo_cat_preferences_model_cover_generate_current(BongoCatApp *app);
 void bongo_cat_preferences_model_covers_prune(BongoCatApp *app);
 

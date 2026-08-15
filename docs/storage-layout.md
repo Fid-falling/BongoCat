@@ -7,9 +7,12 @@ formats. Tauri Live2D and Bongo-Cat-Mver are model import formats only.
 
 ```text
 config/settings.json       long-lived user preferences
+config/settings.json.rejected* preserved invalid settings
 data/models/               installed model package v2 directories
-cache/model-adapters/      generated adapters for nearby Mver folders
+cache/embedded-assets-<version>/ extracted packaged application assets
+cache/model-adapters/      generated adapters for nearby Tauri/Mver sources
 state/session.json         disposable window and active-model state
+state/session.json.rejected* preserved invalid session state
 state/                     diagnostic and smoke-run artifacts
 logs/                      startup and failure logs
 ```
@@ -19,11 +22,24 @@ and pointer preferences, window behavior, application preferences, shortcuts,
 behavior overrides, model display-name overrides, and an `extensions` object.
 Unknown namespaces inside `extensions` are preserved across load and save; the
 serialized object is limited to 4095 bytes so settings memory remains bounded.
+The complete settings or session document is limited to 1 MiB.
 
 `session.json` uses format `bongocat/session`, schema 1. It contains only the
 active model ID and window visibility, scale, opacity, optional known position,
 and size.
 Deleting it must not change the user's preferences or installed models.
+
+Every user-selected Tauri or Mver source is converted into an application-owned
+package v2 directory under `data/models/`.
+
+For portable Tauri and Mver distributions, the application also performs a
+bounded scan next to the executable. These nearby sources remain externally
+owned and are loaded in place; only their generated runtime adapters are stored under
+`cache/model-adapters/`. The scan is limited to three directory levels, 256
+directories, and 500 ms of directory-discovery work. Unchanged sources reuse a
+metadata signature and cached content identity, so rescans do not rehash model
+files or regenerate input images. Set `BONGO_CAT_DISABLE_NEARBY_MODEL_SCAN` for
+isolated development runs that must ignore adjacent sources.
 
 ```json
 {
@@ -86,6 +102,26 @@ position. Once present, `(0, 0)` is treated as an intentional location.
 Both documents are written atomically through a temporary file, a durable
 flush, and replacement. There are no readers or migrations for pre-release
 configuration formats.
+
+Schema 1 treats known fields strictly: an omitted field keeps its default, but
+a present field with the wrong JSON type, an unsupported enum string, an
+out-of-range machine integer, or an invalid nested structure rejects the whole
+document. Duplicate known JSON keys are also rejected. Unknown fields outside
+`extensions` are ignored and not preserved;
+extension owners must store their data under a unique key in `extensions`.
+
+Before saving, settings and session values are canonicalized. Numeric runtime
+values are clamped to supported limits, non-finite values return to defaults,
+invalid empty override rows are removed, and override IDs are unique. If an
+override ID occurs more than once in memory or in a loaded document, later
+non-empty values replace the corresponding earlier values.
+
+Invalid or unsupported files are moved aside before defaults are saved. The
+first rejected file uses the sibling name `settings.json.rejected` or
+`session.json.rejected`; further files use `.rejected.1`, `.rejected.2`, and so
+on. I/O and allocation failures leave the original in place and disable saving
+that document for the current run. This prevents a transient failure or a file
+that could not be preserved from being overwritten.
 
 ## Platform Roots
 

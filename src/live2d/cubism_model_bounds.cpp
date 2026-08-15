@@ -68,9 +68,10 @@ NativeModel::ModelBounds NativeModel::capture_visible_bounds() const {
             drawable.bounds.min_x - anchor.bounds.max_x, 0.0f});
         float dy = std::max({anchor.bounds.min_y - drawable.bounds.max_y,
             drawable.bounds.min_y - anchor.bounds.max_y, 0.0f});
-        bool nearby = dx <= padding && dy <= padding;
+        bool within_padding = dx <= padding && dy <= padding;
         bool major = drawable.area >= anchor.area * 0.05f;
-        if (drawable.area < anchor.area * 0.0005f || (!nearby && !major)) continue;
+        if (drawable.area < anchor.area * 0.0005f ||
+            (!within_padding && !major)) continue;
         bounds.min_x = std::min(bounds.min_x, drawable.bounds.min_x);
         bounds.min_y = std::min(bounds.min_y, drawable.bounds.min_y);
         bounds.max_x = std::max(bounds.max_x, drawable.bounds.max_x);

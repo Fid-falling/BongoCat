@@ -1,278 +1,110 @@
 #include "model_import.h"
 #include "model_import_nearby_internal.h"
-#include "model_storage.h"
 #include "runtime.h"
-#include "bongo_cat/json.h"
 #include "bongo_cat/path.h"
 #include "bongo_cat/sha256.h"
 
-#include <SDL3/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <yyjson.h>
 
-#define MODEL_ADAPTER_DIRECTORY "model-adapters"
-#define MODEL_CACHE_KIND "bongocat/nearby-model-cache"
-
-static bool marker_header_valid(yyjson_val *root) {
-    const char *kind = yyjson_get_str(yyjson_obj_get(root, "kind"));
-    return yyjson_is_obj(root) &&
-        yyjson_get_int(yyjson_obj_get(root, "schemaVersion")) ==
-            BONGO_CAT_NEARBY_CACHE_SCHEMA && kind &&
-        strcmp(kind, MODEL_CACHE_KIND) == 0;
-}
-
-static bool digest_valid(const char *value) {
-    if (!value || strlen(value) != 64) return false;
-    for (size_t i = 0; i < 64; ++i) {
-        char byte = value[i];
-        if (!((byte >= '0' && byte <= '9') ||
-            (byte >= 'a' && byte <= 'f'))) return false;
-    }
-    return true;
-}
-
-static bool existing_identity(const BongoCatModelCatalog *models,
-    const char *identity, BongoCatModelMode mode,
-    const BongoCatModelEntry *ignored) {
-    if (!models || !digest_valid(identity)) return false;
-    for (size_t i = 0; i < models->count; ++i) {
-        const BongoCatModelEntry *entry = &models->entries[i];
-        if (entry != ignored && entry->mode == mode &&
-            digest_valid(entry->content_digest) &&
-            strcmp(entry->content_digest, identity) == 0) return true;
-    }
-    return false;
-}
-
-static BongoCatModelEntry *model_with_id(BongoCatApp *app, const char *id) {
-    if (!app || !id) return NULL;
-    for (size_t i = 0; i < app->models.count; ++i)
-        if (strcmp(app->models.entries[i].id, id) == 0)
-            return &app->models.entries[i];
-    return NULL;
-}
+#define NEARBY_ADAPTER_DIRECTORY "model-adapters"
+#define NEARBY_SCAN_BUDGET_NS 500000000ull
 
 static bool parent_path(const char *path, char *parent, size_t capacity) {
     size_t length = path ? strlen(path) : 0;
-    while (length && (path[length - 1] == '/' || path[length - 1] == '\\')) length--;
-    while (length && path[length - 1] != '/' && path[length - 1] != '\\') length--;
-    while (length > 1 && (path[length - 1] == '/' || path[length - 1] == '\\')) length--;
+    while (length && (path[length - 1] == '/' || path[length - 1] == '\\'))
+        length--;
+    while (length && path[length - 1] != '/' && path[length - 1] != '\\')
+        length--;
+    while (length > 1 && (path[length - 1] == '/' ||
+        path[length - 1] == '\\')) length--;
     if (!length || length >= capacity) return false;
     memcpy(parent, path, length);
     parent[length] = '\0';
     return true;
 }
 
+static bool existing_identity(const BongoCatModelCatalog *models,
+    const char *identity, BongoCatModelMode mode,
+    const BongoCatModelEntry *ignored) {
+    for (size_t i = 0; models && i < models->count; ++i) {
+        const BongoCatModelEntry *entry = &models->entries[i];
+        if (entry != ignored && entry->mode == mode &&
+            entry->content_digest[0] &&
+            strcmp(entry->content_digest, identity) == 0) return true;
+    }
+    return false;
+}
+
+static BongoCatModelEntry *model_with_id(BongoCatApp *app, const char *id) {
+    for (size_t i = 0; app && i < app->models.count; ++i)
+        if (strcmp(app->models.entries[i].id, id) == 0)
+            return &app->models.entries[i];
+    return NULL;
+}
+
+static const char *candidate_source(const BongoCatImportCandidate *candidate,
+    const char *fallback) {
+    if (candidate->format == BONGO_CAT_IMPORT_MVER_PATCH &&
+        candidate->patch_root[0]) return candidate->patch_root;
+    return candidate->package_root[0] ? candidate->package_root : fallback;
+}
+
 static void candidate_name(const char *source,
     const BongoCatImportCandidate *candidate, char *name, size_t capacity) {
     const char *value = bongo_cat_path_name(source);
     char parent[BONGO_CAT_PATH_CAP];
-    if (candidate->format == BONGO_CAT_IMPORT_MVER_PATCH &&
-        strcmp(value, bongo_cat_path_name(candidate->package_root)) == 0 &&
-        parent_path(source, parent, sizeof(parent))) {
-        const char *variant = bongo_cat_path_name(parent);
-        if (variant[0]) value = variant;
-    }
-    snprintf(name, capacity, "%s", value[0] ? value : "Nearby model");
-}
-
-static bool marker_matches(const char *target, const char *source,
-    const char *signature, const char *identity) {
-    char path[BONGO_CAT_PATH_CAP];
-    if (!bongo_cat_path_join(path, sizeof(path), target,
-        BONGO_CAT_NEARBY_CACHE_MARKER)) return false;
-    yyjson_doc *document = bongo_cat_json_read_file(path, 0, NULL);
-    yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
-    const char *stored_source = yyjson_get_str(yyjson_obj_get(root, "source"));
-    const char *stored_signature = yyjson_get_str(yyjson_obj_get(root, "signature"));
-    const char *stored_identity = yyjson_get_str(yyjson_obj_get(root, "identity"));
-    bool matches = marker_header_valid(root) && stored_source &&
-        stored_signature && stored_identity && strcmp(source, stored_source) == 0 &&
-        strcmp(signature, stored_signature) == 0 &&
-        strcmp(identity, stored_identity) == 0;
-    yyjson_doc_free(document);
-    return matches;
-}
-
-static bool cached_identity(const char *target, const char *source,
-    const char *signature, char identity[65]) {
-    char path[BONGO_CAT_PATH_CAP];
-    if (!bongo_cat_path_join(path, sizeof(path), target,
-        BONGO_CAT_NEARBY_CACHE_MARKER)) return false;
-    yyjson_doc *document = bongo_cat_json_read_file(path, 0, NULL);
-    yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
-    const char *stored_source = yyjson_get_str(yyjson_obj_get(root, "source"));
-    const char *stored_signature = yyjson_get_str(yyjson_obj_get(root, "signature"));
-    const char *stored_identity = yyjson_get_str(yyjson_obj_get(root, "identity"));
-    bool valid = marker_header_valid(root) && stored_source &&
-        stored_signature && digest_valid(stored_identity) &&
-        strcmp(source, stored_source) == 0 &&
-        strcmp(signature, stored_signature) == 0;
-    if (valid) snprintf(identity, 65, "%s", stored_identity);
-    yyjson_doc_free(document);
-    return valid;
-}
-
-static bool marker_identity(const char *target, const char *source,
-    char identity[65]) {
-    char path[BONGO_CAT_PATH_CAP];
-    if (!bongo_cat_path_join(path, sizeof(path), target,
-        BONGO_CAT_NEARBY_CACHE_MARKER)) return false;
-    yyjson_doc *document = bongo_cat_json_read_file(path, 0, NULL);
-    yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
-    const char *stored_source = yyjson_get_str(yyjson_obj_get(root, "source"));
-    const char *stored_identity = yyjson_get_str(yyjson_obj_get(root, "identity"));
-    bool valid = marker_header_valid(root) && stored_source &&
-        strcmp(source, stored_source) == 0 &&
-        digest_valid(stored_identity);
-    if (valid) snprintf(identity, 65, "%s", stored_identity);
-    yyjson_doc_free(document);
-    return valid;
-}
-
-static bool write_marker(const char *target, const char *source,
-    const char *signature, const char *identity, BongoCatModelMode mode) {
-    yyjson_mut_doc *document = yyjson_mut_doc_new(NULL);
-    yyjson_mut_val *root = document ? yyjson_mut_obj(document) : NULL;
-    if (document) yyjson_mut_doc_set_root(document, root);
-    char path[BONGO_CAT_PATH_CAP];
-    bool ok = root && yyjson_mut_obj_add_int(document, root, "schemaVersion",
-        BONGO_CAT_NEARBY_CACHE_SCHEMA) &&
-        yyjson_mut_obj_add_str(document, root, "kind", MODEL_CACHE_KIND) &&
-        yyjson_mut_obj_add_strcpy(document, root, "source", source) &&
-        yyjson_mut_obj_add_strcpy(document, root, "signature", signature) &&
-        yyjson_mut_obj_add_strcpy(document, root, "identity", identity) &&
-        yyjson_mut_obj_add_strcpy(document, root, "mode", bongo_cat_mode_name(mode)) &&
-        bongo_cat_path_join(path, sizeof(path), target,
-            BONGO_CAT_NEARBY_CACHE_MARKER) &&
-        bongo_cat_json_write_file(path, document, YYJSON_WRITE_PRETTY, NULL);
-    yyjson_mut_doc_free(document);
-    return ok;
-}
-
-static bool previous_cache_usable(const char *target, const char *source) {
-    char marker[BONGO_CAT_PATH_CAP], mode[BONGO_CAT_PATH_CAP];
-    char metadata[BONGO_CAT_PATH_CAP], resources[BONGO_CAT_PATH_CAP];
-    if (!bongo_cat_path_is_dir(target) ||
-        !bongo_cat_path_join(marker, sizeof(marker), target,
-            BONGO_CAT_NEARBY_CACHE_MARKER) ||
-        !bongo_cat_path_join(mode, sizeof(mode), target, ".bongo-cat-mode") ||
-        !bongo_cat_path_join(metadata, sizeof(metadata), target,
-            BONGO_CAT_MODEL_ADAPTER_FILE) ||
-        !bongo_cat_path_join(resources, sizeof(resources), target, "resources") ||
-        !bongo_cat_path_is_file(mode) ||
-        !bongo_cat_path_is_dir(resources)) return false;
-    if (!bongo_cat_path_is_file(metadata)) return false;
-    yyjson_doc *document = bongo_cat_json_read_file(marker, 0, NULL);
-    yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
-    const char *stored_source = yyjson_get_str(yyjson_obj_get(root, "source"));
-    bool usable = marker_header_valid(root) && stored_source &&
-        strcmp(stored_source, source) == 0;
-    yyjson_doc_free(document);
-    return usable;
-}
-
-static bool use_previous_cache(const char *target, const char *source,
-    BongoCatError *error) {
-    if (!previous_cache_usable(target, source)) return false;
-    SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-        "Cannot refresh nearby model cache; using the previous safe cache: %s",
-        error && error->message[0] ? error->message : source);
-    if (error) *error = (BongoCatError){0};
-    return true;
-}
-
-static bool refresh_cache(const BongoCatImportCandidate *candidate,
-    const char *cache_root, const char *id, const char *source,
-    const char *signature, const char *identity, bool *created,
-    BongoCatError *error) {
-    char target[BONGO_CAT_PATH_CAP], temporary[BONGO_CAT_PATH_CAP];
-    char backup[BONGO_CAT_PATH_CAP], name[BONGO_CAT_ID_CAP + 8];
-    snprintf(name, sizeof(name), ".%s.tmp", id);
-    if (!bongo_cat_path_join(target, sizeof(target), cache_root, id) ||
-        !bongo_cat_path_join(temporary, sizeof(temporary), cache_root, name)) return false;
-    snprintf(name, sizeof(name), ".%s.old", id);
-    if (!bongo_cat_path_join(backup, sizeof(backup), cache_root, name)) return false;
-    bongo_cat_model_remove_tree(temporary, NULL);
-    if (!bongo_cat_path_is_dir(target) && bongo_cat_path_is_dir(backup))
-        bongo_cat_path_rename(backup, target);
-    if (bongo_cat_path_is_dir(target)) bongo_cat_model_remove_tree(backup, NULL);
-    *created = !bongo_cat_path_is_dir(target);
-    if (!*created && marker_matches(target, source, signature, identity) &&
-        previous_cache_usable(target, source)) return true;
-    if (!bongo_cat_path_create_directory(temporary) ||
-        !bongo_cat_import_prepare_adapter(candidate, temporary, error) ||
-        !write_marker(temporary, source, signature, identity, candidate->mode)) {
-        bongo_cat_model_remove_tree(temporary, NULL);
-        if (error && !error->message[0]) bongo_cat_error_set(error,
-            BONGO_CAT_ERROR_IO, "Cannot build nearby Mver adapter: %s", source);
-        return use_previous_cache(target, source, error);
-    }
-    bool had_target = bongo_cat_path_is_dir(target);
-    if (had_target && !bongo_cat_path_rename(target, backup)) {
-        bongo_cat_model_remove_tree(temporary, NULL);
-        bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
-            "Cannot update nearby Mver adapter: %s", SDL_GetError());
-        return use_previous_cache(target, source, error);
-    }
-    if (!bongo_cat_path_rename(temporary, target)) {
-        if (had_target) bongo_cat_path_rename(backup, target);
-        bongo_cat_model_remove_tree(temporary, NULL);
-        bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
-            "Cannot activate nearby Mver adapter: %s", SDL_GetError());
-        return use_previous_cache(target, source, error);
-    }
-    bongo_cat_model_remove_tree(backup, NULL);
-    return true;
+    if (value && candidate->format == BONGO_CAT_IMPORT_MVER_PATCH &&
+        candidate->package_root[0] &&
+        !strcmp(value, bongo_cat_path_name(candidate->package_root)) &&
+        parent_path(source, parent, sizeof(parent)))
+        value = bongo_cat_path_name(parent);
+    snprintf(name, capacity, "%s", value && value[0] ? value : "Nearby model");
 }
 
 static bool add_candidate(BongoCatApp *app, const char *cache_root,
     const char *source, const BongoCatImportCandidate *candidate,
-    char *first_created, BongoCatError *error) {
-    char source_hash[65], signature[65], identity[65], id[BONGO_CAT_ID_CAP];
-    BongoCatModelEntry *same_id;
+    char first_created[BONGO_CAT_ID_CAP], BongoCatError *error) {
+    char source_hash[65], signature[65], identity[65];
+    char id[BONGO_CAT_ID_CAP], adapter[BONGO_CAT_PATH_CAP];
     bongo_cat_sha256_bytes(source, strlen(source), source_hash);
-    snprintf(id, sizeof(id), "mver-%.16s-%s", source_hash,
+    snprintf(id, sizeof(id), "nearby-%.16s-%s", source_hash,
         bongo_cat_mode_name(candidate->mode));
-    same_id = model_with_id(app, id);
+    BongoCatModelEntry *same_id = model_with_id(app, id);
     if (same_id && !same_id->managed) return true;
-    if (!bongo_cat_nearby_signature(candidate, signature, error))
+    if (!bongo_cat_nearby_signature(candidate, signature, error) ||
+        !bongo_cat_path_join(adapter, sizeof(adapter), cache_root, id))
         return false;
-    char target[BONGO_CAT_PATH_CAP];
-    if (!bongo_cat_path_join(target, sizeof(target), cache_root, id) ||
-        (!cached_identity(target, source, signature, identity) &&
-        !bongo_cat_nearby_identity(candidate, identity, error))) return false;
-    if (existing_identity(&app->models, identity, candidate->mode,
-        same_id)) return true;
+    bool placeholder = false;
+    bool identity_cached = bongo_cat_nearby_cached_inspection(adapter, source,
+        signature, identity, &placeholder);
+    if (!identity_cached &&
+        !bongo_cat_import_candidate_inspect(candidate, identity,
+            &placeholder, error))
+        return false;
+    if (placeholder) {
+        if (!identity_cached) bongo_cat_nearby_remember_inspection(adapter,
+            source, signature, identity, true, candidate->mode);
+        return true;
+    }
+    if (existing_identity(&app->models, identity, candidate->mode, same_id)) {
+        if (!identity_cached) bongo_cat_nearby_remember_inspection(adapter,
+            source, signature, identity, false, candidate->mode);
+        return true;
+    }
     if (!same_id && app->models.count >= BONGO_CAT_MODEL_CAP) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
-            "Too many models while adding nearby Mver package");
+            "Too many models while adding nearby package");
         return false;
     }
     bool created = false;
-    if (!refresh_cache(candidate, cache_root, id, source, signature, identity,
-        &created, error))
-        return false;
-    char active_identity[65];
-    if (!marker_identity(target, source, active_identity)) return false;
-    if (strcmp(active_identity, identity) != 0) {
-        snprintf(identity, sizeof(identity), "%s", active_identity);
-        if (!same_id && existing_identity(&app->models, identity,
-            candidate->mode, NULL)) return true;
-    }
-    char adapter[BONGO_CAT_PATH_CAP];
-    if (!bongo_cat_path_join(adapter, sizeof(adapter), cache_root, id)) return false;
-    if (same_id) {
-        memset(same_id, 0, sizeof(*same_id));
-        candidate_name(source, candidate, same_id->display_name,
-            sizeof(same_id->display_name));
-        bongo_cat_import_describe_nearby_entry(same_id, candidate, id,
-            identity, source_hash, source, adapter);
-        return true;
-    }
-    BongoCatModelEntry *entry = &app->models.entries[app->models.count++];
+    if (!bongo_cat_nearby_refresh_cache(candidate, cache_root, id, source,
+        signature, identity, false, adapter, &created, error)) return false;
+    if (!same_id && existing_identity(&app->models, identity,
+        candidate->mode, NULL)) return true;
+    BongoCatModelEntry *entry = same_id ? same_id :
+        &app->models.entries[app->models.count++];
     memset(entry, 0, sizeof(*entry));
     candidate_name(source, candidate, entry->display_name,
         sizeof(entry->display_name));
@@ -283,84 +115,103 @@ static bool add_candidate(BongoCatApp *app, const char *cache_root,
     return true;
 }
 
-static BongoCatResult add_discovery(BongoCatApp *app, const char *cache_root,
-    const char *source, BongoCatImportDiscovery *discovery,
-    char *first_created, BongoCatError *error) {
+typedef struct NearbyAdd {
+    BongoCatApp *app;
+    const char *cache_root;
+    char *first_created;
+} NearbyAdd;
+
+static BongoCatResult add_discovery(NearbyAdd *add, const char *fallback,
+    BongoCatImportDiscovery *discovery, BongoCatError *error) {
     for (size_t i = 0; i < discovery->count; ++i) {
-        if (!add_candidate(app, cache_root, source, &discovery->candidates[i],
-            first_created, error)) return error && error->code ? error->code :
-                BONGO_CAT_ERROR_IO;
+        BongoCatImportCandidate *candidate = &discovery->candidates[i];
+        const char *source = candidate_source(candidate, fallback);
+        if (!add_candidate(add->app, add->cache_root, source, candidate,
+            add->first_created, error)) return error && error->code
+                ? error->code : BONGO_CAT_ERROR_IO;
     }
     return BONGO_CAT_OK;
 }
 
-typedef struct NearbyAdd {
-    BongoCatApp *app; const char *cache_root; char *first_created;
-} NearbyAdd;
-
 static BongoCatResult add_scanned(void *userdata, const char *source,
     BongoCatImportDiscovery *discovery, BongoCatError *error) {
-    NearbyAdd *add = userdata;
-    return add_discovery(add->app, add->cache_root, source, discovery,
-        add->first_created, error);
+    return add_discovery(userdata, source, discovery, error);
 }
 
-static BongoCatResult import_nearby_mver_root(BongoCatApp *app,
-    const char *root, bool bounded_scan, BongoCatError *error) {
-    if (!app || !root || !app->cache_root[0]) return BONGO_CAT_ERROR_ARGUMENT;
-    if (!bongo_cat_path_is_dir(root)) return BONGO_CAT_OK;
-    char cache_root[BONGO_CAT_PATH_CAP], first_created[BONGO_CAT_ID_CAP] = {0};
-    if (!bongo_cat_path_join(cache_root, sizeof(cache_root), app->cache_root,
-        MODEL_ADAPTER_DIRECTORY) ||
-        !bongo_cat_path_create_directory(cache_root)) return BONGO_CAT_ERROR_IO;
-    BongoCatImportDiscovery *discovery = calloc(1, sizeof(*discovery));
-    if (!discovery) return BONGO_CAT_ERROR_MEMORY;
-    int direct = bounded_scan
+static int discover_direct(const char *root, bool bounded,
+    BongoCatImportDiscovery *discovery, BongoCatError *error) {
+    int found = bounded
         ? bongo_cat_import_mver_discover_exact(root, discovery, error)
         : bongo_cat_import_mver_discover(root, discovery, error);
-    if (bounded_scan && direct <= 0) {
+    if (found <= 0) {
         memset(discovery, 0, sizeof(*discovery));
         if (error) *error = (BongoCatError){0};
-        direct = bongo_cat_import_mver_patch_discover_exact(root,
+        found = bounded
+            ? bongo_cat_import_mver_patch_discover_exact(root,
+                discovery, error)
+            : bongo_cat_import_mver_patch_discover(root, discovery, error);
+    }
+    if (found <= 0) {
+        memset(discovery, 0, sizeof(*discovery));
+        if (error) *error = (BongoCatError){0};
+        found = bongo_cat_import_tauri_discover_exact(root,
             discovery, error);
     }
-    const char *direct_source = direct > 0 && discovery->candidates[0].package_root[0]
-        ? discovery->candidates[0].package_root : root;
+    return found;
+}
+
+static BongoCatResult import_root(BongoCatApp *app, const char *root,
+    bool bounded, BongoCatError *error) {
+    if (!app || !root || !app->cache_root[0])
+        return BONGO_CAT_ERROR_ARGUMENT;
+    if (!bongo_cat_path_is_dir(root)) return BONGO_CAT_OK;
+    char cache_root[BONGO_CAT_PATH_CAP];
+    char first_created[BONGO_CAT_ID_CAP] = {0};
+    if (!bongo_cat_path_join(cache_root, sizeof(cache_root), app->cache_root,
+            NEARBY_ADAPTER_DIRECTORY) ||
+        !bongo_cat_path_create_directory(cache_root))
+        return BONGO_CAT_ERROR_IO;
+    BongoCatImportDiscovery *discovery = calloc(1, sizeof(*discovery));
+    if (!discovery) return BONGO_CAT_ERROR_MEMORY;
+    int direct = discover_direct(root, bounded, discovery, error);
+    NearbyAdd add = {app, cache_root, first_created};
     BongoCatResult result = direct > 0
-        ? add_discovery(app, cache_root, direct_source, discovery, first_created, error) :
-        BONGO_CAT_OK;
+        ? add_discovery(&add, root, discovery, error) : BONGO_CAT_OK;
     if (direct <= 0) {
         if (error) *error = (BongoCatError){0};
-        NearbyAdd add = {app, cache_root, first_created};
-        result = bongo_cat_import_nearby_scan(root, add_scanned, &add, error);
+        result = bounded
+            ? bongo_cat_import_scan_budget(root, add_scanned, &add,
+                NEARBY_SCAN_BUDGET_NS, error)
+            : bongo_cat_import_scan(root, add_scanned, &add, error);
     }
     const char *selected = app->session.active_model_id;
-    if (first_created[0] && (!selected[0] || strcmp(selected, "standard") == 0 ||
-        strcmp(selected, "keyboard") == 0 || strcmp(selected, "gamepad") == 0))
-        snprintf(app->session.active_model_id, sizeof(app->session.active_model_id), "%s", first_created);
+    if (first_created[0] && (!selected[0] || !strcmp(selected, "standard") ||
+        !strcmp(selected, "keyboard") || !strcmp(selected, "gamepad")))
+        snprintf(app->session.active_model_id,
+            sizeof(app->session.active_model_id), "%s", first_created);
     free(discovery);
     return result;
 }
 
-BongoCatResult bongo_cat_import_nearby_mver_root(BongoCatApp *app,
+BongoCatResult bongo_cat_import_nearby_root(BongoCatApp *app,
     const char *root, BongoCatError *error) {
-    return import_nearby_mver_root(app, root, false, error);
+    return import_root(app, root, false, error);
 }
 
-BongoCatResult bongo_cat_import_nearby_mver_scan(BongoCatApp *app,
+BongoCatResult bongo_cat_import_nearby_scan(BongoCatApp *app,
     const char *root, BongoCatError *error) {
-    return import_nearby_mver_root(app, root, true, error);
+    return import_root(app, root, true, error);
 }
 
-BongoCatResult bongo_cat_import_nearby_mver(BongoCatApp *app,
+BongoCatResult bongo_cat_import_nearby(BongoCatApp *app,
     const char *root, BongoCatError *error) {
     if (!app || !root) return BONGO_CAT_ERROR_ARGUMENT;
     size_t before = app->models.count;
-    BongoCatResult result = bongo_cat_import_nearby_mver_root(app, root, error);
+    BongoCatResult result = bongo_cat_import_nearby_root(app, root, error);
     if (result != BONGO_CAT_OK || app->models.count != before) return result;
     char parent[BONGO_CAT_PATH_CAP];
-    if (!parent_path(root, parent, sizeof(parent)) || strcmp(parent, root) == 0)
+    if (!parent_path(root, parent, sizeof(parent)) || !strcmp(parent, root))
         return BONGO_CAT_OK;
     if (error) *error = (BongoCatError){0};
-    return bongo_cat_import_nearby_mver_root(app, parent, error);
+    return bongo_cat_import_nearby_root(app, parent, error);
 }

@@ -1,12 +1,12 @@
 #include "model_import.h"
 #include "runtime.h"
 #include "bongo_cat/file.h"
+#include "bongo_cat/image.h"
 #include "bongo_cat/path.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stb_image.h>
 #include <yyjson.h>
 
 static bool safe_reference(const char *value) {
@@ -33,12 +33,7 @@ static bool referenced_texture(const char *root, const char *relative) {
     char path[BONGO_CAT_PATH_CAP];
     if (!safe_reference(relative) ||
         !bongo_cat_path_join(path, sizeof(path), root, relative)) return false;
-    FILE *file = bongo_cat_file_open(path, "rb");
-    int width = 0, height = 0, channels = 0;
-    bool valid = file && stbi_info_from_file(file, &width, &height, &channels) &&
-        width > 0 && height > 0 && channels > 0;
-    if (file) fclose(file);
-    return valid;
+    return bongo_cat_image_info(path, NULL, NULL);
 }
 
 static bool optional_reference(const char *root, yyjson_val *refs,
@@ -160,8 +155,8 @@ static bool has_background_asset(const char *directory) {
     return false;
 }
 
-static bool add_candidate(BongoCatImportDiscovery *discovery, const char *directory,
-    const char *setting) {
+bool bongo_cat_import_tauri_add_candidate(BongoCatImportDiscovery *discovery,
+    const char *directory, const char *setting) {
     if (discovery->count >= BONGO_CAT_IMPORT_CANDIDATE_CAP) return false;
     for (size_t i = 0; i < discovery->count; ++i)
         if (strcmp(discovery->candidates[i].directory, directory) == 0) {
@@ -196,7 +191,8 @@ static BongoCatPathVisit discover_item(void *userdata,
         return BONGO_CAT_PATH_FAILURE;
     if (bongo_cat_path_is_file(path) && suffix(name, ".model3.json")) {
         if (bongo_cat_import_manifest_valid(dirname, name, NULL) &&
-            !add_candidate(discovery, dirname, name)) return BONGO_CAT_PATH_FAILURE;
+            !bongo_cat_import_tauri_add_candidate(discovery, dirname, name))
+            return BONGO_CAT_PATH_FAILURE;
         return BONGO_CAT_PATH_CONTINUE;
     }
     if (!bongo_cat_path_is_dir(path) || discovery->depth >= 8 || name[0] == '.')
@@ -248,8 +244,12 @@ bool bongo_cat_import_discover(const char *source, BongoCatImportDiscovery *disc
     int patch = bongo_cat_import_mver_patch_discover(source, discovery, &patch_error);
     if (patch > 0) return true;
     memset(discovery, 0, sizeof(*discovery));
+    int tauri = bongo_cat_import_tauri_discover_exact(source, discovery, error);
+    if (tauri > 0) return true;
+    if (tauri < 0) return false;
+    memset(discovery, 0, sizeof(*discovery));
     ContainerDiscovery container = {discovery};
-    BongoCatResult container_result = bongo_cat_import_nearby_scan(source,
+    BongoCatResult container_result = bongo_cat_import_scan(source,
         collect_container, &container, error);
     if (container_result != BONGO_CAT_OK) return false;
     if (discovery->count) {

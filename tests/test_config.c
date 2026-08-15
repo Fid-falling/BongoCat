@@ -4,6 +4,7 @@
 #include "bongo_cat/model.h"
 #include "bongo_cat/path.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -38,16 +39,53 @@ static void check_defaults_and_validation(void) {
     CHECK(strcmp(session.active_model_id, "standard") == 0);
 
     settings.model.max_fps = 900;
+    settings.model.auto_release_seconds = NAN;
     settings.window.obs_background_color = BONGO_CAT_OBS_BACKGROUND_COLOR_COUNT;
+    settings.window.hide_delay_seconds = NAN;
     session.window.scale_percent = -2.0f;
-    session.window.opacity_percent = 123.0f;
+    session.window.opacity_percent = NAN;
     bongo_cat_settings_validate(&settings);
     bongo_cat_session_validate(&session);
     CHECK(settings.model.max_fps == 240);
+    CHECK(settings.model.auto_release_seconds ==
+        BONGO_CAT_DEFAULT_AUTO_RELEASE_SECONDS);
+    CHECK(settings.window.hide_delay_seconds == 0.0f);
     CHECK(settings.window.obs_background_color ==
         BONGO_CAT_OBS_BACKGROUND_GREEN);
     CHECK(session.window.scale_percent == 10.0f);
-    CHECK(session.window.opacity_percent == 100.0f);
+    CHECK(session.window.opacity_percent ==
+        BONGO_CAT_DEFAULT_WINDOW_OPACITY_PERCENT);
+}
+
+static void check_override_canonicalization(void) {
+    BongoCatSettings settings;
+    bongo_cat_settings_defaults(&settings);
+    settings.behavior_shortcut_count = 4;
+    memcpy(settings.behavior_shortcuts[0].id, "motion:1",
+        sizeof("motion:1"));
+    memcpy(settings.behavior_shortcuts[0].shortcut, "Control+1",
+        sizeof("Control+1"));
+    memcpy(settings.behavior_shortcuts[0].label, "First", sizeof("First"));
+    memcpy(settings.behavior_shortcuts[1].id, "motion:1",
+        sizeof("motion:1"));
+    memcpy(settings.behavior_shortcuts[1].shortcut, "Control+2",
+        sizeof("Control+2"));
+    memcpy(settings.behavior_shortcuts[2].id, "empty", sizeof("empty"));
+    memcpy(settings.behavior_shortcuts[3].id, "motion:2",
+        sizeof("motion:2"));
+    memcpy(settings.behavior_shortcuts[3].label, "Second", sizeof("Second"));
+    settings.model_label_count = 2;
+    memcpy(settings.model_labels[0].id, "model", sizeof("model"));
+    memcpy(settings.model_labels[0].label, "Old", sizeof("Old"));
+    memcpy(settings.model_labels[1].id, "model", sizeof("model"));
+    memcpy(settings.model_labels[1].label, "New", sizeof("New"));
+    bongo_cat_settings_validate(&settings);
+    CHECK(settings.behavior_shortcut_count == 2);
+    CHECK(strcmp(settings.behavior_shortcuts[0].shortcut, "Control+2") == 0);
+    CHECK(strcmp(settings.behavior_shortcuts[0].label, "First") == 0);
+    CHECK(strcmp(settings.behavior_shortcuts[1].id, "motion:2") == 0);
+    CHECK(settings.model_label_count == 1);
+    CHECK(strcmp(settings.model_labels[0].label, "New") == 0);
 }
 
 static void check_shortcuts(void) {
@@ -66,8 +104,9 @@ static void check_shortcuts(void) {
     bongo_cat_settings_validate(&settings);
     CHECK(strcmp(settings.shortcuts.visible_cat, "Control+B") == 0);
     CHECK(!settings.shortcuts.visible_preferences[0]);
-    CHECK(!settings.behavior_shortcuts[0].shortcut[0]);
-    CHECK(strcmp(settings.behavior_shortcuts[1].shortcut, "Control+M") == 0);
+    CHECK(settings.behavior_shortcut_count == 1);
+    CHECK(strcmp(settings.behavior_shortcuts[0].id, "motion:1") == 0);
+    CHECK(strcmp(settings.behavior_shortcuts[0].shortcut, "Control+M") == 0);
     CHECK(bongo_cat_settings_shortcut_conflicts(&settings, "control+b", NULL));
     CHECK(!bongo_cat_settings_shortcut_conflicts(&settings, "control+b",
         settings.shortcuts.visible_cat));
@@ -76,6 +115,7 @@ static void check_shortcuts(void) {
 void test_config(void) {
     check_defaults_and_validation();
     check_shortcuts();
+    check_override_canonicalization();
     const uint32_t colors[] = {0x00ff00, 0x0000ff, 0xff0000, 0xff00ff};
     for (int i = 0; i < BONGO_CAT_OBS_BACKGROUND_COLOR_COUNT; ++i)
         CHECK(bongo_cat_obs_background_color_rgb(i) == colors[i]);
@@ -136,7 +176,7 @@ void test_config(void) {
     CHECK(strstr(loaded_settings.extensions_json,
         "\"enabled\":true") != NULL);
     CHECK(strcmp(bongo_cat_model_name(&loaded_settings,
-        &(BongoCatModelEntry){.id = "model", .display_name = "Nearby"}),
+        &(BongoCatModelEntry){.id = "model", .display_name = "Imported"}),
         "Display") == 0);
     CHECK(loaded_session.window.x == -321 &&
         loaded_session.window.opacity_percent == 75.0f);
@@ -151,6 +191,48 @@ void test_config(void) {
         "{\"format\":\"bongocat/session\",\"schemaVersion\":2}");
     CHECK(bongo_cat_session_load(unsupported, &loaded_session, &error) ==
         BONGO_CAT_ERROR_FORMAT);
+
+    write_text(unsupported,
+        "{\"format\":\"bongocat/settings\",\"schemaVersion\":1,"
+        "\"rendering\":{\"maximumFps\":\"fast\"}}");
+    loaded_settings.model.max_fps = 73;
+    CHECK(bongo_cat_settings_load(unsupported, &loaded_settings, &error) ==
+        BONGO_CAT_ERROR_FORMAT);
+    CHECK(loaded_settings.model.max_fps == 73);
+    write_text(unsupported,
+        "{\"format\":\"bongocat/settings\",\"schemaVersion\":1,"
+        "\"rendering\":{\"maximumFps\":1.5}}");
+    CHECK(bongo_cat_settings_load(unsupported, &loaded_settings, &error) ==
+        BONGO_CAT_ERROR_FORMAT);
+    write_text(unsupported,
+        "{\"format\":\"bongocat/settings\",\"schemaVersion\":1,"
+        "\"rendering\":{\"maximumFps\":30,\"maximumFps\":60}}");
+    CHECK(bongo_cat_settings_load(unsupported, &loaded_settings, &error) ==
+        BONGO_CAT_ERROR_FORMAT);
+    write_text(unsupported,
+        "{\"format\":\"bongocat/session\",\"schemaVersion\":1,"
+        "\"window\":{\"visible\":123}}");
+    CHECK(bongo_cat_session_load(unsupported, &loaded_session, &error) ==
+        BONGO_CAT_ERROR_FORMAT);
+
+    BongoCatSettings canonical_settings;
+    BongoCatSessionState canonical_session;
+    bongo_cat_settings_defaults(&canonical_settings);
+    bongo_cat_session_defaults(&canonical_session);
+    canonical_settings.model.max_fps = 900;
+    canonical_session.window.scale_percent = -1.0f;
+    CHECK(bongo_cat_settings_save(settings_path, &canonical_settings, &error) ==
+        BONGO_CAT_OK);
+    CHECK(bongo_cat_session_save(session_path, &canonical_session, &error) ==
+        BONGO_CAT_OK);
+    bongo_cat_settings_defaults(&loaded_settings);
+    bongo_cat_session_defaults(&loaded_session);
+    CHECK(bongo_cat_settings_load(settings_path, &loaded_settings, &error) ==
+        BONGO_CAT_OK);
+    CHECK(bongo_cat_session_load(session_path, &loaded_session, &error) ==
+        BONGO_CAT_OK);
+    CHECK(loaded_settings.model.max_fps == 240);
+    CHECK(loaded_session.window.scale_percent == 10.0f);
 
     CHECK(bongo_cat_file_remove(settings_path));
     CHECK(bongo_cat_file_remove(session_path));

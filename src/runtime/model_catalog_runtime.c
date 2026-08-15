@@ -100,10 +100,10 @@ static void scan_nearby_root(BongoCatApp *app, const char *root) {
     if (!root || !root[0] || !bongo_cat_path_is_dir(root)) return;
     size_t before = app->models.count;
     BongoCatError error = {0};
-    BongoCatResult result = bongo_cat_import_nearby_mver_scan(app, root,
+    BongoCatResult result = bongo_cat_import_nearby_scan(app, root,
         &error);
     size_t added = app->models.count - before;
-    if (added) SDL_Log("Nearby model scan added %llu model modes from %s",
+    if (added) SDL_Log("Nearby model scan added %llu models from %s",
         (unsigned long long)added, root);
     if (result != BONGO_CAT_OK && error.message[0])
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
@@ -143,9 +143,9 @@ BongoCatResult bongo_cat_app_remove_model(BongoCatApp *app, const char *id,
         return BONGO_CAT_ERROR_ARGUMENT;
     }
     if (entry->preset || entry->managed) {
-        bongo_cat_error_set(error, BONGO_CAT_ERROR_ARGUMENT, entry->managed ?
-            "Nearby Mver models are managed by their source directory: %s" :
-            "Built-in models cannot be removed: %s", id);
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_ARGUMENT, entry->managed
+            ? "Nearby models are managed by their source directory: %s"
+            : "Built-in models cannot be removed: %s", id);
         return BONGO_CAT_ERROR_ARGUMENT;
     }
     bool selected = !strcmp(id, app->session.active_model_id) ||

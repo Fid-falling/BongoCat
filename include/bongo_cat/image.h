@@ -24,6 +24,7 @@ extern "C" {
 #endif
 
 BongoCatResult bongo_cat_image_load(const char *path, BongoCatImage *image, BongoCatError *error);
+bool bongo_cat_image_info(const char *path, int *width, int *height);
 void bongo_cat_image_free(BongoCatImage *image);
 unsigned int bongo_cat_image_texture(const char *path, int *width, int *height,
     BongoCatError *error);

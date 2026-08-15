@@ -78,8 +78,7 @@
       "model": {
         "title": "模型管理",
         "labels": {
-          "deleteModel": "刪除模型",
-          "nearbyModels": "附近資料夾"
+          "deleteModel": "刪除模型"
         },
         "hints": {
           "deleteSuccess": "已刪除「%s」",

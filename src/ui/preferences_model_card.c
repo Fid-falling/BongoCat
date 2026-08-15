@@ -78,7 +78,6 @@ void bongo_cat_preferences_model_select(BongoCatPreferences *value,
     const BongoCatModelEntry *entry) {
     BongoCatError error = {0};
     if (bongo_cat_app_select_model_with_error(value->app, entry->id, &error)) {
-        bongo_cat_preferences_model_cover_capture(value->app, entry);
         bongo_cat_preferences_invalidate(value);
         return;
     }

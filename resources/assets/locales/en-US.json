@@ -78,8 +78,7 @@
       "model": {
         "title": "Model",
         "labels": {
-          "deleteModel": "Delete Model",
-          "nearbyModels": "Nearby folders"
+          "deleteModel": "Delete Model"
         },
         "hints": {
           "deleteSuccess": "Deleted \"%s\"",
