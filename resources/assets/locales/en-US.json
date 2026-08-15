@@ -77,6 +77,7 @@
       },
       "model": {
         "title": "Model",
+        "nearbyTitle": "Nearby models",
         "labels": {
           "deleteModel": "Delete Model"
         },
