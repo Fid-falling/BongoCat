@@ -99,6 +99,9 @@ Linux falls back to the corresponding `~/.config`, `~/.local/share`,
 `~/.local/state`, and `~/.cache` roots when an XDG variable is unset.
 Windows keeps only small preferences in the roaming profile; installed models
 stay local so large packages are not copied by profile synchronization.
+Application data is file-backed on every platform. Windows does not use the
+registry for settings or autostart; enabling autostart creates a shortcut in
+the current user's Startup folder.
 
 `--storage-root=<path>` is the only path override. It creates `config`, `data`,
 `cache`, `state`, and `logs` beneath the supplied root for isolated development

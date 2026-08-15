@@ -4,6 +4,9 @@
 #ifdef _WIN32
 #include <SDL3/SDL.h>
 #include <ctype.h>
+#include <objbase.h>
+#include <shlobj.h>
+#include <shobjidl.h>
 #include <string.h>
 #include <windows.h>
 
@@ -96,34 +99,65 @@ void bongo_cat_platform_single_instance_end(void) {
 
 BongoCatResult bongo_cat_platform_set_autostart(bool enabled,
     BongoCatError *error) {
-    HKEY key;
-    LONG result = RegCreateKeyExW(HKEY_CURRENT_USER,
-        L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, NULL, 0,
-        KEY_SET_VALUE, NULL, &key, NULL);
-    if (result != ERROR_SUCCESS) {
+    PWSTR startup = NULL;
+    HRESULT result = SHGetKnownFolderPath(&FOLDERID_Startup, KF_FLAG_DEFAULT,
+        NULL, &startup);
+    wchar_t shortcut[BONGO_CAT_PATH_CAP];
+    int written = SUCCEEDED(result) && startup
+        ? swprintf(shortcut, BONGO_CAT_PATH_CAP, L"%ls\\%ls.lnk", startup,
+            BONGO_CAT_NAME_W) : -1;
+    CoTaskMemFree(startup);
+    if (FAILED(result) || written < 0 || written >= BONGO_CAT_PATH_CAP) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM,
-            "Cannot open autostart registry key");
+            "Cannot locate the Windows Startup folder");
         return BONGO_CAT_ERROR_PLATFORM;
     }
-    if (enabled) {
-        wchar_t executable[BONGO_CAT_PATH_CAP];
-        DWORD length = GetModuleFileNameW(NULL, executable, BONGO_CAT_PATH_CAP);
-        if (!length || length >= BONGO_CAT_PATH_CAP) {
-            RegCloseKey(key); bongo_cat_error_set(error,
-                BONGO_CAT_ERROR_PLATFORM, "Cannot determine executable path");
-            return BONGO_CAT_ERROR_PLATFORM;
-        }
-        wchar_t command[BONGO_CAT_PATH_CAP + 20];
-        swprintf(command, BONGO_CAT_PATH_CAP + 20, L"\"%ls\" --autostart", executable);
-        result = RegSetValueExW(key, BONGO_CAT_NAME_W, 0, REG_SZ,
-            (const BYTE *)command, (DWORD)((wcslen(command) + 1) * sizeof(wchar_t)));
-    } else result = RegDeleteValueW(key, BONGO_CAT_NAME_W);
-    RegCloseKey(key);
-    if (result != ERROR_SUCCESS && result != ERROR_FILE_NOT_FOUND) {
+    if (!enabled) {
+        if (DeleteFileW(shortcut) || GetLastError() == ERROR_FILE_NOT_FOUND)
+            return BONGO_CAT_OK;
         bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM,
-            "Cannot update autostart setting");
+            "Cannot remove the Windows Startup shortcut");
         return BONGO_CAT_ERROR_PLATFORM;
     }
-    return BONGO_CAT_OK;
+
+    wchar_t executable[BONGO_CAT_PATH_CAP];
+    DWORD length = GetModuleFileNameW(NULL, executable, BONGO_CAT_PATH_CAP);
+    if (!length || length >= BONGO_CAT_PATH_CAP) {
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM,
+            "Cannot determine executable path");
+        return BONGO_CAT_ERROR_PLATFORM;
+    }
+    wchar_t working_directory[BONGO_CAT_PATH_CAP];
+    memcpy(working_directory, executable, (length + 1) * sizeof(wchar_t));
+    wchar_t *separator = wcsrchr(working_directory, L'\\');
+    if (separator) *separator = L'\0';
+
+    HRESULT initialized = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+    if (FAILED(initialized) && initialized != RPC_E_CHANGED_MODE) result = initialized;
+    else {
+        IShellLinkW *link = NULL;
+        IPersistFile *persist = NULL;
+        result = CoCreateInstance(&CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER,
+            &IID_IShellLinkW, (void **)&link);
+        if (SUCCEEDED(result)) result = link->lpVtbl->SetPath(link, executable);
+        if (SUCCEEDED(result)) result = link->lpVtbl->SetArguments(link,
+            L"--autostart");
+        if (SUCCEEDED(result) && separator)
+            result = link->lpVtbl->SetWorkingDirectory(link, working_directory);
+        if (SUCCEEDED(result)) result = link->lpVtbl->SetDescription(link,
+            L"Start BongoCat when signing in");
+        if (SUCCEEDED(result)) result = link->lpVtbl->QueryInterface(link,
+            &IID_IPersistFile, (void **)&persist);
+        if (SUCCEEDED(result)) result = persist->lpVtbl->Save(persist,
+            shortcut, TRUE);
+        if (persist) persist->lpVtbl->Release(persist);
+        if (link) link->lpVtbl->Release(link);
+    }
+    if (SUCCEEDED(initialized)) CoUninitialize();
+    if (SUCCEEDED(result)) return BONGO_CAT_OK;
+    bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM,
+        "Cannot create the Windows Startup shortcut (0x%08lx)",
+        (unsigned long)result);
+    return BONGO_CAT_ERROR_PLATFORM;
 }
 #endif
