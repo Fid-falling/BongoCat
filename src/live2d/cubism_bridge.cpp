@@ -16,11 +16,9 @@
 #ifdef _WIN32
 #include <malloc.h>
 #endif
-
 using Csm::CubismFramework;
 
 namespace {
-
 class Allocator final : public Csm::ICubismAllocator {
 public:
     void *Allocate(const Csm::csmSizeType size) override { return std::malloc(size); }
@@ -130,7 +128,7 @@ static bool restore_previous(BongoCatLive2D *runtime,
     if (!previous) { runtime->model = nullptr; return true; }
     BongoCatError restore_error = {};
     try {
-        if (previous->load_textures(&restore_error)) {
+        if (previous->load_textures(&restore_error, nullptr, nullptr)) {
             runtime->model = previous;
             return true;
         }
@@ -176,7 +174,9 @@ extern "C" void bongo_cat_live2d_destroy(BongoCatLive2D *runtime) {
 
 extern "C" BongoCatResult bongo_cat_live2d_load(BongoCatLive2D *runtime,
     const char *directory, const char *setting, bool preset,
-    const BongoCatLive2DRenderOptions *render_options, BongoCatError *error) {
+    const BongoCatLive2DRenderOptions *render_options,
+    BongoCatLive2DLoadProgress progress, void *userdata,
+    BongoCatError *error) {
     if (!runtime) return BONGO_CAT_ERROR_ARGUMENT;
     bongo_cat::NativeModel *previous = runtime->model;
     bongo_cat::NativeModel *model = nullptr;
@@ -189,7 +189,7 @@ extern "C" BongoCatResult bongo_cat_live2d_load(BongoCatLive2D *runtime,
             return BONGO_CAT_ERROR_MEMORY;
         }
         if (render_options) model->set_render_options(*render_options);
-        if (!model->load(directory, setting, preset, error)) {
+        if (!model->load(directory, setting, preset, progress, userdata, error)) {
             delete model;
             return error ? error->code : BONGO_CAT_ERROR_CUBISM;
         }
@@ -199,7 +199,7 @@ extern "C" BongoCatResult bongo_cat_live2d_load(BongoCatLive2D *runtime,
             glFinish();
         }
         model->reshape(runtime->width, runtime->height);
-        if (!model->load_textures(error)) {
+        if (!model->load_textures(error, progress, userdata)) {
             BongoCatResult result = error ? error->code : BONGO_CAT_ERROR_CUBISM;
             delete model;
             glFinish();
@@ -208,6 +208,7 @@ extern "C" BongoCatResult bongo_cat_live2d_load(BongoCatLive2D *runtime,
             bongo_cat_platform_trim_memory();
             return result;
         }
+        if (progress) progress(userdata, 0.98f);
         delete previous;
         runtime->model = model;
         return BONGO_CAT_OK;

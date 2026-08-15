@@ -16,12 +16,16 @@ void bongo_cat_live2d_destroy(BongoCatLive2D *live2d) { free(live2d); }
 
 BongoCatResult bongo_cat_live2d_load(BongoCatLive2D *live2d, const char *model_dir,
     const char *setting_file, bool preset,
-    const BongoCatLive2DRenderOptions *render_options, BongoCatError *error) {
+    const BongoCatLive2DRenderOptions *render_options,
+    BongoCatLive2DLoadProgress progress, void *userdata,
+    BongoCatError *error) {
     (void)preset; (void)render_options;
     if (!live2d || !model_dir || !setting_file) return BONGO_CAT_ERROR_ARGUMENT;
+    if (progress) progress(userdata, 0.1f);
     if (!bongo_cat_import_manifest_valid(model_dir, setting_file, error))
         return BONGO_CAT_ERROR_FORMAT;
     live2d->loaded = true;
+    if (progress) progress(userdata, 1.0f);
     return BONGO_CAT_OK;
 }
 

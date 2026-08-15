@@ -14,6 +14,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#define MODEL_PROGRESS_ARC_SEGMENTS 16
+#define MODEL_PROGRESS_POINT_CAP 80
+
 static const char *tr(BongoCatApp *app, const char *key,
     const char *fallback) {
     return bongo_cat_i18n_get(app->i18n, key, fallback);
@@ -32,6 +35,80 @@ static struct nk_rect outline_bounds(struct nk_rect bounds, float thickness) {
     return nk_rect(bounds.x + inset, bounds.y + inset,
         NK_MAX(1.0f, bounds.w - thickness),
         NK_MAX(1.0f, bounds.h - thickness));
+}
+
+static int progress_point(float *points, int count, float x, float y) {
+    if (count >= MODEL_PROGRESS_POINT_CAP) return count;
+    points[count * 2] = x;
+    points[count * 2 + 1] = y;
+    return count + 1;
+}
+
+static int rounded_outline_path(struct nk_rect bounds, float rounding,
+    float *points) {
+    const float pi = 3.14159265358979323846f;
+    float radius = NK_CLAMP(0.0f, rounding,
+        NK_MIN(bounds.w, bounds.h) * .5f);
+    float centers_x[] = {bounds.x + bounds.w - radius,
+        bounds.x + bounds.w - radius, bounds.x + radius, bounds.x + radius};
+    float centers_y[] = {bounds.y + radius, bounds.y + bounds.h - radius,
+        bounds.y + bounds.h - radius, bounds.y + radius};
+    float starts[] = {-pi * .5f, 0.0f, pi * .5f, pi};
+    int count = 0;
+    count = progress_point(points, count, bounds.x + radius, bounds.y);
+    for (int corner = 0; corner < 4; ++corner) {
+        for (int i = 0; i <= MODEL_PROGRESS_ARC_SEGMENTS; ++i) {
+            float angle = starts[corner] + pi * .5f * i /
+                MODEL_PROGRESS_ARC_SEGMENTS;
+            count = progress_point(points, count,
+                centers_x[corner] + cosf(angle) * radius,
+                centers_y[corner] + sinf(angle) * radius);
+        }
+    }
+    count = progress_point(points, count, points[0], points[1]);
+    return count;
+}
+
+static void draw_progress_outline(struct nk_command_buffer *canvas,
+    struct nk_rect bounds, float rounding, float thickness, float progress,
+    struct nk_color color) {
+    progress = NK_CLAMP(0.0f, progress, 1.0f);
+    if (progress <= 0.001f) return;
+    if (progress >= .999f) {
+        nk_stroke_rect(canvas, bounds, rounding, thickness, color);
+        return;
+    }
+    float path[MODEL_PROGRESS_POINT_CAP * 2];
+    int path_count = rounded_outline_path(bounds, rounding, path);
+    if (path_count < 2) return;
+    float lengths[MODEL_PROGRESS_POINT_CAP];
+    lengths[0] = 0.0f;
+    for (int i = 1; i < path_count; ++i) {
+        float dx = path[i * 2] - path[(i - 1) * 2];
+        float dy = path[i * 2 + 1] - path[(i - 1) * 2 + 1];
+        lengths[i] = lengths[i - 1] + sqrtf(dx * dx + dy * dy);
+    }
+    float target = lengths[path_count - 1] * progress;
+    float partial[MODEL_PROGRESS_POINT_CAP * 2];
+    int partial_count = progress_point(partial, 0, path[0], path[1]);
+    for (int i = 1; i < path_count; ++i) {
+        if (target >= lengths[i]) {
+            partial_count = progress_point(partial, partial_count,
+                path[i * 2], path[i * 2 + 1]);
+            continue;
+        }
+        float segment = lengths[i] - lengths[i - 1];
+        float amount = segment > 0.0f ?
+            (target - lengths[i - 1]) / segment : 0.0f;
+        partial_count = progress_point(partial, partial_count,
+            path[(i - 1) * 2] +
+                (path[i * 2] - path[(i - 1) * 2]) * amount,
+            path[(i - 1) * 2 + 1] +
+                (path[i * 2 + 1] - path[(i - 1) * 2 + 1]) * amount);
+        break;
+    }
+    if (partial_count >= 2)
+        nk_stroke_polyline(canvas, partial, partial_count, thickness, color);
 }
 
 bool bongo_cat_preferences_model_import_card(BongoCatPreferences *value,
@@ -76,13 +153,12 @@ static void action_icon(BongoCatPreferences *value,
 
 void bongo_cat_preferences_model_select(BongoCatPreferences *value,
     const BongoCatModelEntry *entry) {
-    BongoCatError error = {0};
-    if (bongo_cat_app_select_model_with_error(value->app, entry->id, &error)) {
-        bongo_cat_preferences_invalidate(value);
-        return;
-    }
-    bongo_cat_preferences_notice_show(value->app, tr(value->app,
-        "native.modelLoadFailed", "Unable to display this model"), true);
+    if (!value || !entry || value->model_selection_pending ||
+        value->model_loading) return;
+    snprintf(value->pending_model_id, sizeof(value->pending_model_id), "%s",
+        entry->id);
+    value->model_selection_pending = true;
+    value->model_load_progress = 0.0f;
     bongo_cat_preferences_invalidate(value);
 }
 
@@ -164,6 +240,12 @@ void bongo_cat_preferences_model_card(BongoCatPreferences *value,
     struct nk_context *context, const BongoCatModelEntry *entry) {
     BongoCatApp *app = value->app;
     bool selected = !strcmp(entry->id, app->session.active_model_id);
+    bool transitioning = value->model_selection_pending || value->model_loading;
+    const char *transition_id = value->model_loading ? value->loading_model_id :
+        value->pending_model_id;
+    bool transition_target = transitioning && transition_id[0] &&
+        !strcmp(entry->id, transition_id);
+    bool selected_visual = selected && !transitioning;
     struct nk_rect bounds;
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return;
     bounds.y += 5.0f; bounds.h += 1.0f;
@@ -175,7 +257,7 @@ void bongo_cat_preferences_model_card(BongoCatPreferences *value,
         hover ? 1.0f : 0.0f, 250.0f, BONGO_CAT_UI_EASE_SWIFT);
     bounds.y -= 3.0f * lift;
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
-    if (selected && p.effects) bongo_cat_ui_paint_shadow(context, bounds,
+    if (selected_visual && p.effects) bongo_cat_ui_paint_shadow(context, bounds,
         14, 0, 8, 20, 0, nk_rgba(p.pink.r, p.pink.g, p.pink.b, 89));
     else if (hover && p.effects) bongo_cat_ui_paint_shadow(context, bounds,
         14, 0, 10, 28, 0, nk_rgba(p.accent.r, p.accent.g, p.accent.b, 46));
@@ -191,14 +273,18 @@ void bongo_cat_preferences_model_card(BongoCatPreferences *value,
     bool name_hover = bongo_cat_preferences_model_name_draw(value,
         context, canvas, entry, name_bounds, p);
     bool action_hover = false;
-    draw_actions(value, context, canvas, bounds, entry, p, selected,
+    draw_actions(value, context, canvas, bounds, entry, p, selected_visual,
         &action_hover);
-    float outline_width = selected ? 2.0f : 1.0f;
+    float outline_width = selected_visual ? 2.0f : 1.0f;
     struct nk_rect outline = outline_bounds(bounds, outline_width);
-    struct nk_color outline_color = selected ? p.pink :
+    float progress = selected_visual ? 1.0f : transition_target ?
+        value->model_load_progress : 0.0f;
+    struct nk_color outline_color = progress >= .999f ? p.pink :
         bongo_cat_ui_color_mix(p.border_subtle, p.accent, lift);
     nk_stroke_rect(canvas, outline, 14.0f - outline_width * .5f,
         outline_width, outline_color);
+    draw_progress_outline(canvas, outline, 14.0f - outline_width * .5f,
+        2.0f, progress, p.pink);
     if (!name_hover && (action_hover || hover))
         bongo_cat_ui_cursor_hover_rect(context, bounds,
             BONGO_CAT_UI_CURSOR_POINTER);

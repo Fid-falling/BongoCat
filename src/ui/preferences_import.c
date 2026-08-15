@@ -231,10 +231,6 @@ static void SDLCALL import_callback(void *userdata, const char *const *files,
 
 bool bongo_cat_preferences_import_open(BongoCatImportDialog *dialog,
     SDL_Window *window) {
-    static const SDL_DialogFileFilter filters[] = {
-        {"BongoCat model files", "model3.json;json;png"},
-        {"All files", "*"}
-    };
     if (!dialog || !window) return false;
     SDL_LockMutex(dialog->mutex);
     if (!dialog->active || dialog->open || dialog->busy) {
@@ -245,8 +241,7 @@ bool bongo_cat_preferences_import_open(BongoCatImportDialog *dialog,
     dialog->window_id = SDL_GetWindowID(window);
     ++dialog->references;
     SDL_UnlockMutex(dialog->mutex);
-    SDL_ShowOpenFileDialog(import_callback, dialog, window, filters,
-        (int)(sizeof(filters) / sizeof(filters[0])), NULL, true);
+    SDL_ShowOpenFolderDialog(import_callback, dialog, window, NULL, false);
     return true;
 }
 

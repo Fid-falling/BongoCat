@@ -21,6 +21,10 @@ bool bongo_cat_preferences_shortcuts_blocked(
     const BongoCatPreferences *preferences);
 void bongo_cat_preferences_render(BongoCatPreferences *preferences);
 void bongo_cat_preferences_invalidate(BongoCatPreferences *preferences);
+void bongo_cat_preferences_process_model_selection(
+    BongoCatPreferences *preferences);
+void bongo_cat_preferences_model_load_progress(
+    BongoCatPreferences *preferences, float progress);
 void bongo_cat_preferences_request_model_import(BongoCatPreferences *preferences);
 bool bongo_cat_preferences_open_model_import(BongoCatPreferences *preferences,
     SDL_Window *parent);

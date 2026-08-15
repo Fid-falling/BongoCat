@@ -2,6 +2,7 @@
 #include "model_import.h"
 #include "bongo_cat/audio.h"
 #include "bongo_cat/overlay.h"
+#include "bongo_cat/preferences.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
@@ -22,6 +23,12 @@ static void request_model_frame(BongoCatApp *app) {
     }
     bongo_cat_window_mark_hit_dirty(app);
     app->dirty = true;
+}
+
+static void model_load_progress(void *userdata, float progress) {
+    BongoCatApp *app = userdata;
+    if (app && app->preferences)
+        bongo_cat_preferences_model_load_progress(app->preferences, progress);
 }
 
 static bool apply_model_aspect(BongoCatApp *app,
@@ -106,7 +113,8 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     }
     bongo_cat_live2d_reshape(app->live2d, pixel_width, pixel_height);
     if (bongo_cat_live2d_load(app->live2d, entry->directory,
-        entry->setting_file, entry->preset, &render_options, failure) != BONGO_CAT_OK) {
+        entry->setting_file, entry->preset, &render_options,
+        model_load_progress, app, failure) != BONGO_CAT_OK) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", failure->message);
         if (restore_context && previous_window && previous_context &&
             !SDL_GL_MakeCurrent(previous_window, previous_context))

@@ -21,6 +21,20 @@
 
 namespace bongo_cat {
 
+struct TextureProgressContext {
+    BongoCatLive2DLoadProgress callback;
+    void *userdata;
+    float start;
+    float span;
+};
+
+static void texture_progress(void *userdata, float progress) {
+    auto *context = static_cast<TextureProgressContext *>(userdata);
+    if (context && context->callback)
+        context->callback(context->userdata,
+            context->start + context->span * progress);
+}
+
 NativeModel::NativeModel() {
     _mocConsistency = true;
     _motionConsistency = true;
@@ -58,7 +72,8 @@ std::string NativeModel::path(const char *relative) const {
 }
 
 bool NativeModel::load(const char *directory, const char *setting_file,
-    bool direct_textures, BongoCatError *error) {
+    bool direct_textures, BongoCatLive2DLoadProgress progress, void *userdata,
+    BongoCatError *error) {
     if (!directory || !setting_file) return false;
     visual_state_ready_ = false;
     visual_state_ = BongoCatLive2DVisualState{};
@@ -72,6 +87,7 @@ bool NativeModel::load(const char *directory, const char *setting_file,
         return false;
     }
     if (!validate_model_setting_json(json, setting_file, error)) return false;
+    if (progress) progress(userdata, .10f);
     setting_ = new(std::nothrow)
         Csm::CubismModelSettingJson(json.data(), (Csm::csmSizeInt)json.size());
     if (!setting_) {
@@ -79,13 +95,17 @@ bool NativeModel::load(const char *directory, const char *setting_file,
         return false;
     }
     if (!load_model(error)) return false;
+    if (progress) progress(userdata, .25f);
     load_expressions();
+    if (progress) progress(userdata, .31f);
     load_effects();
-    load_motions();
+    if (progress) progress(userdata, .35f);
+    load_motions(progress, userdata);
     Csm::csmMap<Csm::csmString, Csm::csmFloat32> layout;
     setting_->GetLayoutMap(layout);
     _modelMatrix->SetupFromLayout(layout);
     _model->SaveParameters();
+    if (progress) progress(userdata, .49f);
     return true;
 }
 bool NativeModel::load_model(BongoCatError *error) {
@@ -150,16 +170,23 @@ void NativeModel::load_effects() {
     _updateScheduler.SortUpdatableList();
 }
 
-void NativeModel::load_motions() {
+void NativeModel::load_motions(BongoCatLive2DLoadProgress progress,
+    void *userdata) {
     idle_motion_keys_.clear();
     motion_signatures_.clear();
     motion_states_.clear();
     motion_toggle_partners_.clear();
     motion_toggle_owners_.clear();
     selected_motion_keys_.clear();
+    int total = 0, completed = 0;
+    for (int group_index = 0; group_index < setting_->GetMotionGroupCount();
+        ++group_index)
+        total += setting_->GetMotionCount(setting_->GetMotionGroupName(group_index));
     for (int group_index = 0; group_index < setting_->GetMotionGroupCount(); ++group_index) {
         const char *group = setting_->GetMotionGroupName(group_index);
         for (int i = 0; i < setting_->GetMotionCount(group); ++i) {
+            if (progress) progress(userdata, .35f + .14f *
+                (float)(++completed) / (float)(total > 0 ? total : 1));
             auto bytes = read(path(setting_->GetMotionFileName(group, i)));
             if (bytes.empty()) continue;
             std::string key = std::string(group) + "_" + std::to_string(i);
@@ -177,18 +204,25 @@ void NativeModel::load_motions() {
     _motionManager->StopAllMotions();
 }
 
-bool NativeModel::load_textures(BongoCatError *error) {
+bool NativeModel::load_textures(BongoCatError *error,
+    BongoCatLive2DLoadProgress progress, void *userdata) {
     release_textures();
-    textures_.assign((size_t)setting_->GetTextureCount(), 0);
-    texture_alpha_.assign((size_t)setting_->GetTextureCount(), {});
-    for (int i = 0; i < setting_->GetTextureCount(); ++i) {
+    int count = setting_->GetTextureCount();
+    textures_.assign((size_t)count, 0);
+    texture_alpha_.assign((size_t)count, {});
+    TextureProgressContext texture_context = {progress, userdata, .50f,
+        .45f / (float)(count > 0 ? count : 1)};
+    for (int i = 0; i < count; ++i) {
         textures_[(size_t)i] = bongo_cat_image_texture_model(
             path(setting_->GetTextureFileName(i)).c_str(), direct_textures_,
-            nullptr, nullptr, &texture_alpha_[(size_t)i], error);
+            nullptr, nullptr, &texture_alpha_[(size_t)i],
+            progress ? texture_progress : nullptr, &texture_context, error);
         if (!textures_[(size_t)i]) {
             release_textures();
             return false;
         }
+        if (progress) progress(userdata, .50f + .45f * (float)(i + 1) /
+            (float)(count > 0 ? count : 1));
     }
     release_renderer();
     CreateRenderer((Csm::csmUint32)width_, (Csm::csmUint32)height_);

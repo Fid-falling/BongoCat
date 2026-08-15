@@ -1,7 +1,6 @@
 #include "bongo_cat/file.h"
 #include "bongo_cat/gl_api.h"
 #include "bongo_cat/image.h"
-
 #ifdef _WIN32
 #define COBJMACROS
 #include <objbase.h>
@@ -13,16 +12,13 @@
 #include <stb_image.h>
 #include <stdlib.h>
 #include <string.h>
-
 #define BONGO_CAT_LIVE2D_EFFICIENT_TEXTURE_LIMIT 2048
-
 #ifdef _WIN32
 static bool needs_wic_scaling(const char *path, int limit) {
     int width = 0, height = 0;
     bool known = bongo_cat_image_info(path, &width, &height);
     return !known || width > limit || height > limit;
 }
-
 static wchar_t *wide_path(const char *path) {
     int count = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
         path, -1, NULL, 0);
@@ -33,9 +29,8 @@ static wchar_t *wide_path(const char *path) {
     }
     return wide;
 }
-
 static bool wic_scaled_image(const char *path, BongoCatImage *image,
-    UINT max_width, UINT max_height) {
+    UINT max_width, UINT max_height, BongoCatImageProgress progress, void *userdata) {
     memset(image, 0, sizeof(*image));
     HRESULT initialized = CoInitializeEx(NULL, COINIT_MULTITHREADED);
     bool uninitialize = initialized == S_OK || initialized == S_FALSE;
@@ -84,8 +79,15 @@ static bool wic_scaled_image(const char *path, BongoCatImage *image,
     size_t stride = (size_t)target_width * 4;
     size_t bytes = stride * target_height;
     unsigned char *pixels = bytes <= UINT_MAX ? malloc(bytes) : NULL;
-    if (SUCCEEDED(result) && pixels) result = IWICFormatConverter_CopyPixels(converter,
-        NULL, (UINT)stride, (UINT)bytes, pixels);
+    if (SUCCEEDED(result) && pixels) for (UINT y = 0;
+        y < target_height && SUCCEEDED(result); y += 256) {
+        UINT rows = SDL_min(256u, target_height - y);
+        WICRect rect = {0, (INT)y, (INT)target_width, (INT)rows};
+        result = IWICFormatConverter_CopyPixels(converter, &rect,
+            (UINT)stride, (UINT)(stride * rows), pixels + (size_t)y * stride);
+        if (progress) progress(userdata, .05f + .25f *
+            (float)(y + rows) / (float)target_height);
+    }
     bool ok = SUCCEEDED(result) && pixels;
     if (ok) {
         image->pixels = pixels;
@@ -102,7 +104,6 @@ static bool wic_scaled_image(const char *path, BongoCatImage *image,
     return ok;
 }
 #endif
-
 BongoCatResult bongo_cat_image_load(const char *path, BongoCatImage *image, BongoCatError *error) {
     if (!path || !image) return BONGO_CAT_ERROR_ARGUMENT;
     memset(image, 0, sizeof(*image));
@@ -126,7 +127,6 @@ BongoCatResult bongo_cat_image_load(const char *path, BongoCatImage *image, Bong
     }
     return BONGO_CAT_OK;
 }
-
 void bongo_cat_image_free(BongoCatImage *image) {
     if (!image) return;
     if (image->surface) SDL_DestroySurface(image->surface);
@@ -136,7 +136,6 @@ void bongo_cat_image_free(BongoCatImage *image) {
     }
     memset(image, 0, sizeof(*image));
 }
-
 static unsigned int upload(const BongoCatImage *image, GLuint texture, bool model_texture) {
     bool created = texture == 0;
     if (created) glGenTextures(1, &texture);
@@ -165,7 +164,6 @@ static unsigned int upload(const BongoCatImage *image, GLuint texture, bool mode
         GL_RGBA, GL_UNSIGNED_BYTE, image->pixels);
     return texture;
 }
-
 unsigned int bongo_cat_image_texture(const char *path, int *width, int *height, BongoCatError *error) {
     BongoCatImage image;
     if (bongo_cat_image_load(path, &image, error) != BONGO_CAT_OK) return 0;
@@ -181,7 +179,7 @@ unsigned int bongo_cat_image_texture_thumbnail(const char *path, int max_width,
     BongoCatImage image;
 #ifdef _WIN32
     if (max_width > 0 && max_height > 0 && wic_scaled_image(path, &image,
-        (UINT)max_width, (UINT)max_height)) {
+        (UINT)max_width, (UINT)max_height, NULL, NULL)) {
         GLuint texture = upload(&image, 0, false);
         if (width) *width = image.width;
         if (height) *height = image.height;
@@ -219,7 +217,8 @@ unsigned int bongo_cat_image_texture_thumbnail(const char *path, int max_width,
     return texture;
 }
 unsigned int bongo_cat_image_texture_model(const char *path, bool direct_decode,
-    int *width, int *height, BongoCatImageAlphaMask *alpha, BongoCatError *error) {
+    int *width, int *height, BongoCatImageAlphaMask *alpha,
+    BongoCatImageProgress progress, void *userdata, BongoCatError *error) {
     BongoCatImage image;
     GLint hardware_limit = 0;
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &hardware_limit);
@@ -231,7 +230,7 @@ unsigned int bongo_cat_image_texture_model(const char *path, bool direct_decode,
     bool scaled = needs_wic_scaling(path, decode_limit);
     if (!direct_decode || scaled) {
         if (!wic_scaled_image(path, &image, (UINT)decode_limit,
-            (UINT)decode_limit) &&
+            (UINT)decode_limit, progress, userdata) &&
             bongo_cat_image_load(path, &image, error) != BONGO_CAT_OK) return 0;
     } else if (bongo_cat_image_load(path, &image, error) != BONGO_CAT_OK) return 0;
     if (scaled) SDL_Log("Live2D texture constrained to %dx%d by a %d pixel "
@@ -244,7 +243,9 @@ unsigned int bongo_cat_image_texture_model(const char *path, bool direct_decode,
     (void)direct_decode;
     if (bongo_cat_image_load(path, &image, error) != BONGO_CAT_OK) return 0;
 #endif
+    if (progress) progress(userdata, .30f);
     bongo_cat_image_make_alpha_mask(&image, alpha);
+    if (progress) progress(userdata, .60f);
     bongo_cat_gl_clear_errors();
     GLuint texture = upload(&image, 0, true);
     GLenum upload_error = glGetError();
@@ -258,7 +259,7 @@ unsigned int bongo_cat_image_texture_model(const char *path, bool direct_decode,
         int fallback_limit = SDL_min(hardware_limit,
             BONGO_CAT_LIVE2D_EFFICIENT_TEXTURE_LIMIT);
         if (wic_scaled_image(path, &image, (UINT)fallback_limit,
-            (UINT)fallback_limit)) {
+            (UINT)fallback_limit, progress, userdata)) {
             bongo_cat_image_make_alpha_mask(&image, alpha);
             bongo_cat_gl_clear_errors();
             texture = upload(&image, 0, true);
@@ -280,6 +281,7 @@ unsigned int bongo_cat_image_texture_model(const char *path, bool direct_decode,
     if (width) *width = image.width;
     if (height) *height = image.height;
     bongo_cat_image_free(&image);
+    if (progress) progress(userdata, 1.0f);
     return texture;
 }
 

@@ -45,6 +45,13 @@ struct BongoCatPreferences {
     bool render_dirty;
     bool font_reload_pending;
     bool smoke_behavior_open_pending;
+    bool model_selection_pending;
+    bool model_loading;
+    float model_load_progress;
+    float model_load_render_progress;
+    uint64_t model_load_render_ns;
+    char pending_model_id[BONGO_CAT_ID_CAP];
+    char loading_model_id[BONGO_CAT_ID_CAP];
     uint64_t last_render_ns;
     float pending_raster_scale;
     uint64_t raster_retry_ns;
@@ -102,6 +109,9 @@ void bongo_cat_preferences_live_resize_uninstall(BongoCatPreferences *value);
 void bongo_cat_preferences_record_frame(BongoCatPreferences *value);
 void bongo_cat_preferences_assets_load(BongoCatPreferences *value);
 void bongo_cat_preferences_support_assets_load(BongoCatPreferences *value);
+void bongo_cat_preferences_process_model_selection(BongoCatPreferences *value);
+void bongo_cat_preferences_model_load_progress(BongoCatPreferences *value,
+    float progress);
 void bongo_cat_preferences_assets_clear(BongoCatPreferences *value);
 void bongo_cat_preferences_model_cover_cache_clear(BongoCatApp *app);
 void bongo_cat_preferences_smoke_frame(BongoCatPreferences *value);

@@ -18,6 +18,7 @@ typedef struct BongoCatImageAlphaMask {
     unsigned char pixels[BONGO_CAT_ALPHA_MASK_SIZE * BONGO_CAT_ALPHA_MASK_SIZE];
     int width, height;
 } BongoCatImageAlphaMask;
+typedef void (*BongoCatImageProgress)(void *userdata, float progress);
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,7 +35,8 @@ unsigned int bongo_cat_image_texture_resampled(const char *path,
     int max_width, int max_height, float rounding, int *width, int *height,
     BongoCatError *error);
 unsigned int bongo_cat_image_texture_model(const char *path, bool direct_decode,
-    int *width, int *height, BongoCatImageAlphaMask *alpha, BongoCatError *error);
+    int *width, int *height, BongoCatImageAlphaMask *alpha,
+    BongoCatImageProgress progress, void *userdata, BongoCatError *error);
 void bongo_cat_image_make_alpha_mask(const BongoCatImage *image,
     BongoCatImageAlphaMask *mask);
 unsigned int bongo_cat_image_composite_texture(const char *base, const char *left,

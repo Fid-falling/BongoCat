@@ -10,10 +10,67 @@
 #include <string.h>
 
 #define MODEL_CARD_HEIGHT 214
+#define MODEL_LOAD_REPORTED_LIMIT .60f
 
 static const char *tr(BongoCatApp *app, const char *key,
     const char *fallback) {
     return bongo_cat_i18n_get(app->i18n, key, fallback);
+}
+
+void bongo_cat_preferences_model_load_progress(BongoCatPreferences *value,
+    float progress) {
+    if (!value || !value->model_loading) return;
+    value->model_load_progress = NK_CLAMP(0.0f,
+        progress * MODEL_LOAD_REPORTED_LIMIT, MODEL_LOAD_REPORTED_LIMIT);
+    value->render_dirty = true;
+    uint64_t now = SDL_GetTicksNS();
+    bool due = progress >= .999f ||
+        progress - value->model_load_render_progress >= .02f ||
+        now - value->model_load_render_ns >= 16000000ull;
+    if (value->window && due) {
+        value->model_load_render_progress = progress;
+        value->model_load_render_ns = now;
+        bongo_cat_preferences_render(value);
+    }
+}
+
+static void finish_model_load_progress(BongoCatPreferences *value) {
+    if (!value || !value->window) {
+        if (value) value->model_load_progress = 1.0f;
+        return;
+    }
+    float start = value->model_load_progress;
+    for (int i = 1; i <= 10; ++i) {
+        float amount = (float)i / 10.0f;
+        value->model_load_progress = start + (1.0f - start) * amount;
+        value->render_dirty = true;
+        bongo_cat_preferences_render(value);
+        if (i < 10) SDL_Delay(8);
+    }
+}
+
+void bongo_cat_preferences_process_model_selection(BongoCatPreferences *value) {
+    if (!value || !value->model_selection_pending || value->model_loading)
+        return;
+    char id[BONGO_CAT_ID_CAP];
+    snprintf(id, sizeof(id), "%s", value->pending_model_id);
+    value->pending_model_id[0] = '\0';
+    value->model_selection_pending = false;
+    value->model_loading = true;
+    value->model_load_progress = 0.0f;
+    value->model_load_render_progress = 0.0f;
+    value->model_load_render_ns = 0;
+    snprintf(value->loading_model_id, sizeof(value->loading_model_id), "%s", id);
+    BongoCatError error = {0};
+    bool selected = bongo_cat_app_select_model_with_error(value->app, id, &error);
+    if (selected) finish_model_load_progress(value);
+    else value->model_load_progress = 0.0f;
+    value->model_loading = false;
+    value->loading_model_id[0] = '\0';
+    if (!selected) bongo_cat_preferences_notice_show(value->app, tr(value->app,
+        "native.modelLoadFailed", "Unable to display this model"), true);
+    bongo_cat_preferences_invalidate(value);
+    if (value->window) bongo_cat_preferences_render(value);
 }
 
 void bongo_cat_preferences_import_complete(BongoCatApp *app,
@@ -55,7 +112,8 @@ static void smoke_model_behavior(BongoCatPreferences *value) {
             return;
         }
     }
-    if (value->smoke_behavior_open_pending && !value->font_reload_pending) {
+    if (value->smoke_behavior_open_pending && !value->font_reload_pending &&
+        !value->model_selection_pending && !value->model_loading) {
         value->smoke_behavior_open_pending = false;
         bongo_cat_preferences_behavior_dialog_open(value);
     }
@@ -100,6 +158,7 @@ void bongo_cat_preferences_page_model(BongoCatPreferences *value,
     }
     context->style.window.spacing = old_spacing;
     bongo_cat_preferences_model_covers_prune(app);
-    if (bongo_cat_preferences_model_cover_generate_current(app))
+    if (!value->model_loading &&
+        bongo_cat_preferences_model_cover_generate_current(app))
         bongo_cat_preferences_invalidate(value);
 }

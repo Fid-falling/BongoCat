@@ -26,8 +26,10 @@ public:
     NativeModel();
     ~NativeModel() override;
     bool load(const char *directory, const char *setting_file, bool direct_textures,
+        BongoCatLive2DLoadProgress progress, void *userdata,
         BongoCatError *error);
-    bool load_textures(BongoCatError *error);
+    bool load_textures(BongoCatError *error,
+        BongoCatLive2DLoadProgress progress, void *userdata);
     void release_render_resources();
     void resize(int width, int height);
     void reshape(int width, int height);
@@ -72,7 +74,7 @@ private:
     bool load_model(BongoCatError *error);
     void load_expressions();
     void load_effects();
-    void load_motions();
+    void load_motions(BongoCatLive2DLoadProgress progress, void *userdata);
     void start_idle_motion();
     ModelBounds capture_visible_bounds() const;
     void record_visible_state(Csm::CubismMatrix44 &projection);

@@ -253,6 +253,7 @@ static void loop(BongoCatApp *app) {
         else if (!app->session.window.visible || app->window_minimized) { app->last_frame_ns = now; bongo_cat_memory_policy_idle(); }
         if (app->session.window.visible && !app->window_minimized && app->dirty) render(app, true);
         bongo_cat_preferences_render(app->preferences);
+        bongo_cat_preferences_process_model_selection(app->preferences);
         if (app->session.window.visible && !app->window_minimized && app->dirty) render(app, true);
         bongo_cat_tray_sync(app->tray); bongo_cat_window_raise_when_due(app, now);
         bongo_cat_config_store_update(app, now);
