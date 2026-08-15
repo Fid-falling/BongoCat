@@ -8,7 +8,8 @@ typedef struct BongoCatOverlay BongoCatOverlay;
 BongoCatOverlay *bongo_cat_overlay_create(BongoCatError *error);
 void bongo_cat_overlay_destroy(BongoCatOverlay *overlay);
 void bongo_cat_overlay_clear(BongoCatOverlay *overlay);
-BongoCatResult bongo_cat_overlay_load(BongoCatOverlay *overlay, const char *model_directory,
+BongoCatResult bongo_cat_overlay_load(BongoCatOverlay *overlay,
+    const char *model_directory, bool model_pointer_preferred,
     BongoCatError *error);
 int bongo_cat_overlay_key(BongoCatOverlay *overlay, const char *name, bool pressed);
 bool bongo_cat_overlay_effect(BongoCatOverlay *overlay, const char *path);

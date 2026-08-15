@@ -14,6 +14,37 @@
 
 #define PORTABLE_DIRECTORY "portable-mver"
 
+static bool digest_valid(const char *value) {
+    if (!value || strlen(value) != 64) return false;
+    for (size_t i = 0; i < 64; ++i) {
+        char byte = value[i];
+        if (!((byte >= '0' && byte <= '9') ||
+            (byte >= 'a' && byte <= 'f'))) return false;
+    }
+    return true;
+}
+
+static bool existing_identity(const BongoCatModelCatalog *models,
+    const char *identity, BongoCatModelMode mode,
+    const BongoCatModelEntry *ignored) {
+    if (!models || !digest_valid(identity)) return false;
+    for (size_t i = 0; i < models->count; ++i) {
+        const BongoCatModelEntry *entry = &models->entries[i];
+        if (entry != ignored && entry->mode == mode &&
+            digest_valid(entry->content_digest) &&
+            strcmp(entry->content_digest, identity) == 0) return true;
+    }
+    return false;
+}
+
+static BongoCatModelEntry *model_with_id(BongoCatApp *app, const char *id) {
+    if (!app || !id) return NULL;
+    for (size_t i = 0; i < app->models.count; ++i)
+        if (strcmp(app->models.entries[i].id, id) == 0)
+            return &app->models.entries[i];
+    return NULL;
+}
+
 static bool parent_path(const char *path, char *parent, size_t capacity) {
     size_t length = path ? strlen(path) : 0;
     while (length && (path[length - 1] == '/' || path[length - 1] == '\\')) length--;
@@ -71,9 +102,27 @@ static bool cached_identity(const char *target, const char *source,
     bool valid = yyjson_is_obj(root) &&
         yyjson_get_int(yyjson_obj_get(root, "schemaVersion")) ==
             BONGO_CAT_PORTABLE_SCHEMA_VERSION && stored_source &&
-        stored_signature && stored_identity && strlen(stored_identity) == 64 &&
+        stored_signature && digest_valid(stored_identity) &&
         strcmp(source, stored_source) == 0 &&
         strcmp(signature, stored_signature) == 0;
+    if (valid) snprintf(identity, 65, "%s", stored_identity);
+    yyjson_doc_free(document);
+    return valid;
+}
+
+static bool marker_identity(const char *target, const char *source,
+    char identity[65]) {
+    char path[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_path_join(path, sizeof(path), target,
+        BONGO_CAT_PORTABLE_MARKER)) return false;
+    yyjson_doc *document = bongo_cat_json_read_file(path, 0, NULL);
+    yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
+    const char *kind = yyjson_get_str(yyjson_obj_get(root, "kind"));
+    const char *stored_source = yyjson_get_str(yyjson_obj_get(root, "source"));
+    const char *stored_identity = yyjson_get_str(yyjson_obj_get(root, "identity"));
+    bool valid = yyjson_is_obj(root) && kind && stored_source &&
+        strcmp(kind, "portable-mver") == 0 && strcmp(source, stored_source) == 0 &&
+        digest_valid(stored_identity);
     if (valid) snprintf(identity, 65, "%s", stored_identity);
     yyjson_doc_free(document);
     return valid;
@@ -106,10 +155,16 @@ static bool previous_cache_usable(const char *target, const char *source) {
         !bongo_cat_path_join(marker, sizeof(marker), target,
             BONGO_CAT_PORTABLE_MARKER) ||
         !bongo_cat_path_join(mode, sizeof(mode), target, ".bongo-cat-mode") ||
-        !bongo_cat_path_join(metadata, sizeof(metadata), target, ".bongo-cat-mver.json") ||
+        !bongo_cat_path_join(metadata, sizeof(metadata), target,
+            BONGO_CAT_MODEL_ADAPTER_FILE) ||
         !bongo_cat_path_join(resources, sizeof(resources), target, "resources") ||
-        !bongo_cat_path_is_file(mode) || !bongo_cat_path_is_file(metadata) ||
+        !bongo_cat_path_is_file(mode) ||
         !bongo_cat_path_is_dir(resources)) return false;
+    if (!bongo_cat_path_is_file(metadata) &&
+        (!bongo_cat_path_join(metadata, sizeof(metadata), target,
+            BONGO_CAT_MODEL_LEGACY_ADAPTER_FILE) ||
+            !bongo_cat_path_is_file(metadata)))
+        return false;
     yyjson_doc *document = bongo_cat_json_read_file(marker, 0, NULL);
     yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
     const char *kind = yyjson_get_str(yyjson_obj_get(root, "kind"));
@@ -146,7 +201,8 @@ static bool refresh_cache(const BongoCatImportCandidate *candidate,
         bongo_cat_path_rename(backup, target);
     if (bongo_cat_path_is_dir(target)) bongo_cat_model_remove_tree(backup, NULL);
     *created = !bongo_cat_path_is_dir(target);
-    if (!*created && marker_matches(target, source, signature, identity)) return true;
+    if (!*created && marker_matches(target, source, signature, identity) &&
+        previous_cache_usable(target, source)) return true;
     if (!bongo_cat_path_create_directory(temporary) ||
         !bongo_cat_import_prepare_adapter(candidate, temporary, error) ||
         !write_marker(temporary, source, signature, identity, candidate->mode)) {
@@ -177,37 +233,52 @@ static bool add_candidate(BongoCatApp *app, const char *cache_root,
     const char *source, const BongoCatImportCandidate *candidate,
     char *first_created, BongoCatError *error) {
     char source_hash[65], signature[65], identity[65], id[BONGO_CAT_ID_CAP];
+    BongoCatModelEntry *same_id;
     bongo_cat_sha256_bytes(source, strlen(source), source_hash);
     snprintf(id, sizeof(id), "mver-%.16s-%s", source_hash,
         bongo_cat_mode_name(candidate->mode));
-    if (bongo_cat_models_find(&app->models, id)) return true;
+    same_id = model_with_id(app, id);
+    if (same_id && !same_id->managed) return true;
     if (!bongo_cat_portable_signature(candidate, signature, error))
         return false;
     char target[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_join(target, sizeof(target), cache_root, id) ||
         (!cached_identity(target, source, signature, identity) &&
         !bongo_cat_portable_identity(candidate, identity, error))) return false;
-    bool created = false;
-    if (!refresh_cache(candidate, cache_root, id, source, signature, identity,
-        &created, error))
-        return false;
-    if (app->models.count >= BONGO_CAT_MODEL_CAP) {
+    if (existing_identity(&app->models, identity, candidate->mode,
+        same_id)) return true;
+    if (!same_id && app->models.count >= BONGO_CAT_MODEL_CAP) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
             "Too many models while adding portable Mver package");
         return false;
     }
+    bool created = false;
+    if (!refresh_cache(candidate, cache_root, id, source, signature, identity,
+        &created, error))
+        return false;
+    char active_identity[65];
+    if (!marker_identity(target, source, active_identity)) return false;
+    if (strcmp(active_identity, identity) != 0) {
+        snprintf(identity, sizeof(identity), "%s", active_identity);
+        if (!same_id && existing_identity(&app->models, identity,
+            candidate->mode, NULL)) return true;
+    }
     char adapter[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_join(adapter, sizeof(adapter), cache_root, id)) return false;
+    if (same_id) {
+        memset(same_id, 0, sizeof(*same_id));
+        candidate_name(source, candidate, same_id->display_name,
+            sizeof(same_id->display_name));
+        bongo_cat_import_describe_portable_entry(same_id, candidate, id,
+            identity, source_hash, source, adapter);
+        return true;
+    }
     BongoCatModelEntry *entry = &app->models.entries[app->models.count++];
-    snprintf(entry->id, sizeof(entry->id), "%s", id);
+    memset(entry, 0, sizeof(*entry));
     candidate_name(source, candidate, entry->display_name,
         sizeof(entry->display_name));
-    snprintf(entry->directory, sizeof(entry->directory), "%s", candidate->directory);
-    snprintf(entry->adapter_directory, sizeof(entry->adapter_directory), "%s", adapter);
-    snprintf(entry->storage_directory, sizeof(entry->storage_directory), "%s", source);
-    snprintf(entry->setting_file, sizeof(entry->setting_file), "%s", candidate->setting);
-    entry->mode = candidate->mode;
-    entry->managed = true;
+    bongo_cat_import_describe_portable_entry(entry, candidate, id, identity,
+        source_hash, source, adapter);
     if (created && !first_created[0])
         snprintf(first_created, BONGO_CAT_ID_CAP, "%s", id);
     return true;

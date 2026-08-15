@@ -145,4 +145,25 @@ void test_models(void) {
     CHECK(strcmp(behaviors.entries[0].group, "CAT_motion") == 0);
     CHECK(strstr(behaviors.entries[0].sound, "live2d_motion1.flac") != NULL);
     CHECK(behaviors.entries[6].kind == BONGO_CAT_BEHAVIOR_EXPRESSION);
+
+    bongo_cat_models_init(&catalog);
+    CHECK(bongo_cat_models_scan(&catalog,
+        BONGO_CAT_NATIVE_SOURCE_DIR "/tests/fixtures/model-packages",
+        false, &error) == BONGO_CAT_OK);
+    CHECK(catalog.count == 2);
+    const BongoCatModelEntry *v1 = bongo_cat_models_find(&catalog, "v1");
+    const BongoCatModelEntry *v2 = bongo_cat_models_find(&catalog,
+        "test-package-v2");
+    CHECK(v1 && v1->package_schema == 1 &&
+        strcmp(v1->package_id, "v1") == 0 &&
+        v1->source_format == BONGO_CAT_MODEL_SOURCE_TAURI);
+    CHECK(v2 && v2->package_schema == 2 &&
+        strcmp(v2->content_digest,
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa") == 0 &&
+        strcmp(v2->family_id, "test-family") == 0 &&
+        strcmp(v2->display_name, "Test Package v2") == 0 &&
+        v2->mode == BONGO_CAT_MODE_KEYBOARD &&
+        v2->source_format == BONGO_CAT_MODEL_SOURCE_TAURI &&
+        v2->adapter_schema == 1 && v2->adapter_generator == 1 &&
+        (v2->capabilities & BONGO_CAT_MODEL_CAPABILITY_KEYBOARD_INPUT));
 }

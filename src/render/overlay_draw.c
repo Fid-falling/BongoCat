@@ -56,7 +56,7 @@ void bongo_cat_overlay_draw_keys(BongoCatOverlay *value, bool mirror) {
 }
 
 void bongo_cat_overlay_draw_pointer_before_keys(BongoCatOverlay *value) {
-    if (value)
+    if (bongo_cat_overlay_mver_pointer_enabled(value))
         bongo_cat_mver_pointer_overlay_draw_before_keys(value->mver_pointer);
 }
 
@@ -70,6 +70,6 @@ void bongo_cat_overlay_draw_effect(BongoCatOverlay *value, bool mirror) {
 }
 
 void bongo_cat_overlay_draw_pointer_after_keys(BongoCatOverlay *value) {
-    if (value)
+    if (bongo_cat_overlay_mver_pointer_enabled(value))
         bongo_cat_mver_pointer_overlay_draw_after_keys(value->mver_pointer);
 }

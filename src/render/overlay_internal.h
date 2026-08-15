@@ -28,6 +28,7 @@ struct BongoCatOverlay {
     bool composed_cover;
     bool clean_paws;
     bool composite_dirty;
+    bool model_pointer_preferred;
     TextureSlot cache[4];
     GLuint left;
     GLuint right;

@@ -1,11 +1,10 @@
 #include "bongo_cat/file.h"
-#include "bongo_cat/json.h"
 #include "bongo_cat/model.h"
 #include "bongo_cat/path.h"
+#include "model_package.h"
 
 #include <stdio.h>
 #include <string.h>
-#include <yyjson.h>
 
 #ifdef _WIN32
 #include "windows_utf8.h"
@@ -41,65 +40,10 @@ static BongoCatModelMode infer_mode(const char *directory) {
     return bongo_cat_path_is_dir(path) ? BONGO_CAT_MODE_KEYBOARD : BONGO_CAT_MODE_STANDARD;
 }
 
-static bool safe_relative(const char *value) {
-    if (!value || !value[0] || value[0] == '/' || value[0] == '\\' || strchr(value, ':'))
-        return false;
-    const char *cursor = value;
-    while (*cursor) {
-        while (*cursor == '/' || *cursor == '\\') cursor++;
-        if (cursor[0] == '.' && cursor[1] == '.' &&
-            (!cursor[2] || cursor[2] == '/' || cursor[2] == '\\')) return false;
-        cursor = strpbrk(cursor, "/\\");
-        if (!cursor) break;
-    }
-    return true;
-}
-
-static BongoCatModelMode stored_mode(const char *value) {
-    if (value && strcmp(value, "keyboard") == 0) return BONGO_CAT_MODE_KEYBOARD;
-    if (value && strcmp(value, "gamepad") == 0) return BONGO_CAT_MODE_GAMEPAD;
-    return BONGO_CAT_MODE_STANDARD;
-}
-
-static bool add_package(BongoCatModelCatalog *catalog, const char *directory,
-    bool preset, bool *handled) {
-    char descriptor[BONGO_CAT_PATH_CAP];
-    *handled = bongo_cat_path_join(descriptor, sizeof(descriptor), directory,
-        ".bongo-cat-package.json") && bongo_cat_path_is_file(descriptor);
-    if (!*handled) return true;
-    yyjson_doc *document = bongo_cat_json_read_file(descriptor, 0, NULL);
-    yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
-    const char *model = yyjson_get_str(yyjson_obj_get(root, "directory"));
-    const char *adapter = yyjson_get_str(yyjson_obj_get(root, "adapter"));
-    const char *setting = yyjson_get_str(yyjson_obj_get(root, "setting"));
-    bool valid = yyjson_is_obj(root) &&
-        yyjson_get_int(yyjson_obj_get(root, "schemaVersion")) == 1 &&
-        safe_relative(model) && safe_relative(adapter) && safe_relative(setting) &&
-        catalog->count < BONGO_CAT_MODEL_CAP;
-    BongoCatModelEntry *entry = valid ? &catalog->entries[catalog->count] : NULL;
-    if (entry) valid = bongo_cat_path_join(entry->directory,
-        sizeof(entry->directory), directory, model) &&
-        bongo_cat_path_join(entry->adapter_directory,
-            sizeof(entry->adapter_directory), directory, adapter);
-    char setting_path[BONGO_CAT_PATH_CAP];
-    if (entry) valid = bongo_cat_path_join(setting_path, sizeof(setting_path),
-        entry->directory, setting) && bongo_cat_path_is_file(setting_path) &&
-        bongo_cat_path_is_dir(entry->adapter_directory);
-    if (valid) {
-        snprintf(entry->id, sizeof(entry->id), "%s", bongo_cat_path_name(directory));
-        snprintf(entry->storage_directory, sizeof(entry->storage_directory), "%s", directory);
-        snprintf(entry->setting_file, sizeof(entry->setting_file), "%s", setting);
-        entry->mode = stored_mode(yyjson_get_str(yyjson_obj_get(root, "mode")));
-        entry->preset = preset;
-        catalog->count++;
-    }
-    yyjson_doc_free(document);
-    return valid;
-}
-
 static bool add_model(BongoCatModelCatalog *catalog, const char *directory, bool preset) {
     bool handled = false;
-    bool package_ok = add_package(catalog, directory, preset, &handled);
+    bool package_ok = bongo_cat_model_package_add(catalog, directory,
+        preset, &handled);
     if (handled) return package_ok;
     if (!package_ok) return false;
     if (!preset) return true;
@@ -107,12 +51,17 @@ static bool add_model(BongoCatModelCatalog *catalog, const char *directory, bool
     char setting[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_find_suffix(directory, ".model3.json", setting, sizeof(setting))) return true;
     BongoCatModelEntry *entry = &catalog->entries[catalog->count++];
+    memset(entry, 0, sizeof(*entry));
     snprintf(entry->id, sizeof(entry->id), "%s", bongo_cat_path_name(directory));
+    snprintf(entry->package_id, sizeof(entry->package_id), "%s", entry->id);
     snprintf(entry->directory, sizeof(entry->directory), "%s", directory);
     snprintf(entry->adapter_directory, sizeof(entry->adapter_directory), "%s", directory);
     snprintf(entry->storage_directory, sizeof(entry->storage_directory), "%s", directory);
     snprintf(entry->setting_file, sizeof(entry->setting_file), "%s", setting);
     entry->mode = infer_mode(directory);
+    entry->source_format = BONGO_CAT_MODEL_SOURCE_BUILTIN;
+    entry->capabilities = BONGO_CAT_MODEL_CAPABILITY_LIVE2D |
+        BONGO_CAT_MODEL_CAPABILITY_PREVIEW;
     entry->preset = preset;
     return true;
 }

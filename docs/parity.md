@@ -81,8 +81,9 @@ the full display containing the pet; legacy mode retains Mver relative input.
 The display is selected from the pet's visible center. Negative-coordinate,
 stacked, and mixed-DPI layouts retain desktop coordinates, and display mode,
 topology, or scale changes invalidate and immediately resample the mapping.
-`ParamAngleZ` and model-specific `ParamMouse*` channels are not synthesized by
-the Viewer-equivalent path.
+`ParamAngleZ` is not synthesized by the Viewer-equivalent path. Models that
+author `ParamMouseX` or `ParamMouseY` receive the normalized pointer domain in
+addition to Cubism dragging; missing parameters remain a no-op.
 
 Mver 0.1.6 remains the compatibility baseline for package discovery, imported
 files, configuration, shortcuts, window composition, and projection only. A
@@ -90,7 +91,7 @@ Tauri or standalone Live2D model is imported through the same adapter and then
 runs through the Viewer-equivalent Cubism animation path.
 
 Mver imports retain the source package's `l2d_correct`, `window_size`,
-`l2d_offset`, and horizontal-follow values in `.bongo-cat-mver.json`. The native
+`l2d_offset`, and horizontal-follow values in `.bongo-cat-adapter.json`. The native
 renderer uses the Mver 0.1.6 projection order for those models. Expressions keep
 the authored canvas projection so the Live2D model remains aligned with the
 background and input layers. The compatibility matrix also converts the

@@ -85,6 +85,7 @@
           "deleteSuccess": "已刪除「%s」",
           "deleteModel": "您確定要刪除「%s」嗎？",
           "importSuccess": "匯入成功",
+          "importExists": "模型已存在，無需重複匯入",
           "clickOrDragToImport": "點擊或拖曳至此區域匯入",
           "openDirectoryFailed": "無法開啟模型目錄"
         },

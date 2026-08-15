@@ -88,6 +88,7 @@ void bongo_cat_frame_presented_audit(BongoCatApp *app);
 void bongo_cat_window_clear_background(BongoCatApp *app);
 void bongo_cat_frame_capture_pending(BongoCatApp *app, int width, int height);
 void bongo_cat_app_render_now(BongoCatApp *app);
+bool bongo_cat_app_capture_pending_frame(BongoCatApp *app);
 void bongo_cat_runtime_flow_update(BongoCatApp *app, uint64_t now);
 void bongo_cat_config_store_initialize(BongoCatApp *app);
 void bongo_cat_config_store_update(BongoCatApp *app, uint64_t now);

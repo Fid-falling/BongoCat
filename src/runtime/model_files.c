@@ -24,9 +24,9 @@ static void request_model_frame(BongoCatApp *app) {
     app->dirty = true;
 }
 
-static void apply_model_aspect(BongoCatApp *app,
+static bool apply_model_aspect(BongoCatApp *app,
     const BongoCatLive2DRenderOptions *options) {
-    if (!app || !app->window) return;
+    if (!app || !app->window) return false;
     int reference_width = options && options->mver_projection
         ? options->reference_width : 612;
     int reference_height = options && options->mver_projection
@@ -34,14 +34,15 @@ static void apply_model_aspect(BongoCatApp *app,
     int x, y, width, height;
     if (reference_width <= 0 || reference_height <= 0 ||
         !SDL_GetWindowPosition(app->window, &x, &y) ||
-        !SDL_GetWindowSize(app->window, &width, &height) || height <= 0) return;
+        !SDL_GetWindowSize(app->window, &width, &height) || height <= 0)
+        return false;
     int next_width = (int)((double)height * reference_width /
         reference_height + 0.5);
     if (next_width < 64) next_width = 64;
     if (next_width > 8192) next_width = 8192;
-    if (next_width != width)
-        bongo_cat_window_apply_geometry(app, x, y,
-            app->config.window.scale_percent, next_width, height);
+    if (next_width == width) return false;
+    return bongo_cat_window_apply_geometry(app, x, y,
+        app->config.window.scale_percent, next_width, height);
 }
 
 static void commit_model(BongoCatApp *app,
@@ -84,9 +85,9 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     if (bongo_cat_behaviors_load(behaviors, entry, &optional) != BONGO_CAT_OK)
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", optional.message);
     BongoCatLive2DRenderOptions render_options = {0};
-    bool mver_profile = bongo_cat_import_mver_render_options(
+    bool adapted_profile = bongo_cat_import_render_options(
         entry->adapter_directory, &render_options);
-    if (mver_profile) SDL_Log("Mver runtime profile: projection=%.4f "
+    if (adapted_profile) SDL_Log("Imported runtime profile: projection=%.4f "
         "force_mouse=%d left_handed=%d pointer_bounds=%d",
         render_options.projection_scale, render_options.mouse_force_move,
         render_options.pointer_left_handed, render_options.custom_pointer_bounds);
@@ -116,15 +117,18 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
         request_model_frame(app);
         return false;
     }
+    BongoCatParameterRange pointer_x, pointer_y;
+    bool model_pointer =
+        bongo_cat_live2d_parameter(app->live2d, "ParamMouseX", &pointer_x) &&
+        bongo_cat_live2d_parameter(app->live2d, "ParamMouseY", &pointer_y) &&
+        pointer_x.maximum > pointer_x.minimum &&
+        pointer_y.maximum > pointer_y.minimum;
     app->model_render_options = render_options;
-    BongoCatParameterRange mouse_range; app->model_mouse_parameters =
-        bongo_cat_live2d_parameter(app->live2d, "ParamMouseLeftDown", &mouse_range) ||
-        bongo_cat_live2d_parameter(app->live2d, "ParamMouseRightDown", &mouse_range);
     bongo_cat_app_reset_pointer_tracking(app);
     bongo_cat_live2d_set_render_options(app->live2d, &render_options);
-    apply_model_aspect(app, &render_options);
+    bool geometry_changed = apply_model_aspect(app, &render_options);
     if (app->window) {
-        SDL_SyncWindow(app->window);
+        if (geometry_changed) SDL_SyncWindow(app->window);
         SDL_GetWindowSizeInPixels(app->window, &pixel_width, &pixel_height);
         bongo_cat_live2d_reshape(app->live2d, pixel_width, pixel_height);
     }
@@ -132,7 +136,7 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     free(behaviors);
     optional = (BongoCatError){0};
     if (bongo_cat_overlay_load(app->overlay, entry->adapter_directory,
-        &optional) != BONGO_CAT_OK) {
+        model_pointer, &optional) != BONGO_CAT_OK) {
         if (optional.message[0])
             SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", optional.message);
         bongo_cat_overlay_clear(app->overlay);

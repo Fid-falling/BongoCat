@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "kind": "bongo-cat-runtime-adapter",
+  "sourceFormat": "tauri-live2d",
+  "render": { "profile": "native" },
+  "bindings": []
+}

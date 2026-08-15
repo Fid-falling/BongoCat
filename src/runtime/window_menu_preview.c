@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#define MODEL_PREVIEW_DELAY_NS 150000000ull
+
 static const BongoCatModelEntry *menu_model(const BongoCatApp *app,
     BongoCatMenuAction action) {
     if (!app || action < BONGO_CAT_MENU_MODEL_FIRST ||
@@ -38,7 +40,8 @@ void bongo_cat_window_menu_preview_init(BongoCatWindowMenuPreview *state,
         .scale = app ? app->config.window.scale_percent : 100.0f,
         .opacity = app ? app->config.window.opacity_percent : 100.0f,
         .expression = app ? bongo_cat_live2d_expression(app->live2d) : -1,
-        .last = BONGO_CAT_MENU_NONE, .applied = BONGO_CAT_MENU_NONE};
+        .last = BONGO_CAT_MENU_NONE, .applied = BONGO_CAT_MENU_NONE,
+        .pending_model = BONGO_CAT_MENU_NONE};
     bongo_cat_modal_frame_init(&state->modal_frame, app);
     if (app) snprintf(state->model, sizeof(state->model), "%.*s",
         (int)sizeof(state->model) - 1, app->config.current_model);
@@ -59,24 +62,13 @@ void bongo_cat_window_menu_preview(void *userdata, BongoCatMenuAction action) {
         return;
     }
     state->last = action;
-    const BongoCatModelEntry *model = menu_model(app, action);
-    if (model) {
-        BongoCatError error = {0};
-        if (!bongo_cat_app_select_model_with_error(app, model->id, &error)) {
-            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Model preview failed: %s",
-                error.message[0] ? error.message : "unknown error");
-            if (strcmp(app->config.current_model, state->model) != 0) {
-                BongoCatError restore_error = {0};
-                if (!bongo_cat_app_select_model_with_error(app, state->model,
-                    &restore_error))
-                    SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                        "Model preview recovery failed: %s",
-                        restore_error.message[0] ? restore_error.message :
-                            "unknown error");
-            }
-        }
+    if (menu_model(app, action)) {
+        state->pending_model = action;
+        state->pending_model_since_ns = SDL_GetTicksNS();
+        return;
     }
-    else if (action >= BONGO_CAT_MENU_SCALE_50 &&
+    state->pending_model = BONGO_CAT_MENU_NONE;
+    if (action >= BONGO_CAT_MENU_SCALE_50 &&
         action <= BONGO_CAT_MENU_SCALE_200)
         bongo_cat_window_set_scale(app,
             (float)(50 + 10 * (action - BONGO_CAT_MENU_SCALE_50)));
@@ -100,13 +92,42 @@ void bongo_cat_window_menu_preview(void *userdata, BongoCatMenuAction action) {
 
 void bongo_cat_window_menu_preview_tick(void *userdata) {
     BongoCatWindowMenuPreview *state = userdata;
-    if (state) bongo_cat_modal_frame_tick(&state->modal_frame);
+    if (!state) return;
+    if (state->pending_model != BONGO_CAT_MENU_NONE &&
+        SDL_GetTicksNS() - state->pending_model_since_ns >=
+            MODEL_PREVIEW_DELAY_NS) {
+        BongoCatMenuAction action = state->pending_model;
+        state->pending_model = BONGO_CAT_MENU_NONE;
+        const BongoCatModelEntry *model = action == state->last ?
+            menu_model(state->app, action) : NULL;
+        if (model) {
+            BongoCatError error = {0};
+            if (!bongo_cat_app_select_model_with_error(state->app, model->id,
+                &error)) {
+                SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "Model preview failed: %s",
+                    error.message[0] ? error.message : "unknown error");
+                if (strcmp(state->app->config.current_model,
+                    state->model) != 0) {
+                    BongoCatError restore_error = {0};
+                    if (!bongo_cat_app_select_model_with_error(state->app,
+                        state->model, &restore_error))
+                        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                            "Model preview recovery failed: %s",
+                            restore_error.message[0] ?
+                                restore_error.message : "unknown error");
+                }
+            }
+        }
+    }
+    bongo_cat_modal_frame_tick(&state->modal_frame);
 }
 
 void bongo_cat_window_menu_restore(void *userdata, BongoCatMenuAction selected) {
     BongoCatWindowMenuPreview *state = userdata;
     if (!state || !state->app) return;
     BongoCatApp *app = state->app;
+    state->pending_model = BONGO_CAT_MENU_NONE;
     bool changed = false;
     bool keep_motion = selected >= BONGO_CAT_MENU_MOTION_FIRST &&
         selected < BONGO_CAT_MENU_MOTION_FIRST + BONGO_CAT_BEHAVIOR_CAP;

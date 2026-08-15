@@ -85,6 +85,7 @@
           "deleteSuccess": "Deleted \"%s\"",
           "deleteModel": "Are you sure you want to delete \"%s\"?",
           "importSuccess": "Imported Successfully",
+          "importExists": "Model already exists",
           "clickOrDragToImport": "Click or drag here to import",
           "openDirectoryFailed": "Unable to open model directory"
         },

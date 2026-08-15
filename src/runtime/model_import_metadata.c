@@ -7,7 +7,14 @@
 #include <string.h>
 #include <yyjson.h>
 
-#define MVER_METADATA ".bongo-cat-mver.json"
+static bool metadata_version(yyjson_val *root) {
+    if (!yyjson_is_obj(root)) return false;
+    yyjson_val *schema = yyjson_obj_get(root, "schemaVersion");
+    const char *kind = yyjson_get_str(yyjson_obj_get(root, "kind"));
+    return schema ? yyjson_get_int(schema) == BONGO_CAT_MODEL_ADAPTER_SCHEMA && kind &&
+        strcmp(kind, "bongo-cat-runtime-adapter") == 0 :
+        yyjson_get_int(yyjson_obj_get(root, "version")) == 1;
+}
 
 static bool same_family(const char *left, const char *right) {
     bool left_effect = left && (strcmp(left, "effect") == 0 ||
@@ -62,12 +69,12 @@ static bool behavior_id(char *id, size_t capacity, const char *model_id,
 void bongo_cat_import_apply_metadata(BongoCatApp *app, const char *model_id,
     const char *directory) {
     char path[BONGO_CAT_PATH_CAP];
-    if (!bongo_cat_path_join(path, sizeof(path), directory, MVER_METADATA)) return;
+    if (!bongo_cat_model_adapter_metadata_path(directory, path,
+        sizeof(path))) return;
     yyjson_doc *document = bongo_cat_json_read_file(path, 0, NULL);
     yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
     yyjson_val *bindings = yyjson_obj_get(root, "bindings");
-    if (!yyjson_is_obj(root) || yyjson_get_int(yyjson_obj_get(root, "version")) != 1 ||
-        !yyjson_is_arr(bindings)) {
+    if (!metadata_version(root) || !yyjson_is_arr(bindings)) {
         yyjson_doc_free(document);
         return;
     }
@@ -94,13 +101,13 @@ void bongo_cat_import_apply_metadata(BongoCatApp *app, const char *model_id,
     yyjson_doc_free(document);
 }
 
-bool bongo_cat_import_mver_render_options(const char *directory,
+bool bongo_cat_import_render_options(const char *directory,
     BongoCatLive2DRenderOptions *options) {
     if (!options) return false;
     *options = (BongoCatLive2DRenderOptions){0};
     char path[BONGO_CAT_PATH_CAP];
-    if (!directory || !bongo_cat_path_join(path, sizeof(path), directory,
-        MVER_METADATA)) return false;
+    if (!bongo_cat_model_adapter_metadata_path(directory, path,
+        sizeof(path))) return false;
     yyjson_doc *document = bongo_cat_json_read_file(path, 0, NULL);
     yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
     yyjson_val *render = yyjson_obj_get(root, "render");
@@ -108,8 +115,7 @@ bool bongo_cat_import_mver_render_options(const char *directory,
     yyjson_val *scale = yyjson_obj_get(render, "projectionScale");
     int width = (int)yyjson_get_sint(yyjson_obj_get(render, "referenceWidth"));
     int height = (int)yyjson_get_sint(yyjson_obj_get(render, "referenceHeight"));
-    bool valid = yyjson_is_obj(root) &&
-        yyjson_get_int(yyjson_obj_get(root, "version")) == 1 &&
+    bool valid = metadata_version(root) &&
         yyjson_is_obj(render) && profile && strcmp(profile, "mver-0.1.6") == 0 &&
         yyjson_is_num(scale) && yyjson_get_num(scale) > 0.0 &&
         yyjson_get_num(scale) <= 100.0 && width > 0 && height > 0;

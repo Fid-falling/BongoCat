@@ -9,7 +9,11 @@
 #include <string.h>
 #include <yyjson.h>
 
-#define MVER_METADATA ".bongo-cat-mver.json"
+static const char *format_name(BongoCatImportFormat format) {
+    if (format == BONGO_CAT_IMPORT_MVER) return "bongo-cat-mver";
+    if (format == BONGO_CAT_IMPORT_MVER_PATCH) return "bongo-cat-mver-patch";
+    return "tauri-live2d";
+}
 
 static double number_or(yyjson_val *value, double fallback) {
     return yyjson_is_num(value) ? yyjson_get_num(value) : fallback;
@@ -121,6 +125,11 @@ static bool add_render_profile(yyjson_mut_doc *output, yyjson_mut_val *root,
         add_standard_pointer(output, root, config, candidate);
 }
 
+static bool add_native_render(yyjson_mut_doc *output, yyjson_mut_val *root) {
+    yyjson_mut_val *render = yyjson_mut_obj_add_obj(output, root, "render");
+    return render && yyjson_mut_obj_add_str(output, render, "profile", "native");
+}
+
 static bool sound_source(const BongoCatImportCandidate *candidate, size_t index,
     char *source, size_t capacity, char *relative, size_t relative_capacity) {
     static const char *extensions[] = {"wav", "ogg", "flac"};
@@ -183,35 +192,41 @@ static bool add_sounds(yyjson_mut_doc *output, yyjson_mut_val *items,
     return !emitted || !keep || add_sound_clear(output, items, config, candidate);
 }
 
-bool bongo_cat_import_mver_metadata(const BongoCatImportCandidate *candidate,
+bool bongo_cat_import_adapter_metadata(const BongoCatImportCandidate *candidate,
     const char *target, BongoCatError *error) {
-    if (candidate->format != BONGO_CAT_IMPORT_MVER &&
-        candidate->format != BONGO_CAT_IMPORT_MVER_PATCH) return true;
-    yyjson_doc *source = bongo_cat_json_read_file(candidate->config,
-        YYJSON_READ_JSON5 | YYJSON_READ_ALLOW_INVALID_UNICODE, NULL);
+    bool mver = candidate->format != BONGO_CAT_IMPORT_TAURI;
+    yyjson_doc *source = mver ? bongo_cat_json_read_file(candidate->config,
+        YYJSON_READ_JSON5 | YYJSON_READ_ALLOW_INVALID_UNICODE, NULL) : NULL;
     yyjson_val *config = source ? yyjson_doc_get_root(source) : NULL;
     yyjson_val *mode = yyjson_obj_get(config, bongo_cat_mode_name(candidate->mode));
     BongoCatMverLabels labels = {0};
-    bongo_cat_mver_labels_load(candidate->config,
+    if (mver) bongo_cat_mver_labels_load(candidate->config,
         bongo_cat_mode_name(candidate->mode), &labels);
     yyjson_mut_doc *output = yyjson_mut_doc_new(NULL);
     yyjson_mut_val *root = output ? yyjson_mut_obj(output) : NULL;
     yyjson_mut_val *items = root ? yyjson_mut_obj_add_arr(output, root, "bindings") : NULL;
     if (output) yyjson_mut_doc_set_root(output, root);
-    bool ok = yyjson_is_obj(mode) && items &&
-        yyjson_mut_obj_add_int(output, root, "version", 1) &&
+    bool ok = items &&
+        yyjson_mut_obj_add_int(output, root, "schemaVersion",
+            BONGO_CAT_MODEL_ADAPTER_SCHEMA) &&
+        yyjson_mut_obj_add_str(output, root, "kind", "bongo-cat-runtime-adapter") &&
+        yyjson_mut_obj_add_strcpy(output, root, "sourceFormat",
+            format_name(candidate->format));
+    if (ok && mver) ok = yyjson_is_obj(mode) &&
         add_render_profile(output, root, config, candidate) &&
         bongo_cat_mver_add_behaviors(output, items, mode, candidate, &labels, error) &&
         add_sounds(output, items, config, yyjson_obj_get(mode, "sounds"),
             candidate, &labels, target) &&
         bongo_cat_mver_effects(output, items, config, mode, candidate, target);
+    else if (ok) ok = add_native_render(output, root);
     char path[BONGO_CAT_PATH_CAP];
-    if (ok) ok = bongo_cat_path_join(path, sizeof(path), target, MVER_METADATA) &&
+    if (ok) ok = bongo_cat_path_join(path, sizeof(path), target,
+        BONGO_CAT_MODEL_ADAPTER_FILE) &&
         bongo_cat_json_write_file(path, output, YYJSON_WRITE_PRETTY, NULL);
     yyjson_mut_doc_free(output);
     yyjson_doc_free(source);
     if (!ok && error && !error->message[0])
         bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
-            "Cannot convert Mver behavior metadata: %s", candidate->config);
+            "Cannot create runtime adapter metadata: %s", candidate->config);
     return ok;
 }

@@ -182,15 +182,15 @@ static void update_model(BongoCatApp *app, uint64_t now) {
     if (app->smoke_freeze_model) return;
     bongo_cat_app_step_live2d(app, elapsed);
 }
-static void render(BongoCatApp *app) {
+static bool render(BongoCatApp *app, bool present) {
     uint64_t now = SDL_GetTicksNS();
-    if (app->render_retry_ns > now) return;
+    if (app->render_retry_ns > now) return false;
     if (!SDL_GL_MakeCurrent(app->window, app->gl_context)) {
         app->dirty = true;
         app->render_retry_ns = now + 1000000000ull;
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO,
             "Main GL context could not be activated: %s", SDL_GetError());
-        return;
+        return false;
     }
     app->render_retry_ns = 0;
     int width, height;
@@ -201,11 +201,17 @@ static void render(BongoCatApp *app) {
     bongo_cat_window_clear_background(app);
     bongo_cat_overlay_draw_background(app->overlay, app->config.model.mirror);
     bongo_cat_live2d_set_mirror(app->live2d, app->config.model.mirror);
-    bongo_cat_live2d_draw(app->live2d); if (!app->model_mouse_parameters) bongo_cat_overlay_draw_pointer_before_keys(app->overlay);
+    bongo_cat_live2d_draw(app->live2d);
+    bongo_cat_overlay_draw_pointer_before_keys(app->overlay);
     if (app->config.model.mouse_centered && app->pointer_known && !app->model_pointer_anchor_ready) bongo_cat_app_apply_mouse_position(app, app->pointer_x, app->pointer_y, 0.0f);
     bongo_cat_overlay_draw_keys(app->overlay, app->config.model.mirror);
-    bongo_cat_overlay_draw_effect(app->overlay, app->config.model.mirror); if (!app->model_mouse_parameters) bongo_cat_overlay_draw_pointer_after_keys(app->overlay);
+    bongo_cat_overlay_draw_effect(app->overlay, app->config.model.mirror);
+    bongo_cat_overlay_draw_pointer_after_keys(app->overlay);
     bongo_cat_frame_capture_pending(app, width, height);
+    if (!present) {
+        app->dirty = true;
+        return true;
+    }
     bongo_cat_frame_audit(app, width, height);
     bongo_cat_window_capture_pointer_hit(app);
     if (!bongo_cat_platform_present(&app->platform, width, height)) {
@@ -213,14 +219,19 @@ static void render(BongoCatApp *app) {
         app->render_retry_ns = now + 1000000000ull;
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO,
             "Main frame presentation failed: %s", SDL_GetError());
-        return;
+        return false;
     }
     bongo_cat_frame_presented_audit(app);
     bongo_cat_startup_ready(app); bongo_cat_memory_policy_frame_presented(); app->dirty = false;
     bongo_cat_window_sync_click_through(app); bongo_cat_window_schedule_hit_check(app);
+    return true;
 }
 void bongo_cat_app_render_now(BongoCatApp *app) { if (app && app->window &&
-    app->config.window.visible && !app->window_minimized) render(app); }
+    app->config.window.visible && !app->window_minimized) render(app, true); }
+bool bongo_cat_app_capture_pending_frame(BongoCatApp *app) {
+    return app && app->window && app->pending_model_cover_path[0] &&
+        !app->window_minimized && render(app, false);
+}
 static void take_instance_wake(BongoCatApp *app) {
     if (!bongo_cat_platform_single_instance_take_wake()) return;
     bongo_cat_window_set_visible(app, true);
@@ -252,9 +263,9 @@ static void loop(BongoCatApp *app) {
         bongo_cat_app_drain_input(app, true);
         if (bongo_cat_model_frame_due(app, now)) update_model(app, now);
         else if (!app->config.window.visible || app->window_minimized) { app->last_frame_ns = now; bongo_cat_memory_policy_idle(); }
-        if (app->config.window.visible && !app->window_minimized && app->dirty) render(app);
+        if (app->config.window.visible && !app->window_minimized && app->dirty) render(app, true);
         bongo_cat_preferences_render(app->preferences);
-        if (app->config.window.visible && !app->window_minimized && app->dirty) render(app);
+        if (app->config.window.visible && !app->window_minimized && app->dirty) render(app, true);
         bongo_cat_tray_sync(app->tray); bongo_cat_window_raise_when_due(app, now);
         bongo_cat_config_store_update(app, now);
         if (app->smoke_deadline_ns && now >= app->smoke_deadline_ns) app->running = false;

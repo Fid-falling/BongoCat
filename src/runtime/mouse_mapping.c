@@ -148,8 +148,7 @@ void bongo_cat_app_apply_mouse_coordinates(BongoCatApp *app, double hand_x,
     float gaze_x_ratio = hand_x_ratio, gaze_y_ratio = hand_y_ratio;
     if (app->config.model.mouse_centered)
         model_pointer_ratios(app, gaze_x, gaze_y, &gaze_x_ratio, &gaze_y_ratio);
-    bool exact_pointer = !app->model_mouse_parameters &&
-        bongo_cat_overlay_mver_pointer_enabled(app->overlay);
+    bool exact_pointer = bongo_cat_overlay_mver_pointer_enabled(app->overlay);
     bool mver = app->model_render_options.mver_projection;
     bool left_handed = app->model_render_options.pointer_left_handed ||
         (exact_pointer && bongo_cat_overlay_mver_pointer_left_handed(app->overlay));
@@ -160,7 +159,7 @@ void bongo_cat_app_apply_mouse_coordinates(BongoCatApp *app, double hand_x,
     if (!mver && app->config.model.mouse_mirror) drag_x = -drag_x;
     bongo_cat_overlay_set_mver_pointer(app->overlay, hand_x_ratio, hand_y_ratio,
         app->left_mouse_down, app->right_mouse_down, app->side_mouse_down);
-    if (app->model_render_options.mver_projection && !exact_pointer) {
+    if (!exact_pointer) {
         set_parameter(app, "ParamMouseX", 1.0f - hand_x_ratio, hand_y_ratio);
         set_parameter(app, "ParamMouseY", hand_x_ratio, hand_y_ratio);
     }

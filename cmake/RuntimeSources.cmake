@@ -16,7 +16,8 @@ set(BONGO_CAT_RUNTIME_SOURCES
   src/runtime/memory_policy.c src/runtime/mouse.c src/runtime/mouse_mapping.c
   src/runtime/model_files.c src/runtime/model_catalog_runtime.c
   src/runtime/model_update.c src/runtime/model_storage.c
-  src/runtime/model_import.c src/runtime/model_import_package.c
+  src/runtime/model_import.c src/runtime/model_import_identity.c
+  src/runtime/model_import_package.c
   src/runtime/model_import_discovery.c src/runtime/model_import_format.c
   src/runtime/model_import_portable.c src/runtime/model_import_portable_scan.c
   src/runtime/model_import_portable_identity.c
@@ -53,7 +54,8 @@ set(BONGO_CAT_RUNTIME_SOURCES
   src/ui/preferences_behavior_rename.c src/ui/preferences_behavior_row.c
   src/ui/preferences_scrollbar.c src/ui/preferences_text_edit.c
   src/ui/preferences_text_session.c src/ui/preferences_notice.c
-  src/ui/preferences_model.c src/ui/preferences_model_rename.c
+  src/ui/preferences_model.c src/ui/preferences_model_card.c
+  src/ui/preferences_model_rename.c
   src/ui/preferences_model_cover.c src/ui/preferences_model_glyphs.c
   src/ui/preferences_pages.c src/ui/preferences_theme.c
   src/ui/preferences_shortcuts.c src/ui/preferences_shortcut_clear.c

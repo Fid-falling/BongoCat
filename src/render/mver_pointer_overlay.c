@@ -1,6 +1,7 @@
 #include "mver_pointer_overlay_internal.h"
 #include "bongo_cat/image.h"
 #include "bongo_cat/json.h"
+#include "bongo_cat/model.h"
 #include "bongo_cat/path.h"
 
 #include <SDL3/SDL_opengl.h>
@@ -121,8 +122,8 @@ bool bongo_cat_mver_pointer_overlay_load(BongoCatMverPointerOverlay *value,
     if (!value || !directory) return false;
     clear_textures(value);
     char metadata[BONGO_CAT_PATH_CAP];
-    if (!bongo_cat_path_join(metadata, sizeof(metadata), directory,
-        ".bongo-cat-mver.json")) return false;
+    if (!bongo_cat_model_adapter_metadata_path(directory, metadata,
+        sizeof(metadata))) return false;
     yyjson_doc *document = bongo_cat_json_read_file(metadata, 0, NULL);
     yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
     yyjson_val *pointer = yyjson_obj_get(root, "standardPointer");

@@ -34,8 +34,19 @@ typedef struct BongoCatImportDiscovery {
 
 typedef struct BongoCatImportReceipt {
     char ids[BONGO_CAT_IMPORT_CANDIDATE_CAP][BONGO_CAT_ID_CAP];
+    bool installed[BONGO_CAT_IMPORT_CANDIDATE_CAP];
     size_t count;
+    size_t installed_count;
 } BongoCatImportReceipt;
+
+typedef struct BongoCatPackageMetadata {
+    char package_id[BONGO_CAT_ID_CAP];
+    char content_digest[65];
+    char family_id[BONGO_CAT_ID_CAP];
+    char display_name[BONGO_CAT_ID_CAP];
+    char source_name[BONGO_CAT_ID_CAP];
+    uint32_t capabilities;
+} BongoCatPackageMetadata;
 
 typedef BongoCatResult (*BongoCatPortableVisitor)(void *userdata,
     const char *source, BongoCatImportDiscovery *discovery, BongoCatError *error);
@@ -56,7 +67,7 @@ bool bongo_cat_import_manifest_valid(const char *root, const char *setting,
     BongoCatError *error);
 bool bongo_cat_import_mver_assets(const BongoCatImportCandidate *candidate,
     const char *target, BongoCatError *error);
-bool bongo_cat_import_mver_metadata(const BongoCatImportCandidate *candidate,
+bool bongo_cat_import_adapter_metadata(const BongoCatImportCandidate *candidate,
     const char *target, BongoCatError *error);
 bool bongo_cat_import_write_report(const BongoCatImportCandidate *candidate,
     const char *target, BongoCatError *error);
@@ -65,10 +76,23 @@ bool bongo_cat_import_prepare_adapter(const BongoCatImportCandidate *candidate,
 bool bongo_cat_import_prepare_package(const BongoCatImportCandidate *candidate,
     const char *target, BongoCatImportCandidate *installed, BongoCatError *error);
 bool bongo_cat_import_write_package(const BongoCatImportCandidate *candidate,
-    const char *target, BongoCatError *error);
+    const BongoCatPackageMetadata *metadata, const char *target,
+    BongoCatError *error);
+bool bongo_cat_import_candidate_digest(const BongoCatImportCandidate *candidate,
+    char output[65], BongoCatError *error);
+bool bongo_cat_import_prepare_package_metadata(
+    const BongoCatImportDiscovery *discovery,
+    BongoCatPackageMetadata *metadata, BongoCatError *error);
+const BongoCatModelEntry *bongo_cat_import_find_existing_package(
+    const BongoCatModelCatalog *catalog,
+    const BongoCatPackageMetadata *metadata, BongoCatModelMode mode);
+void bongo_cat_import_describe_portable_entry(BongoCatModelEntry *entry,
+    const BongoCatImportCandidate *candidate, const char *id,
+    const char *identity, const char *source_hash, const char *source,
+    const char *adapter);
 void bongo_cat_import_apply_metadata(BongoCatApp *app, const char *model_id,
     const char *directory);
-bool bongo_cat_import_mver_render_options(const char *directory,
+bool bongo_cat_import_render_options(const char *directory,
     BongoCatLive2DRenderOptions *options);
 BongoCatResult bongo_cat_import_portable_mver(BongoCatApp *app,
     const char *root, BongoCatError *error);

@@ -70,11 +70,11 @@ static bool read_expressions(BongoCatBehaviorCatalog *catalog,
     return true;
 }
 
-static bool read_mver_assets(BongoCatBehaviorCatalog *catalog,
+static bool read_adapter_assets(BongoCatBehaviorCatalog *catalog,
     const BongoCatModelEntry *model) {
     char path[BONGO_CAT_PATH_CAP];
-    if (!bongo_cat_path_join(path, sizeof(path), model->adapter_directory,
-        ".bongo-cat-mver.json")) return false;
+    if (!bongo_cat_model_adapter_metadata_path(model->adapter_directory,
+        path, sizeof(path))) return false;
     yyjson_doc *document = bongo_cat_json_read_file(path, 0, NULL);
     if (!document) return true;
     yyjson_val *items = yyjson_obj_get(yyjson_doc_get_root(document), "bindings");
@@ -135,7 +135,7 @@ BongoCatResult bongo_cat_behaviors_load(BongoCatBehaviorCatalog *catalog,
     yyjson_val *references = yyjson_obj_get(yyjson_doc_get_root(document), "FileReferences");
     bool ok = read_motions(catalog, model, yyjson_obj_get(references, "Motions")) &&
         read_expressions(catalog, model, yyjson_obj_get(references, "Expressions")) &&
-        read_mver_assets(catalog, model);
+        read_adapter_assets(catalog, model);
     yyjson_doc_free(document);
     if (!ok) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT, "Too many model behaviors");

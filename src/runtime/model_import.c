@@ -12,6 +12,7 @@ typedef struct ImportInstall {
     char id[BONGO_CAT_ID_CAP];
     char temporary[BONGO_CAT_PATH_CAP];
     char target[BONGO_CAT_PATH_CAP];
+    bool existing;
     bool committed;
 } ImportInstall;
 
@@ -119,38 +120,53 @@ bool bongo_cat_import_prepare_adapter(const BongoCatImportCandidate *candidate,
         (!bongo_cat_path_is_dir(target) && !bongo_cat_path_create_directory(target))) return false;
     return copy_preview(candidate, target, error) &&
         bongo_cat_import_mver_assets(candidate, target, error) &&
-        bongo_cat_import_mver_metadata(candidate, target, error) &&
+        bongo_cat_import_adapter_metadata(candidate, target, error) &&
         bongo_cat_import_write_report(candidate, target, error) &&
         write_mode(target, candidate->mode, error);
 }
 
 static void cleanup(ImportInstall *installs, size_t count, bool committed) {
     for (size_t i = 0; i < count; ++i)
-        bongo_cat_model_remove_tree(committed && installs[i].committed ? installs[i].target :
-            installs[i].temporary, NULL);
+        if (!installs[i].existing)
+            bongo_cat_model_remove_tree(committed && installs[i].committed
+                ? installs[i].target : installs[i].temporary, NULL);
 }
 
 static bool prepare_install(const BongoCatImportCandidate *candidate,
-    ImportInstall *install, const char *root, unsigned long long stamp,
-    size_t index, size_t count, BongoCatError *error) {
-    const char *mode = candidate->mode == BONGO_CAT_MODE_KEYBOARD ? "keyboard" :
-        candidate->mode == BONGO_CAT_MODE_GAMEPAD ? "gamepad" : "standard";
-    if (count == 1) snprintf(install->id, sizeof(install->id), "model-%llx", stamp);
-    else snprintf(install->id, sizeof(install->id), "model-%llx-%s-%zu",
-        stamp, mode, index + 1);
+    const BongoCatPackageMetadata *metadata,
+    const BongoCatModelCatalog *existing, ImportInstall *install,
+    const char *root, size_t index, BongoCatError *error) {
+    const BongoCatModelEntry *duplicate =
+        bongo_cat_import_find_existing_package(existing, metadata,
+            candidate->mode);
+    if (duplicate) {
+        snprintf(install->id, sizeof(install->id), "%s", duplicate->id);
+        install->existing = true;
+        return true;
+    }
+    snprintf(install->id, sizeof(install->id), "%s", metadata->package_id);
     char temporary_name[BONGO_CAT_ID_CAP + 8];
-    snprintf(temporary_name, sizeof(temporary_name), ".import-%llx-%zu.tmp",
-        stamp, index + 1);
+    snprintf(temporary_name, sizeof(temporary_name), ".import-%.16s-%zu.tmp",
+        metadata->content_digest, index + 1);
     BongoCatImportCandidate installed;
     if (!bongo_cat_path_join(install->temporary, sizeof(install->temporary),
         root, temporary_name) ||
-        !bongo_cat_path_join(install->target, sizeof(install->target), root, install->id) ||
-        !bongo_cat_import_prepare_package(candidate, install->temporary,
+        !bongo_cat_path_join(install->target, sizeof(install->target), root,
+            install->id)) return false;
+    if (bongo_cat_path_is_dir(install->target) ||
+        bongo_cat_path_is_file(install->target)) {
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
+            "Model package id collides with an existing directory: %s",
+            install->id);
+        return false;
+    }
+    if (!bongo_cat_import_prepare_package(candidate, install->temporary,
             &installed, error)) return false;
     char adapter[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_join(adapter, sizeof(adapter), install->temporary, "adapter") ||
-        !bongo_cat_import_prepare_adapter(&installed, adapter, error) ||
-        !bongo_cat_import_write_package(&installed, install->temporary, error)) return false;
+        !bongo_cat_import_prepare_adapter(candidate, adapter, error) ||
+        !bongo_cat_import_write_package(&installed, metadata,
+            install->temporary, error)) return false;
     return bongo_cat_import_manifest_valid(installed.directory,
         installed.setting, error);
 }
@@ -162,45 +178,64 @@ BongoCatResult bongo_cat_import_install(const char *source, const char *data_roo
         return BONGO_CAT_ERROR_ARGUMENT;
     BongoCatImportDiscovery *discovery = calloc(1, sizeof(*discovery));
     ImportInstall *installs = calloc(BONGO_CAT_IMPORT_CANDIDATE_CAP, sizeof(*installs));
-    if (!discovery || !installs) {
-        free(discovery); free(installs);
+    BongoCatPackageMetadata *metadata = calloc(BONGO_CAT_IMPORT_CANDIDATE_CAP,
+        sizeof(*metadata));
+    BongoCatModelCatalog *existing = calloc(1, sizeof(*existing));
+    if (!discovery || !installs || !metadata || !existing) {
+        free(discovery); free(installs); free(metadata); free(existing);
         bongo_cat_error_set(error, BONGO_CAT_ERROR_MEMORY,
             "Cannot allocate model import workspace");
         return BONGO_CAT_ERROR_MEMORY;
     }
     if (!bongo_cat_import_discover(source, discovery, error)) {
-        free(discovery); free(installs); return BONGO_CAT_ERROR_FORMAT;
+        free(discovery); free(installs); free(metadata); free(existing);
+        return BONGO_CAT_ERROR_FORMAT;
     }
     char root[BONGO_CAT_PATH_CAP];
     if (!custom_root(data_root, root, sizeof(root)) ||
         !bongo_cat_model_cleanup_imports(root, error)) {
-        free(discovery); free(installs); return BONGO_CAT_ERROR_IO;
+        free(discovery); free(installs); free(metadata); free(existing);
+        return BONGO_CAT_ERROR_IO;
     }
-    unsigned long long stamp = (unsigned long long)SDL_GetTicksNS();
+    bongo_cat_models_init(existing);
+    BongoCatResult scan = bongo_cat_models_scan(existing, root, false, error);
+    if (scan != BONGO_CAT_OK ||
+        !bongo_cat_import_prepare_package_metadata(discovery, metadata,
+            error)) {
+        BongoCatResult result = scan != BONGO_CAT_OK ? scan :
+            error && error->code ? error->code : BONGO_CAT_ERROR_IO;
+        free(discovery); free(installs); free(metadata); free(existing);
+        return result;
+    }
     for (size_t i = 0; i < discovery->count; ++i) {
-        if (prepare_install(&discovery->candidates[i], &installs[i], root,
-            stamp, i, discovery->count, error)) continue;
+        if (prepare_install(&discovery->candidates[i], &metadata[i], existing,
+            &installs[i], root, i, error)) continue;
         cleanup(installs, i + 1, false);
         BongoCatResult result = error && error->code == BONGO_CAT_ERROR_FORMAT
             ? BONGO_CAT_ERROR_FORMAT : BONGO_CAT_ERROR_IO;
-        free(discovery); free(installs); return result;
+        free(discovery); free(installs); free(metadata); free(existing);
+        return result;
     }
     for (size_t i = 0; i < discovery->count; ++i) {
+        if (installs[i].existing) continue;
         if (!bongo_cat_path_rename(installs[i].temporary, installs[i].target)) {
             bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
                 "Cannot finish model import: %s", SDL_GetError());
             cleanup(installs, discovery->count, true);
-            free(discovery); free(installs);
+            free(discovery); free(installs); free(metadata); free(existing);
             return BONGO_CAT_ERROR_IO;
         }
         installs[i].committed = true;
     }
     if (receipt) {
         receipt->count = discovery->count;
-        for (size_t i = 0; i < discovery->count; ++i)
+        for (size_t i = 0; i < discovery->count; ++i) {
             snprintf(receipt->ids[i], sizeof(receipt->ids[i]), "%s", installs[i].id);
+            receipt->installed[i] = !installs[i].existing;
+            if (receipt->installed[i]) receipt->installed_count++;
+        }
     }
-    free(discovery); free(installs);
+    free(discovery); free(installs); free(metadata); free(existing);
     return BONGO_CAT_OK;
 }
 
@@ -209,7 +244,8 @@ static void remove_receipt(const char *data_root,
     char root[BONGO_CAT_PATH_CAP], path[BONGO_CAT_PATH_CAP];
     if (!receipt || !custom_root(data_root, root, sizeof(root))) return;
     for (size_t i = 0; i < receipt->count; ++i)
-        if (bongo_cat_path_join(path, sizeof(path), root, receipt->ids[i]))
+        if (receipt->installed[i] &&
+            bongo_cat_path_join(path, sizeof(path), root, receipt->ids[i]))
             bongo_cat_model_remove_tree(path, NULL);
 }
 
@@ -226,15 +262,19 @@ BongoCatResult bongo_cat_app_import_model(BongoCatApp *app, const char *source,
     }
     char previous[BONGO_CAT_PATH_CAP];
     snprintf(previous, sizeof(previous), "%s", app->config.current_model);
+    size_t preferred = 0;
+    for (size_t i = 0; i < receipt.count; ++i)
+        if (receipt.installed[i]) { preferred = i; break; }
+    const char *imported_id = receipt.count ? receipt.ids[preferred] : NULL;
     bongo_cat_app_rescan_models(app);
-    if (receipt.count && bongo_cat_app_select_model(app, receipt.ids[0]))
+    if (imported_id && bongo_cat_app_select_model(app, imported_id))
         return BONGO_CAT_OK;
 #ifndef BONGO_CAT_HAS_CUBISM
-    const BongoCatModelEntry *entry = receipt.count ?
-        bongo_cat_models_find(&app->models, receipt.ids[0]) : NULL;
+    const BongoCatModelEntry *entry = imported_id ?
+        bongo_cat_models_find(&app->models, imported_id) : NULL;
     if (entry) {
         snprintf(app->config.current_model, sizeof(app->config.current_model),
-            "%s", receipt.ids[0]);
+            "%s", imported_id);
         app->config.current_mode = entry->mode;
     }
     return BONGO_CAT_OK;

@@ -54,7 +54,8 @@ void bongo_cat_preferences_shortcut_smoke(BongoCatPreferences *value);
 void bongo_cat_preferences_import_path(BongoCatApp *app, SDL_Window *window,
     const char *path);
 void bongo_cat_preferences_import_complete(BongoCatApp *app,
-    BongoCatResult result, const BongoCatError *error, size_t imported_count);
+    BongoCatResult result, const BongoCatError *error, size_t resolved_count,
+    size_t installed_count);
 void bongo_cat_preferences_model_cache_clear(BongoCatApp *app);
 bool bongo_cat_preferences_remove_dialog_active(const BongoCatApp *app);
 void bongo_cat_preferences_remove_dialog_open(BongoCatApp *app, const char *id);

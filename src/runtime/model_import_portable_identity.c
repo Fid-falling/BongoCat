@@ -83,12 +83,13 @@ static bool stamp_root(const char *root, const char *group,
     return stamp_path(root, &walk);
 }
 
-bool bongo_cat_portable_identity(const BongoCatImportCandidate *candidate,
+bool bongo_cat_import_candidate_digest(const BongoCatImportCandidate *candidate,
     char output[65], BongoCatError *error) {
     if (!candidate || !output) return false;
-    char config_hash[65], setting[BONGO_CAT_PATH_CAP], setting_hash[65];
-    if (bongo_cat_sha256_file(candidate->config, config_hash, error) !=
-        BONGO_CAT_OK || !bongo_cat_path_join(setting, sizeof(setting),
+    char config_hash[65] = {0}, setting[BONGO_CAT_PATH_CAP], setting_hash[65];
+    if ((candidate->config[0] && bongo_cat_sha256_file(candidate->config,
+        config_hash, error) != BONGO_CAT_OK) ||
+        !bongo_cat_path_join(setting, sizeof(setting),
         candidate->directory, candidate->setting) ||
         bongo_cat_sha256_file(setting, setting_hash, error) != BONGO_CAT_OK)
         return false;
@@ -97,7 +98,7 @@ bool bongo_cat_portable_identity(const BongoCatImportCandidate *candidate,
         !stamp_root(candidate->assets, "assets", &stamp) ||
         !stamp_root(candidate->overrides, "overrides", &stamp)) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
-            "Cannot fingerprint portable Mver model assets: %s",
+            "Cannot fingerprint imported model assets: %s",
             candidate->package_root);
         return false;
     }
@@ -112,4 +113,9 @@ bool bongo_cat_portable_identity(const BongoCatImportCandidate *candidate,
     if (length < 0 || (size_t)length >= sizeof(summary)) return false;
     bongo_cat_sha256_bytes(summary, (size_t)length, output);
     return true;
+}
+
+bool bongo_cat_portable_identity(const BongoCatImportCandidate *candidate,
+    char output[65], BongoCatError *error) {
+    return bongo_cat_import_candidate_digest(candidate, output, error);
 }

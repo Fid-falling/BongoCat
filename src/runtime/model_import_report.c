@@ -127,7 +127,8 @@ bool bongo_cat_import_write_report(const BongoCatImportCandidate *candidate,
     bool ok = root && stats && capabilities && degraded &&
         yyjson_mut_obj_add_int(output, root, "schemaVersion", 1) &&
         yyjson_mut_obj_add_strcpy(output, root, "format", format_name(candidate->format)) &&
-        yyjson_mut_obj_add_str(output, root, "runtimeProfile", "mver-0.1.6") &&
+        yyjson_mut_obj_add_str(output, root, "runtimeProfile",
+            mver ? "mver-0.1.6" : "native") &&
         yyjson_mut_obj_add_strcpy(output, root, "mode",
             bongo_cat_mode_name(candidate->mode)) &&
         yyjson_mut_obj_add_bool(output, capabilities, "live2dModel", true) &&
@@ -141,7 +142,7 @@ bool bongo_cat_import_write_report(const BongoCatImportCandidate *candidate,
         yyjson_mut_obj_add_bool(output, capabilities, "expressionsAndMotions", true) &&
         yyjson_mut_obj_add_bool(output, capabilities, "shortcutAudio", mver) &&
         yyjson_mut_obj_add_bool(output, capabilities, "imageEffects", mver) &&
-        yyjson_mut_obj_add_bool(output, capabilities, "mverRuntime", true) &&
+        yyjson_mut_obj_add_bool(output, capabilities, "mverRuntime", mver) &&
         yyjson_mut_obj_add_bool(output, capabilities, "tauriAdapter", !mver) &&
         yyjson_mut_obj_add_bool(output, capabilities, "mverProjection", mver) &&
         yyjson_mut_obj_add_bool(output, capabilities, "mverPointerDomain", mver) &&

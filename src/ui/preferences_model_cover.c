@@ -16,8 +16,30 @@ typedef struct ModelCoverSlot {
     uint64_t generation;
 } ModelCoverSlot;
 
+typedef struct ModelCoverAttempt {
+    BongoCatApp *app;
+    char model_id[BONGO_CAT_ID_CAP];
+} ModelCoverAttempt;
+
 static ModelCoverSlot cover_cache[BONGO_CAT_MODEL_CAP];
+static ModelCoverAttempt cover_attempts[BONGO_CAT_MODEL_CAP];
 static uint64_t cover_generation;
+
+static void clear_attempts(BongoCatApp *app) {
+    for (size_t i = 0; i < BONGO_CAT_MODEL_CAP; ++i)
+        if (!app || cover_attempts[i].app == app)
+            memset(&cover_attempts[i], 0, sizeof(cover_attempts[i]));
+}
+
+static void prune_attempts(BongoCatApp *app) {
+    if (!app) return;
+    for (size_t i = 0; i < BONGO_CAT_MODEL_CAP; ++i) {
+        ModelCoverAttempt *attempt = &cover_attempts[i];
+        if (attempt->app == app && !bongo_cat_models_find(
+            &app->models, attempt->model_id))
+            memset(attempt, 0, sizeof(*attempt));
+    }
+}
 
 void bongo_cat_preferences_model_cover_cache_clear(BongoCatApp *app) {
     for (size_t i = 0; i < BONGO_CAT_MODEL_CAP; ++i) {
@@ -31,11 +53,13 @@ void bongo_cat_preferences_model_cover_cache_clear(BongoCatApp *app) {
 void bongo_cat_preferences_model_cache_clear(BongoCatApp *app) {
     bongo_cat_preferences_remove_dialog_clear(app);
     bongo_cat_preferences_model_cover_cache_clear(app);
+    clear_attempts(app);
 }
 
-void bongo_cat_preferences_model_covers_begin(void) {
+void bongo_cat_preferences_model_covers_begin(BongoCatApp *app) {
     cover_generation++;
     if (!cover_generation) cover_generation++;
+    prune_attempts(app);
 }
 
 const BongoCatModelCover *bongo_cat_preferences_model_cover(
@@ -73,7 +97,7 @@ const BongoCatModelCover *bongo_cat_preferences_model_cover(
 bool bongo_cat_preferences_model_cover_capture(BongoCatApp *app,
     const BongoCatModelEntry *entry) {
     if (!app || !entry || !app->window || !app->gl_context ||
-        !app->config.window.visible) return false;
+        app->window_minimized) return false;
     char path[BONGO_CAT_PATH_CAP], resources[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_join(resources, sizeof(resources),
         entry->adapter_directory, "resources") ||
@@ -92,14 +116,77 @@ bool bongo_cat_preferences_model_cover_capture(BongoCatApp *app,
     bongo_cat_file_remove(temporary);
     snprintf(app->pending_model_cover_path,
         sizeof(app->pending_model_cover_path), "%s", temporary);
-    bongo_cat_app_render_now(app);
+    bongo_cat_app_capture_pending_frame(app);
+    app->pending_model_cover_path[0] = '\0';
     if (previous_window && previous_context &&
         (previous_window != SDL_GL_GetCurrentWindow() ||
             previous_context != SDL_GL_GetCurrentContext()))
         SDL_GL_MakeCurrent(previous_window, previous_context);
-    if (!bongo_cat_path_is_file(temporary) ||
-        !bongo_cat_file_replace(temporary, path, true)) return false;
+    if (!bongo_cat_path_is_file(temporary)) return false;
+    if (!bongo_cat_file_replace(temporary, path, true)) {
+        bongo_cat_file_remove(temporary);
+        return false;
+    }
     if (fallback) bongo_cat_file_remove(marker);
+    return true;
+}
+
+static bool cover_needs_capture(const BongoCatModelEntry *entry) {
+    char resources[BONGO_CAT_PATH_CAP], path[BONGO_CAT_PATH_CAP];
+    char marker[BONGO_CAT_PATH_CAP];
+    return entry && bongo_cat_path_join(resources, sizeof(resources),
+            entry->adapter_directory, "resources") &&
+        bongo_cat_path_join(path, sizeof(path), resources, "cover.png") &&
+        bongo_cat_path_join(marker, sizeof(marker), resources,
+            ".bongo-cat-cover-fallback") &&
+        (!bongo_cat_path_is_file(path) || bongo_cat_path_is_file(marker));
+}
+
+static bool cover_attempted(BongoCatApp *app, const char *model_id) {
+    for (size_t i = 0; i < BONGO_CAT_MODEL_CAP; ++i)
+        if (cover_attempts[i].app == app &&
+            !strcmp(cover_attempts[i].model_id, model_id)) return true;
+    return false;
+}
+
+static bool mark_cover_attempt(BongoCatApp *app, const char *model_id) {
+    if (cover_attempted(app, model_id)) return false;
+    for (size_t i = 0; i < BONGO_CAT_MODEL_CAP; ++i) {
+        ModelCoverAttempt *attempt = &cover_attempts[i];
+        if (attempt->app) continue;
+        attempt->app = app;
+        snprintf(attempt->model_id, sizeof(attempt->model_id), "%s", model_id);
+        return true;
+    }
+    return false;
+}
+
+static void forget_cached_cover(BongoCatApp *app,
+    const BongoCatModelEntry *entry) {
+    char path[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_path_join(path, sizeof(path), entry->adapter_directory,
+        "resources/cover.png")) return;
+    for (size_t i = 0; i < BONGO_CAT_MODEL_CAP; ++i) {
+        ModelCoverSlot *slot = &cover_cache[i];
+        if (slot->app != app || strcmp(slot->path, path)) continue;
+        if (slot->image.texture) glDeleteTextures(1, &slot->image.texture);
+        memset(slot, 0, sizeof(*slot));
+        return;
+    }
+}
+
+bool bongo_cat_preferences_model_cover_generate_current(BongoCatApp *app) {
+    if (!app || !app->window || !app->gl_context ||
+        app->window_minimized) return false;
+    const BongoCatModelEntry *entry = bongo_cat_models_find(
+        &app->models, app->loaded_model);
+    if (!entry || strcmp(app->config.current_model, entry->id) ||
+        !cover_needs_capture(entry) || !mark_cover_attempt(app, entry->id))
+        return false;
+    bool captured = bongo_cat_preferences_model_cover_capture(app, entry);
+    if (captured) forget_cached_cover(app, entry);
+    else SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+        "Cannot generate cover for model %s", entry->id);
     return true;
 }
 

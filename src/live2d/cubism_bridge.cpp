@@ -210,8 +210,6 @@ extern "C" BongoCatResult bongo_cat_live2d_load(BongoCatLive2D *runtime,
         }
         delete previous;
         runtime->model = model;
-        glFinish();
-        bongo_cat_platform_trim_memory();
         return BONGO_CAT_OK;
     } catch (const std::bad_alloc &) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_MEMORY,

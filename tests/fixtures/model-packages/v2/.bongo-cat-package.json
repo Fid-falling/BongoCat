@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 2,
+  "packageId": "test-package-v2",
+  "contentDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "familyId": "test-family",
+  "displayName": "Test Package v2",
+  "mode": "keyboard",
+  "source": {
+    "format": "tauri-live2d",
+    "name": "Fixture",
+    "layout": "single-model",
+    "preserved": true
+  },
+  "model": {
+    "directory": "payload",
+    "setting": "dummy.model3.json"
+  },
+  "runtime": {
+    "adapter": "adapter",
+    "metadata": "adapter/.bongo-cat-adapter.json",
+    "adapterSchemaVersion": 1,
+    "generatorVersion": 1
+  },
+  "capabilities": [
+    "live2d",
+    "preview",
+    "runtime-adapter",
+    "keyboard-input",
+    "future-capability"
+  ],
+  "extensions": {}
+}

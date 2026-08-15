@@ -29,6 +29,7 @@ static void clear_textures(BongoCatOverlay *value) {
     value->clean_paws = false;
     value->composed_cover = false;
     value->composite_dirty = false;
+    value->model_pointer_preferred = false;
     for (size_t i = 0; i < 4; ++i) {
         if (value->cache[i].texture) glDeleteTextures(1, &value->cache[i].texture);
         memset(&value->cache[i], 0, sizeof(value->cache[i]));
@@ -89,7 +90,9 @@ void bongo_cat_overlay_clear(BongoCatOverlay *value) {
     value->directory[0] = '\0';
 }
 
-BongoCatResult bongo_cat_overlay_load(BongoCatOverlay *value, const char *directory, BongoCatError *error) {
+BongoCatResult bongo_cat_overlay_load(BongoCatOverlay *value,
+    const char *directory, bool model_pointer_preferred,
+    BongoCatError *error) {
     if (!value || !directory) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_ARGUMENT,
             "Missing model overlay state or directory");
@@ -98,9 +101,6 @@ BongoCatResult bongo_cat_overlay_load(BongoCatOverlay *value, const char *direct
     BongoCatError local = {0};
     BongoCatError *failure = error ? error : &local;
     *failure = (BongoCatError){0};
-    BongoCatMverPointerOverlay *pointer =
-        bongo_cat_mver_pointer_overlay_create(failure);
-    if (!pointer) return failure->code ? failure->code : BONGO_CAT_ERROR_MEMORY;
     char path[BONGO_CAT_PATH_CAP];
     /* Without the licensed Cubism runtime there is no model renderer.  Use the
        model's composed preview so the desktop pet remains visually complete;
@@ -108,25 +108,26 @@ BongoCatResult bongo_cat_overlay_load(BongoCatOverlay *value, const char *direct
 #ifdef BONGO_CAT_HAS_CUBISM
     if (!bongo_cat_path_join(path, sizeof(path), directory,
         "resources/background.png")) {
-        bongo_cat_mver_pointer_overlay_destroy(pointer);
         bongo_cat_error_set(failure, BONGO_CAT_ERROR_IO, "Model overlay path is too long");
         return BONGO_CAT_ERROR_IO;
     }
 #else
     if (!bongo_cat_path_join(path, sizeof(path), directory,
         "resources/cover.png")) {
-        bongo_cat_mver_pointer_overlay_destroy(pointer);
         bongo_cat_error_set(failure, BONGO_CAT_ERROR_IO, "Model overlay path is too long");
         return BONGO_CAT_ERROR_IO;
     }
 #endif
+    clear_textures(value);
+    bongo_cat_mver_pointer_overlay_clear(value->mver_pointer);
     GLuint background = 0;
     BongoCatError background_error = {0};
     if (bongo_cat_path_is_file(path)) background = bongo_cat_image_texture(path,
         NULL, NULL, &background_error);
     BongoCatError pointer_error = {0};
-    if (!bongo_cat_mver_pointer_overlay_load(pointer, directory, &pointer_error)) {
-        bongo_cat_mver_pointer_overlay_destroy(pointer);
+    if (!model_pointer_preferred &&
+        !bongo_cat_mver_pointer_overlay_load(value->mver_pointer, directory,
+            &pointer_error)) {
         if (background) glDeleteTextures(1, &background);
         *failure = pointer_error;
         if (!failure->message[0] && background_error.message[0])
@@ -137,10 +138,8 @@ BongoCatResult bongo_cat_overlay_load(BongoCatOverlay *value, const char *direct
     }
     if (!background && background_error.message[0])
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", background_error.message);
-    BongoCatMverPointerOverlay *previous_pointer = value->mver_pointer;
-    clear_textures(value);
-    value->mver_pointer = pointer;
     value->background = background;
+    value->model_pointer_preferred = model_pointer_preferred;
     value->composed_cover = false;
     value->clean_paws = false;
 #ifndef BONGO_CAT_HAS_CUBISM
@@ -149,7 +148,6 @@ BongoCatResult bongo_cat_overlay_load(BongoCatOverlay *value, const char *direct
 #endif
     snprintf(value->directory, sizeof(value->directory), "%s", directory);
     snprintf(value->background_path, sizeof(value->background_path), "%s", path);
-    if (previous_pointer) bongo_cat_mver_pointer_overlay_destroy(previous_pointer);
     return BONGO_CAT_OK;
 }
 
@@ -226,15 +224,18 @@ bool bongo_cat_overlay_hand_active(const BongoCatOverlay *value, bool right) {
 }
 
 bool bongo_cat_overlay_mver_pointer_enabled(const BongoCatOverlay *value) {
-    return value && bongo_cat_mver_pointer_overlay_enabled(value->mver_pointer);
+    return value && !value->model_pointer_preferred &&
+        bongo_cat_mver_pointer_overlay_enabled(value->mver_pointer);
 }
 bool bongo_cat_overlay_mver_pointer_left_handed(const BongoCatOverlay *value) {
-    return value && bongo_cat_mver_pointer_overlay_left_handed(value->mver_pointer);
+    return bongo_cat_overlay_mver_pointer_enabled(value) &&
+        bongo_cat_mver_pointer_overlay_left_handed(value->mver_pointer);
 }
 void bongo_cat_overlay_set_mver_pointer(BongoCatOverlay *value,
     float x_ratio, float y_ratio, bool left, bool right, bool side) {
-    if (value) bongo_cat_mver_pointer_overlay_set(value->mver_pointer,
-        x_ratio, y_ratio, left, right, side);
+    if (bongo_cat_overlay_mver_pointer_enabled(value))
+        bongo_cat_mver_pointer_overlay_set(value->mver_pointer, x_ratio,
+            y_ratio, left, right, side);
 }
 bool bongo_cat_overlay_effect(BongoCatOverlay *value, const char *path) {
     if (!value) return false;

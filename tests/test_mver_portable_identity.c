@@ -43,6 +43,34 @@ int test_mver_portable_identity(void) {
     bongo_cat_models_init(&app->models);
     snprintf(app->data_root, sizeof(app->data_root), "%s", data);
     BongoCatError error = {0};
+    BongoCatImportReceipt first_install = {0}, repeated_install = {0};
+    CHECK(bongo_cat_import_install(source, data, &first_install, &error) ==
+        BONGO_CAT_OK);
+    CHECK(first_install.count == 1 && first_install.installed_count == 1 &&
+        first_install.installed[0]);
+    CHECK(bongo_cat_import_install(source, data, &repeated_install, &error) ==
+        BONGO_CAT_OK);
+    CHECK(repeated_install.count == 1 && repeated_install.installed_count == 0 &&
+        !repeated_install.installed[0] &&
+        strcmp(first_install.ids[0], repeated_install.ids[0]) == 0);
+    char custom_root[BONGO_CAT_PATH_CAP], adapter_metadata[BONGO_CAT_PATH_CAP];
+    CHECK(child(custom_root, sizeof(custom_root), data, "custom-models", false));
+    BongoCatModelCatalog *installed = calloc(1, sizeof(*installed));
+    CHECK(installed != NULL);
+    if (installed) {
+        CHECK(bongo_cat_models_scan(installed, custom_root, false, &error) ==
+            BONGO_CAT_OK);
+        CHECK(installed->count == 1 && installed->entries[0].package_schema == 2 &&
+            installed->entries[0].source_format == BONGO_CAT_MODEL_SOURCE_MVER &&
+            installed->entries[0].content_digest[0] != '\0' &&
+            (installed->entries[0].capabilities &
+                BONGO_CAT_MODEL_CAPABILITY_MVER_PROJECTION));
+        CHECK(child(adapter_metadata, sizeof(adapter_metadata),
+            installed->entries[0].adapter_directory,
+            ".bongo-cat-adapter.json", false));
+        CHECK(bongo_cat_path_is_file(adapter_metadata));
+        free(installed);
+    }
     CHECK(bongo_cat_import_portable_mver(app, source, &error) == BONGO_CAT_OK);
     CHECK(app->models.count == 1);
     char old_id[BONGO_CAT_ID_CAP];

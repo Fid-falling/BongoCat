@@ -125,9 +125,8 @@ void bongo_cat_app_rescan_models(BongoCatApp *app) {
         scan_portable_root(app, base);
     prune_behavior_shortcuts(app);
     for (size_t i = 0; i < app->models.count; ++i)
-        if (!app->models.entries[i].preset)
-            bongo_cat_import_apply_metadata(app, app->models.entries[i].id,
-                app->models.entries[i].adapter_directory);
+        bongo_cat_import_apply_metadata(app, app->models.entries[i].id,
+            app->models.entries[i].adapter_directory);
 }
 
 BongoCatResult bongo_cat_app_remove_model(BongoCatApp *app, const char *id,

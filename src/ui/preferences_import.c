@@ -13,7 +13,9 @@ typedef struct BongoCatImportJob {
     char **paths;
     char data_root[BONGO_CAT_PATH_CAP];
     char first_id[BONGO_CAT_ID_CAP];
-    size_t imported_count;
+    bool first_id_installed;
+    size_t resolved_count;
+    size_t installed_count;
     BongoCatResult result;
     BongoCatError error;
     BongoCatImportDialog *dialog;
@@ -134,17 +136,25 @@ static int SDLCALL import_worker(void *userdata) {
         BongoCatResult result = bongo_cat_import_install(job->paths[i],
             job->data_root, &receipt, &error);
         if (result == BONGO_CAT_OK) {
-            if (!job->first_id[0] && receipt.count)
-                snprintf(job->first_id, sizeof(job->first_id), "%s", receipt.ids[0]);
-            job->imported_count += receipt.count;
+            for (size_t j = 0; j < receipt.count; ++j) {
+                if (!job->first_id[0] ||
+                    (receipt.installed[j] && !job->first_id_installed)) {
+                    snprintf(job->first_id, sizeof(job->first_id), "%s",
+                        receipt.ids[j]);
+                    job->first_id_installed = receipt.installed[j];
+                }
+            }
+            job->resolved_count += receipt.count;
+            job->installed_count += receipt.installed_count;
             job->result = BONGO_CAT_OK;
         } else if (!job->error.message[0]) {
             job->result = result;
             job->error = error;
         }
     }
-    if (!job->imported_count && !job->error.message[0])
-        bongo_cat_error_set(&job->error, job->result,
+    if (job->resolved_count) job->result = BONGO_CAT_OK;
+    if (!job->resolved_count && !job->error.message[0])
+        bongo_cat_error_set(&job->error, BONGO_CAT_ERROR_FORMAT,
             "No model could be imported");
     SDL_Event event = {0};
     SDL_LockMutex(job->dialog->mutex);
@@ -257,7 +267,7 @@ static void complete_job(BongoCatImportDialog *dialog, BongoCatApp *app,
         }
     }
     bongo_cat_preferences_import_complete(app, job->result, &job->error,
-        job->imported_count);
+        job->resolved_count, job->installed_count);
     free_job(job);
     release_dialog(dialog);
 }

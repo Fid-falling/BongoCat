@@ -3,14 +3,45 @@
 
 #include "bongo_cat/config.h"
 
+typedef enum BongoCatModelSourceFormat {
+    BONGO_CAT_MODEL_SOURCE_UNKNOWN,
+    BONGO_CAT_MODEL_SOURCE_BUILTIN,
+    BONGO_CAT_MODEL_SOURCE_TAURI,
+    BONGO_CAT_MODEL_SOURCE_MVER,
+    BONGO_CAT_MODEL_SOURCE_MVER_PATCH
+} BongoCatModelSourceFormat;
+
+typedef enum BongoCatModelCapability {
+    BONGO_CAT_MODEL_CAPABILITY_LIVE2D = 1u << 0,
+    BONGO_CAT_MODEL_CAPABILITY_PREVIEW = 1u << 1,
+    BONGO_CAT_MODEL_CAPABILITY_RUNTIME_ADAPTER = 1u << 2,
+    BONGO_CAT_MODEL_CAPABILITY_INPUT_IMAGES = 1u << 3,
+    BONGO_CAT_MODEL_CAPABILITY_KEYBOARD_INPUT = 1u << 4,
+    BONGO_CAT_MODEL_CAPABILITY_GAMEPAD_INPUT = 1u << 5,
+    BONGO_CAT_MODEL_CAPABILITY_BEHAVIORS = 1u << 6,
+    BONGO_CAT_MODEL_CAPABILITY_AUDIO = 1u << 7,
+    BONGO_CAT_MODEL_CAPABILITY_EFFECTS = 1u << 8,
+    BONGO_CAT_MODEL_CAPABILITY_MVER_PROJECTION = 1u << 9,
+    BONGO_CAT_MODEL_CAPABILITY_POINTER_OVERLAY = 1u << 10,
+    BONGO_CAT_MODEL_CAPABILITY_IMAGE_PATCH = 1u << 11
+} BongoCatModelCapability;
+
 typedef struct BongoCatModelEntry {
     char id[BONGO_CAT_ID_CAP];
+    char package_id[BONGO_CAT_ID_CAP];
+    char content_digest[65];
+    char family_id[BONGO_CAT_ID_CAP];
     char display_name[BONGO_CAT_ID_CAP];
     char directory[BONGO_CAT_PATH_CAP];
     char adapter_directory[BONGO_CAT_PATH_CAP];
     char storage_directory[BONGO_CAT_PATH_CAP];
     char setting_file[BONGO_CAT_PATH_CAP];
     BongoCatModelMode mode;
+    BongoCatModelSourceFormat source_format;
+    uint32_t capabilities;
+    int package_schema;
+    int adapter_schema;
+    int adapter_generator;
     bool preset;
     bool managed;
 } BongoCatModelEntry;
@@ -52,6 +83,8 @@ BongoCatResult bongo_cat_models_scan(BongoCatModelCatalog *catalog, const char *
     bool preset, BongoCatError *error);
 const BongoCatModelEntry *bongo_cat_models_find(const BongoCatModelCatalog *catalog,
     const char *id);
+bool bongo_cat_model_adapter_metadata_path(const char *directory,
+    char *path, size_t capacity);
 const char *bongo_cat_model_default_name(const BongoCatModelEntry *entry);
 const char *bongo_cat_model_name(const BongoCatConfig *config,
     const BongoCatModelEntry *entry);
