@@ -86,7 +86,7 @@ const BongoCatModelEntry *bongo_cat_import_find_existing_package(
     return NULL;
 }
 
-void bongo_cat_import_describe_portable_entry(BongoCatModelEntry *entry,
+void bongo_cat_import_describe_nearby_entry(BongoCatModelEntry *entry,
     const BongoCatImportCandidate *candidate, const char *id,
     const char *identity, const char *source_hash, const char *source,
     const char *adapter) {

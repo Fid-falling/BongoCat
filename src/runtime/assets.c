@@ -29,7 +29,7 @@ BongoCatResult bongo_cat_app_locate_assets(BongoCatApp *app,
     if (!asset_directory(app->asset_root, sizeof(app->asset_root), base ? base : "")) {
         char cache[BONGO_CAT_PATH_CAP], name[64];
         snprintf(name, sizeof(name), "embedded-assets-%s", BONGO_CAT_VERSION);
-        if (bongo_cat_path_join(cache, sizeof(cache), app->data_root, name)) {
+        if (bongo_cat_path_join(cache, sizeof(cache), app->cache_root, name)) {
             BongoCatError embedded = {0};
             if (bongo_cat_platform_embedded_assets(cache, &embedded) == BONGO_CAT_OK) {
                 asset_directory(app->asset_root, sizeof(app->asset_root), cache);

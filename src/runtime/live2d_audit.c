@@ -64,7 +64,7 @@ static bool pointer(BongoCatApp *app, bool mirror) {
     SDL_Rect bounds;
     double center_x, center_y;
     if (!pointer_test_center(app, &bounds, &center_x, &center_y)) return false;
-    app->config.model.mouse_mirror = mirror;
+    app->settings.model.mouse_mirror = mirror;
     app->left_mouse_down = false;
     bongo_cat_app_apply_mouse_position(app, center_x + bounds.w * 0.4,
         center_y - bounds.h * 0.4, 1.0f / 60.0f);
@@ -79,7 +79,7 @@ static bool reverse_pointer(BongoCatApp *app) {
     if (!pointer_test_center(app, &bounds, &center_x, &center_y)) return false;
     pointer_audit = (PointerAudit){.ran = true,
         .mver = app->model_render_options.mver_projection};
-    app->config.model.mouse_mirror = false;
+    app->settings.model.mouse_mirror = false;
     app->left_mouse_down = false;
     const float ratios[4][2] = {
         {-0.4f, -0.4f}, {0.4f, -0.4f}, {-0.4f, 0.4f}, {0.4f, 0.4f}};
@@ -119,7 +119,7 @@ static bool apply(BongoCatApp *app, const char *scenario) {
     if (strcmp(scenario, "viewer-sequence") == 0)
         return bongo_cat_live2d_viewer_audit_run(app);
     if (strcmp(scenario, "mouse-screen") == 0) return bongo_cat_app_audit_screen_pointer(app); if (strcmp(scenario, "mouse-hand-screen") == 0) return bongo_cat_app_audit_display_pointer(app);
-    if (strcmp(scenario, "mirror") == 0) app->config.model.mirror = true;
+    if (strcmp(scenario, "mirror") == 0) app->settings.model.mirror = true;
     else if (strcmp(scenario, "mouse-move") == 0) return pointer(app, false);
     else if (strcmp(scenario, "mouse-move-mirror") == 0) return pointer(app, true);
     else if (strcmp(scenario, "mouse-reverse") == 0)
@@ -189,7 +189,7 @@ static bool signed_value(BongoCatApp *app, const char *id, bool positive) {
 static bool assertions(BongoCatApp *app, const char *scenario, bool operation) {
     if (!operation) return false;
     if (strncmp(scenario, "switch:", 7) == 0)
-        return strcmp(app->config.current_model, scenario + 7) == 0;
+        return strcmp(app->session.active_model_id, scenario + 7) == 0;
     if (strcmp(scenario, "idle") == 0 || strcmp(scenario, "mouse-screen") == 0 || strcmp(scenario, "mouse-hand-screen") == 0 || strcmp(scenario, "mirror") == 0 ||
         strcmp(scenario, "visual-consistency") == 0 ||
         strcmp(scenario, "viewer-sequence") == 0 ||
@@ -258,14 +258,15 @@ void bongo_cat_live2d_audit_run(BongoCatApp *app) {
     bool result = apply(app, app->smoke_live2d_scenario);
     double duration_ms = (SDL_GetTicksNS() - started) / 1000000.0;
     char path[BONGO_CAT_PATH_CAP];
-    if (!bongo_cat_path_join(path, sizeof(path), app->data_root, "live2d-audit.txt")) return;
+    if (!bongo_cat_path_join(path, sizeof(path), app->state_root,
+        "live2d-audit.txt")) return;
     FILE *file = bongo_cat_file_open(path, "wb");
     if (!file) return;
     bool verified = assertions(app, app->smoke_live2d_scenario, result);
     fprintf(file, "scenario=%s\nmodel=%s\nmode=%s\noperation=%s\nassertions=%s\n"
         "duration_ms=%.3f\n",
-        app->smoke_live2d_scenario, app->config.current_model,
-        bongo_cat_mode_name(app->config.current_mode), result ? "accepted" : "rejected",
+        app->smoke_live2d_scenario, app->session.active_model_id,
+        bongo_cat_mode_name(app->loaded_mode), result ? "accepted" : "rejected",
         verified ? "passed" : "failed", duration_ms);
 #ifdef BONGO_CAT_HAS_CUBISM
     fputs("renderer=cubism-native\n", file);

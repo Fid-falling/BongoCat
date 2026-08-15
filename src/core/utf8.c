@@ -45,7 +45,7 @@ bool bongo_cat_utf8_valid(const char *text) {
     return true;
 }
 
-bool bongo_cat_utf8_normalize_legacy(const char *text,
+bool bongo_cat_utf8_normalize_mver(const char *text,
     char *output, size_t capacity) {
     if (!text || !output || !capacity) return false;
     size_t length = strlen(text);

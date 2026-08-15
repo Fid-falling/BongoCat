@@ -35,46 +35,50 @@ typedef enum BongoCatObsBackgroundColor {
     BONGO_CAT_OBS_BACKGROUND_COLOR_COUNT
 } BongoCatObsBackgroundColor;
 
-typedef struct BongoCatModelOptions {
+typedef struct BongoCatModelPreferences {
     bool mirror;
     bool mouse_mirror;
     bool mouse_centered;
     bool ignore_mouse;
     float auto_release_seconds;
     int max_fps;
-} BongoCatModelOptions;
+} BongoCatModelPreferences;
 
-typedef struct BongoCatWindowOptions {
-    bool visible;
+typedef struct BongoCatWindowPreferences {
     bool pass_through;
     bool always_on_top;
     bool hide_on_hover;
     bool keep_in_screen;
     bool obs_background;
     BongoCatObsBackgroundColor obs_background_color;
+    float hide_delay_seconds;
+} BongoCatWindowPreferences;
+
+typedef struct BongoCatWindowState {
+    bool visible;
+    bool position_known;
     float scale_percent;
     float opacity_percent;
-    float hide_delay_seconds;
     int x;
     int y;
     int width;
     int height;
-} BongoCatWindowOptions;
+} BongoCatWindowState;
 
-typedef struct BongoCatAppOptions {
+typedef struct BongoCatApplicationPreferences {
     bool autostart;
     bool tray_visible;
     BongoCatTheme theme;
     BongoCatLanguage language;
-} BongoCatAppOptions;
+} BongoCatApplicationPreferences;
 
-typedef struct BongoCatShortcutOptions {
+typedef struct BongoCatShortcutPreferences {
     char visible_cat[BONGO_CAT_SHORTCUT_CAP];
     char visible_preferences[BONGO_CAT_SHORTCUT_CAP];
     char mirror[BONGO_CAT_SHORTCUT_CAP];
     char pass_through[BONGO_CAT_SHORTCUT_CAP];
     char always_on_top[BONGO_CAT_SHORTCUT_CAP];
-} BongoCatShortcutOptions;
+} BongoCatShortcutPreferences;
 
 typedef struct BongoCatBehaviorShortcut {
     char id[BONGO_CAT_BEHAVIOR_ID_CAP];
@@ -87,39 +91,47 @@ typedef struct BongoCatModelLabel {
     char label[BONGO_CAT_ID_CAP];
 } BongoCatModelLabel;
 
-typedef struct BongoCatConfig {
-    BongoCatModelOptions model;
-    BongoCatWindowOptions window;
-    BongoCatAppOptions app;
-    BongoCatShortcutOptions shortcuts;
+#define BONGO_CAT_SETTINGS_EXTENSIONS_CAP 4096
+
+typedef struct BongoCatSettings {
+    BongoCatModelPreferences model;
+    BongoCatWindowPreferences window;
+    BongoCatApplicationPreferences app;
+    BongoCatShortcutPreferences shortcuts;
     BongoCatBehaviorShortcut behavior_shortcuts[BONGO_CAT_BEHAVIOR_BINDING_CAP];
     size_t behavior_shortcut_count;
     BongoCatModelLabel model_labels[BONGO_CAT_MODEL_CAP];
     size_t model_label_count;
-    char current_model[BONGO_CAT_PATH_CAP];
-    BongoCatModelMode current_mode;
-} BongoCatConfig;
+    char extensions_json[BONGO_CAT_SETTINGS_EXTENSIONS_CAP];
+} BongoCatSettings;
+
+typedef struct BongoCatSessionState {
+    BongoCatWindowState window;
+    char active_model_id[BONGO_CAT_ID_CAP];
+} BongoCatSessionState;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void bongo_cat_config_defaults(BongoCatConfig *config);
-void bongo_cat_config_validate(BongoCatConfig *config);
-bool bongo_cat_config_shortcut_conflicts(const BongoCatConfig *config,
+void bongo_cat_settings_defaults(BongoCatSettings *settings);
+void bongo_cat_settings_validate(BongoCatSettings *settings);
+void bongo_cat_session_defaults(BongoCatSessionState *session);
+void bongo_cat_session_validate(BongoCatSessionState *session);
+bool bongo_cat_settings_shortcut_conflicts(const BongoCatSettings *settings,
     const char *shortcut, const char *exclude);
-const char *bongo_cat_config_model_label(const BongoCatConfig *config,
+const char *bongo_cat_settings_model_label(const BongoCatSettings *settings,
     const char *id);
-bool bongo_cat_config_set_model_label(BongoCatConfig *config,
+bool bongo_cat_settings_set_model_label(BongoCatSettings *settings,
     const char *id, const char *label);
-BongoCatResult bongo_cat_preferences_load(const char *path,
-    BongoCatConfig *config, BongoCatError *error);
-BongoCatResult bongo_cat_preferences_save(const char *path,
-    const BongoCatConfig *config, BongoCatError *error);
+BongoCatResult bongo_cat_settings_load(const char *path,
+    BongoCatSettings *settings, BongoCatError *error);
+BongoCatResult bongo_cat_settings_save(const char *path,
+    const BongoCatSettings *settings, BongoCatError *error);
 BongoCatResult bongo_cat_session_load(const char *path,
-    BongoCatConfig *config, BongoCatError *error);
+    BongoCatSessionState *session, BongoCatError *error);
 BongoCatResult bongo_cat_session_save(const char *path,
-    const BongoCatConfig *config, BongoCatError *error);
+    const BongoCatSessionState *session, BongoCatError *error);
 const char *bongo_cat_theme_name(BongoCatTheme value);
 const char *bongo_cat_language_name(BongoCatLanguage value);
 const char *bongo_cat_mode_name(BongoCatModelMode value);

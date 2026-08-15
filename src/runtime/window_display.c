@@ -170,15 +170,16 @@ static bool fit_to_display(BongoCatApp *app, SDL_DisplayID display,
     SDL_Point next = fitted_position(window, &bounds);
     if (next.x == window->x && next.y == window->y) return false;
     if (!SDL_SetWindowPosition(app->window, next.x, next.y)) return false;
-    app->config.window.x = next.x;
-    app->config.window.y = next.y;
+    app->session.window.x = next.x;
+    app->session.window.y = next.y;
+    app->session.window.position_known = true;
     bongo_cat_window_mark_hit_dirty(app);
     return true;
 }
 
 void bongo_cat_window_clamp_to_display(BongoCatApp *app) {
     SDL_Rect rect;
-    if (!app || !app->config.window.keep_in_screen || !window_rect(app, &rect)) return;
+    if (!app || !app->settings.window.keep_in_screen || !window_rect(app, &rect)) return;
     if (available_displays_cover(app, &rect)) return;
     fit_to_display(app, target_display(app, &rect), &rect);
 }
@@ -189,7 +190,7 @@ void bongo_cat_window_drag_to(BongoCatApp *app, int x, int y) {
         width <= 0 || height <= 0) return;
     SDL_Rect requested = {x, y, width, height};
     SDL_Point next = {x, y};
-    if (app->config.window.keep_in_screen &&
+    if (app->settings.window.keep_in_screen &&
         !available_displays_cover(app, &requested)) {
         SDL_Rect bounds; SDL_DisplayID display = target_display(app, &requested);
         if (display && (SDL_GetDisplayUsableBounds(display, &bounds) ||
@@ -198,7 +199,8 @@ void bongo_cat_window_drag_to(BongoCatApp *app, int x, int y) {
     if (SDL_GetWindowPosition(app->window, &current_x, &current_y) &&
         current_x == next.x && current_y == next.y) return;
     if (!SDL_SetWindowPosition(app->window, next.x, next.y)) return;
-    app->config.window.x = next.x; app->config.window.y = next.y;
+    app->session.window.x = next.x; app->session.window.y = next.y;
+    app->session.window.position_known = true;
     bongo_cat_window_mark_hit_dirty(app);
 }
 
@@ -216,7 +218,7 @@ void bongo_cat_window_display_event(BongoCatApp *app, const SDL_Event *event) {
     if (!app || !event) return;
     if (event->type < SDL_EVENT_DISPLAY_FIRST ||
         event->type > SDL_EVENT_DISPLAY_LAST) return;
-    if (app->window_drag_active && app->config.window.keep_in_screen)
+    if (app->window_drag_active && app->settings.window.keep_in_screen)
         bongo_cat_window_drag_bounds_refresh(app);
     bongo_cat_app_reset_pointer_tracking(app);
     app->display_recovery_due_ns = SDL_GetTicksNS() + DISPLAY_RECOVERY_DELAY_NS;
@@ -226,7 +228,7 @@ void bongo_cat_window_update_display_recovery(BongoCatApp *app, uint64_t now) {
     if (!app || !app->display_recovery_due_ns ||
         now < app->display_recovery_due_ns) return;
     app->display_recovery_due_ns = 0;
-    if (app->config.window.keep_in_screen) bongo_cat_window_clamp_to_display(app);
+    if (app->settings.window.keep_in_screen) bongo_cat_window_clamp_to_display(app);
     else bongo_cat_window_recover_to_display(app);
 }
 

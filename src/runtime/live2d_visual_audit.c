@@ -162,7 +162,7 @@ static bool motion_replay_matrix(FILE *file, BongoCatApp *app,
 bool bongo_cat_live2d_visual_audit_run(BongoCatApp *app) {
     if (!app || !app->live2d || !app->window) return false;
     char path[BONGO_CAT_PATH_CAP];
-    if (!bongo_cat_path_join(path, sizeof(path), app->data_root,
+    if (!bongo_cat_path_join(path, sizeof(path), app->state_root,
         "live2d-visual-audit.csv")) return false;
     FILE *file = bongo_cat_file_open(path, "wb");
     if (!file) return false;

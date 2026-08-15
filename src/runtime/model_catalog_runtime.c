@@ -68,7 +68,7 @@ BongoCatResult bongo_cat_copy_directory(const char *source,
 
 static bool custom_root(BongoCatApp *app, char *path, size_t capacity) {
     return app->data_root[0] && bongo_cat_path_join(path, capacity,
-        app->data_root, "custom-models") &&
+        app->data_root, "models") &&
         bongo_cat_path_create_directory(path);
 }
 
@@ -87,20 +87,20 @@ static bool shortcut_model_exists(const BongoCatModelCatalog *models,
 
 static void prune_behavior_shortcuts(BongoCatApp *app) {
     size_t output = 0;
-    for (size_t i = 0; i < app->config.behavior_shortcut_count; ++i) {
-        BongoCatBehaviorShortcut *value = &app->config.behavior_shortcuts[i];
+    for (size_t i = 0; i < app->settings.behavior_shortcut_count; ++i) {
+        BongoCatBehaviorShortcut *value = &app->settings.behavior_shortcuts[i];
         if (!shortcut_model_exists(&app->models, value->id)) continue;
-        if (output != i) app->config.behavior_shortcuts[output] = *value;
+        if (output != i) app->settings.behavior_shortcuts[output] = *value;
         output++;
     }
-    app->config.behavior_shortcut_count = output;
+    app->settings.behavior_shortcut_count = output;
 }
 
-static void scan_portable_root(BongoCatApp *app, const char *root) {
+static void scan_nearby_root(BongoCatApp *app, const char *root) {
     if (!root || !root[0] || !bongo_cat_path_is_dir(root)) return;
     size_t before = app->models.count;
     BongoCatError error = {0};
-    BongoCatResult result = bongo_cat_import_portable_mver_scan(app, root,
+    BongoCatResult result = bongo_cat_import_nearby_mver_scan(app, root,
         &error);
     size_t added = app->models.count - before;
     if (added) SDL_Log("Nearby model scan added %llu model modes from %s",
@@ -122,7 +122,7 @@ void bongo_cat_app_rescan_models(BongoCatApp *app) {
     }
     const char *base = SDL_GetBasePath();
     if (!SDL_getenv("BONGO_CAT_DISABLE_NEARBY_MODEL_SCAN"))
-        scan_portable_root(app, base);
+        scan_nearby_root(app, base);
     prune_behavior_shortcuts(app);
     for (size_t i = 0; i < app->models.count; ++i)
         bongo_cat_import_apply_metadata(app, app->models.entries[i].id,
@@ -144,11 +144,11 @@ BongoCatResult bongo_cat_app_remove_model(BongoCatApp *app, const char *id,
     }
     if (entry->preset || entry->managed) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_ARGUMENT, entry->managed ?
-            "Portable Mver models are managed by their source directory: %s" :
+            "Nearby Mver models are managed by their source directory: %s" :
             "Built-in models cannot be removed: %s", id);
         return BONGO_CAT_ERROR_ARGUMENT;
     }
-    bool selected = !strcmp(id, app->config.current_model) ||
+    bool selected = !strcmp(id, app->session.active_model_id) ||
         !strcmp(id, app->loaded_model);
     char directory[BONGO_CAT_PATH_CAP];
     snprintf(directory, sizeof(directory), "%s", entry->storage_directory);
@@ -183,7 +183,7 @@ BongoCatResult bongo_cat_app_remove_model(BongoCatApp *app, const char *id,
         }
         return BONGO_CAT_ERROR_IO;
     }
-    bongo_cat_config_set_model_label(&app->config, id, "");
+    bongo_cat_settings_set_model_label(&app->settings, id, "");
     bongo_cat_app_rescan_models(app);
     return BONGO_CAT_OK;
 }

@@ -32,9 +32,9 @@ void bongo_cat_window_show_context_menu(BongoCatApp *app) {
     const char *model_names[BONGO_CAT_MODEL_CAP];
     size_t current_model = app->models.count;
     for (size_t i = 0; i < app->models.count; ++i) {
-        model_names[i] = bongo_cat_model_name(&app->config,
+        model_names[i] = bongo_cat_model_name(&app->settings,
             &app->models.entries[i]);
-        if (!strcmp(app->models.entries[i].id, app->config.current_model))
+        if (!strcmp(app->models.entries[i].id, app->session.active_model_id))
             current_model = i;
     }
     char motion_names[BONGO_CAT_BEHAVIOR_CAP][BONGO_CAT_MENU_LABEL_CAP];
@@ -44,8 +44,8 @@ void bongo_cat_window_show_context_menu(BongoCatApp *app) {
     bongo_cat_window_behavior_labels(app, motion_names, motion_checked,
         &motion_count, expression_names, &expression_count,
         &current_expression);
-    bool dark_theme = app->config.app.theme == BONGO_CAT_THEME_DARK ||
-        (app->config.app.theme == BONGO_CAT_THEME_AUTO &&
+    bool dark_theme = app->settings.app.theme == BONGO_CAT_THEME_DARK ||
+        (app->settings.app.theme == BONGO_CAT_THEME_AUTO &&
             SDL_GetSystemTheme() == SDL_SYSTEM_THEME_DARK);
     BongoCatMenuLabels labels = {
         tr(app, "composables.useAppMenu.labels.preference", "Preferences"),
@@ -64,9 +64,9 @@ void bongo_cat_window_show_context_menu(BongoCatApp *app) {
         tr(app, "composables.useAppMenu.labels.expression", "Expressions"),
         model_names, motion_names, expression_names, motion_checked,
         app->models.count, current_model, motion_count, expression_count,
-        current_expression, app->config.window.scale_percent,
-        app->config.window.opacity_percent, app->config.window.pass_through,
-        app->config.window.always_on_top, dark_theme,
+        current_expression, app->session.window.scale_percent,
+        app->session.window.opacity_percent, app->settings.window.pass_through,
+        app->settings.window.always_on_top, dark_theme,
         bongo_cat_window_menu_preview, bongo_cat_window_menu_preview_tick,
         bongo_cat_window_menu_restore, &preview};
     BongoCatMenuAction action = bongo_cat_platform_context_menu(
@@ -85,13 +85,13 @@ void bongo_cat_window_menu_action(BongoCatApp *app,
     else if (action == BONGO_CAT_MENU_HIDE)
         bongo_cat_window_set_visible(app, false);
     else if (action == BONGO_CAT_MENU_PASS_THROUGH) {
-        app->config.window.pass_through = !app->config.window.pass_through;
+        app->settings.window.pass_through = !app->settings.window.pass_through;
         bongo_cat_window_mark_hit_dirty(app);
         bongo_cat_window_sync_click_through(app);
     } else if (action == BONGO_CAT_MENU_ALWAYS_ON_TOP) {
-        app->config.window.always_on_top = !app->config.window.always_on_top;
+        app->settings.window.always_on_top = !app->settings.window.always_on_top;
         bongo_cat_platform_set_always_on_top(&app->platform,
-            app->config.window.always_on_top);
+            app->settings.window.always_on_top);
         bongo_cat_window_mark_hit_dirty(app);
         bongo_cat_window_sync_click_through(app);
     } else if (action >= BONGO_CAT_MENU_SCALE_50 &&
@@ -102,10 +102,10 @@ void bongo_cat_window_menu_action(BongoCatApp *app,
     } else if (action >= BONGO_CAT_MENU_OPACITY_10 &&
         action <= BONGO_CAT_MENU_OPACITY_100) {
         bongo_cat_window_cancel_wheel_animation(app);
-        app->config.window.opacity_percent =
+        app->session.window.opacity_percent =
             (float)(10 * (action - BONGO_CAT_MENU_OPACITY_10 + 1));
         bongo_cat_platform_set_opacity(&app->platform,
-            app->config.window.opacity_percent / 100.0f);
+            app->session.window.opacity_percent / 100.0f);
     } else if (bongo_cat_window_behavior_action(app, action)) {
         bongo_cat_app_render_now(app);
     } else if (action >= BONGO_CAT_MENU_MODEL_FIRST &&
@@ -119,20 +119,20 @@ void bongo_cat_window_menu_action(BongoCatApp *app,
 
 bool bongo_cat_window_menu_self_test(BongoCatApp *app) {
     if (!app || !app->preferences) return false;
-    app->config.window.pass_through = false;
-    app->config.window.always_on_top = false;
-    app->config.window.scale_percent = 100.0f;
-    app->config.window.opacity_percent = 100.0f;
+    app->settings.window.pass_through = false;
+    app->settings.window.always_on_top = false;
+    app->session.window.scale_percent = 100.0f;
+    app->session.window.opacity_percent = 100.0f;
     bongo_cat_window_menu_action(app, BONGO_CAT_MENU_PASS_THROUGH);
     bongo_cat_window_menu_action(app, BONGO_CAT_MENU_ALWAYS_ON_TOP);
     bongo_cat_window_menu_action(app, BONGO_CAT_MENU_SCALE_120);
     bongo_cat_window_menu_action(app, BONGO_CAT_MENU_OPACITY_50);
     bongo_cat_window_menu_action(app, BONGO_CAT_MENU_PREFERENCES);
     bool behavior = bongo_cat_window_behavior_self_test(app);
-    bool result = app->config.window.pass_through &&
-        app->config.window.always_on_top &&
-        app->config.window.scale_percent == 120.0f &&
-        app->config.window.opacity_percent == 50.0f &&
+    bool result = app->settings.window.pass_through &&
+        app->settings.window.always_on_top &&
+        app->session.window.scale_percent == 120.0f &&
+        app->session.window.opacity_percent == 50.0f &&
         bongo_cat_preferences_visible(app->preferences) && behavior;
     bongo_cat_preferences_close(app->preferences);
     return result;

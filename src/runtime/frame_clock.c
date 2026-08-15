@@ -4,8 +4,8 @@
 
 static uint64_t frame_interval_ns(const BongoCatApp *app) {
 #ifdef BONGO_CAT_HAS_CUBISM
-    int fps = app && app->config.model.max_fps > 0 ?
-        app->config.model.max_fps : 60;
+    int fps = app && app->settings.model.max_fps > 0 ?
+        app->settings.model.max_fps : 60;
     return 1000000000ull / (uint64_t)fps;
 #else
     (void)app;
@@ -21,7 +21,7 @@ static int remaining_ms(uint64_t deadline, uint64_t now) {
 }
 
 bool bongo_cat_model_frame_due(const BongoCatApp *app, uint64_t now) {
-    return app && app->config.window.visible && !app->window_minimized &&
+    return app && app->session.window.visible && !app->window_minimized &&
         (!app->last_frame_ns || now >= app->last_frame_ns +
             frame_interval_ns(app));
 }
@@ -29,16 +29,16 @@ bool bongo_cat_model_frame_due(const BongoCatApp *app, uint64_t now) {
 int bongo_cat_window_wait_timeout(const BongoCatApp *app, uint64_t now) {
     if (!app) return 250;
     uint64_t frame_deadline = app->last_frame_ns + frame_interval_ns(app);
-    int wait_ms = app->config.window.visible && !app->window_minimized ? remaining_ms(
+    int wait_ms = app->session.window.visible && !app->window_minimized ? remaining_ms(
         frame_deadline, now) : 250;
     if (bongo_cat_preferences_needs_frame(app->preferences) && wait_ms > 4)
         wait_ms = 4;
     if (app->wheel_animation_active && wait_ms > 8) wait_ms = 8;
-    if (app->config.window.visible && !app->window_minimized &&
+    if (app->session.window.visible && !app->window_minimized &&
         app->click_through_applied && wait_ms > 16) wait_ms = 16;
-    bool pending_hit = app->config.window.visible && !app->window_minimized &&
+    bool pending_hit = app->session.window.visible && !app->window_minimized &&
         app->pointer_hit_dirty &&
-        app->pointer_hit_deadline_ns && !app->config.window.pass_through &&
+        app->pointer_hit_deadline_ns && !app->settings.window.pass_through &&
         !app->hover_hidden && !app->left_mouse_down && !app->right_mouse_down;
     if (!pending_hit) return wait_ms;
     int hit_wait = remaining_ms(app->pointer_hit_deadline_ns, now);
@@ -64,20 +64,20 @@ bool bongo_cat_window_wait_timeout_self_test(void) {
     BongoCatApp *app = calloc(1, sizeof(*app));
     if (!app) return false;
     bool passed = false;
-    app->config.window.visible = true;
-    app->config.model.max_fps = 60;
+    app->session.window.visible = true;
+    app->settings.model.max_fps = 60;
     app->last_frame_ns = now;
 #ifdef BONGO_CAT_HAS_CUBISM
-    app->config.model.max_fps = 30;
+    app->settings.model.max_fps = 30;
     uint64_t interval_30 = frame_interval_ns(app);
-    app->config.model.max_fps = 60;
+    app->settings.model.max_fps = 60;
     uint64_t interval_60 = frame_interval_ns(app);
-    app->config.model.max_fps = 120;
+    app->settings.model.max_fps = 120;
     uint64_t interval_120 = frame_interval_ns(app);
     if (!(interval_30 > interval_60 && interval_60 > interval_120) ||
         bongo_cat_model_frame_due(app, now + interval_120 - 1) ||
         !bongo_cat_model_frame_due(app, now + interval_120)) goto done;
-    app->config.model.max_fps = 60;
+    app->settings.model.max_fps = 60;
 #endif
     int frame_wait = remaining_ms(now + frame_interval_ns(app), now);
     if (bongo_cat_window_wait_timeout(app, now) != frame_wait ||
@@ -89,13 +89,13 @@ bool bongo_cat_window_wait_timeout_self_test(void) {
     if (bongo_cat_window_wait_timeout(app, now) != 0) goto done;
     app->pointer_hit_dirty = false;
 #ifdef BONGO_CAT_HAS_CUBISM
-    app->config.model.max_fps = 1;
+    app->settings.model.max_fps = 1;
 #endif
     app->click_through_applied = true;
     if (bongo_cat_window_wait_timeout(app, now) != 16) goto done;
     app->click_through_applied = false;
 #ifdef BONGO_CAT_HAS_CUBISM
-    app->config.model.max_fps = 60;
+    app->settings.model.max_fps = 60;
 #endif
     if (!bongo_cat_model_frame_due(app,
         now + frame_interval_ns(app))) goto done;
@@ -103,7 +103,7 @@ bool bongo_cat_window_wait_timeout_self_test(void) {
     if (bongo_cat_model_frame_due(app, now + frame_interval_ns(app)) ||
         bongo_cat_window_wait_timeout(app, now) != 250) goto done;
     app->window_minimized = false;
-    app->config.window.visible = false;
+    app->session.window.visible = false;
     if (bongo_cat_window_wait_timeout(app, now) != 250) goto done;
     app->wheel_animation_active = true;
     passed = bongo_cat_window_wait_timeout(app, now) == 8;

@@ -5,7 +5,7 @@
 #include <stddef.h>
 
 bool bongo_cat_utf8_valid(const char *text);
-bool bongo_cat_utf8_normalize_legacy(const char *text,
+bool bongo_cat_utf8_normalize_mver(const char *text,
     char *output, size_t capacity);
 
 #endif

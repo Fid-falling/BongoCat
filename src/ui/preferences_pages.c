@@ -20,8 +20,9 @@ static void section_gap(struct nk_context *context, float pixels) {
 }
 
 void bongo_cat_preferences_page_cat(BongoCatApp *app, struct nk_context *context) {
-    BongoCatModelOptions *model = &app->config.model;
-    BongoCatWindowOptions *window = &app->config.window;
+    BongoCatModelPreferences *model = &app->settings.model;
+    BongoCatWindowPreferences *window = &app->settings.window;
+    BongoCatWindowState *window_state = &app->session.window;
     bongo_cat_pref_section(context, tr(app, "pages.preference.cat.labels.windowSettings",
         "Window Settings"));
     if (bongo_cat_pref_toggle(context, "pass-through", tr(app,
@@ -49,28 +50,29 @@ void bongo_cat_preferences_page_cat(BongoCatApp *app, struct nk_context *context
         "color key filter."),
         &window->obs_background, &window->obs_background_color))
         app->dirty = true;
-    float old_scale = window->scale_percent;
+    float old_scale = window_state->scale_percent;
     bongo_cat_pref_float(context, "window-size", tr(app,
         "pages.preference.cat.labels.windowSize", "Window Size"), tr(app,
         "composables.useAppMenu.labels.wheelSizeHint", "Wheel: resize"),
-        10.0f, &window->scale_percent, 500.0f, 1.0f,
+        10.0f, &window_state->scale_percent, 500.0f, 1.0f,
         BONGO_CAT_DEFAULT_WINDOW_SCALE_PERCENT);
-    if (old_scale != window->scale_percent && old_scale > 0.0f) {
-        float requested_scale = window->scale_percent;
-        window->scale_percent = old_scale;
+    if (old_scale != window_state->scale_percent && old_scale > 0.0f) {
+        float requested_scale = window_state->scale_percent;
+        window_state->scale_percent = old_scale;
         bongo_cat_window_cancel_wheel_animation(app);
         bongo_cat_window_set_scale(app, requested_scale);
     }
-    float old_opacity = window->opacity_percent;
+    float old_opacity = window_state->opacity_percent;
     bongo_cat_pref_slider(context, "opacity", tr(app,
         "pages.preference.cat.labels.opacity", "Opacity"), tr(app,
         "composables.useAppMenu.labels.wheelOpacityHint", "Ctrl+Wheel: opacity"),
-        10.0f, &window->opacity_percent, 100.0f, 1.0f,
+        10.0f, &window_state->opacity_percent, 100.0f, 1.0f,
         BONGO_CAT_DEFAULT_WINDOW_OPACITY_PERCENT);
-    if (old_opacity != window->opacity_percent) bongo_cat_window_cancel_wheel_animation(app);
-    if (old_opacity != window->opacity_percent && !app->hover_hidden)
+    if (old_opacity != window_state->opacity_percent)
+        bongo_cat_window_cancel_wheel_animation(app);
+    if (old_opacity != window_state->opacity_percent && !app->hover_hidden)
         bongo_cat_platform_set_opacity(&app->platform,
-            window->opacity_percent / 100.0f);
+            window_state->opacity_percent / 100.0f);
 
     section_gap(context, 10);
     bongo_cat_pref_section(context, tr(app, "pages.preference.cat.labels.modelSettings",
@@ -109,14 +111,14 @@ void bongo_cat_preferences_page_cat(BongoCatApp *app, struct nk_context *context
 
 static void update_autostart(BongoCatApp *app, bool old_value) {
     BongoCatError error = {0};
-    if (bongo_cat_platform_set_autostart(app->config.app.autostart, &error) == BONGO_CAT_OK) return;
-    app->config.app.autostart = old_value;
+    if (bongo_cat_platform_set_autostart(app->settings.app.autostart, &error) == BONGO_CAT_OK) return;
+    app->settings.app.autostart = old_value;
     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
     bongo_cat_preferences_notice_show(app, error.message, true);
 }
 
 void bongo_cat_preferences_page_general(BongoCatApp *app, struct nk_context *context) {
-    BongoCatAppOptions *options = &app->config.app;
+    BongoCatApplicationPreferences *options = &app->settings.app;
     // Keep each option in its own native language so the list is recognizable
     // regardless of the language currently used by the settings window.
     const char *ui_languages[] = {"简体中文", "繁體中文", "English",

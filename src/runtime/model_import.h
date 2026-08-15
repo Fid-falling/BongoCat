@@ -48,7 +48,7 @@ typedef struct BongoCatPackageMetadata {
     uint32_t capabilities;
 } BongoCatPackageMetadata;
 
-typedef BongoCatResult (*BongoCatPortableVisitor)(void *userdata,
+typedef BongoCatResult (*BongoCatNearbyVisitor)(void *userdata,
     const char *source, BongoCatImportDiscovery *discovery, BongoCatError *error);
 
 typedef struct BongoCatApp BongoCatApp;
@@ -86,7 +86,7 @@ bool bongo_cat_import_prepare_package_metadata(
 const BongoCatModelEntry *bongo_cat_import_find_existing_package(
     const BongoCatModelCatalog *catalog,
     const BongoCatPackageMetadata *metadata, BongoCatModelMode mode);
-void bongo_cat_import_describe_portable_entry(BongoCatModelEntry *entry,
+void bongo_cat_import_describe_nearby_entry(BongoCatModelEntry *entry,
     const BongoCatImportCandidate *candidate, const char *id,
     const char *identity, const char *source_hash, const char *source,
     const char *adapter);
@@ -94,14 +94,14 @@ void bongo_cat_import_apply_metadata(BongoCatApp *app, const char *model_id,
     const char *directory);
 bool bongo_cat_import_render_options(const char *directory,
     BongoCatLive2DRenderOptions *options);
-BongoCatResult bongo_cat_import_portable_mver(BongoCatApp *app,
+BongoCatResult bongo_cat_import_nearby_mver_root(BongoCatApp *app,
     const char *root, BongoCatError *error);
-BongoCatResult bongo_cat_import_portable_mver_scan(BongoCatApp *app,
+BongoCatResult bongo_cat_import_nearby_mver_scan(BongoCatApp *app,
     const char *root, BongoCatError *error);
 BongoCatResult bongo_cat_import_nearby_mver(BongoCatApp *app,
     const char *root, BongoCatError *error);
-BongoCatResult bongo_cat_import_portable_scan(const char *root,
-    BongoCatPortableVisitor visitor, void *userdata, BongoCatError *error);
+BongoCatResult bongo_cat_import_nearby_scan(const char *root,
+    BongoCatNearbyVisitor visitor, void *userdata, BongoCatError *error);
 BongoCatResult bongo_cat_import_install(const char *source,
     const char *data_root, BongoCatImportReceipt *receipt,
     BongoCatError *error);

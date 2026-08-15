@@ -86,7 +86,7 @@ const BongoCatModelEntry *bongo_cat_models_find(const BongoCatModelCatalog *cata
 bool bongo_cat_model_adapter_metadata_path(const char *directory,
     char *path, size_t capacity);
 const char *bongo_cat_model_default_name(const BongoCatModelEntry *entry);
-const char *bongo_cat_model_name(const BongoCatConfig *config,
+const char *bongo_cat_model_name(const BongoCatSettings *settings,
     const BongoCatModelEntry *entry);
 BongoCatResult bongo_cat_behaviors_load(BongoCatBehaviorCatalog *catalog,
     const BongoCatModelEntry *model, BongoCatError *error);

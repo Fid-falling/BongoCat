@@ -1,5 +1,5 @@
 #include "model_import.h"
-#include "model_import_portable_internal.h"
+#include "model_import_nearby_internal.h"
 #include "model_storage.h"
 #include "runtime.h"
 #include "bongo_cat/json.h"
@@ -12,7 +12,16 @@
 #include <string.h>
 #include <yyjson.h>
 
-#define PORTABLE_DIRECTORY "portable-mver"
+#define MODEL_ADAPTER_DIRECTORY "model-adapters"
+#define MODEL_CACHE_KIND "bongocat/nearby-model-cache"
+
+static bool marker_header_valid(yyjson_val *root) {
+    const char *kind = yyjson_get_str(yyjson_obj_get(root, "kind"));
+    return yyjson_is_obj(root) &&
+        yyjson_get_int(yyjson_obj_get(root, "schemaVersion")) ==
+            BONGO_CAT_NEARBY_CACHE_SCHEMA && kind &&
+        strcmp(kind, MODEL_CACHE_KIND) == 0;
+}
 
 static bool digest_valid(const char *value) {
     if (!value || strlen(value) != 64) return false;
@@ -73,15 +82,13 @@ static bool marker_matches(const char *target, const char *source,
     const char *signature, const char *identity) {
     char path[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_join(path, sizeof(path), target,
-        BONGO_CAT_PORTABLE_MARKER)) return false;
+        BONGO_CAT_NEARBY_CACHE_MARKER)) return false;
     yyjson_doc *document = bongo_cat_json_read_file(path, 0, NULL);
     yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
     const char *stored_source = yyjson_get_str(yyjson_obj_get(root, "source"));
     const char *stored_signature = yyjson_get_str(yyjson_obj_get(root, "signature"));
     const char *stored_identity = yyjson_get_str(yyjson_obj_get(root, "identity"));
-    bool matches = yyjson_is_obj(root) &&
-        yyjson_get_int(yyjson_obj_get(root, "schemaVersion")) ==
-            BONGO_CAT_PORTABLE_SCHEMA_VERSION && stored_source &&
+    bool matches = marker_header_valid(root) && stored_source &&
         stored_signature && stored_identity && strcmp(source, stored_source) == 0 &&
         strcmp(signature, stored_signature) == 0 &&
         strcmp(identity, stored_identity) == 0;
@@ -93,15 +100,13 @@ static bool cached_identity(const char *target, const char *source,
     const char *signature, char identity[65]) {
     char path[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_join(path, sizeof(path), target,
-        BONGO_CAT_PORTABLE_MARKER)) return false;
+        BONGO_CAT_NEARBY_CACHE_MARKER)) return false;
     yyjson_doc *document = bongo_cat_json_read_file(path, 0, NULL);
     yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
     const char *stored_source = yyjson_get_str(yyjson_obj_get(root, "source"));
     const char *stored_signature = yyjson_get_str(yyjson_obj_get(root, "signature"));
     const char *stored_identity = yyjson_get_str(yyjson_obj_get(root, "identity"));
-    bool valid = yyjson_is_obj(root) &&
-        yyjson_get_int(yyjson_obj_get(root, "schemaVersion")) ==
-            BONGO_CAT_PORTABLE_SCHEMA_VERSION && stored_source &&
+    bool valid = marker_header_valid(root) && stored_source &&
         stored_signature && digest_valid(stored_identity) &&
         strcmp(source, stored_source) == 0 &&
         strcmp(signature, stored_signature) == 0;
@@ -114,14 +119,13 @@ static bool marker_identity(const char *target, const char *source,
     char identity[65]) {
     char path[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_join(path, sizeof(path), target,
-        BONGO_CAT_PORTABLE_MARKER)) return false;
+        BONGO_CAT_NEARBY_CACHE_MARKER)) return false;
     yyjson_doc *document = bongo_cat_json_read_file(path, 0, NULL);
     yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
-    const char *kind = yyjson_get_str(yyjson_obj_get(root, "kind"));
     const char *stored_source = yyjson_get_str(yyjson_obj_get(root, "source"));
     const char *stored_identity = yyjson_get_str(yyjson_obj_get(root, "identity"));
-    bool valid = yyjson_is_obj(root) && kind && stored_source &&
-        strcmp(kind, "portable-mver") == 0 && strcmp(source, stored_source) == 0 &&
+    bool valid = marker_header_valid(root) && stored_source &&
+        strcmp(source, stored_source) == 0 &&
         digest_valid(stored_identity);
     if (valid) snprintf(identity, 65, "%s", stored_identity);
     yyjson_doc_free(document);
@@ -135,14 +139,14 @@ static bool write_marker(const char *target, const char *source,
     if (document) yyjson_mut_doc_set_root(document, root);
     char path[BONGO_CAT_PATH_CAP];
     bool ok = root && yyjson_mut_obj_add_int(document, root, "schemaVersion",
-        BONGO_CAT_PORTABLE_SCHEMA_VERSION) &&
-        yyjson_mut_obj_add_str(document, root, "kind", "portable-mver") &&
+        BONGO_CAT_NEARBY_CACHE_SCHEMA) &&
+        yyjson_mut_obj_add_str(document, root, "kind", MODEL_CACHE_KIND) &&
         yyjson_mut_obj_add_strcpy(document, root, "source", source) &&
         yyjson_mut_obj_add_strcpy(document, root, "signature", signature) &&
         yyjson_mut_obj_add_strcpy(document, root, "identity", identity) &&
         yyjson_mut_obj_add_strcpy(document, root, "mode", bongo_cat_mode_name(mode)) &&
         bongo_cat_path_join(path, sizeof(path), target,
-            BONGO_CAT_PORTABLE_MARKER) &&
+            BONGO_CAT_NEARBY_CACHE_MARKER) &&
         bongo_cat_json_write_file(path, document, YYJSON_WRITE_PRETTY, NULL);
     yyjson_mut_doc_free(document);
     return ok;
@@ -153,24 +157,19 @@ static bool previous_cache_usable(const char *target, const char *source) {
     char metadata[BONGO_CAT_PATH_CAP], resources[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_is_dir(target) ||
         !bongo_cat_path_join(marker, sizeof(marker), target,
-            BONGO_CAT_PORTABLE_MARKER) ||
+            BONGO_CAT_NEARBY_CACHE_MARKER) ||
         !bongo_cat_path_join(mode, sizeof(mode), target, ".bongo-cat-mode") ||
         !bongo_cat_path_join(metadata, sizeof(metadata), target,
             BONGO_CAT_MODEL_ADAPTER_FILE) ||
         !bongo_cat_path_join(resources, sizeof(resources), target, "resources") ||
         !bongo_cat_path_is_file(mode) ||
         !bongo_cat_path_is_dir(resources)) return false;
-    if (!bongo_cat_path_is_file(metadata) &&
-        (!bongo_cat_path_join(metadata, sizeof(metadata), target,
-            BONGO_CAT_MODEL_LEGACY_ADAPTER_FILE) ||
-            !bongo_cat_path_is_file(metadata)))
-        return false;
+    if (!bongo_cat_path_is_file(metadata)) return false;
     yyjson_doc *document = bongo_cat_json_read_file(marker, 0, NULL);
     yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
-    const char *kind = yyjson_get_str(yyjson_obj_get(root, "kind"));
     const char *stored_source = yyjson_get_str(yyjson_obj_get(root, "source"));
-    bool usable = yyjson_is_obj(root) && kind && stored_source &&
-        strcmp(kind, "portable-mver") == 0 && strcmp(stored_source, source) == 0;
+    bool usable = marker_header_valid(root) && stored_source &&
+        strcmp(stored_source, source) == 0;
     yyjson_doc_free(document);
     return usable;
 }
@@ -208,21 +207,21 @@ static bool refresh_cache(const BongoCatImportCandidate *candidate,
         !write_marker(temporary, source, signature, identity, candidate->mode)) {
         bongo_cat_model_remove_tree(temporary, NULL);
         if (error && !error->message[0]) bongo_cat_error_set(error,
-            BONGO_CAT_ERROR_IO, "Cannot build portable Mver adapter: %s", source);
+            BONGO_CAT_ERROR_IO, "Cannot build nearby Mver adapter: %s", source);
         return use_previous_cache(target, source, error);
     }
     bool had_target = bongo_cat_path_is_dir(target);
     if (had_target && !bongo_cat_path_rename(target, backup)) {
         bongo_cat_model_remove_tree(temporary, NULL);
         bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
-            "Cannot update portable Mver adapter: %s", SDL_GetError());
+            "Cannot update nearby Mver adapter: %s", SDL_GetError());
         return use_previous_cache(target, source, error);
     }
     if (!bongo_cat_path_rename(temporary, target)) {
         if (had_target) bongo_cat_path_rename(backup, target);
         bongo_cat_model_remove_tree(temporary, NULL);
         bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
-            "Cannot activate portable Mver adapter: %s", SDL_GetError());
+            "Cannot activate nearby Mver adapter: %s", SDL_GetError());
         return use_previous_cache(target, source, error);
     }
     bongo_cat_model_remove_tree(backup, NULL);
@@ -239,17 +238,17 @@ static bool add_candidate(BongoCatApp *app, const char *cache_root,
         bongo_cat_mode_name(candidate->mode));
     same_id = model_with_id(app, id);
     if (same_id && !same_id->managed) return true;
-    if (!bongo_cat_portable_signature(candidate, signature, error))
+    if (!bongo_cat_nearby_signature(candidate, signature, error))
         return false;
     char target[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_join(target, sizeof(target), cache_root, id) ||
         (!cached_identity(target, source, signature, identity) &&
-        !bongo_cat_portable_identity(candidate, identity, error))) return false;
+        !bongo_cat_nearby_identity(candidate, identity, error))) return false;
     if (existing_identity(&app->models, identity, candidate->mode,
         same_id)) return true;
     if (!same_id && app->models.count >= BONGO_CAT_MODEL_CAP) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
-            "Too many models while adding portable Mver package");
+            "Too many models while adding nearby Mver package");
         return false;
     }
     bool created = false;
@@ -269,7 +268,7 @@ static bool add_candidate(BongoCatApp *app, const char *cache_root,
         memset(same_id, 0, sizeof(*same_id));
         candidate_name(source, candidate, same_id->display_name,
             sizeof(same_id->display_name));
-        bongo_cat_import_describe_portable_entry(same_id, candidate, id,
+        bongo_cat_import_describe_nearby_entry(same_id, candidate, id,
             identity, source_hash, source, adapter);
         return true;
     }
@@ -277,7 +276,7 @@ static bool add_candidate(BongoCatApp *app, const char *cache_root,
     memset(entry, 0, sizeof(*entry));
     candidate_name(source, candidate, entry->display_name,
         sizeof(entry->display_name));
-    bongo_cat_import_describe_portable_entry(entry, candidate, id, identity,
+    bongo_cat_import_describe_nearby_entry(entry, candidate, id, identity,
         source_hash, source, adapter);
     if (created && !first_created[0])
         snprintf(first_created, BONGO_CAT_ID_CAP, "%s", id);
@@ -295,24 +294,25 @@ static BongoCatResult add_discovery(BongoCatApp *app, const char *cache_root,
     return BONGO_CAT_OK;
 }
 
-typedef struct PortableAdd {
+typedef struct NearbyAdd {
     BongoCatApp *app; const char *cache_root; char *first_created;
-} PortableAdd;
+} NearbyAdd;
 
 static BongoCatResult add_scanned(void *userdata, const char *source,
     BongoCatImportDiscovery *discovery, BongoCatError *error) {
-    PortableAdd *add = userdata;
+    NearbyAdd *add = userdata;
     return add_discovery(add->app, add->cache_root, source, discovery,
         add->first_created, error);
 }
 
-static BongoCatResult import_portable_mver(BongoCatApp *app,
+static BongoCatResult import_nearby_mver_root(BongoCatApp *app,
     const char *root, bool bounded_scan, BongoCatError *error) {
-    if (!app || !root || !app->data_root[0]) return BONGO_CAT_ERROR_ARGUMENT;
+    if (!app || !root || !app->cache_root[0]) return BONGO_CAT_ERROR_ARGUMENT;
     if (!bongo_cat_path_is_dir(root)) return BONGO_CAT_OK;
     char cache_root[BONGO_CAT_PATH_CAP], first_created[BONGO_CAT_ID_CAP] = {0};
-    if (!bongo_cat_path_join(cache_root, sizeof(cache_root), app->data_root,
-        PORTABLE_DIRECTORY) || !bongo_cat_path_create_directory(cache_root)) return BONGO_CAT_ERROR_IO;
+    if (!bongo_cat_path_join(cache_root, sizeof(cache_root), app->cache_root,
+        MODEL_ADAPTER_DIRECTORY) ||
+        !bongo_cat_path_create_directory(cache_root)) return BONGO_CAT_ERROR_IO;
     BongoCatImportDiscovery *discovery = calloc(1, sizeof(*discovery));
     if (!discovery) return BONGO_CAT_ERROR_MEMORY;
     int direct = bounded_scan
@@ -331,38 +331,36 @@ static BongoCatResult import_portable_mver(BongoCatApp *app,
         BONGO_CAT_OK;
     if (direct <= 0) {
         if (error) *error = (BongoCatError){0};
-        PortableAdd add = {app, cache_root, first_created};
-        result = bongo_cat_import_portable_scan(root, add_scanned, &add, error);
+        NearbyAdd add = {app, cache_root, first_created};
+        result = bongo_cat_import_nearby_scan(root, add_scanned, &add, error);
     }
-    if (result == BONGO_CAT_OK)
-        bongo_cat_portable_migrate_config(app, cache_root);
-    const char *selected = app->config.current_model;
+    const char *selected = app->session.active_model_id;
     if (first_created[0] && (!selected[0] || strcmp(selected, "standard") == 0 ||
         strcmp(selected, "keyboard") == 0 || strcmp(selected, "gamepad") == 0))
-        snprintf(app->config.current_model, sizeof(app->config.current_model), "%s", first_created);
+        snprintf(app->session.active_model_id, sizeof(app->session.active_model_id), "%s", first_created);
     free(discovery);
     return result;
 }
 
-BongoCatResult bongo_cat_import_portable_mver(BongoCatApp *app,
+BongoCatResult bongo_cat_import_nearby_mver_root(BongoCatApp *app,
     const char *root, BongoCatError *error) {
-    return import_portable_mver(app, root, false, error);
+    return import_nearby_mver_root(app, root, false, error);
 }
 
-BongoCatResult bongo_cat_import_portable_mver_scan(BongoCatApp *app,
+BongoCatResult bongo_cat_import_nearby_mver_scan(BongoCatApp *app,
     const char *root, BongoCatError *error) {
-    return import_portable_mver(app, root, true, error);
+    return import_nearby_mver_root(app, root, true, error);
 }
 
 BongoCatResult bongo_cat_import_nearby_mver(BongoCatApp *app,
     const char *root, BongoCatError *error) {
     if (!app || !root) return BONGO_CAT_ERROR_ARGUMENT;
     size_t before = app->models.count;
-    BongoCatResult result = bongo_cat_import_portable_mver(app, root, error);
+    BongoCatResult result = bongo_cat_import_nearby_mver_root(app, root, error);
     if (result != BONGO_CAT_OK || app->models.count != before) return result;
     char parent[BONGO_CAT_PATH_CAP];
     if (!parent_path(root, parent, sizeof(parent)) || strcmp(parent, root) == 0)
         return BONGO_CAT_OK;
     if (error) *error = (BongoCatError){0};
-    return bongo_cat_import_portable_mver(app, parent, error);
+    return bongo_cat_import_nearby_mver_root(app, parent, error);
 }

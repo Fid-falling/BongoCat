@@ -150,13 +150,9 @@ void test_models(void) {
     CHECK(bongo_cat_models_scan(&catalog,
         BONGO_CAT_NATIVE_SOURCE_DIR "/tests/fixtures/model-packages",
         false, &error) == BONGO_CAT_OK);
-    CHECK(catalog.count == 2);
-    const BongoCatModelEntry *v1 = bongo_cat_models_find(&catalog, "v1");
+    CHECK(catalog.count == 1);
     const BongoCatModelEntry *v2 = bongo_cat_models_find(&catalog,
         "test-package-v2");
-    CHECK(v1 && v1->package_schema == 1 &&
-        strcmp(v1->package_id, "v1") == 0 &&
-        v1->source_format == BONGO_CAT_MODEL_SOURCE_TAURI);
     CHECK(v2 && v2->package_schema == 2 &&
         strcmp(v2->content_digest,
             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa") == 0 &&

@@ -6,44 +6,44 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define PORTABLE_CHILD_CAP 64
-#define PORTABLE_ENTRY_CAP 256
-#define PORTABLE_NODE_CAP 256
-#define PORTABLE_SCAN_DEPTH 3
-#define PORTABLE_SCAN_BUDGET_NS 2000000000ull
+#define NEARBY_CHILD_CAP 64
+#define NEARBY_ENTRY_CAP 256
+#define NEARBY_NODE_CAP 256
+#define NEARBY_SCAN_DEPTH 3
+#define NEARBY_SCAN_BUDGET_NS 2000000000ull
 
 typedef struct ChildList {
-    char paths[PORTABLE_CHILD_CAP][BONGO_CAT_PATH_CAP];
+    char paths[NEARBY_CHILD_CAP][BONGO_CAT_PATH_CAP];
     size_t count, entries;
     bool limited;
 } ChildList;
 
-typedef struct PortableWorkspace {
+typedef struct NearbyWorkspace {
     BongoCatImportDiscovery discovery;
     ChildList children;
-} PortableWorkspace;
+} NearbyWorkspace;
 
-typedef struct PortableScan {
-    BongoCatPortableVisitor visitor;
+typedef struct NearbyScan {
+    BongoCatNearbyVisitor visitor;
     void *userdata;
     BongoCatError *error;
     size_t nodes;
     uint64_t deadline;
     bool limited;
-} PortableScan;
+} NearbyScan;
 
-typedef struct PortableQueue {
-    char paths[PORTABLE_NODE_CAP][BONGO_CAT_PATH_CAP];
-    unsigned char depths[PORTABLE_NODE_CAP], priorities[PORTABLE_NODE_CAP];
+typedef struct NearbyQueue {
+    char paths[NEARBY_NODE_CAP][BONGO_CAT_PATH_CAP];
+    unsigned char depths[NEARBY_NODE_CAP], priorities[NEARBY_NODE_CAP];
     size_t head, count;
-} PortableQueue;
+} NearbyQueue;
 
 typedef struct ModelHint { size_t entries; bool found; } ModelHint;
 
 static BongoCatPathVisit collect_child(void *userdata,
     const char *dirname, const char *name) {
     ChildList *list = userdata;
-    if (++list->entries > PORTABLE_ENTRY_CAP || list->count >= PORTABLE_CHILD_CAP) {
+    if (++list->entries > NEARBY_ENTRY_CAP || list->count >= NEARBY_CHILD_CAP) {
         list->limited = true; return BONGO_CAT_PATH_SUCCESS;
     }
     if (name[0] == '.') return BONGO_CAT_PATH_CONTINUE;
@@ -62,8 +62,8 @@ static int compare_path(const void *left, const void *right) {
 #endif
 }
 
-static bool within_budget(PortableScan *scan) {
-    if (scan->nodes >= PORTABLE_NODE_CAP || SDL_GetTicksNS() >= scan->deadline) {
+static bool within_budget(NearbyScan *scan) {
+    if (scan->nodes >= NEARBY_NODE_CAP || SDL_GetTicksNS() >= scan->deadline) {
         scan->limited = true; return false;
     }
     scan->nodes++; return true;
@@ -78,7 +78,7 @@ static bool direct_image_root(const char *path) {
 static BongoCatPathVisit find_model_hint(void *userdata,
     const char *dirname, const char *name) {
     ModelHint *hint = userdata;
-    if (++hint->entries > PORTABLE_CHILD_CAP) return BONGO_CAT_PATH_SUCCESS;
+    if (++hint->entries > NEARBY_CHILD_CAP) return BONGO_CAT_PATH_SUCCESS;
     char path[BONGO_CAT_PATH_CAP];
     if (name[0] != '.' && bongo_cat_path_join(path, sizeof(path), dirname, name) &&
         bongo_cat_path_is_dir(path) && direct_image_root(path)) {
@@ -94,10 +94,10 @@ static bool model_hint(const char *path) {
     return hint.found;
 }
 
-static void enqueue_children(PortableScan *scan, PortableQueue *queue,
+static void enqueue_children(NearbyScan *scan, NearbyQueue *queue,
     const ChildList *children, int depth) {
     for (size_t i = 0; i < children->count; ++i) {
-        if (queue->count >= PORTABLE_NODE_CAP) {
+        if (queue->count >= NEARBY_NODE_CAP) {
             scan->limited = true; return;
         }
         snprintf(queue->paths[queue->count], BONGO_CAT_PATH_CAP, "%s",
@@ -107,7 +107,7 @@ static void enqueue_children(PortableScan *scan, PortableQueue *queue,
     }
 }
 
-static void prioritize_next(PortableQueue *queue) {
+static void prioritize_next(NearbyQueue *queue) {
     size_t preferred = queue->head;
     while (preferred < queue->count && !queue->priorities[preferred]) preferred++;
     if (preferred >= queue->count || preferred == queue->head) return;
@@ -122,13 +122,13 @@ static void prioritize_next(PortableQueue *queue) {
     queue->priorities[queue->head] = 1;
 }
 
-static BongoCatResult scan_node(PortableScan *scan, PortableQueue *queue,
+static BongoCatResult scan_node(NearbyScan *scan, NearbyQueue *queue,
     const char *source, int depth) {
     if (!within_budget(scan)) return BONGO_CAT_OK;
-    PortableWorkspace *work = calloc(1, sizeof(*work));
+    NearbyWorkspace *work = calloc(1, sizeof(*work));
     if (!work) {
         bongo_cat_error_set(scan->error, BONGO_CAT_ERROR_MEMORY,
-            "Cannot allocate portable model scan workspace");
+            "Cannot allocate nearby model scan workspace");
         return BONGO_CAT_ERROR_MEMORY;
     }
     BongoCatError local = {0};
@@ -147,7 +147,7 @@ static BongoCatResult scan_node(PortableScan *scan, PortableQueue *queue,
         else scan->deadline = UINT64_MAX;
         free(work); return result;
     }
-    if (depth < PORTABLE_SCAN_DEPTH &&
+    if (depth < NEARBY_SCAN_DEPTH &&
         bongo_cat_path_enumerate(source, collect_child, &work->children)) {
         if (work->children.limited) scan->limited = true;
         qsort(work->children.paths, work->children.count,
@@ -157,14 +157,14 @@ static BongoCatResult scan_node(PortableScan *scan, PortableQueue *queue,
     free(work); return BONGO_CAT_OK;
 }
 
-BongoCatResult bongo_cat_import_portable_scan(const char *root,
-    BongoCatPortableVisitor visitor, void *userdata, BongoCatError *error) {
+BongoCatResult bongo_cat_import_nearby_scan(const char *root,
+    BongoCatNearbyVisitor visitor, void *userdata, BongoCatError *error) {
     if (!root || !visitor) return BONGO_CAT_ERROR_ARGUMENT;
-    PortableWorkspace *work = calloc(1, sizeof(*work));
-    PortableQueue *queue = calloc(1, sizeof(*queue));
+    NearbyWorkspace *work = calloc(1, sizeof(*work));
+    NearbyQueue *queue = calloc(1, sizeof(*queue));
     if (!work || !queue) { free(work); free(queue); return BONGO_CAT_ERROR_MEMORY; }
-    PortableScan scan = {visitor, userdata, error, 0,
-        SDL_GetTicksNS() + PORTABLE_SCAN_BUDGET_NS, false};
+    NearbyScan scan = {visitor, userdata, error, 0,
+        SDL_GetTicksNS() + NEARBY_SCAN_BUDGET_NS, false};
     BongoCatResult result = BONGO_CAT_OK;
     if (bongo_cat_path_enumerate(root, collect_child, &work->children)) {
         if (work->children.limited) scan.limited = true;
@@ -180,6 +180,6 @@ BongoCatResult bongo_cat_import_portable_scan(const char *root,
         }
     }
     if (scan.limited) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-        "Portable model discovery reached its startup scan budget");
+        "Nearby model discovery reached its startup scan budget");
     free(queue); free(work); return result;
 }

@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 
-static BongoCatBehaviorShortcut *binding_for(BongoCatConfig *config,
+static BongoCatBehaviorShortcut *binding_for(BongoCatSettings *config,
     const char *id) {
     for (size_t i = 0; i < config->behavior_shortcut_count; ++i)
         if (!strcmp(config->behavior_shortcuts[i].id, id))
@@ -38,7 +38,7 @@ void bongo_cat_preferences_behavior_rename_finish(
                 entry = &value->app->behaviors.entries[i];
                 break;
             }
-        BongoCatBehaviorShortcut *binding = binding_for(&value->app->config,
+        BongoCatBehaviorShortcut *binding = binding_for(&value->app->settings,
             session->id);
         if (binding) {
             const char *label = entry && !strcmp(session->text, entry->label) ?

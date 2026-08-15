@@ -8,14 +8,14 @@
 #include <stdlib.h>
 #include <string.h>
 static void select_model_state(BongoCatApp *app, const BongoCatModelEntry *entry) {
-    snprintf(app->config.current_model, sizeof(app->config.current_model), "%s",
+    snprintf(app->session.active_model_id, sizeof(app->session.active_model_id), "%s",
         entry->id);
-    app->config.current_mode = entry->mode;
+    app->loaded_mode = entry->mode;
     bongo_cat_gamepads_set_enabled(app, entry->mode == BONGO_CAT_MODE_GAMEPAD);
 }
 static void request_model_frame(BongoCatApp *app) {
     if (!app) return;
-    if (app->window && app->config.window.visible) {
+    if (app->window && app->session.window.visible) {
         if (SDL_GetWindowFlags(app->window) & SDL_WINDOW_HIDDEN)
             bongo_cat_window_set_visible(app, true);
         else bongo_cat_window_clamp_to_display(app);
@@ -42,13 +42,13 @@ static bool apply_model_aspect(BongoCatApp *app,
     if (next_width > 8192) next_width = 8192;
     if (next_width == width) return false;
     return bongo_cat_window_apply_geometry(app, x, y,
-        app->config.window.scale_percent, next_width, height);
+        app->session.window.scale_percent, next_width, height);
 }
 
 static void commit_model(BongoCatApp *app,
     const BongoCatModelEntry *entry, bool force_refresh) {
-    bool changed = strcmp(app->config.current_model, entry->id) != 0 ||
-        app->config.current_mode != entry->mode;
+    bool changed = strcmp(app->session.active_model_id, entry->id) != 0 ||
+        app->loaded_mode != entry->mode;
     if (!changed && !force_refresh) return;
     select_model_state(app, entry);
     app->model_selection_serial++;
@@ -91,7 +91,7 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
         "force_mouse=%d left_handed=%d pointer_bounds=%d",
         render_options.projection_scale, render_options.mouse_force_move,
         render_options.pointer_left_handed, render_options.custom_pointer_bounds);
-    int pixel_width = app->config.window.width, pixel_height = app->config.window.height;
+    int pixel_width = app->session.window.width, pixel_height = app->session.window.height;
     if (app->window) SDL_GetWindowSizeInPixels(app->window, &pixel_width, &pixel_height);
     SDL_Window *previous_window = SDL_GL_GetCurrentWindow();
     SDL_GLContext previous_context = SDL_GL_GetCurrentContext();

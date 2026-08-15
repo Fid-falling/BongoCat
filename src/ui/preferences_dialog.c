@@ -61,7 +61,7 @@ void bongo_cat_preferences_remove_dialog_open(BongoCatApp *app,
     snprintf(remove_dialog.model_id, sizeof(remove_dialog.model_id), "%s", id);
     const BongoCatModelEntry *entry = bongo_cat_models_find(&app->models, id);
     snprintf(remove_dialog.model_name, sizeof(remove_dialog.model_name), "%s",
-        bongo_cat_model_name(&app->config, entry));
+        bongo_cat_model_name(&app->settings, entry));
     remove_dialog.opened_ns = SDL_GetTicksNS();
     remove_dialog.closing_ns = 0;
     remove_dialog.input_armed = false;

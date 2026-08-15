@@ -34,7 +34,7 @@ bool bongo_cat_window_visible_at_pointer(BongoCatApp *app, float x, float y) {
 
 void bongo_cat_window_capture_pointer_hit(BongoCatApp *app) {
     if (!app || !app->window || !app->pointer_known ||
-        app->config.window.pass_through || app->hover_hidden ||
+        app->settings.window.pass_through || app->hover_hidden ||
         app->left_mouse_down || app->right_mouse_down) return;
     float local_x, local_y;
     bool inside = bongo_cat_platform_pointer_local(&app->platform,
@@ -53,7 +53,7 @@ void bongo_cat_window_mark_hit_dirty(BongoCatApp *app) {
 
 void bongo_cat_window_set_visible(BongoCatApp *app, bool visible) {
     if (!app || !app->window) return;
-    app->config.window.visible = visible;
+    app->session.window.visible = visible;
     if (!visible) {
         bongo_cat_platform_set_visible(&app->platform, false);
         return;
@@ -64,8 +64,8 @@ void bongo_cat_window_set_visible(BongoCatApp *app, bool visible) {
     app->hover_hidden = false;
     bongo_cat_app_reset_pointer_tracking(app);
     bongo_cat_platform_set_opacity(&app->platform,
-        app->config.window.opacity_percent / 100.0f);
-    if (app->config.window.keep_in_screen) bongo_cat_window_clamp_to_display(app);
+        app->session.window.opacity_percent / 100.0f);
+    if (app->settings.window.keep_in_screen) bongo_cat_window_clamp_to_display(app);
     else bongo_cat_window_recover_to_display(app);
     bongo_cat_platform_set_visible(&app->platform, true);
     bongo_cat_window_mark_hit_dirty(app);
@@ -99,13 +99,13 @@ void bongo_cat_window_schedule_hit_check(BongoCatApp *app) {
 
 void bongo_cat_window_sync_click_through(BongoCatApp *app) {
     if (!app || !app->window) return;
-    bool forced = app->config.window.pass_through || app->hover_hidden;
+    bool forced = app->settings.window.pass_through || app->hover_hidden;
     if (!forced && !bongo_cat_platform_dynamic_hit_supported()) {
         app->pointer_transparent = false;
         app->pointer_hit_dirty = false;
     }
     if (!forced && (app->left_mouse_down || app->right_mouse_down)) return;
-    if (!forced && app->config.window.visible && app->pointer_known &&
+    if (!forced && app->session.window.visible && app->pointer_known &&
         app->pointer_hit_dirty &&
         (!app->pointer_hit_deadline_ns || SDL_GetTicksNS() >= app->pointer_hit_deadline_ns)) {
         float local_x, local_y;

@@ -22,13 +22,13 @@ static bool initialize_targets(BongoCatApp *app, bool reset) {
     int x = 0, y = 0, width = 0, height = 0;
     if (!SDL_GetWindowPosition(app->window, &x, &y) ||
         !SDL_GetWindowSize(app->window, &width, &height) ||
-        width <= 0 || height <= 0 || app->config.window.scale_percent <= 0.0f)
+        width <= 0 || height <= 0 || app->session.window.scale_percent <= 0.0f)
         return false;
-    app->wheel_opacity_target = app->config.window.opacity_percent;
-    app->wheel_scale_target = app->config.window.scale_percent;
+    app->wheel_opacity_target = app->session.window.opacity_percent;
+    app->wheel_scale_target = app->session.window.scale_percent;
     app->wheel_center_x = x + width * 0.5f;
     app->wheel_center_y = y + height * 0.5f;
-    app->wheel_geometry_scale = app->config.window.scale_percent;
+    app->wheel_geometry_scale = app->session.window.scale_percent;
     app->wheel_base_width = width;
     app->wheel_base_height = height;
     app->wheel_animation_ns = SDL_GetTicksNS();
@@ -41,7 +41,7 @@ static int round_position(float value) {
 }
 
 static void clamp_position(BongoCatApp *app, int width, int height, int *x, int *y) {
-    if (!app->config.window.keep_in_screen) return;
+    if (!app->settings.window.keep_in_screen) return;
     SDL_DisplayID display = SDL_GetDisplayForWindow(app->window);
     SDL_Rect bounds;
     if (!display || !SDL_GetDisplayUsableBounds(display, &bounds)) return;
@@ -68,9 +68,9 @@ void bongo_cat_window_wheel(BongoCatApp *app, const SDL_MouseWheelEvent *event) 
         bongo_cat_input_control_down(&app->input);
     if (!control) {
         float minimum = SDL_max(10.0f,
-            app->config.window.scale_percent - WHEEL_SCALE_TARGET_LEAD);
+            app->session.window.scale_percent - WHEEL_SCALE_TARGET_LEAD);
         float maximum = SDL_min(500.0f,
-            app->config.window.scale_percent + WHEEL_SCALE_TARGET_LEAD);
+            app->session.window.scale_percent + WHEEL_SCALE_TARGET_LEAD);
         app->wheel_scale_target = SDL_clamp(app->wheel_scale_target +
             delta * WHEEL_SCALE_STEP, minimum, maximum);
     } else {
@@ -101,7 +101,7 @@ static float approach(float current, float target, float elapsed_seconds,
 }
 
 static void apply_scale(BongoCatApp *app, float scale) {
-    float old = app->config.window.scale_percent;
+    float old = app->session.window.scale_percent;
     if (old <= 0.0f || SDL_fabsf(scale - old) < 0.001f) return;
     float actual;
     int next_width, next_height;
@@ -109,9 +109,9 @@ static void apply_scale(BongoCatApp *app, float scale) {
         app->wheel_base_height, app->wheel_geometry_scale,
         scale, &actual, &next_width, &next_height)) return;
     if (actual != scale) app->wheel_scale_target = actual;
-    if (next_width == app->config.window.width &&
-        next_height == app->config.window.height) {
-        app->config.window.scale_percent = actual;
+    if (next_width == app->session.window.width &&
+        next_height == app->session.window.height) {
+        app->session.window.scale_percent = actual;
         return;
     }
     int next_x = round_position(app->wheel_center_x - next_width * 0.5f);
@@ -132,23 +132,23 @@ void bongo_cat_window_update_wheel_animation(BongoCatApp *app, uint64_t now) {
     app->wheel_animation_ns = now;
     float elapsed_seconds = SDL_min((float)elapsed_ns / 1000000000.0f,
         WHEEL_MAX_FRAME_SECONDS);
-    float opacity = approach(app->config.window.opacity_percent,
+    float opacity = approach(app->session.window.opacity_percent,
         app->wheel_opacity_target, elapsed_seconds,
         WHEEL_OPACITY_RESPONSE_SECONDS, WHEEL_OPACITY_SPEED_PER_SECOND, 0.01f);
-    float scale = approach(app->config.window.scale_percent,
+    float scale = approach(app->session.window.scale_percent,
         app->wheel_scale_target, elapsed_seconds,
         WHEEL_SCALE_RESPONSE_SECONDS, WHEEL_SCALE_SPEED_PER_SECOND, 0.5f);
-    bool changed = SDL_fabsf(opacity - app->config.window.opacity_percent) > 0.001f ||
-        SDL_fabsf(scale - app->config.window.scale_percent) > 0.001f;
-    if (SDL_fabsf(opacity - app->config.window.opacity_percent) > 0.001f) {
-        app->config.window.opacity_percent = opacity;
+    bool changed = SDL_fabsf(opacity - app->session.window.opacity_percent) > 0.001f ||
+        SDL_fabsf(scale - app->session.window.scale_percent) > 0.001f;
+    if (SDL_fabsf(opacity - app->session.window.opacity_percent) > 0.001f) {
+        app->session.window.opacity_percent = opacity;
         if (!app->hover_hidden) bongo_cat_platform_set_opacity(
             &app->platform, opacity / 100.0f);
     }
     apply_scale(app, scale);
     bool reached =
-        SDL_fabsf(app->config.window.opacity_percent - app->wheel_opacity_target) < 0.01f &&
-        SDL_fabsf(app->config.window.scale_percent - app->wheel_scale_target) < 0.01f;
+        SDL_fabsf(app->session.window.opacity_percent - app->wheel_opacity_target) < 0.01f &&
+        SDL_fabsf(app->session.window.scale_percent - app->wheel_scale_target) < 0.01f;
     bool recent_input = now >= app->wheel_input_ns &&
         now - app->wheel_input_ns < WHEEL_GESTURE_IDLE_NS;
     app->wheel_animation_active = !reached || recent_input;
@@ -164,27 +164,27 @@ void bongo_cat_window_cancel_wheel_animation(BongoCatApp *app) {
 
 bool bongo_cat_window_wheel_self_test(BongoCatApp *app) {
     if (!app || !app->window) return false;
-    BongoCatWindowOptions backup = app->config.window;
+    BongoCatWindowState backup = app->session.window;
     int original_x, original_y, original_width, original_height;
     SDL_GetWindowPosition(app->window, &original_x, &original_y);
     SDL_GetWindowSize(app->window, &original_width, &original_height);
     SDL_Keymod modifiers = SDL_GetModState();
     SDL_SetModState(modifiers | SDL_KMOD_CTRL);
-    app->config.window.opacity_percent = 80.0f;
-    app->config.window.scale_percent = 100.0f;
+    app->session.window.opacity_percent = 80.0f;
+    app->session.window.scale_percent = 100.0f;
     bongo_cat_window_cancel_wheel_animation(app);
     SDL_MouseWheelEvent wheel = {.y = -1.0f};
     bongo_cat_window_wheel(app, &wheel);
     uint64_t started = app->wheel_animation_ns;
     for (int i = 1; i <= 30; ++i)
         bongo_cat_window_update_wheel_animation(app, started + i * 16666667ull);
-    bool opacity = SDL_fabsf(app->config.window.opacity_percent - 75.0f) < 0.1f;
+    bool opacity = SDL_fabsf(app->session.window.opacity_percent - 75.0f) < 0.1f;
     SDL_SetModState(modifiers & ~SDL_KMOD_CTRL);
     wheel.y = 1.0f; bongo_cat_window_wheel(app, &wheel);
     started = app->wheel_animation_ns;
     for (int i = 1; i <= 8; ++i)
         bongo_cat_window_update_wheel_animation(app, started + i * 16666667ull);
-    bool responsive = SDL_fabsf(app->config.window.scale_percent - 105.0f) < 0.1f;
+    bool responsive = SDL_fabsf(app->session.window.scale_percent - 105.0f) < 0.1f;
     bongo_cat_window_update_wheel_animation(app,
         app->wheel_input_ns + WHEEL_GESTURE_IDLE_NS + 1);
     bool scale = responsive && !app->wheel_animation_active;
@@ -213,38 +213,38 @@ bool bongo_cat_window_wheel_self_test(BongoCatApp *app) {
     for (int i = 1; i <= 30; ++i)
         bongo_cat_window_update_wheel_animation(app, started + i * 16666667ull);
     bool reversal = !app->wheel_animation_active &&
-        SDL_fabsf(app->config.window.scale_percent - 100.0f) < 0.1f;
+        SDL_fabsf(app->session.window.scale_percent - 100.0f) < 0.1f;
     wheel.y = 1.0f;
     wheel.direction = SDL_MOUSEWHEEL_FLIPPED;
     bongo_cat_window_wheel(app, &wheel);
     started = app->wheel_animation_ns;
     for (int i = 1; i <= 30; ++i)
         bongo_cat_window_update_wheel_animation(app, started + i * 16666667ull);
-    bool flipped = SDL_fabsf(app->config.window.scale_percent - 95.0f) < 0.1f;
+    bool flipped = SDL_fabsf(app->session.window.scale_percent - 95.0f) < 0.1f;
     wheel.direction = SDL_MOUSEWHEEL_NORMAL;
     bongo_cat_window_cancel_wheel_animation(app);
-    app->config.window.scale_percent = 500.0f;
+    app->session.window.scale_percent = 500.0f;
     bongo_cat_window_wheel(app, &wheel);
     bool maximum = !app->wheel_animation_active;
     bongo_cat_window_cancel_wheel_animation(app);
-    app->config.window.scale_percent = 10.0f;
+    app->session.window.scale_percent = 10.0f;
     wheel.y = -1.0f;
     bongo_cat_window_wheel(app, &wheel);
     bool minimum = !app->wheel_animation_active;
     bongo_cat_window_cancel_wheel_animation(app);
     SDL_SetModState(modifiers | SDL_KMOD_CTRL);
-    app->config.window.opacity_percent = 100.0f;
+    app->session.window.opacity_percent = 100.0f;
     wheel.y = 1.0f;
     bongo_cat_window_wheel(app, &wheel);
     bool opacity_maximum = !app->wheel_animation_active;
     bongo_cat_window_cancel_wheel_animation(app);
-    app->config.window.opacity_percent = 10.0f;
+    app->session.window.opacity_percent = 10.0f;
     wheel.y = -1.0f;
     bongo_cat_window_wheel(app, &wheel);
     bool opacity_minimum = !app->wheel_animation_active;
     bool rounding = round_position(-10.6f) == -11 && round_position(10.6f) == 11;
     SDL_SetModState(modifiers);
-    app->config.window = backup;
+    app->session.window = backup;
     bongo_cat_window_cancel_wheel_animation(app);
     bongo_cat_platform_set_opacity(&app->platform,
         backup.opacity_percent / 100.0f);

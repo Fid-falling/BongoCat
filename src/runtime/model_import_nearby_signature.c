@@ -1,16 +1,16 @@
-#include "model_import_portable_internal.h"
+#include "model_import_nearby_internal.h"
 #include "bongo_cat/path.h"
 #include "bongo_cat/sha256.h"
 
 #include <stdint.h>
 #include <stdio.h>
 
-typedef struct PortableStamp {
+typedef struct NearbyStamp {
     uint64_t sum, exclusive, bytes, latest, files, entries;
-} PortableStamp;
+} NearbyStamp;
 
 typedef struct StampWalk {
-    PortableStamp *stamp;
+    NearbyStamp *stamp;
     int depth;
 } StampWalk;
 
@@ -32,7 +32,7 @@ static uint64_t mix(uint64_t value) {
     return value ^ (value >> 31);
 }
 
-static bool stamp_path(const char *path, PortableStamp *stamp, int depth);
+static bool stamp_path(const char *path, NearbyStamp *stamp, int depth);
 
 static BongoCatPathVisit stamp_item(void *userdata,
     const char *dirname, const char *name) {
@@ -44,7 +44,7 @@ static BongoCatPathVisit stamp_item(void *userdata,
         ? BONGO_CAT_PATH_CONTINUE : BONGO_CAT_PATH_FAILURE;
 }
 
-static bool stamp_path(const char *path, PortableStamp *stamp, int depth) {
+static bool stamp_path(const char *path, NearbyStamp *stamp, int depth) {
     if (bongo_cat_path_is_dir(path)) {
         if (depth >= 24) return false;
         StampWalk walk = {stamp, depth + 1};
@@ -63,18 +63,18 @@ static bool stamp_path(const char *path, PortableStamp *stamp, int depth) {
     return true;
 }
 
-bool bongo_cat_portable_signature(const BongoCatImportCandidate *candidate,
+bool bongo_cat_nearby_signature(const BongoCatImportCandidate *candidate,
     char output[65], BongoCatError *error) {
     char config_hash[65], summary[256];
     if (bongo_cat_sha256_file(candidate->config, config_hash, error) !=
         BONGO_CAT_OK) return false;
-    PortableStamp stamp = {0};
+    NearbyStamp stamp = {0};
     if (!stamp_path(candidate->directory, &stamp, 0) ||
         !stamp_path(candidate->assets, &stamp, 0) ||
         (candidate->overrides[0] &&
             !stamp_path(candidate->overrides, &stamp, 0))) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
-            "Cannot inspect portable Mver model assets: %s",
+            "Cannot inspect nearby Mver model assets: %s",
             candidate->package_root);
         return false;
     }

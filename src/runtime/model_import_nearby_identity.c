@@ -1,4 +1,4 @@
-#include "model_import_portable_internal.h"
+#include "model_import_nearby_internal.h"
 #include "bongo_cat/path.h"
 #include "bongo_cat/sha256.h"
 
@@ -115,7 +115,7 @@ bool bongo_cat_import_candidate_digest(const BongoCatImportCandidate *candidate,
     return true;
 }
 
-bool bongo_cat_portable_identity(const BongoCatImportCandidate *candidate,
+bool bongo_cat_nearby_identity(const BongoCatImportCandidate *candidate,
     char output[65], BongoCatError *error) {
     return bongo_cat_import_candidate_digest(candidate, output, error);
 }

@@ -142,7 +142,7 @@ static void collect_field(BongoCatMverLabels *labels, TextSpan mode,
         TextSpan row = {cursor, after};
         char label[BONGO_CAT_ID_CAP], normalized[BONGO_CAT_ID_CAP];
         if (line_label(row, label, sizeof(label)) &&
-            bongo_cat_utf8_normalize_legacy(label, normalized,
+            bongo_cat_utf8_normalize_mver(label, normalized,
                 sizeof(normalized)) &&
             labels->count < BONGO_CAT_BEHAVIOR_CAP) {
             BongoCatMverLabelEntry *entry = &labels->entries[labels->count++];

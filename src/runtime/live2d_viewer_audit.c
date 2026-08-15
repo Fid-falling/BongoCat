@@ -186,7 +186,7 @@ bool bongo_cat_live2d_viewer_audit_run(BongoCatApp *app) {
     SDL_GetWindowSizeInPixels(app->window, &audit_width, &audit_height);
     bongo_cat_live2d_resize(app->live2d, audit_width, audit_height);
     char root[BONGO_CAT_PATH_CAP], native[BONGO_CAT_PATH_CAP];
-    if (!bongo_cat_path_join(root, sizeof(root), app->data_root,
+    if (!bongo_cat_path_join(root, sizeof(root), app->state_root,
         "cubism-viewer-audit") ||
         !bongo_cat_path_join(native, sizeof(native), root, "native") ||
         !bongo_cat_path_create_directory(root) ||

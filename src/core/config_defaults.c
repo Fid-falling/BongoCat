@@ -18,7 +18,7 @@ static bool shortcut_equal(const char *left, const char *right) {
     return *left == *right;
 }
 
-bool bongo_cat_config_shortcut_conflicts(const BongoCatConfig *config,
+bool bongo_cat_settings_shortcut_conflicts(const BongoCatSettings *config,
     const char *shortcut, const char *exclude) {
     if (!config || !shortcut || !shortcut[0]) return false;
     const char *global[] = {config->shortcuts.visible_cat,
@@ -34,7 +34,7 @@ bool bongo_cat_config_shortcut_conflicts(const BongoCatConfig *config,
     return false;
 }
 
-const char *bongo_cat_config_model_label(const BongoCatConfig *config,
+const char *bongo_cat_settings_model_label(const BongoCatSettings *config,
     const char *id) {
     if (!config || !id) return NULL;
     for (size_t i = 0; i < config->model_label_count; ++i)
@@ -43,7 +43,7 @@ const char *bongo_cat_config_model_label(const BongoCatConfig *config,
     return NULL;
 }
 
-bool bongo_cat_config_set_model_label(BongoCatConfig *config,
+bool bongo_cat_settings_set_model_label(BongoCatSettings *config,
     const char *id, const char *label) {
     if (!config || !id || !id[0]) return false;
     size_t index = config->model_label_count;
@@ -78,7 +78,7 @@ bool bongo_cat_config_set_model_label(BongoCatConfig *config,
     return true;
 }
 
-static void validate_shortcuts(BongoCatConfig *config) {
+static void validate_shortcuts(BongoCatSettings *config) {
     char *global[] = {config->shortcuts.visible_cat,
         config->shortcuts.visible_preferences, config->shortcuts.mirror,
         config->shortcuts.pass_through, config->shortcuts.always_on_top};
@@ -99,49 +99,46 @@ static void validate_shortcuts(BongoCatConfig *config) {
     }
 }
 
-void bongo_cat_config_defaults(BongoCatConfig *config) {
+void bongo_cat_settings_defaults(BongoCatSettings *config) {
     if (!config) return;
     memset(config, 0, sizeof(*config));
     config->model.auto_release_seconds =
         BONGO_CAT_DEFAULT_AUTO_RELEASE_SECONDS;
     config->model.mouse_centered = true;
     config->model.max_fps = BONGO_CAT_DEFAULT_MAX_FPS;
-    config->window.visible = true;
     config->window.always_on_top = true;
     config->window.keep_in_screen = false;
     config->window.obs_background_color = BONGO_CAT_OBS_BACKGROUND_GREEN;
-    config->window.scale_percent = BONGO_CAT_DEFAULT_WINDOW_SCALE_PERCENT;
-    config->window.opacity_percent =
-        BONGO_CAT_DEFAULT_WINDOW_OPACITY_PERCENT;
-    config->window.width = 612;
-    config->window.height = 354;
     config->app.tray_visible = true;
     config->app.theme = BONGO_CAT_THEME_AUTO;
     config->app.language = BONGO_CAT_LANG_EN_US;
-    config->current_mode = BONGO_CAT_MODE_GAMEPAD;
-    memcpy(config->current_model, "standard", sizeof("standard"));
+    memcpy(config->extensions_json, "{}", sizeof("{}"));
 }
 
-void bongo_cat_config_validate(BongoCatConfig *config) {
+void bongo_cat_session_defaults(BongoCatSessionState *session) {
+    if (!session) return;
+    memset(session, 0, sizeof(*session));
+    session->window.visible = true;
+    session->window.scale_percent = BONGO_CAT_DEFAULT_WINDOW_SCALE_PERCENT;
+    session->window.opacity_percent =
+        BONGO_CAT_DEFAULT_WINDOW_OPACITY_PERCENT;
+    session->window.width = 612;
+    session->window.height = 354;
+    memcpy(session->active_model_id, "standard", sizeof("standard"));
+}
+
+void bongo_cat_settings_validate(BongoCatSettings *config) {
     if (!config) return;
     config->model.auto_release_seconds = clampf(config->model.auto_release_seconds, 0.05f, 30.0f);
     if (config->model.max_fps < 1) config->model.max_fps = 1;
     if (config->model.max_fps > 240) config->model.max_fps = 240;
-    config->window.scale_percent = clampf(config->window.scale_percent, 10.0f, 500.0f);
-    config->window.opacity_percent = clampf(config->window.opacity_percent, 10.0f, 100.0f);
     config->window.hide_delay_seconds = clampf(config->window.hide_delay_seconds, 0.0f, 60.0f);
     if ((unsigned)config->window.obs_background_color >=
         BONGO_CAT_OBS_BACKGROUND_COLOR_COUNT)
         config->window.obs_background_color = BONGO_CAT_OBS_BACKGROUND_GREEN;
-    if (config->window.width < 64) config->window.width = 64;
-    if (config->window.height < 64) config->window.height = 64;
-    if (config->window.width > 8192) config->window.width = 8192;
-    if (config->window.height > 8192) config->window.height = 8192;
     if (config->app.theme > BONGO_CAT_THEME_DARK) config->app.theme = BONGO_CAT_THEME_AUTO;
     if ((unsigned)config->app.language >= BONGO_CAT_LANG_COUNT)
         config->app.language = BONGO_CAT_LANG_EN_US;
-    if (config->current_mode > BONGO_CAT_MODE_GAMEPAD) config->current_mode = BONGO_CAT_MODE_STANDARD;
-    config->current_model[sizeof(config->current_model) - 1] = '\0';
     if (config->behavior_shortcut_count > BONGO_CAT_BEHAVIOR_BINDING_CAP)
         config->behavior_shortcut_count = BONGO_CAT_BEHAVIOR_BINDING_CAP;
     for (size_t i = 0; i < config->behavior_shortcut_count; ++i) {
@@ -149,27 +146,34 @@ void bongo_cat_config_validate(BongoCatConfig *config) {
             sizeof(config->behavior_shortcuts[i].id) - 1] = '\0';
         config->behavior_shortcuts[i].shortcut[BONGO_CAT_SHORTCUT_CAP - 1] = '\0';
         config->behavior_shortcuts[i].label[BONGO_CAT_ID_CAP - 1] = '\0';
-        char normalized[BONGO_CAT_ID_CAP] = {0};
-        if (bongo_cat_utf8_normalize_legacy(
-            config->behavior_shortcuts[i].label, normalized,
-            sizeof(normalized)))
-            memcpy(config->behavior_shortcuts[i].label, normalized,
-                sizeof(normalized));
-        else config->behavior_shortcuts[i].label[0] = '\0';
+        if (!bongo_cat_utf8_valid(config->behavior_shortcuts[i].label))
+            config->behavior_shortcuts[i].label[0] = '\0';
     }
     if (config->model_label_count > BONGO_CAT_MODEL_CAP)
         config->model_label_count = BONGO_CAT_MODEL_CAP;
     for (size_t i = 0; i < config->model_label_count; ++i) {
         config->model_labels[i].id[BONGO_CAT_ID_CAP - 1] = '\0';
         config->model_labels[i].label[BONGO_CAT_ID_CAP - 1] = '\0';
-        char normalized[BONGO_CAT_ID_CAP] = {0};
-        if (config->model_labels[i].id[0] && bongo_cat_utf8_normalize_legacy(
-            config->model_labels[i].label, normalized, sizeof(normalized)))
-            memcpy(config->model_labels[i].label, normalized,
-                sizeof(normalized));
-        else config->model_labels[i].label[0] = '\0';
+        if (!config->model_labels[i].id[0] ||
+            !bongo_cat_utf8_valid(config->model_labels[i].label))
+            config->model_labels[i].label[0] = '\0';
     }
     validate_shortcuts(config);
+}
+
+void bongo_cat_session_validate(BongoCatSessionState *session) {
+    if (!session) return;
+    session->window.scale_percent = clampf(session->window.scale_percent,
+        10.0f, 500.0f);
+    session->window.opacity_percent = clampf(session->window.opacity_percent,
+        10.0f, 100.0f);
+    if (session->window.width < 64) session->window.width = 64;
+    if (session->window.height < 64) session->window.height = 64;
+    if (session->window.width > 8192) session->window.width = 8192;
+    if (session->window.height > 8192) session->window.height = 8192;
+    session->active_model_id[sizeof(session->active_model_id) - 1] = '\0';
+    if (!session->active_model_id[0])
+        memcpy(session->active_model_id, "standard", sizeof("standard"));
 }
 
 const char *bongo_cat_theme_name(BongoCatTheme value) {

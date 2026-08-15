@@ -142,9 +142,9 @@ const char *bongo_cat_model_default_name(const BongoCatModelEntry *entry) {
     return entry->id;
 }
 
-const char *bongo_cat_model_name(const BongoCatConfig *config,
+const char *bongo_cat_model_name(const BongoCatSettings *settings,
     const BongoCatModelEntry *entry) {
     if (!entry) return "model";
-    const char *custom = bongo_cat_config_model_label(config, entry->id);
+    const char *custom = bongo_cat_settings_model_label(settings, entry->id);
     return custom && custom[0] ? custom : bongo_cat_model_default_name(entry);
 }

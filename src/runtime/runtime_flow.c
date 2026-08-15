@@ -8,7 +8,7 @@
 
 static void mark(BongoCatApp *app, const char *name) {
     char path[BONGO_CAT_PATH_CAP];
-    bongo_cat_path_join(path, sizeof(path), app->data_root, "runtime-flow-stage.txt");
+    bongo_cat_path_join(path, sizeof(path), app->state_root, "runtime-flow-stage.txt");
     FILE *file = bongo_cat_file_open(path, "wb");
     if (file) { fputs(name, file); fclose(file); }
 }
@@ -19,7 +19,7 @@ static void scale(BongoCatApp *app, float value) {
 }
 
 static void opacity(BongoCatApp *app, float value) {
-    app->config.window.opacity_percent = value;
+    app->session.window.opacity_percent = value;
     bongo_cat_platform_set_opacity(&app->platform, value / 100.0f);
 }
 
@@ -37,7 +37,7 @@ void bongo_cat_runtime_flow_update(BongoCatApp *app, uint64_t now) {
     if (!app->smoke_runtime_flow_ns) {
         app->smoke_runtime_flow_ns = now;
         snprintf(app->smoke_runtime_model, sizeof(app->smoke_runtime_model), "%.*s",
-            (int)sizeof(app->smoke_runtime_model) - 1, app->config.current_model);
+            (int)sizeof(app->smoke_runtime_model) - 1, app->session.active_model_id);
         mark(app, "startup"); return;
     }
     uint64_t elapsed = now - app->smoke_runtime_flow_ns;

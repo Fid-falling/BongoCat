@@ -249,7 +249,7 @@ bool bongo_cat_import_discover(const char *source, BongoCatImportDiscovery *disc
     if (patch > 0) return true;
     memset(discovery, 0, sizeof(*discovery));
     ContainerDiscovery container = {discovery};
-    BongoCatResult container_result = bongo_cat_import_portable_scan(source,
+    BongoCatResult container_result = bongo_cat_import_nearby_scan(source,
         collect_container, &container, error);
     if (container_result != BONGO_CAT_OK) return false;
     if (discovery->count) {

@@ -8,7 +8,7 @@
 static void audit_mouse(BongoCatApp *app, double x, double y) {
     if (!app->smoke_input_audit) return;
     char path[BONGO_CAT_PATH_CAP];
-    if (!bongo_cat_path_join(path, sizeof(path), app->data_root, "input-audit.txt")) return;
+    if (!bongo_cat_path_join(path, sizeof(path), app->state_root, "input-audit.txt")) return;
     FILE *file = bongo_cat_file_open(path, "ab");
     if (!file) return;
     fprintf(file, "mouse x=%.2f y=%.2f\n", x, y);
@@ -28,17 +28,17 @@ void bongo_cat_app_track_hover(BongoCatApp *app, double x, double y) {
     if (inside == app->hover_inside) return;
     app->hover_inside = inside;
     app->hover_deadline_ns = inside ? SDL_GetTicksNS() +
-        (uint64_t)(app->config.window.hide_delay_seconds * 1000000000.0) : 0;
+        (uint64_t)(app->settings.window.hide_delay_seconds * 1000000000.0) : 0;
     if (!inside && app->hover_hidden) {
         bongo_cat_platform_set_opacity(&app->platform,
-            app->config.window.opacity_percent / 100.0f);
+            app->session.window.opacity_percent / 100.0f);
         app->hover_hidden = false;
         bongo_cat_window_sync_click_through(app);
     }
 }
 
 void bongo_cat_app_update_hover(BongoCatApp *app, uint64_t now) {
-    if (!app->config.window.hide_on_hover || !app->hover_inside || app->hover_hidden ||
+    if (!app->settings.window.hide_on_hover || !app->hover_inside || app->hover_hidden ||
         !app->hover_deadline_ns || now < app->hover_deadline_ns) return;
     bongo_cat_platform_set_opacity(&app->platform, 0.0f);
     app->hover_hidden = true;
@@ -93,10 +93,10 @@ void bongo_cat_app_apply_mouse(BongoCatApp *app) {
     double model_x = target_x, model_y = target_y;
     bool model_moved = moved;
     if (app->model_render_options.mver_projection &&
-        !app->config.model.mouse_centered &&
+        !app->settings.model.mouse_centered &&
         !bongo_cat_app_map_mver_pointer(app, target_x, target_y,
             &model_x, &model_y, &model_moved)) return;
-    if (app->config.model.ignore_mouse || (!model_moved && !button_changed)) return;
+    if (app->settings.model.ignore_mouse || (!model_moved && !button_changed)) return;
     bongo_cat_app_apply_mouse_coordinates(app, model_x, model_y,
         target_x, target_y);
 }

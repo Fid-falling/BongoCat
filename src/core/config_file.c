@@ -14,7 +14,7 @@
 #endif
 
 yyjson_doc *bongo_cat_config_read_document(const char *path,
-    const char *format, BongoCatError *error) {
+    const char *format, int schema, BongoCatError *error) {
     yyjson_read_err json_error = {0};
     FILE *file = bongo_cat_file_open(path, "rb");
     yyjson_doc *document = file ? yyjson_read_fp(file, 0, NULL, &json_error) : NULL;
@@ -27,15 +27,15 @@ yyjson_doc *bongo_cat_config_read_document(const char *path,
     }
     yyjson_val *root = yyjson_doc_get_root(document);
     yyjson_val *format_value = yyjson_obj_get(root, "format");
-    yyjson_val *version = yyjson_obj_get(root, "version");
+    yyjson_val *version = yyjson_obj_get(root, "schemaVersion");
     if (!yyjson_is_obj(root) || !yyjson_is_str(format_value) ||
         strcmp(yyjson_get_str(format_value), format) != 0 ||
         !yyjson_is_int(version) ||
-        yyjson_get_sint(version) != BONGO_CAT_CONFIG_VERSION) {
+        yyjson_get_sint(version) != schema) {
         yyjson_doc_free(document);
         bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
-            "Unsupported configuration format; expected %s version %d",
-            format, BONGO_CAT_CONFIG_VERSION);
+            "Unsupported configuration format; expected %s schema %d",
+            format, schema);
         return NULL;
     }
     return document;

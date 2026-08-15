@@ -271,7 +271,7 @@ if(BUILD_TESTING)
     tests/test_mver_import.c
     tests/test_mver_pointer_import.c
     tests/test_preferences_text.c
-    tests/test_mver_portable_identity.c
+    tests/test_mver_nearby_identity.c
     tests/test_mver_support.c)
   add_executable(bongo_cat_mver_import_tests
     ${BONGO_CAT_MVER_IMPORT_TEST_SOURCES})

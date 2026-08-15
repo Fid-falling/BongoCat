@@ -21,8 +21,8 @@ static const BongoCatBehaviorEntry *nth_behavior(BongoCatApp *app,
 
 static const char *behavior_shortcut(const BongoCatApp *app, const char *id) {
     if (!app || !id) return NULL;
-    for (size_t i = 0; i < app->config.behavior_shortcut_count; ++i) {
-        const BongoCatBehaviorShortcut *binding = &app->config.behavior_shortcuts[i];
+    for (size_t i = 0; i < app->settings.behavior_shortcut_count; ++i) {
+        const BongoCatBehaviorShortcut *binding = &app->settings.behavior_shortcuts[i];
         if (strcmp(binding->id, id) == 0) return binding->shortcut;
     }
     return NULL;
@@ -31,8 +31,8 @@ static const char *behavior_shortcut(const BongoCatApp *app, const char *id) {
 static const char *behavior_label(const BongoCatApp *app,
     const BongoCatBehaviorEntry *entry) {
     if (!app || !entry) return "";
-    for (size_t i = 0; i < app->config.behavior_shortcut_count; ++i) {
-        const BongoCatBehaviorShortcut *binding = &app->config.behavior_shortcuts[i];
+    for (size_t i = 0; i < app->settings.behavior_shortcut_count; ++i) {
+        const BongoCatBehaviorShortcut *binding = &app->settings.behavior_shortcuts[i];
         if (strcmp(binding->id, entry->id) == 0 && binding->label[0])
             return binding->label;
     }

@@ -164,7 +164,7 @@ static void draw_actions(BongoCatPreferences *value,
 void bongo_cat_preferences_model_card(BongoCatPreferences *value,
     struct nk_context *context, const BongoCatModelEntry *entry) {
     BongoCatApp *app = value->app;
-    bool selected = !strcmp(entry->id, app->config.current_model);
+    bool selected = !strcmp(entry->id, app->session.active_model_id);
     struct nk_rect bounds;
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return;
     bounds.y += 5.0f; bounds.h += 1.0f;

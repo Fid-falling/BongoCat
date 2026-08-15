@@ -19,7 +19,7 @@ bool bongo_cat_preferences_model_name_draw(BongoCatPreferences *value,
         nk_stroke_rect(canvas, bounds, 7, 1, renaming ? p.pink : p.accent);
     }
     const char *shown = renaming ? session->text :
-        bongo_cat_model_name(&value->app->config, entry);
+        bongo_cat_model_name(&value->app->settings, entry);
     struct nk_rect text_bounds = nk_rect(bounds.x + 5,
         bounds.y + 3, bounds.w - 10, 22);
     if (renaming && session->select_all)
@@ -55,7 +55,7 @@ void bongo_cat_preferences_model_rename_finish(
             &value->app->models, session->id);
         const char *label = entry && !strcmp(session->text,
             bongo_cat_model_default_name(entry)) ? "" : session->text;
-        label_changed = bongo_cat_config_set_model_label(&value->app->config,
+        label_changed = bongo_cat_settings_set_model_label(&value->app->settings,
             session->id, label);
     }
     bongo_cat_preferences_text_session_reset(session);
@@ -69,7 +69,7 @@ void bongo_cat_preferences_model_rename_begin(BongoCatPreferences *value,
     if (!value || !entry) return;
     bongo_cat_preferences_shortcut_cancel(value);
     bongo_cat_preferences_text_session_begin(&value->model_rename, entry->id,
-        bongo_cat_model_name(&value->app->config, entry), bounds);
+        bongo_cat_model_name(&value->app->settings, entry), bounds);
     SDL_StartTextInput(value->window);
     value->render_dirty = true;
 }

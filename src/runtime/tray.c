@@ -31,7 +31,7 @@ static void on_visible(void *userdata, SDL_TrayEntry *entry) {
     (void)entry;
     BongoCatTray *tray = userdata;
     BongoCatApp *app = tray->app;
-    bongo_cat_window_set_visible(app, !app->config.window.visible);
+    bongo_cat_window_set_visible(app, !app->session.window.visible);
     bongo_cat_tray_sync(tray);
     bongo_cat_preferences_invalidate(app->preferences);
 }
@@ -39,7 +39,7 @@ static void on_visible(void *userdata, SDL_TrayEntry *entry) {
 static void on_pass_through(void *userdata, SDL_TrayEntry *entry) {
     (void)entry;
     BongoCatTray *tray = userdata;
-    tray->app->config.window.pass_through = !tray->app->config.window.pass_through;
+    tray->app->settings.window.pass_through = !tray->app->settings.window.pass_through;
     bongo_cat_window_mark_hit_dirty(tray->app);
     bongo_cat_window_sync_click_through(tray->app);
     bongo_cat_tray_sync(tray);
@@ -49,9 +49,9 @@ static void on_pass_through(void *userdata, SDL_TrayEntry *entry) {
 static void on_always_on_top(void *userdata, SDL_TrayEntry *entry) {
     (void)entry;
     BongoCatTray *tray = userdata;
-    tray->app->config.window.always_on_top = !tray->app->config.window.always_on_top;
+    tray->app->settings.window.always_on_top = !tray->app->settings.window.always_on_top;
     bongo_cat_platform_set_always_on_top(&tray->app->platform,
-        tray->app->config.window.always_on_top);
+        tray->app->settings.window.always_on_top);
     bongo_cat_window_mark_hit_dirty(tray->app);
     bongo_cat_window_sync_click_through(tray->app);
     bongo_cat_tray_sync(tray);
@@ -150,7 +150,7 @@ static bool create_native_tray(BongoCatTray *tray, BongoCatError *error) {
 }
 
 BongoCatTray *bongo_cat_tray_create(BongoCatApp *app, BongoCatError *error) {
-    if (!app || !app->config.app.tray_visible) return NULL;
+    if (!app || !app->settings.app.tray_visible) return NULL;
     BongoCatTray *tray = calloc(1, sizeof(*tray));
     if (!tray) return NULL;
     tray->app = app;
@@ -198,18 +198,18 @@ static bool restore_native_tray(BongoCatTray *tray) {
 void bongo_cat_tray_sync(BongoCatTray *tray) {
     if (!tray || !restore_native_tray(tray)) return;
     BongoCatApp *app = tray->app;
-    if (tray->state_valid && tray->last_visible == app->config.window.visible &&
-        tray->last_pass_through == app->config.window.pass_through &&
-        tray->last_always_on_top == app->config.window.always_on_top &&
-        tray->last_language == app->config.app.language) return;
+    if (tray->state_valid && tray->last_visible == app->session.window.visible &&
+        tray->last_pass_through == app->settings.window.pass_through &&
+        tray->last_always_on_top == app->settings.window.always_on_top &&
+        tray->last_language == app->settings.app.language) return;
     tray->state_valid = true;
-    tray->last_visible = app->config.window.visible;
-    tray->last_pass_through = app->config.window.pass_through;
-    tray->last_always_on_top = app->config.window.always_on_top;
-    tray->last_language = app->config.app.language;
-    SDL_SetTrayEntryChecked(tray->visible, tray->app->config.window.visible);
-    SDL_SetTrayEntryChecked(tray->pass_through, tray->app->config.window.pass_through);
-    SDL_SetTrayEntryChecked(tray->always_on_top, tray->app->config.window.always_on_top);
+    tray->last_visible = app->session.window.visible;
+    tray->last_pass_through = app->settings.window.pass_through;
+    tray->last_always_on_top = app->settings.window.always_on_top;
+    tray->last_language = app->settings.app.language;
+    SDL_SetTrayEntryChecked(tray->visible, tray->app->session.window.visible);
+    SDL_SetTrayEntryChecked(tray->pass_through, tray->app->settings.window.pass_through);
+    SDL_SetTrayEntryChecked(tray->always_on_top, tray->app->settings.window.always_on_top);
     // The checkbox already communicates visibility; keep the action name
     // stable so users do not have to reinterpret the menu after each click.
     SDL_SetTrayEntryLabel(tray->visible, bongo_cat_i18n_get(tray->app->i18n,
@@ -242,9 +242,9 @@ bool bongo_cat_tray_self_test(BongoCatTray *tray) {
     SDL_Log("Tray self-test: shell restart restored");
 #endif
     BongoCatApp *app = tray->app;
-    bool visible = app->config.window.visible;
-    bool pass_through = app->config.window.pass_through;
-    bool always_on_top = app->config.window.always_on_top;
+    bool visible = app->session.window.visible;
+    bool pass_through = app->settings.window.pass_through;
+    bool always_on_top = app->settings.window.always_on_top;
     on_visible(tray, tray->visible); on_visible(tray, tray->visible);
     on_pass_through(tray, tray->pass_through);
     on_pass_through(tray, tray->pass_through);
@@ -257,9 +257,9 @@ bool bongo_cat_tray_self_test(BongoCatTray *tray) {
     bongo_cat_preferences_close(app->preferences);
     SDL_Log("Tray self-test: preferences closed");
     bool result = preferences && bongo_cat_modal_frame_self_test() &&
-        app->config.window.visible == visible &&
-        app->config.window.pass_through == pass_through &&
-        app->config.window.always_on_top == always_on_top;
+        app->session.window.visible == visible &&
+        app->settings.window.pass_through == pass_through &&
+        app->settings.window.always_on_top == always_on_top;
     SDL_Log("Tray self-test: result=%d", result);
     return result;
 }

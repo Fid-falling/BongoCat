@@ -1,9 +1,0 @@
-{
-  "schemaVersion": 1,
-  "layout": "preserved-payload",
-  "format": "tauri-live2d",
-  "mode": "standard",
-  "directory": "payload",
-  "adapter": "adapter",
-  "setting": "dummy.model3.json"
-}

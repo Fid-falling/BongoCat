@@ -7,7 +7,7 @@ set(BONGO_CAT_RUNTIME_SOURCES
   src/render/overlay.c src/render/overlay_draw.c
   src/render/mver_pointer_overlay.c src/render/mver_pointer_overlay_draw.c
   src/runtime/app.c src/runtime/config_store.c
-  src/runtime/assets.c src/runtime/startup.c
+  src/runtime/assets.c src/runtime/startup.c src/runtime/storage_paths.c
   src/runtime/frame_audit.c src/runtime/frame_presentation_audit.c
   src/runtime/frame_clock.c src/runtime/modal_frame.c
   src/runtime/gamepad.c
@@ -19,10 +19,9 @@ set(BONGO_CAT_RUNTIME_SOURCES
   src/runtime/model_import.c src/runtime/model_import_identity.c
   src/runtime/model_import_package.c
   src/runtime/model_import_discovery.c src/runtime/model_import_format.c
-  src/runtime/model_import_portable.c src/runtime/model_import_portable_scan.c
-  src/runtime/model_import_portable_identity.c
-  src/runtime/model_import_portable_migration.c
-  src/runtime/model_import_portable_signature.c
+  src/runtime/model_import_nearby.c src/runtime/model_import_nearby_scan.c
+  src/runtime/model_import_nearby_identity.c
+  src/runtime/model_import_nearby_signature.c
   src/runtime/model_import_mver_patch.c
   src/runtime/model_import_mver.c src/runtime/model_import_mver_image.c
   src/runtime/model_import_mver_shortcut.c src/runtime/model_import_mver_effect.c

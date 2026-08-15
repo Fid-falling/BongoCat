@@ -30,8 +30,8 @@ static bool try_window(BongoCatApp *app, bool transparent, bool multisampling,
         SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_HIDDEN;
     if (transparent) flags |= SDL_WINDOW_TRANSPARENT;
     app->window = SDL_CreateWindow(BONGO_CAT_PET_WINDOW_TITLE,
-        app->config.window.width,
-        app->config.window.height, flags);
+        app->session.window.width,
+        app->session.window.height, flags);
     if (!app->window) {
         snprintf(failure, capacity, "Window creation: %s", SDL_GetError()); return false;
     }
@@ -86,18 +86,21 @@ BongoCatResult bongo_cat_window_create(BongoCatApp *app, BongoCatError *error) {
 }
 
 void bongo_cat_window_apply(BongoCatApp *app) {
-    BongoCatWindowOptions *value = &app->config.window;
+    BongoCatWindowPreferences *preferences = &app->settings.window;
+    BongoCatWindowState *state = &app->session.window;
     bongo_cat_platform_set_opacity(&app->platform,
-        value->opacity_percent / 100.0f);
-    SDL_SetWindowSize(app->window, value->width, value->height);
-    if (value->x || value->y) SDL_SetWindowPosition(app->window, value->x, value->y);
+        state->opacity_percent / 100.0f);
+    SDL_SetWindowSize(app->window, state->width, state->height);
+    if (state->position_known)
+        SDL_SetWindowPosition(app->window, state->x, state->y);
     SDL_SyncWindow(app->window);
-    if (value->keep_in_screen) bongo_cat_window_clamp_to_display(app);
+    if (preferences->keep_in_screen) bongo_cat_window_clamp_to_display(app);
     else bongo_cat_window_recover_to_display(app);
     SDL_SyncWindow(app->window);
-    bongo_cat_platform_set_visible(&app->platform, value->visible);
+    bongo_cat_platform_set_visible(&app->platform, state->visible);
     bongo_cat_window_sync_click_through(app);
-    bongo_cat_platform_set_always_on_top(&app->platform, value->always_on_top);
+    bongo_cat_platform_set_always_on_top(&app->platform,
+        preferences->always_on_top);
 }
 
 bool bongo_cat_window_event(BongoCatApp *app, const SDL_Event *event) {
@@ -117,8 +120,8 @@ bool bongo_cat_window_event(BongoCatApp *app, const SDL_Event *event) {
         bongo_cat_window_drag_end(app);
     }
     if (event->type == SDL_EVENT_WINDOW_RESIZED) {
-        app->config.window.width = event->window.data1;
-        app->config.window.height = event->window.data2;
+        app->session.window.width = event->window.data1;
+        app->session.window.height = event->window.data2;
         bongo_cat_window_clamp_to_display(app);
         app->dirty = true;
     }
@@ -140,8 +143,9 @@ bool bongo_cat_window_event(BongoCatApp *app, const SDL_Event *event) {
         app->resize_pending = true;
         bongo_cat_window_mark_hit_dirty(app);
     } else if (event->type == SDL_EVENT_WINDOW_MOVED) {
-        app->config.window.x = event->window.data1;
-        app->config.window.y = event->window.data2;
+        app->session.window.x = event->window.data1;
+        app->session.window.y = event->window.data2;
+        app->session.window.position_known = true;
         app->pointer_known = false;
         if (!app->window_drag_active) bongo_cat_window_clamp_to_display(app);
         bongo_cat_window_mark_hit_dirty(app);

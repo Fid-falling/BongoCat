@@ -16,7 +16,7 @@ static void set_parameter(BongoCatApp *app, const char *id,
     size_t length = strlen(id);
     char axis = length ? id[length - 1] : 'X';
     float value = bongo_cat_mouse_parameter_value(range.minimum, range.maximum,
-        x_ratio, y_ratio, axis, app->config.model.mouse_mirror);
+        x_ratio, y_ratio, axis, app->settings.model.mouse_mirror);
     bongo_cat_live2d_set_parameter(app->live2d, id, value);
 }
 
@@ -133,7 +133,7 @@ static bool model_pointer_ratios(BongoCatApp *app, double x, double y,
 void bongo_cat_app_apply_mouse_coordinates(BongoCatApp *app, double hand_x,
     double hand_y, double gaze_x, double gaze_y) {
     SDL_Point point = {(int)hand_x, (int)hand_y}; SDL_Rect bounds;
-    bool screen_mapped = app->config.model.mouse_centered;
+    bool screen_mapped = app->settings.model.mouse_centered;
     if (!(screen_mapped ? model_pointer_bounds(app, &bounds, NULL, NULL) :
         mver_pointer_bounds(app, &bounds))) {
         SDL_DisplayID display = SDL_GetDisplayForPoint(&point);
@@ -146,7 +146,7 @@ void bongo_cat_app_apply_mouse_coordinates(BongoCatApp *app, double hand_x,
     if (!bongo_cat_mver_pointer_ratios(hand_x, hand_y, &pointer_bounds,
         &hand_x_ratio, &hand_y_ratio)) return;
     float gaze_x_ratio = hand_x_ratio, gaze_y_ratio = hand_y_ratio;
-    if (app->config.model.mouse_centered)
+    if (app->settings.model.mouse_centered)
         model_pointer_ratios(app, gaze_x, gaze_y, &gaze_x_ratio, &gaze_y_ratio);
     bool exact_pointer = bongo_cat_overlay_mver_pointer_enabled(app->overlay);
     bool mver = app->model_render_options.mver_projection;
@@ -156,7 +156,7 @@ void bongo_cat_app_apply_mouse_coordinates(BongoCatApp *app, double hand_x,
     float drag_x = mver ? 2.0f * mver_x - 1.0f :
         1.0f - 2.0f * gaze_x_ratio;
     float drag_y = 1.0f - 2.0f * gaze_y_ratio;
-    if (!mver && app->config.model.mouse_mirror) drag_x = -drag_x;
+    if (!mver && app->settings.model.mouse_mirror) drag_x = -drag_x;
     bongo_cat_overlay_set_mver_pointer(app->overlay, hand_x_ratio, hand_y_ratio,
         app->left_mouse_down, app->right_mouse_down, app->side_mouse_down);
     if (!exact_pointer) {
@@ -178,7 +178,7 @@ void bongo_cat_app_reset_pointer_tracking(BongoCatApp *app) {
 
 void bongo_cat_app_apply_mouse_position(BongoCatApp *app, double x, double y,
     float elapsed_seconds) {
-    if (!app || app->config.model.ignore_mouse) return;
+    if (!app || app->settings.model.ignore_mouse) return;
     (void)elapsed_seconds;
     bongo_cat_app_apply_mouse_coordinates(app, x, y, x, y);
 }
@@ -187,8 +187,8 @@ bool bongo_cat_app_audit_screen_pointer(BongoCatApp *app) {
     SDL_Rect bounds;
     SDL_DisplayID display = SDL_GetPrimaryDisplay();
     if (!app || !display || !SDL_GetDisplayBounds(display, &bounds)) return false;
-    bool mouse_centered = app->config.model.mouse_centered;
-    app->config.model.mouse_centered = false;
+    bool mouse_centered = app->settings.model.mouse_centered;
+    app->settings.model.mouse_centered = false;
     bongo_cat_app_apply_mouse_position(app, bounds.x + bounds.w * 0.5,
         bounds.y + bounds.h * 0.5, 1.0f / 60.0f);
     for (int frame = 0; frame < 90; ++frame)
@@ -197,17 +197,17 @@ bool bongo_cat_app_audit_screen_pointer(BongoCatApp *app) {
     bool passed = bongo_cat_live2d_parameter(app->live2d, "ParamAngleX", &x) &&
         bongo_cat_live2d_parameter(app->live2d, "ParamAngleY", &y) &&
         fabsf(x.value) < 0.5f && fabsf(y.value) < 0.5f;
-    app->config.model.mouse_centered = mouse_centered;
+    app->settings.model.mouse_centered = mouse_centered;
     return passed;
 }
 
 bool bongo_cat_app_audit_display_pointer(BongoCatApp *app) {
     SDL_Rect bounds;
     if (!app) return false;
-    bool centered = app->config.model.mouse_centered;
-    app->config.model.mouse_centered = true;
+    bool centered = app->settings.model.mouse_centered;
+    app->settings.model.mouse_centered = true;
     if (!model_pointer_bounds(app, &bounds, NULL, NULL)) {
-        app->config.model.mouse_centered = centered;
+        app->settings.model.mouse_centered = centered;
         return false;
     }
     BongoCatParameterRange tl_x = {0}, tl_y = {0}, br_x = {0}, br_y = {0};
@@ -218,7 +218,7 @@ bool bongo_cat_app_audit_display_pointer(BongoCatApp *app) {
         bounds.y + bounds.h - 1, 0.0f);
     passed = bongo_cat_live2d_parameter(app->live2d, "ParamMouseX", &br_x) &&
         bongo_cat_live2d_parameter(app->live2d, "ParamMouseY", &br_y) && passed;
-    app->config.model.mouse_centered = centered;
+    app->settings.model.mouse_centered = centered;
     return passed && tl_x.value < -20.0f && tl_y.value > 20.0f &&
         br_x.value > 20.0f && br_y.value < -20.0f;
 }

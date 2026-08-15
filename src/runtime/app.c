@@ -14,7 +14,7 @@ static void scan_models(BongoCatApp *app) {
     bongo_cat_app_rescan_models(app);
 }
 static bool load_selected_model(BongoCatApp *app, BongoCatError *error) {
-    const char *candidates[] = {app->config.current_model, "standard", "keyboard", "gamepad"};
+    const char *candidates[] = {app->session.active_model_id, "standard", "keyboard", "gamepad"};
     for (size_t i = 0; i < 4; ++i) {
         bool duplicate = false;
         for (size_t j = 0; j < i; ++j)
@@ -37,19 +37,20 @@ static bool initialize(BongoCatApp *app, int argc, char **argv, BongoCatError *e
     app->smoke_language = -1;
     app->smoke_theme = -1;
     app->smoke_preference_page = -1;
-    bongo_cat_config_defaults(&app->config);
+    bongo_cat_settings_defaults(&app->settings);
+    bongo_cat_session_defaults(&app->session);
     bongo_cat_input_init(&app->input);
     bongo_cat_shortcut_init(&app->shortcut_state);
     bongo_cat_models_init(&app->models);
     if (!bongo_cat_startup_prepare(app, argc, argv, error)) return false;
-    BongoCatResult loaded = bongo_cat_preferences_load(
-        app->preferences_path, &app->config, error);
-    app->preferences_store_valid = loaded == BONGO_CAT_OK &&
-        bongo_cat_path_is_file(app->preferences_path);
+    BongoCatResult loaded = bongo_cat_settings_load(
+        app->settings_path, &app->settings, error);
+    app->settings_store_valid = loaded == BONGO_CAT_OK &&
+        bongo_cat_path_is_file(app->settings_path);
     if (loaded != BONGO_CAT_OK)
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Preferences ignored: %s", error->message);
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Settings ignored: %s", error->message);
     *error = (BongoCatError){0};
-    loaded = bongo_cat_session_load(app->session_path, &app->config, error);
+    loaded = bongo_cat_session_load(app->session_path, &app->session, error);
     app->session_store_valid = loaded == BONGO_CAT_OK &&
         bongo_cat_path_is_file(app->session_path);
     if (loaded != BONGO_CAT_OK)
@@ -57,20 +58,20 @@ static bool initialize(BongoCatApp *app, int argc, char **argv, BongoCatError *e
     *error = (BongoCatError){0};
     bongo_cat_config_store_initialize(app);
     if (app->smoke_language >= 0)
-        app->config.app.language = (BongoCatLanguage)app->smoke_language;
-    if (app->smoke_theme >= 0) app->config.app.theme = (BongoCatTheme)app->smoke_theme;
-    if (app->smoke_pass_through) app->config.window.pass_through = true;
+        app->settings.app.language = (BongoCatLanguage)app->smoke_language;
+    if (app->smoke_theme >= 0) app->settings.app.theme = (BongoCatTheme)app->smoke_theme;
+    if (app->smoke_pass_through) app->settings.window.pass_through = true;
     if (app->smoke_model[0])
-        snprintf(app->config.current_model, sizeof(app->config.current_model),
+        snprintf(app->session.active_model_id, sizeof(app->session.active_model_id),
             "%s", app->smoke_model);
-    if (!app->autostart_launch) app->config.window.visible = true;
+    if (!app->autostart_launch) app->session.window.visible = true;
     bongo_cat_startup_stage(app, "configuration-ready");
     if (bongo_cat_window_create(app, error) != BONGO_CAT_OK) return false;
     bongo_cat_startup_stage(app, "window-ready");
     if (bongo_cat_app_locate_assets(app, error) != BONGO_CAT_OK) return false;
     bongo_cat_startup_stage(app, "assets-ready");
     BongoCatError optional = {0};
-    app->i18n = bongo_cat_i18n_create(app->locale_root, app->config.app.language, &optional);
+    app->i18n = bongo_cat_i18n_create(app->locale_root, app->settings.app.language, &optional);
     if (!app->i18n) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", optional.message);
     if (bongo_cat_platform_init(&app->platform, app->window, &app->input, error) != BONGO_CAT_OK) return false;
     bongo_cat_window_apply(app);
@@ -93,19 +94,19 @@ static bool initialize(BongoCatApp *app, int argc, char **argv, BongoCatError *e
             bongo_cat_startup_ci_failure(app, &import_error);
         } else if (app->smoke_remove_imported) {
             char imported[BONGO_CAT_PATH_CAP];
-            snprintf(imported, sizeof(imported), "%s", app->config.current_model);
+            snprintf(imported, sizeof(imported), "%s", app->session.active_model_id);
             if (bongo_cat_app_remove_model(app, imported, &import_error) != BONGO_CAT_OK)
                 bongo_cat_startup_ci_failure(app, &import_error);
         }
     }
     app->running = true;
     optional = (BongoCatError){0}; app->tray = bongo_cat_tray_create(app, &optional);
-    if (!app->tray && app->config.app.tray_visible)
+    if (!app->tray && app->settings.app.tray_visible)
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", optional.message);
     app->preferences = bongo_cat_preferences_create(app);
     if (!app->preferences) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
         "Preferences are unavailable because their state could not be allocated");
-    if (!app->tray && !app->config.window.visible) {
+    if (!app->tray && !app->session.window.visible) {
         bongo_cat_window_set_visible(app, true);
     }
     bongo_cat_live2d_audit_run(app);
@@ -135,9 +136,9 @@ static bool initialize(BongoCatApp *app, int argc, char **argv, BongoCatError *e
     if (app->smoke_preferences) bongo_cat_preferences_show(app->preferences);
     app->last_frame_ns = SDL_GetTicksNS();
     app->dirty = true;
-    app->startup_raise_due_ns = !app->smoke && !app->autostart_launch && app->config.window.visible ? app->last_frame_ns + 250000000ull : 0;
+    app->startup_raise_due_ns = !app->smoke && !app->autostart_launch && app->session.window.visible ? app->last_frame_ns + 250000000ull : 0;
     if (app->smoke_deadline_ns) app->smoke_deadline_ns += app->last_frame_ns;
-    if (!app->config.window.visible) bongo_cat_startup_ready(app);
+    if (!app->session.window.visible) bongo_cat_startup_ready(app);
     return true;
 }
 static void handle_event(BongoCatApp *app, const SDL_Event *event) {
@@ -152,7 +153,7 @@ void bongo_cat_app_drain_input(BongoCatApp *app, bool allow_shortcuts) {
         if (app->smoke_ignore_global_input) continue;
         if (app->smoke_input_audit) {
             char path[BONGO_CAT_PATH_CAP];
-            bongo_cat_path_join(path, sizeof(path), app->data_root, "input-audit.txt");
+            bongo_cat_path_join(path, sizeof(path), app->state_root, "input-audit.txt");
             FILE *file = bongo_cat_file_open(path, "ab");
             if (file) { fprintf(file, "kind=%d name=%s value=%.3f\n",
                 event.kind, event.name, event.value); fclose(file); }
@@ -160,7 +161,7 @@ void bongo_cat_app_drain_input(BongoCatApp *app, bool allow_shortcuts) {
         uint64_t delay = strcmp(event.name, "CapsLock") == 0 ? 100 : 0;
 #ifdef _WIN32
         if (event.kind == BONGO_CAT_INPUT_KEY_DOWN && !delay)
-            delay = (uint64_t)(app->config.model.auto_release_seconds * 1000.0f);
+            delay = (uint64_t)(app->settings.model.auto_release_seconds * 1000.0f);
 #endif
         bongo_cat_input_auto_release(&app->input, &event, delay);
         if (allow_shortcuts && !bongo_cat_preferences_shortcuts_blocked(app->preferences))
@@ -199,13 +200,13 @@ static bool render(BongoCatApp *app, bool present) {
     glDisable(GL_SCISSOR_TEST);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     bongo_cat_window_clear_background(app);
-    bongo_cat_overlay_draw_background(app->overlay, app->config.model.mirror);
-    bongo_cat_live2d_set_mirror(app->live2d, app->config.model.mirror);
+    bongo_cat_overlay_draw_background(app->overlay, app->settings.model.mirror);
+    bongo_cat_live2d_set_mirror(app->live2d, app->settings.model.mirror);
     bongo_cat_live2d_draw(app->live2d);
     bongo_cat_overlay_draw_pointer_before_keys(app->overlay);
-    if (app->config.model.mouse_centered && app->pointer_known && !app->model_pointer_anchor_ready) bongo_cat_app_apply_mouse_position(app, app->pointer_x, app->pointer_y, 0.0f);
-    bongo_cat_overlay_draw_keys(app->overlay, app->config.model.mirror);
-    bongo_cat_overlay_draw_effect(app->overlay, app->config.model.mirror);
+    if (app->settings.model.mouse_centered && app->pointer_known && !app->model_pointer_anchor_ready) bongo_cat_app_apply_mouse_position(app, app->pointer_x, app->pointer_y, 0.0f);
+    bongo_cat_overlay_draw_keys(app->overlay, app->settings.model.mirror);
+    bongo_cat_overlay_draw_effect(app->overlay, app->settings.model.mirror);
     bongo_cat_overlay_draw_pointer_after_keys(app->overlay);
     bongo_cat_frame_capture_pending(app, width, height);
     if (!present) {
@@ -227,7 +228,7 @@ static bool render(BongoCatApp *app, bool present) {
     return true;
 }
 void bongo_cat_app_render_now(BongoCatApp *app) { if (app && app->window &&
-    app->config.window.visible && !app->window_minimized) render(app, true); }
+    app->session.window.visible && !app->window_minimized) render(app, true); }
 bool bongo_cat_app_capture_pending_frame(BongoCatApp *app) {
     return app && app->window && app->pending_model_cover_path[0] &&
         !app->window_minimized && render(app, false);
@@ -262,10 +263,10 @@ static void loop(BongoCatApp *app) {
         bongo_cat_app_update_hover(app, now);
         bongo_cat_app_drain_input(app, true);
         if (bongo_cat_model_frame_due(app, now)) update_model(app, now);
-        else if (!app->config.window.visible || app->window_minimized) { app->last_frame_ns = now; bongo_cat_memory_policy_idle(); }
-        if (app->config.window.visible && !app->window_minimized && app->dirty) render(app, true);
+        else if (!app->session.window.visible || app->window_minimized) { app->last_frame_ns = now; bongo_cat_memory_policy_idle(); }
+        if (app->session.window.visible && !app->window_minimized && app->dirty) render(app, true);
         bongo_cat_preferences_render(app->preferences);
-        if (app->config.window.visible && !app->window_minimized && app->dirty) render(app, true);
+        if (app->session.window.visible && !app->window_minimized && app->dirty) render(app, true);
         bongo_cat_tray_sync(app->tray); bongo_cat_window_raise_when_due(app, now);
         bongo_cat_config_store_update(app, now);
         if (app->smoke_deadline_ns && now >= app->smoke_deadline_ns) app->running = false;

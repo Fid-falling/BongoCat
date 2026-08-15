@@ -5,21 +5,21 @@
 #include <SDL3/SDL.h>
 
 bool bongo_cat_preferences_reload_language(BongoCatPreferences *value) {
-    if (!value || value->font_language == value->app->config.app.language)
+    if (!value || value->font_language == value->app->settings.app.language)
         return false;
     BongoCatLanguage previous = value->font_language;
-    BongoCatLanguage requested = value->app->config.app.language;
+    BongoCatLanguage requested = value->app->settings.app.language;
     BongoCatError error = {0};
     if (!value->app->i18n || bongo_cat_i18n_reload(value->app->i18n,
         requested, &error) != BONGO_CAT_OK) {
-        value->app->config.app.language = previous;
+        value->app->settings.app.language = previous;
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
         return false;
     }
     value->font_language = requested;
     if (!bongo_cat_preferences_reload_fonts(value)) {
         BongoCatError restore = {0};
-        value->app->config.app.language = previous;
+        value->app->settings.app.language = previous;
         value->font_language = previous;
         bongo_cat_i18n_reload(value->app->i18n, previous, &restore);
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,

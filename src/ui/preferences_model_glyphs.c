@@ -34,12 +34,12 @@ void bongo_cat_preferences_model_glyphs(const BongoCatApp *app,
     for (size_t i = 0; i < app->models.count; ++i) {
         const BongoCatModelEntry *entry = &app->models.entries[i];
         add_text(ranges, capacity, &used,
-            bongo_cat_model_name(&app->config, entry));
+            bongo_cat_model_name(&app->settings, entry));
     }
     for (size_t i = 0; i < app->behaviors.count; ++i)
         add_text(ranges, capacity, &used, app->behaviors.entries[i].label);
     for (size_t i = 0;
-        i < app->config.behavior_shortcut_count; ++i)
+        i < app->settings.behavior_shortcut_count; ++i)
         add_text(ranges, capacity, &used,
-            app->config.behavior_shortcuts[i].label);
+            app->settings.behavior_shortcuts[i].label);
 }

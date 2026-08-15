@@ -11,9 +11,9 @@ static bool metadata_version(yyjson_val *root) {
     if (!yyjson_is_obj(root)) return false;
     yyjson_val *schema = yyjson_obj_get(root, "schemaVersion");
     const char *kind = yyjson_get_str(yyjson_obj_get(root, "kind"));
-    return schema ? yyjson_get_int(schema) == BONGO_CAT_MODEL_ADAPTER_SCHEMA && kind &&
-        strcmp(kind, "bongo-cat-runtime-adapter") == 0 :
-        yyjson_get_int(yyjson_obj_get(root, "version")) == 1;
+    return yyjson_is_int(schema) &&
+        yyjson_get_int(schema) == BONGO_CAT_MODEL_ADAPTER_SCHEMA && kind &&
+        strcmp(kind, "bongo-cat-runtime-adapter") == 0;
 }
 
 static bool same_family(const char *left, const char *right) {
@@ -39,9 +39,9 @@ static int sequential_index(yyjson_val *bindings, size_t index, const char *kind
 }
 
 static BongoCatBehaviorShortcut *shortcut_for(BongoCatApp *app, const char *id) {
-    for (size_t i = 0; i < app->config.behavior_shortcut_count; ++i)
-        if (strcmp(app->config.behavior_shortcuts[i].id, id) == 0)
-            return &app->config.behavior_shortcuts[i];
+    for (size_t i = 0; i < app->settings.behavior_shortcut_count; ++i)
+        if (strcmp(app->settings.behavior_shortcuts[i].id, id) == 0)
+            return &app->settings.behavior_shortcuts[i];
     return NULL;
 }
 
@@ -91,9 +91,9 @@ void bongo_cat_import_apply_metadata(BongoCatApp *app, const char *model_id,
                 snprintf(existing->label, sizeof(existing->label), "%s", label);
             continue;
         }
-        if (app->config.behavior_shortcut_count >= BONGO_CAT_BEHAVIOR_BINDING_CAP) break;
+        if (app->settings.behavior_shortcut_count >= BONGO_CAT_BEHAVIOR_BINDING_CAP) break;
         BongoCatBehaviorShortcut *value =
-            &app->config.behavior_shortcuts[app->config.behavior_shortcut_count++];
+            &app->settings.behavior_shortcuts[app->settings.behavior_shortcut_count++];
         snprintf(value->id, sizeof(value->id), "%s", id);
         snprintf(value->shortcut, sizeof(value->shortcut), "%s", shortcut);
         if (label) snprintf(value->label, sizeof(value->label), "%s", label);

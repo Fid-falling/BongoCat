@@ -25,7 +25,7 @@ bool child(char *output, size_t capacity, const char *root,
         (!directory || SDL_CreateDirectory(output));
 }
 
-bool portable_fixture(const char *root) {
+bool nearby_fixture(const char *root) {
     char image[BONGO_CAT_PATH_CAP], standard[BONGO_CAT_PATH_CAP];
     char hand[BONGO_CAT_PATH_CAP], model[BONGO_CAT_PATH_CAP];
     char path[BONGO_CAT_PATH_CAP], source[BONGO_CAT_PATH_CAP];

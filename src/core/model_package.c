@@ -53,11 +53,6 @@ static bool safe_id(const char *value) {
     return true;
 }
 
-static bool legacy_id(const char *value) {
-    return value && value[0] && strlen(value) < BONGO_CAT_ID_CAP &&
-        strcmp(value, ".") != 0 && strcmp(value, "..") != 0;
-}
-
 static bool digest_valid(const char *value) {
     if (!value || strlen(value) != 64) return false;
     for (const unsigned char *cursor = (const unsigned char *)value;
@@ -144,12 +139,9 @@ static bool catalog_has_id(const BongoCatModelCatalog *catalog,
 
 bool bongo_cat_model_adapter_metadata_path(const char *directory,
     char *path, size_t capacity) {
-    if (!directory || !path || !capacity ||
-        !bongo_cat_path_join(path, capacity, directory,
-        BONGO_CAT_MODEL_ADAPTER_FILE)) return false;
-    if (bongo_cat_path_is_file(path)) return true;
-    return bongo_cat_path_join(path, capacity, directory,
-        BONGO_CAT_MODEL_LEGACY_ADAPTER_FILE);
+    return directory && path && capacity &&
+        bongo_cat_path_join(path, capacity, directory,
+            BONGO_CAT_MODEL_ADAPTER_FILE);
 }
 
 static bool resolve_entry(BongoCatModelEntry *entry, const char *package,
@@ -164,11 +156,10 @@ static bool resolve_entry(BongoCatModelEntry *entry, const char *package,
         bongo_cat_path_join(setting_path, sizeof(setting_path), entry->directory,
             setting) && bongo_cat_path_is_file(setting_path) &&
         bongo_cat_path_is_dir(entry->adapter_directory) &&
-        (schema == BONGO_CAT_MODEL_PACKAGE_LEGACY_SCHEMA ||
-            (bongo_cat_path_join(metadata_path,
-                sizeof(metadata_path), entry->adapter_directory,
-                BONGO_CAT_MODEL_ADAPTER_FILE) &&
-                adapter_valid(metadata_path, source_format)));
+        schema == BONGO_CAT_MODEL_PACKAGE_SCHEMA &&
+        bongo_cat_path_join(metadata_path, sizeof(metadata_path),
+            entry->adapter_directory, BONGO_CAT_MODEL_ADAPTER_FILE) &&
+        adapter_valid(metadata_path, source_format);
 }
 
 bool bongo_cat_model_package_add(BongoCatModelCatalog *catalog,
@@ -180,10 +171,9 @@ bool bongo_cat_model_package_add(BongoCatModelCatalog *catalog,
     yyjson_doc *document = bongo_cat_json_read_file(descriptor, 0, NULL);
     yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
     int schema = (int)yyjson_get_int(yyjson_obj_get(root, "schemaVersion"));
-    bool current = schema == BONGO_CAT_MODEL_PACKAGE_SCHEMA;
-    yyjson_val *model_object = current ? yyjson_obj_get(root, "model") : root;
-    yyjson_val *runtime_object = current ? yyjson_obj_get(root, "runtime") : root;
-    yyjson_val *source_object = current ? yyjson_obj_get(root, "source") : root;
+    yyjson_val *model_object = yyjson_obj_get(root, "model");
+    yyjson_val *runtime_object = yyjson_obj_get(root, "runtime");
+    yyjson_val *source_object = yyjson_obj_get(root, "source");
     const char *model = yyjson_get_str(yyjson_obj_get(model_object, "directory"));
     const char *adapter = yyjson_get_str(yyjson_obj_get(runtime_object, "adapter"));
     const char *setting = yyjson_get_str(yyjson_obj_get(model_object, "setting"));
@@ -192,41 +182,34 @@ bool bongo_cat_model_package_add(BongoCatModelCatalog *catalog,
     const char *source_name = yyjson_get_str(yyjson_obj_get(source_object, "name"));
     const char *source_layout = yyjson_get_str(yyjson_obj_get(source_object, "layout"));
     const char *display = yyjson_get_str(yyjson_obj_get(root, "displayName"));
-    const char *package_id = current
-        ? yyjson_get_str(yyjson_obj_get(root, "packageId"))
-        : bongo_cat_path_name(directory);
-    const char *digest = current
-        ? yyjson_get_str(yyjson_obj_get(root, "contentDigest")) : NULL;
-    const char *family = current
-        ? yyjson_get_str(yyjson_obj_get(root, "familyId")) : NULL;
-    const char *metadata = current
-        ? yyjson_get_str(yyjson_obj_get(runtime_object, "metadata")) : NULL;
+    const char *package_id = yyjson_get_str(yyjson_obj_get(root, "packageId"));
+    const char *digest = yyjson_get_str(yyjson_obj_get(root, "contentDigest"));
+    const char *family = yyjson_get_str(yyjson_obj_get(root, "familyId"));
+    const char *metadata = yyjson_get_str(yyjson_obj_get(runtime_object, "metadata"));
     int adapter_schema = (int)yyjson_get_int(yyjson_obj_get(runtime_object,
         "adapterSchemaVersion"));
     int adapter_generator = (int)yyjson_get_int(yyjson_obj_get(runtime_object,
         "generatorVersion"));
-    uint32_t capabilities = current
-        ? stored_capabilities(yyjson_obj_get(root, "capabilities")) : 0;
+    uint32_t capabilities = stored_capabilities(
+        yyjson_obj_get(root, "capabilities"));
     uint32_t required = BONGO_CAT_MODEL_CAPABILITY_LIVE2D |
         BONGO_CAT_MODEL_CAPABILITY_RUNTIME_ADAPTER;
     bool valid = yyjson_is_obj(root) &&
-        (schema == BONGO_CAT_MODEL_PACKAGE_LEGACY_SCHEMA || current) &&
+        schema == BONGO_CAT_MODEL_PACKAGE_SCHEMA &&
         safe_relative(model) && safe_relative(adapter) && safe_relative(setting) &&
-        (current ? safe_id(package_id) : legacy_id(package_id)) &&
-        (!current || digest_valid(digest)) &&
-        (!family || safe_id(family)) && (!current ||
-            (yyjson_is_obj(model_object) && yyjson_is_obj(runtime_object) &&
-            yyjson_is_obj(source_object) && safe_id(source_format) &&
-            text_valid(source_name) && safe_id(source_layout) &&
-            text_valid(display) && mode_valid(mode) &&
-            yyjson_is_bool(yyjson_obj_get(source_object, "preserved")) &&
-            safe_relative(metadata) &&
-            metadata_reference(adapter, metadata) &&
-            adapter_schema == BONGO_CAT_MODEL_ADAPTER_SCHEMA &&
-            adapter_generator > 0 &&
-            yyjson_is_arr(yyjson_obj_get(root, "capabilities")) &&
-            (capabilities & required) == required &&
-            yyjson_is_obj(yyjson_obj_get(root, "extensions")))) &&
+        safe_id(package_id) && digest_valid(digest) &&
+        (!family || safe_id(family)) &&
+        yyjson_is_obj(model_object) && yyjson_is_obj(runtime_object) &&
+        yyjson_is_obj(source_object) && safe_id(source_format) &&
+        text_valid(source_name) && safe_id(source_layout) &&
+        text_valid(display) && mode_valid(mode) &&
+        yyjson_is_bool(yyjson_obj_get(source_object, "preserved")) &&
+        safe_relative(metadata) && metadata_reference(adapter, metadata) &&
+        adapter_schema == BONGO_CAT_MODEL_ADAPTER_SCHEMA &&
+        adapter_generator > 0 &&
+        yyjson_is_arr(yyjson_obj_get(root, "capabilities")) &&
+        (capabilities & required) == required &&
+        yyjson_is_obj(yyjson_obj_get(root, "extensions")) &&
         !catalog_has_id(catalog, package_id) &&
         catalog->count < BONGO_CAT_MODEL_CAP;
     BongoCatModelEntry *entry = valid ? &catalog->entries[catalog->count] : NULL;
@@ -245,14 +228,10 @@ bool bongo_cat_model_package_add(BongoCatModelCatalog *catalog,
         snprintf(entry->setting_file, sizeof(entry->setting_file), "%s", setting);
         entry->mode = stored_mode(mode);
         entry->source_format = stored_format(source_format);
-        entry->capabilities = current
-            ? capabilities
-            : BONGO_CAT_MODEL_CAPABILITY_LIVE2D |
-                BONGO_CAT_MODEL_CAPABILITY_PREVIEW |
-                BONGO_CAT_MODEL_CAPABILITY_RUNTIME_ADAPTER;
+        entry->capabilities = capabilities;
         entry->package_schema = schema;
-        entry->adapter_schema = current ? adapter_schema : 0;
-        entry->adapter_generator = current ? adapter_generator : 0;
+        entry->adapter_schema = adapter_schema;
+        entry->adapter_generator = adapter_generator;
         entry->preset = preset;
         catalog->count++;
     }

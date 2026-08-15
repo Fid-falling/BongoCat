@@ -37,14 +37,14 @@ void bongo_cat_window_menu_preview_init(BongoCatWindowMenuPreview *state,
     BongoCatApp *app) {
     if (!state) return;
     *state = (BongoCatWindowMenuPreview){.app = app,
-        .scale = app ? app->config.window.scale_percent : 100.0f,
-        .opacity = app ? app->config.window.opacity_percent : 100.0f,
+        .scale = app ? app->session.window.scale_percent : 100.0f,
+        .opacity = app ? app->session.window.opacity_percent : 100.0f,
         .expression = app ? bongo_cat_live2d_expression(app->live2d) : -1,
         .last = BONGO_CAT_MENU_NONE, .applied = BONGO_CAT_MENU_NONE,
         .pending_model = BONGO_CAT_MENU_NONE};
     bongo_cat_modal_frame_init(&state->modal_frame, app);
     if (app) snprintf(state->model, sizeof(state->model), "%.*s",
-        (int)sizeof(state->model) - 1, app->config.current_model);
+        (int)sizeof(state->model) - 1, app->session.active_model_id);
 }
 
 void bongo_cat_window_menu_preview(void *userdata, BongoCatMenuAction action) {
@@ -74,10 +74,10 @@ void bongo_cat_window_menu_preview(void *userdata, BongoCatMenuAction action) {
             (float)(50 + 10 * (action - BONGO_CAT_MENU_SCALE_50)));
     else if (action >= BONGO_CAT_MENU_OPACITY_10 &&
         action <= BONGO_CAT_MENU_OPACITY_100) {
-        app->config.window.opacity_percent =
+        app->session.window.opacity_percent =
             (float)(10 * (action - BONGO_CAT_MENU_OPACITY_10 + 1));
         bongo_cat_platform_set_opacity(&app->platform,
-            app->config.window.opacity_percent / 100.0f);
+            app->session.window.opacity_percent / 100.0f);
     } else if (action == state->applied &&
         bongo_cat_window_behavior_menu_action(action)) {
         bongo_cat_modal_frame_tick(&state->modal_frame);
@@ -107,7 +107,7 @@ void bongo_cat_window_menu_preview_tick(void *userdata) {
                 SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
                     "Model preview failed: %s",
                     error.message[0] ? error.message : "unknown error");
-                if (strcmp(state->app->config.current_model,
+                if (strcmp(state->app->session.active_model_id,
                     state->model) != 0) {
                     BongoCatError restore_error = {0};
                     if (!bongo_cat_app_select_model_with_error(state->app,
@@ -149,7 +149,7 @@ void bongo_cat_window_menu_restore(void *userdata, BongoCatMenuAction selected) 
     bool keep_expression = keep_model ||
         (selected >= BONGO_CAT_MENU_EXPRESSION_FIRST &&
         selected < BONGO_CAT_MENU_EXPRESSION_FIRST + BONGO_CAT_BEHAVIOR_CAP);
-    if (!keep_model && strcmp(app->config.current_model, state->model) != 0) {
+    if (!keep_model && strcmp(app->session.active_model_id, state->model) != 0) {
         BongoCatError error = {0};
         if (bongo_cat_app_select_model_with_error(app, state->model, &error))
             changed = true;
@@ -158,13 +158,13 @@ void bongo_cat_window_menu_restore(void *userdata, BongoCatMenuAction selected) 
             error.message[0] ? error.message : "unknown error");
     }
     if (!keep_scale &&
-        SDL_fabsf(app->config.window.scale_percent - state->scale) > .01f) {
+        SDL_fabsf(app->session.window.scale_percent - state->scale) > .01f) {
         bongo_cat_window_set_scale(app, state->scale);
         changed = true;
     }
     if (!keep_opacity &&
-        SDL_fabsf(app->config.window.opacity_percent - state->opacity) > .01f) {
-        app->config.window.opacity_percent = state->opacity;
+        SDL_fabsf(app->session.window.opacity_percent - state->opacity) > .01f) {
+        app->session.window.opacity_percent = state->opacity;
         bongo_cat_platform_set_opacity(&app->platform,
             state->opacity / 100.0f);
         changed = true;

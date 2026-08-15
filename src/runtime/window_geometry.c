@@ -38,11 +38,12 @@ bool bongo_cat_window_apply_geometry(BongoCatApp *app, int x, int y,
         height > WINDOW_MAX_DIMENSION) return false;
     if (!bongo_cat_platform_set_geometry(&app->platform, x, y, width, height))
         return false;
-    app->config.window.scale_percent = scale;
-    app->config.window.x = x;
-    app->config.window.y = y;
-    app->config.window.width = width;
-    app->config.window.height = height;
+    app->session.window.scale_percent = scale;
+    app->session.window.x = x;
+    app->session.window.y = y;
+    app->session.window.position_known = true;
+    app->session.window.width = width;
+    app->session.window.height = height;
     if (SDL_GetWindowSizeInPixels(app->window,
         &app->resize_pixel_width, &app->resize_pixel_height))
         app->resize_pending = true;
@@ -59,9 +60,9 @@ bool bongo_cat_window_set_scale(BongoCatApp *app, float scale) {
     float actual;
     int next_width, next_height;
     if (!bongo_cat_window_scaled_size(width, height,
-        app->config.window.scale_percent, scale,
+        app->session.window.scale_percent, scale,
         &actual, &next_width, &next_height)) return false;
-    if (actual == app->config.window.scale_percent &&
+    if (actual == app->session.window.scale_percent &&
         next_width == width && next_height == height) return false;
     return bongo_cat_window_apply_geometry(app, x, y,
         actual, next_width, next_height);
@@ -75,7 +76,7 @@ void bongo_cat_window_resize_by_pointer(BongoCatApp *app, const SDL_Event *event
     if (!app->resize_gesture) {
         if (!SDL_GetWindowSize(app->window,
             &app->resize_base_width, &app->resize_base_height)) return;
-        app->resize_scale_start = app->config.window.scale_percent;
+        app->resize_scale_start = app->session.window.scale_percent;
         app->resize_scale_target = app->resize_scale_start;
         app->resize_gesture = true;
     }
@@ -90,20 +91,21 @@ void bongo_cat_window_resize_by_pointer(BongoCatApp *app, const SDL_Event *event
         !SDL_GetWindowPosition(app->window, &x, &y)) return;
     app->resize_scale_target = actual;
     if (!bongo_cat_window_apply_geometry(app, x, y, actual, width, height))
-        app->resize_scale_target = app->config.window.scale_percent;
+        app->resize_scale_target = app->session.window.scale_percent;
 }
 
 bool bongo_cat_window_geometry_self_test(BongoCatApp *app) {
     if (!app || !app->window) return false;
     SDL_SyncWindow(app->window);
-    BongoCatWindowOptions backup = app->config.window;
+    BongoCatWindowPreferences preferences_backup = app->settings.window;
+    BongoCatWindowState state_backup = app->session.window;
     int original_x, original_y, original_width, original_height;
     SDL_GetWindowPosition(app->window, &original_x, &original_y);
     SDL_GetWindowSize(app->window, &original_width, &original_height);
     SDL_DisplayID display = SDL_GetDisplayForWindow(app->window);
     SDL_Rect bounds;
     if (!display || !SDL_GetDisplayUsableBounds(display, &bounds)) return false;
-    app->config.window.keep_in_screen = true;
+    app->settings.window.keep_in_screen = true;
     app->model_pointer_anchor_ready = true;
     bongo_cat_window_apply_geometry(app, bounds.x - 2000, bounds.y - 2000,
         100.0f, 320, 240);
@@ -123,10 +125,10 @@ bool bongo_cat_window_geometry_self_test(BongoCatApp *app) {
     bongo_cat_window_menu_action(app, BONGO_CAT_MENU_OPACITY_50);
     bool opacity = SDL_fabsf(bongo_cat_platform_get_opacity(
         &app->platform) - 0.5f) < 0.02f;
-    app->config.window.hide_on_hover = true;
-    app->config.window.hide_delay_seconds = 0.0f;
-    app->config.window.pass_through = false;
-    app->config.window.opacity_percent = 100.0f;
+    app->settings.window.hide_on_hover = true;
+    app->settings.window.hide_delay_seconds = 0.0f;
+    app->settings.window.pass_through = false;
+    app->session.window.opacity_percent = 100.0f;
     bongo_cat_app_track_hover(app, x + 10, y + 10);
     bongo_cat_app_update_hover(app, SDL_GetTicksNS() + 1);
     bool hidden = app->hover_hidden &&
@@ -157,7 +159,7 @@ bool bongo_cat_window_geometry_self_test(BongoCatApp *app) {
     SDL_GetWindowSize(app->window, &width, &height);
     int gesture_width = width, gesture_height = height;
     bool gesture = app->resize_gesture &&
-        app->config.window.scale_percent == 120.0f &&
+        app->session.window.scale_percent == 120.0f &&
         width == 384 && height == 288;
     SDL_Event released = {.type = SDL_EVENT_MOUSE_BUTTON_UP};
     released.button.button = SDL_BUTTON_RIGHT;
@@ -176,10 +178,11 @@ bool bongo_cat_window_geometry_self_test(BongoCatApp *app) {
     app->resize_gesture = false;
     SDL_SetModState(old_modifiers);
     bongo_cat_window_apply_geometry(app, original_x, original_y,
-        backup.scale_percent, original_width, original_height);
-    app->config.window = backup;
+        state_backup.scale_percent, original_width, original_height);
+    app->settings.window = preferences_backup;
+    app->session.window = state_backup;
     bongo_cat_platform_set_opacity(&app->platform,
-        backup.opacity_percent / 100.0f);
+        state_backup.opacity_percent / 100.0f);
     bongo_cat_window_sync_click_through(app);
     SDL_SyncWindow(app->window);
     bool passed = clamped && anchor_reset && scaled && opacity && hidden && restored &&

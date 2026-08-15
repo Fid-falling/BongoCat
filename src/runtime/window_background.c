@@ -3,7 +3,7 @@
 #include <SDL3/SDL_opengl.h>
 
 void bongo_cat_window_clear_background(BongoCatApp *app) {
-    BongoCatWindowOptions *window = &app->config.window;
+    BongoCatWindowPreferences *window = &app->settings.window;
     uint32_t rgb = bongo_cat_obs_background_color_rgb(
         window->obs_background_color);
     float alpha = window->obs_background ? 1.0f : 0.0f;

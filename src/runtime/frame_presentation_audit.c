@@ -143,9 +143,9 @@ void bongo_cat_frame_presented_audit(BongoCatApp *app) {
     SDL_Log("First-frame presentation: success=1 framebuffer_visible=%d "
         "window_opacity=%.3f obs_background=%d obs_background_color=%s",
         audit.visible, bongo_cat_platform_get_opacity(&app->platform),
-        app->config.window.obs_background,
+        app->settings.window.obs_background,
         bongo_cat_obs_background_color_name(
-            app->config.window.obs_background_color));
+            app->settings.window.obs_background_color));
 #ifdef _WIN32
     HWND source = app->window ? (HWND)SDL_GetPointerProperty(
         SDL_GetWindowProperties(app->window),

@@ -114,7 +114,7 @@ void bongo_cat_gamepads_set_enabled(BongoCatApp *app, bool enabled) {
 void bongo_cat_gamepad_event(BongoCatApp *app, const void *raw) {
     const SDL_Event *event = raw;
     if (event->type == SDL_EVENT_GAMEPAD_ADDED) {
-        if (app->config.current_mode == BONGO_CAT_MODE_GAMEPAD &&
+        if (app->loaded_mode == BONGO_CAT_MODE_GAMEPAD &&
             !app->active_gamepad) {
             SDL_Gamepad *gamepad = SDL_GetGamepadFromID(event->gdevice.which);
             if (!gamepad) gamepad = SDL_OpenGamepad(event->gdevice.which);
@@ -128,12 +128,12 @@ void bongo_cat_gamepad_event(BongoCatApp *app, const void *raw) {
         if (event->gdevice.which == app->active_gamepad) {
             app->active_gamepad = 0;
             bongo_cat_app_reset_gamepad(app);
-            if (app->config.current_mode == BONGO_CAT_MODE_GAMEPAD)
+            if (app->loaded_mode == BONGO_CAT_MODE_GAMEPAD)
                 select_first_gamepad(app);
         }
         return;
     }
-    if (app->config.current_mode != BONGO_CAT_MODE_GAMEPAD) return;
+    if (app->loaded_mode != BONGO_CAT_MODE_GAMEPAD) return;
     BongoCatInputEvent input = {0};
     SDL_JoystickID source;
     if (event->type == SDL_EVENT_GAMEPAD_AXIS_MOTION) {

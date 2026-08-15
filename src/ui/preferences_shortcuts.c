@@ -127,7 +127,7 @@ static bool capture_key(BongoCatPreferences *value,
     if (event->mod & SDL_KMOD_ALT) append(shortcut, sizeof(shortcut), "Alt");
     if (event->mod & SDL_KMOD_GUI) append(shortcut, sizeof(shortcut), "Meta");
     append(shortcut, sizeof(shortcut), key);
-    if (bongo_cat_config_shortcut_conflicts(&value->app->config, shortcut,
+    if (bongo_cat_settings_shortcut_conflicts(&value->app->settings, shortcut,
         value->shortcut_target)) {
         snprintf(value->shortcut_target, (size_t)value->shortcut_capacity, "%s",
             value->shortcut_original);
@@ -178,7 +178,7 @@ static void shortcut_row(BongoCatPreferences *value, struct nk_context *context,
 
 void bongo_cat_preferences_page_shortcuts(BongoCatPreferences *value,
     struct nk_context *context) {
-    BongoCatShortcutOptions *keys = &value->app->config.shortcuts;
+    BongoCatShortcutPreferences *keys = &value->app->settings.shortcuts;
     bongo_cat_pref_section(context, tr(value,
         "pages.preference.shortcut.title", "Shortcuts"));
     shortcut_row(value, context, "shortcut-cat", "native.shortcut.toggleCat",

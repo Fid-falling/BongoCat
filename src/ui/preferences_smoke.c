@@ -41,7 +41,7 @@ static void write_window_handle(BongoCatPreferences *value) {
         SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
 #endif
     char path[BONGO_CAT_PATH_CAP];
-    if (!bongo_cat_path_join(path, sizeof(path), value->app->data_root,
+    if (!bongo_cat_path_join(path, sizeof(path), value->app->state_root,
         "preferences-window.txt")) return;
     FILE *file = bongo_cat_file_open(path, "wb");
     if (!file) return;
@@ -55,7 +55,7 @@ static void write_window_handle(BongoCatPreferences *value) {
 void bongo_cat_preferences_record_frame(BongoCatPreferences *value) {
     if (!value->app->smoke_frame_series) return;
     char path[BONGO_CAT_PATH_CAP];
-    bongo_cat_path_join(path, sizeof(path), value->app->data_root,
+    bongo_cat_path_join(path, sizeof(path), value->app->state_root,
         "preferences-frames.csv");
     FILE *file = bongo_cat_file_open(path, "ab");
     if (!file) return;
@@ -89,7 +89,7 @@ void bongo_cat_preferences_smoke_frame(BongoCatPreferences *value) {
     for (int i = 0; i < 4; ++i)
         if (corners[i][3] > corner_alpha) corner_alpha = corners[i][3];
     char path[BONGO_CAT_PATH_CAP];
-    bongo_cat_path_join(path, sizeof(path), value->app->data_root,
+    bongo_cat_path_join(path, sizeof(path), value->app->state_root,
         "ui-frame.txt");
     FILE *file = bongo_cat_file_open(path, "wb");
     if (!file) return;

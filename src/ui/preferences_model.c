@@ -53,7 +53,7 @@ static void smoke_model_behavior(BongoCatPreferences *value) {
         for (size_t i = 0; i < app->models.count; ++i) {
             const BongoCatModelEntry *entry = &app->models.entries[i];
             if (entry->preset || !strcmp(entry->id,
-                app->config.current_model)) continue;
+                app->session.active_model_id)) continue;
             app->smoke_preference_model_select = false;
             value->smoke_behavior_open_pending = true;
             SDL_Log("Preferences smoke selecting model %s", entry->id);

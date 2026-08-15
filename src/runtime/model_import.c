@@ -18,7 +18,7 @@ typedef struct ImportInstall {
 
 static bool custom_root(const char *data_root, char *path, size_t capacity) {
     return data_root && data_root[0] &&
-        bongo_cat_path_join(path, capacity, data_root, "custom-models") &&
+        bongo_cat_path_join(path, capacity, data_root, "models") &&
         bongo_cat_path_create_directory(path);
 }
 
@@ -261,7 +261,7 @@ BongoCatResult bongo_cat_app_import_model(BongoCatApp *app, const char *source,
         return result;
     }
     char previous[BONGO_CAT_PATH_CAP];
-    snprintf(previous, sizeof(previous), "%s", app->config.current_model);
+    snprintf(previous, sizeof(previous), "%s", app->session.active_model_id);
     size_t preferred = 0;
     for (size_t i = 0; i < receipt.count; ++i)
         if (receipt.installed[i]) { preferred = i; break; }
@@ -273,9 +273,9 @@ BongoCatResult bongo_cat_app_import_model(BongoCatApp *app, const char *source,
     const BongoCatModelEntry *entry = imported_id ?
         bongo_cat_models_find(&app->models, imported_id) : NULL;
     if (entry) {
-        snprintf(app->config.current_model, sizeof(app->config.current_model),
+        snprintf(app->session.active_model_id, sizeof(app->session.active_model_id),
             "%s", imported_id);
-        app->config.current_mode = entry->mode;
+        app->loaded_mode = entry->mode;
     }
     return BONGO_CAT_OK;
 #else

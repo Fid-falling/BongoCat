@@ -187,25 +187,25 @@ cmake --install build --config Release --component Runtime --prefix out
 ```
 
 The install tree is portable. Windows embeds the resource archive; Unix builds
-place `assets/` beside the executable or application bundle. Settings and
-imported models are kept in the per-user data directory.
-Native preferences and session files use schema version 2. Version 1 and any
-other unsupported schema are rejected and rebuilt from current defaults; no
-configuration migration path is retained.
+place `assets/` beside the executable or application bundle. User-owned files
+follow [`docs/storage-layout.md`](docs/storage-layout.md). Settings and session
+state use separate schema-1 documents. Unsupported formats are rejected; the
+unreleased application has no configuration migration layer.
 
 ## Runtime Data and Test Switches
 
-The default data directory comes from SDL's preference path and contains
-`preferences.json`, `session.json`, `custom-models/`, and the generated `portable-mver/` adapter
-cache. A Bongo-Cat-Mver package can be used without importing by placing its
+Storage is separated into `config`, `data`, `cache`, `state`, and `logs`.
+Installed packages live under `data/models`; generated nearby-Mver adapters
+live under `cache/model-adapters`. A Bongo-Cat-Mver package can be used without
+installing it by placing its
 `config.json` and `img/` beside `BongoCat`, by placing the intact package
 directory there, or by keeping both under the same immediate parent directory.
 A collection such as `露西亚-誓焰版` may be selected as one folder; its full
 package and nested image patches are discovered together.
-Tests and portable launches may override both paths:
+Tests and isolated launches may override the complete storage layout:
 
 ```text
-BongoCat --data-root=C:\path\to\data --preferences=C:\path\to\preferences.json --session=C:\path\to\session.json
+BongoCat --storage-root=C:\path\to\isolated-storage
 ```
 
 Arguments beginning with `--ci-` are test instrumentation. They select a model,
@@ -214,10 +214,9 @@ stable end-user command-line interface.
 
 ## Tests
 
-The CTest suite covers strict configuration-format validation, model discovery,
+The CTest suite covers strict settings/session validation, model discovery,
 input ordering and recovery, shortcuts, localization, UI helpers, application
-state, and SHA-256 resource validation. Only the current configuration format
-is accepted; older schemas are rejected without migration.
+state, and SHA-256 resource validation. Only current schemas are accepted.
 
 ```powershell
 ctest --test-dir build --output-on-failure

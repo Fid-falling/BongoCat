@@ -100,8 +100,7 @@ keep a publisher ID across revisions while changing `contentDigest`. Raw folder
 imports are intentionally content-addressed until such an identity exists.
 
 Readers ignore unknown capabilities, source fields, and extension namespaces.
-Relative paths must stay inside the package. Schema v1 remains readable and
-keeps its directory-name ID; it is not rewritten or destructively migrated.
+Relative paths must stay inside the package. Only schema v2 is accepted.
 `adapterSchemaVersion` describes the runtime contract. `generatorVersion`
 tracks the importer implementation so derived adapters can be rebuilt in place
 after conversion behavior changes without modifying preserved payloads.
@@ -126,8 +125,8 @@ schema, runtime kind, source format, render profile, and bindings structure.
 Tauri imports receive a minimal native adapter. Mver importers translate
 render calibration, input bindings, pointer assets, motions, expressions,
 effects, and audio defaults into this file. Runtime code does not read Mver
-`config.json`. Existing `.bongo-cat-mver.json` adapters remain a read-only
-fallback for installed v1 packages and nearby-model caches.
+`config.json`. Generated and installed adapters use this filename and schema;
+there is no alternate adapter reader.
 
 ## Configuration Ownership
 
@@ -135,9 +134,10 @@ The package owns model-authored state: Live2D references, render calibration,
 input asset mappings, pointer geometry, motions, expressions, effects, and
 audio behavior.
 
-Application configuration owns user state: selected package ID, window
-geometry, scale, visibility, click-through behavior, always-on-top state, FPS,
-mirror preferences, hover behavior, custom labels, and shortcut overrides.
+Application settings own long-lived user choices: click-through and
+always-on-top behavior, FPS, mirror and pointer preferences, hover behavior,
+custom labels, shortcut overrides, language, and theme. Session state owns the
+selected package ID plus window geometry, scale, opacity, and visibility.
 
 Importers may read source application settings to reproduce model-authored
 calibration, but they must not make source window or desktop settings part of
@@ -150,4 +150,4 @@ the user's BongoCat preferences.
 - Keep format-specific data under `extensions.<format>`.
 - Never require sibling modes for loading, updating, or removing a package.
 - Never make runtime behavior depend directly on an import format's config.
-- Preserve v1 readers until an explicit, reversible migration is shipped.
+- Reject unsupported schemas instead of guessing or silently migrating them.

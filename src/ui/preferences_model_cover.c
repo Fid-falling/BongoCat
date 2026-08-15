@@ -180,7 +180,7 @@ bool bongo_cat_preferences_model_cover_generate_current(BongoCatApp *app) {
         app->window_minimized) return false;
     const BongoCatModelEntry *entry = bongo_cat_models_find(
         &app->models, app->loaded_model);
-    if (!entry || strcmp(app->config.current_model, entry->id) ||
+    if (!entry || strcmp(app->session.active_model_id, entry->id) ||
         !cover_needs_capture(entry) || !mark_cover_attempt(app, entry->id))
         return false;
     bool captured = bongo_cat_preferences_model_cover_capture(app, entry);

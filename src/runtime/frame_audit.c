@@ -129,7 +129,8 @@ static void log_first_frame(BongoCatApp *app, int width, int height) {
             transparent += value < 16; opaque_samples += value > 239;
         }
         char path[BONGO_CAT_PATH_CAP];
-        bongo_cat_path_join(path, sizeof(path), app->data_root, "frame-alpha.txt");
+        bongo_cat_path_join(path, sizeof(path), app->state_root,
+            "frame-alpha.txt");
         FILE *file = bongo_cat_file_open(path, "wb");
         if (file) {
             fprintf(file, "samples=5 transparent=%u opaque=%u sample_buffers=%d "
@@ -145,7 +146,8 @@ static void record_frame(BongoCatApp *app, const unsigned char *pixels,
     int width, int height, size_t pitch) {
     if (!app->smoke_frame_series) return;
     char path[BONGO_CAT_PATH_CAP];
-    bongo_cat_path_join(path, sizeof(path), app->data_root, "frame-series.csv");
+    bongo_cat_path_join(path, sizeof(path), app->state_root,
+        "frame-series.csv");
     bool header = !bongo_cat_path_is_file(path);
     FILE *file = bongo_cat_file_open(path, "ab");
     if (!file) return;
@@ -156,15 +158,15 @@ static void record_frame(BongoCatApp *app, const unsigned char *pixels,
     FrameStats stats = frame_stats(pixels, width, height, pitch);
     bool model_consistent = bongo_cat_live2d_ready(app->live2d) &&
         app->loaded_model[0] &&
-        strcmp(app->loaded_model, app->config.current_model) == 0;
+        strcmp(app->loaded_model, app->session.active_model_id) == 0;
     bool os_visible = (SDL_GetWindowFlags(app->window) & SDL_WINDOW_HIDDEN) == 0;
     fprintf(file, "%llu,%d,%d,%u,%u,%.3f,%.3f,%.5f,%s,%d,%u,%d,%d\n",
         (unsigned long long)SDL_GetTicksNS(), width, height,
         stats.visible, stats.alpha,
-        app->config.window.scale_percent, app->config.window.opacity_percent,
+        app->session.window.scale_percent, app->session.window.opacity_percent,
         bongo_cat_platform_get_opacity(&app->platform),
-        bongo_cat_mode_name(app->config.current_mode), model_consistent,
-        app->model_selection_serial, app->config.window.visible, os_visible);
+        bongo_cat_mode_name(app->loaded_mode), model_consistent,
+        app->model_selection_serial, app->session.window.visible, os_visible);
     fclose(file);
 }
 
@@ -196,7 +198,7 @@ void bongo_cat_frame_audit(BongoCatApp *app, int width, int height) {
     }
     SDL_Surface *surface = SDL_CreateSurfaceFrom(width, height,
         SDL_PIXELFORMAT_RGBA32, pixels, (int)pitch);
-    bongo_cat_path_join(path, sizeof(path), app->data_root, "frame.bmp");
+    bongo_cat_path_join(path, sizeof(path), app->state_root, "frame.bmp");
     if (surface) { SDL_SaveBMP(surface, path); SDL_DestroySurface(surface); }
     free(row); free(pixels);
 }

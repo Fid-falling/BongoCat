@@ -13,8 +13,8 @@
 #include <stdlib.h>
 
 int bongo_cat_preferences_resolved_theme(const BongoCatPreferences *value) {
-    if (value->app->config.app.theme == BONGO_CAT_THEME_DARK) return 1;
-    if (value->app->config.app.theme == BONGO_CAT_THEME_LIGHT) return 0;
+    if (value->app->settings.app.theme == BONGO_CAT_THEME_DARK) return 1;
+    if (value->app->settings.app.theme == BONGO_CAT_THEME_LIGHT) return 0;
     return SDL_GetSystemTheme() == SDL_SYSTEM_THEME_DARK;
 }
 void bongo_cat_preferences_apply_theme(BongoCatPreferences *value) {
@@ -38,7 +38,7 @@ BongoCatPreferences *bongo_cat_preferences_create(BongoCatApp *app) {
 void bongo_cat_preferences_show(BongoCatPreferences *value) {
     if (!value) return;
     const BongoCatModelEntry *entry = bongo_cat_models_find(
-        &value->app->models, value->app->config.current_model);
+        &value->app->models, value->app->session.active_model_id);
     bongo_cat_preferences_model_cover_capture(value->app, entry);
     if (!value->window && !bongo_cat_preferences_open_window(value)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Preferences failed: %s", SDL_GetError());

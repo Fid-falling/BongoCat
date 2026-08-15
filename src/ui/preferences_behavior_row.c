@@ -26,7 +26,7 @@ static bool hit(struct nk_context *context, struct nk_rect bounds, bool enabled)
         nk_input_is_mouse_click_in_rect(&context->input, NK_BUTTON_LEFT, bounds);
 }
 
-static BongoCatBehaviorShortcut *binding_for(BongoCatConfig *config,
+static BongoCatBehaviorShortcut *binding_for(BongoCatSettings *config,
     const char *id) {
     for (size_t i = 0; i < config->behavior_shortcut_count; ++i)
         if (!strcmp(config->behavior_shortcuts[i].id, id))
@@ -138,7 +138,7 @@ void bongo_cat_preferences_behavior_row_draw(BongoCatPreferences *value,
     struct nk_rect shortcut_bounds = nk_rect(play.x - 188, row.y + 10, 180, 36);
     struct nk_rect name = nk_rect(row.x + 8, row.y + 9,
         NK_MAX(48.0f, shortcut_bounds.x - row.x - 16), 38);
-    BongoCatBehaviorShortcut *binding = binding_for(&value->app->config,
+    BongoCatBehaviorShortcut *binding = binding_for(&value->app->settings,
         entry->id);
     draw_name(value, context, canvas, name, entry, binding, p, opacity, enabled);
     bool play_hover = enabled && nk_input_is_mouse_hovering_rect(

@@ -16,7 +16,8 @@ typedef struct BongoCatPreferences BongoCatPreferences;
 typedef struct BongoCatI18n BongoCatI18n;
 
 typedef struct BongoCatApp {
-    BongoCatConfig config;
+    BongoCatSettings settings;
+    BongoCatSessionState session;
     BongoCatInputState input;
     BongoCatShortcutState shortcut_state;
     BongoCatModelCatalog models;
@@ -31,9 +32,14 @@ typedef struct BongoCatApp {
     BongoCatPreferences *preferences;
     SDL_Window *window;
     void *gl_context;
-    char preferences_path[BONGO_CAT_PATH_CAP];
+    char settings_path[BONGO_CAT_PATH_CAP];
     char session_path[BONGO_CAT_PATH_CAP];
+    char config_root[BONGO_CAT_PATH_CAP];
     char data_root[BONGO_CAT_PATH_CAP];
+    char cache_root[BONGO_CAT_PATH_CAP];
+    char state_root[BONGO_CAT_PATH_CAP];
+    char log_root[BONGO_CAT_PATH_CAP];
+    char storage_root[BONGO_CAT_PATH_CAP];
     char asset_root[BONGO_CAT_PATH_CAP];
     char locale_root[BONGO_CAT_PATH_CAP];
     char smoke_import_path[BONGO_CAT_PATH_CAP];
@@ -43,8 +49,9 @@ typedef struct BongoCatApp {
     char smoke_viewer_trace[BONGO_CAT_PATH_CAP];
     char pending_model_cover_path[BONGO_CAT_PATH_CAP];
     char loaded_model[BONGO_CAT_ID_CAP];
+    BongoCatModelMode loaded_mode;
     bool running;
-    bool preferences_store_valid;
+    bool settings_store_valid;
     bool session_store_valid;
     bool autostart_launch;
     uint64_t startup_raise_due_ns;
@@ -79,9 +86,9 @@ typedef struct BongoCatApp {
     uint64_t display_recovery_due_ns;
     uint64_t mouse_last_ns;
     uint64_t frame_audit_bmp_ns;
-    uint64_t preferences_saved_hash, preferences_observed_hash;
+    uint64_t settings_saved_hash, settings_observed_hash;
     uint64_t session_saved_hash, session_observed_hash;
-    uint64_t preferences_save_due_ns, session_save_due_ns;
+    uint64_t settings_save_due_ns, session_save_due_ns;
     BongoCatMouseTracking mouse_tracking;
     BongoCatMverPointerState mver_pointer;
     bool hover_inside;
