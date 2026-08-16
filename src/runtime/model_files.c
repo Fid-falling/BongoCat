@@ -14,12 +14,16 @@ static void select_model_state(BongoCatApp *app, const BongoCatModelEntry *entry
     app->loaded_mode = entry->mode;
     bongo_cat_gamepads_set_enabled(app, entry->mode == BONGO_CAT_MODE_GAMEPAD);
 }
-static void request_model_frame(BongoCatApp *app) {
+static void request_model_frame(BongoCatApp *app, bool reveal) {
     if (!app) return;
-    if (app->window && app->session.window.visible) {
-        if (SDL_GetWindowFlags(app->window) & SDL_WINDOW_HIDDEN)
+    if (app->window) {
+        SDL_WindowFlags flags = SDL_GetWindowFlags(app->window);
+        bool hidden = (flags & (SDL_WINDOW_HIDDEN | SDL_WINDOW_MINIMIZED)) != 0;
+        if (reveal && (!app->session.window.visible || hidden ||
+            app->hover_hidden))
             bongo_cat_window_set_visible(app, true);
-        else bongo_cat_window_clamp_to_display(app);
+        else if (app->session.window.visible)
+            bongo_cat_window_clamp_to_display(app);
     }
     bongo_cat_window_mark_hit_dirty(app);
     app->dirty = true;
@@ -53,13 +57,13 @@ static bool apply_model_aspect(BongoCatApp *app,
 }
 
 static void commit_model(BongoCatApp *app,
-    const BongoCatModelEntry *entry, bool force_refresh) {
+    const BongoCatModelEntry *entry, bool force_refresh, bool reveal) {
     bool changed = strcmp(app->session.active_model_id, entry->id) != 0 ||
         app->loaded_mode != entry->mode;
     if (!changed && !force_refresh) return;
     select_model_state(app, entry);
     app->model_selection_serial++;
-    request_model_frame(app);
+    request_model_frame(app, reveal);
 }
 
 bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
@@ -79,9 +83,10 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
         return false;
     }
     if (app->loaded_model[0] && strcmp(app->loaded_model, entry->id) == 0) {
-        commit_model(app, entry, false);
+        commit_model(app, entry, false, false);
         return true;
     }
+    bool replacing_model = app->loaded_model[0] != '\0';
     BongoCatError optional = {0};
     BongoCatBehaviorCatalog *behaviors = calloc(1, sizeof(*behaviors));
     if (!behaviors) {
@@ -122,7 +127,7 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
                 "Cannot restore the previous OpenGL context: %s", SDL_GetError());
         free(behaviors);
         if (!bongo_cat_live2d_ready(app->live2d)) app->loaded_model[0] = '\0';
-        request_model_frame(app);
+        request_model_frame(app, false);
         return false;
     }
     BongoCatParameterRange pointer_x, pointer_y;
@@ -134,12 +139,6 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     app->model_render_options = render_options;
     bongo_cat_app_reset_pointer_tracking(app);
     bongo_cat_live2d_set_render_options(app->live2d, &render_options);
-    bool geometry_changed = apply_model_aspect(app, &render_options);
-    if (app->window) {
-        if (geometry_changed) SDL_SyncWindow(app->window);
-        SDL_GetWindowSizeInPixels(app->window, &pixel_width, &pixel_height);
-        bongo_cat_live2d_reshape(app->live2d, pixel_width, pixel_height);
-    }
     app->behaviors = *behaviors;
     free(behaviors);
     optional = (BongoCatError){0};
@@ -151,11 +150,18 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     }
     snprintf(app->loaded_model, sizeof(app->loaded_model), "%s", entry->id);
     app->pointer_known = false;
+    bool geometry_changed = apply_model_aspect(app, &render_options);
+    if (app->window) {
+        if (geometry_changed) SDL_SyncWindow(app->window);
+        SDL_GetWindowSizeInPixels(app->window, &pixel_width, &pixel_height);
+    }
     bongo_cat_live2d_resize(app->live2d, pixel_width, pixel_height);
     bongo_cat_audio_stop(app->audio);
-    commit_model(app, entry, true);
+    commit_model(app, entry, true, replacing_model);
     bongo_cat_app_reapply_input(app);
     bongo_cat_app_apply_mouse(app);
+    /* Do not leave the previous frame cropped during the UI completion pass. */
+    if (replacing_model) bongo_cat_app_render_now(app);
     if (restore_context && previous_window && previous_context &&
         !SDL_GL_MakeCurrent(previous_window, previous_context))
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,

@@ -154,8 +154,9 @@ static void action_icon(BongoCatPreferences *value,
 
 void bongo_cat_preferences_model_select(BongoCatPreferences *value,
     const BongoCatModelEntry *entry) {
-    if (!value || !entry || value->model_selection_pending ||
-        value->model_loading) return;
+    if (!value || !entry) return;
+    if (value->model_loading && !strcmp(entry->id, value->loading_model_id))
+        return;
     snprintf(value->pending_model_id, sizeof(value->pending_model_id), "%s",
         entry->id);
     value->model_selection_pending = true;
