@@ -12,7 +12,10 @@ bool bongo_cat_startup_prepare(BongoCatApp *app, int argc, char **argv,
 void bongo_cat_startup_stage(BongoCatApp *app, const char *stage);
 void bongo_cat_startup_ready(BongoCatApp *app);
 void bongo_cat_runtime_stage(BongoCatApp *app, const char *stage);
+void bongo_cat_runtime_log_stop(void);
 void bongo_cat_runtime_clean_shutdown(BongoCatApp *app, int exit_code);
+void bongo_cat_app_shutdown(BongoCatApp *app, const char *stage,
+    int exit_code);
 void bongo_cat_startup_failure(BongoCatApp *app, const BongoCatError *error);
 void bongo_cat_startup_ci_failure(BongoCatApp *app, const BongoCatError *error);
 void bongo_cat_window_destroy(BongoCatApp *app);

@@ -263,18 +263,6 @@ static void loop(BongoCatApp *app) {
         (unsigned long long)iterations, (unsigned long long)wakes,
         (unsigned long long)zero_waits);
 }
-static void shutdown(BongoCatApp *app) {
-    bongo_cat_config_store_flush(app);
-    bongo_cat_preferences_destroy(app->preferences);
-    bongo_cat_i18n_destroy(app->i18n); bongo_cat_tray_destroy(app->tray);
-    bongo_cat_gamepads_set_enabled(app, false);
-    bongo_cat_audio_destroy(app->audio);
-    bongo_cat_overlay_destroy(app->overlay);
-    bongo_cat_live2d_destroy(app->live2d);
-    bongo_cat_platform_shutdown(&app->platform);
-    bongo_cat_window_destroy(app);
-}
-
 int bongo_cat_app_run(int argc, char **argv) {
     if (!bongo_cat_platform_single_instance_begin()) return 0;
     BongoCatApp *app = calloc(1, sizeof(*app));
@@ -288,13 +276,13 @@ int bongo_cat_app_run(int argc, char **argv) {
     if (!initialize(app, argc, argv, &error)) {
         bongo_cat_startup_failure(app, &error);
         if (app->smoke) bongo_cat_startup_ci_failure(app, &error);
-        shutdown(app); bongo_cat_runtime_clean_shutdown(app, 1); free(app);
+        bongo_cat_app_shutdown(app, "shutdown:startup-failure", 1); free(app);
         bongo_cat_platform_single_instance_end();
         return 1;
     }
     loop(app);
     int exit_code = app->exit_code;
-    shutdown(app); bongo_cat_runtime_clean_shutdown(app, exit_code);
+    bongo_cat_app_shutdown(app, "shutdown:normal", exit_code);
     free(app); bongo_cat_platform_single_instance_end();
     return exit_code;
 }

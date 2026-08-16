@@ -1,4 +1,5 @@
 #include "runtime.h"
+#include "runtime_state.h"
 #include "bongo_cat/file.h"
 #include "bongo_cat/path.h"
 #include "storage_paths.h"
@@ -15,24 +16,7 @@
 static char startup_log_path[BONGO_CAT_PATH_CAP];
 static bool startup_is_ready;
 static bool verbose_logging;
-
-static void format_timestamp(char *target, size_t capacity) {
-    if (!target || !capacity) return;
-    SDL_Time ticks = 0;
-    SDL_DateTime date = {0};
-    if (SDL_GetCurrentTime(&ticks) && SDL_TimeToDateTime(ticks, &date, true)) {
-        int offset_minutes = date.utc_offset >= 0 ? (date.utc_offset + 30) / 60 : -((-date.utc_offset + 30) / 60);
-        char sign = offset_minutes < 0 ? '-' : '+';
-        if (offset_minutes < 0) offset_minutes = -offset_minutes;
-        snprintf(target, capacity, "%04d-%02d-%02d %02d:%02d:%02d.%03d %c%02d:%02d",
-            date.year, date.month, date.day, date.hour, date.minute,
-            date.second, date.nanosecond / 1000000, sign,
-            offset_minutes / 60, offset_minutes % 60);
-    } else {
-        snprintf(target, capacity, "%lld", (long long)time(NULL));
-    }
-    target[capacity - 1] = '\0';
-}
+static SDL_Mutex *log_mutex;
 
 static void append_log(const char *path, const char *timestamp,
     int category, SDL_LogPriority priority, const char *message) {
@@ -43,13 +27,7 @@ static void append_log(const char *path, const char *timestamp,
 }
 
 static bool essential_info(const char *message) {
-    static const char *prefixes[] = {"Startup ", "OpenGL window ready",
-        "OpenGL context:", "Model load ", "Previous run ",
-        "Shutdown complete"};
-    if (!message) return false;
-    for (size_t i = 0; i < sizeof(prefixes) / sizeof(prefixes[0]); ++i)
-        if (strncmp(message, prefixes[i], strlen(prefixes[i])) == 0) return true;
-    return false;
+    return message && strncmp(message, "[runtime] ", 10) == 0;
 }
 
 static void SDLCALL log_output(void *userdata, int category,
@@ -57,58 +35,47 @@ static void SDLCALL log_output(void *userdata, int category,
     (void)userdata;
     if (!verbose_logging && priority < SDL_LOG_PRIORITY_WARN &&
         !essential_info(message)) return;
+    if (log_mutex) SDL_LockMutex(log_mutex);
     char timestamp[64];
-    format_timestamp(timestamp, sizeof(timestamp));
+    bongo_cat_runtime_timestamp(timestamp, sizeof(timestamp));
     append_log(startup_log_path, timestamp, category, priority, message);
     fprintf(stderr, "%s [%d:%d] %s\n", timestamp, category, (int)priority, message ? message : "");
+    if (log_mutex) SDL_UnlockMutex(log_mutex);
 }
 
-static bool runtime_state_path(BongoCatApp *app, char *path, size_t capacity) {
-    return app && app->state_root[0] &&
-        bongo_cat_path_join(path, capacity, app->state_root, "runtime-state.txt");
-}
-
-static void read_runtime_state(BongoCatApp *app, char *state, size_t capacity) {
-    if (!state || !capacity) return;
-    state[0] = '\0';
-    char path[BONGO_CAT_PATH_CAP];
-    if (!runtime_state_path(app, path, sizeof(path))) return;
-    FILE *file = bongo_cat_file_open(path, "rb");
-    if (!file) return;
-    size_t length = fread(state, 1, capacity - 1, file);
-    state[ferror(file) ? 0 : length] = '\0';
-    fclose(file);
-    for (size_t i = 0; state[i]; ++i)
-        if (state[i] == '\r' || state[i] == '\n') state[i] = ' ';
-}
-
-void bongo_cat_runtime_stage(BongoCatApp *app, const char *stage) {
-    char path[BONGO_CAT_PATH_CAP];
-    if (!stage || !runtime_state_path(app, path, sizeof(path))) return;
-    FILE *file = bongo_cat_file_open(path, "wb");
-    if (!file) return;
-    char timestamp[64];
-    format_timestamp(timestamp, sizeof(timestamp));
-    fprintf(file, "time=%s stage=", timestamp);
-    for (const char *cursor = stage; *cursor; ++cursor)
-        fputc(*cursor == '\r' || *cursor == '\n' ? ' ' : *cursor, file);
-    fputc('\n', file);
-    fclose(file);
+static void format_shutdown_timestamp(char *target, size_t capacity) {
+    time_t now = time(NULL);
+    struct tm *utc = gmtime(&now);
+    if (!utc || !strftime(target, capacity, "%Y-%m-%d %H:%M:%S UTC", utc))
+        snprintf(target, capacity, "%lld", (long long)now);
+    target[capacity - 1] = '\0';
 }
 
 void bongo_cat_runtime_clean_shutdown(BongoCatApp *app, int exit_code) {
-    char path[BONGO_CAT_PATH_CAP];
-    SDL_Log("Shutdown complete: exit_code=%d", exit_code);
-    if (runtime_state_path(app, path, sizeof(path)) &&
-        !bongo_cat_file_remove(path))
-        bongo_cat_runtime_stage(app, "clean-shutdown");
+    char timestamp[64], message[80];
+    format_shutdown_timestamp(timestamp, sizeof(timestamp));
+    snprintf(message, sizeof(message),
+        "[runtime] Shutdown complete: exit_code=%d", exit_code);
+    append_log(startup_log_path, timestamp, SDL_LOG_CATEGORY_APPLICATION,
+        SDL_LOG_PRIORITY_INFO, message);
+    fprintf(stderr, "%s [%d:%d] %s\n", timestamp,
+        SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO, message);
+
+    bongo_cat_runtime_state_clean(app, timestamp);
+}
+
+void bongo_cat_runtime_log_stop(void) {
+    if (!log_mutex) return;
+    SDL_Mutex *mutex = log_mutex;
+    log_mutex = NULL;
+    SDL_DestroyMutex(mutex);
 }
 
 static bool reset_log(const char *path) {
     FILE *file = path && path[0] ? bongo_cat_file_open(path, "wb") : NULL;
     if (!file) return false;
     char timestamp[64];
-    format_timestamp(timestamp, sizeof(timestamp));
+    bongo_cat_runtime_timestamp(timestamp, sizeof(timestamp));
     fprintf(file, "%s BongoCat %s runtime log\n", timestamp, BONGO_CAT_VERSION);
     return fclose(file) == 0;
 }
@@ -183,16 +150,24 @@ static bool parse_arguments(BongoCatApp *app, int argc, char **argv,
 
 static void begin_log(BongoCatApp *app) {
     char previous[BONGO_CAT_PATH_CAP], stage_path[BONGO_CAT_PATH_CAP];
+    char stage_temporary[BONGO_CAT_PATH_CAP];
     char interrupted[128] = {0};
     char unexpected[256] = {0};
-    read_runtime_state(app, unexpected, sizeof(unexpected));
+    bongo_cat_runtime_state_previous(app, unexpected, sizeof(unexpected));
     bongo_cat_path_join(startup_log_path, sizeof(startup_log_path),
         app->log_root, "startup.log");
     bongo_cat_path_join(previous, sizeof(previous), app->log_root,
         "startup-previous.log");
-    bongo_cat_path_join(stage_path, sizeof(stage_path), app->state_root,
-        "startup-stage.txt");
-    FILE *stage = bongo_cat_file_open(stage_path, "rb");
+    bool stage_paths_ready = bongo_cat_path_join(stage_path,
+        sizeof(stage_path), app->state_root, "startup-stage.txt") &&
+        bongo_cat_path_join(stage_temporary, sizeof(stage_temporary),
+            app->state_root, "startup-stage.tmp");
+    if (stage_paths_ready && !bongo_cat_path_is_file(stage_path) &&
+        bongo_cat_path_is_file(stage_temporary))
+        bongo_cat_file_replace(stage_temporary, stage_path, true);
+    else if (stage_paths_ready) bongo_cat_file_remove(stage_temporary);
+    FILE *stage = stage_paths_ready ? bongo_cat_file_open(stage_path, "rb")
+        : NULL;
     if (stage) {
         size_t length = fread(interrupted, 1, sizeof(interrupted) - 1, stage);
         interrupted[ferror(stage) ? 0 : length] = '\0';
@@ -202,8 +177,9 @@ static void begin_log(BongoCatApp *app) {
         bongo_cat_file_replace(startup_log_path, previous, true);
     reset_log(startup_log_path);
     verbose_logging = app->smoke;
+    if (!log_mutex) log_mutex = SDL_CreateMutex();
     SDL_SetLogOutputFunction(log_output, NULL);
-    SDL_Log("Startup on %s; storage=%s", SDL_GetPlatform(), app->storage_root[0]
+    SDL_Log("[runtime] Startup on %s; storage=%s", SDL_GetPlatform(), app->storage_root[0]
         ? app->storage_root : app->config_root);
     if (interrupted[0]) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
         "Previous startup ended before readiness at stage: %s", interrupted);
@@ -222,15 +198,20 @@ bool bongo_cat_startup_prepare(BongoCatApp *app, int argc, char **argv,
 
 void bongo_cat_startup_stage(BongoCatApp *app, const char *stage) {
     if (!app || !app->state_root[0] || !stage) return;
-    char path[BONGO_CAT_PATH_CAP];
-    if (bongo_cat_path_join(path, sizeof(path), app->state_root, "startup-stage.txt")) {
-        FILE *file = bongo_cat_file_open(path, "wb");
-        if (file) { fputs(stage, file); fclose(file); }
+    char path[BONGO_CAT_PATH_CAP], temporary[BONGO_CAT_PATH_CAP];
+    if (bongo_cat_path_join(path, sizeof(path), app->state_root,
+        "startup-stage.txt") && bongo_cat_path_join(temporary,
+        sizeof(temporary), app->state_root, "startup-stage.tmp")) {
+        FILE *file = bongo_cat_file_open(temporary, "wb");
+        bool written = file && fputs(stage, file) >= 0;
+        if (file && fclose(file) != 0) written = false;
+        if (!written || !bongo_cat_file_replace(temporary, path, true))
+            bongo_cat_file_remove(temporary);
     }
     char runtime_stage[160];
     snprintf(runtime_stage, sizeof(runtime_stage), "startup:%s", stage);
     bongo_cat_runtime_stage(app, runtime_stage);
-    SDL_Log("Startup stage: %s", stage);
+    SDL_Log("[runtime] Startup stage: %s", stage);
 }
 
 void bongo_cat_startup_ready(BongoCatApp *app) {
@@ -239,10 +220,12 @@ void bongo_cat_startup_ready(BongoCatApp *app) {
     char path[BONGO_CAT_PATH_CAP];
     if (bongo_cat_path_join(path, sizeof(path), app->state_root,
         "startup-stage.txt")) bongo_cat_file_remove(path);
+    if (bongo_cat_path_join(path, sizeof(path), app->state_root,
+        "startup-stage.tmp")) bongo_cat_file_remove(path);
     if (bongo_cat_path_join(path, sizeof(path), app->log_root,
         "startup-error.log")) bongo_cat_file_remove(path);
     bongo_cat_runtime_stage(app, "running");
-    SDL_Log("Startup ready");
+    SDL_Log("[runtime] Startup ready");
 }
 
 static void write_error(BongoCatApp *app, const char *name, const char *message) {

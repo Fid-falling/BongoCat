@@ -66,10 +66,10 @@ BongoCatResult bongo_cat_window_create(BongoCatApp *app, BongoCatError *error) {
             const GLubyte *vendor = glGetString(GL_VENDOR);
             const GLubyte *renderer = glGetString(GL_RENDERER);
             const GLubyte *version = glGetString(GL_VERSION);
-            SDL_Log("OpenGL window ready (transparent=%d, MSAA=%d, "
+            SDL_Log("[runtime] OpenGL window ready (transparent=%d, MSAA=%d, "
                 "sample_buffers=%d, sample_count=%d)", options[i][0], options[i][1],
                 sample_buffers, sample_count);
-            SDL_Log("OpenGL context: vendor=%s renderer=%s version=%s",
+            SDL_Log("[runtime] OpenGL context: vendor=%s renderer=%s version=%s",
                 vendor ? (const char *)vendor : "unknown",
                 renderer ? (const char *)renderer : "unknown",
                 version ? (const char *)version : "unknown");

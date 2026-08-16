@@ -34,6 +34,8 @@ set(BONGO_CAT_RUNTIME_LIFECYCLE_SOURCES
   src/runtime/lifecycle/frame_clock.c
   src/runtime/lifecycle/memory_policy.c
   src/runtime/lifecycle/runtime_flow.c
+  src/runtime/lifecycle/runtime_state.c
+  src/runtime/lifecycle/shutdown.c
   src/runtime/lifecycle/startup.c
   src/runtime/lifecycle/storage_paths.c)
 
