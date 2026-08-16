@@ -213,6 +213,8 @@ bool NativeModel::load_textures(BongoCatError *error,
     TextureProgressContext texture_context = {progress, userdata, .50f,
         .45f / (float)(count > 0 ? count : 1)};
     for (int i = 0; i < count; ++i) {
+        texture_context.start = .50f + .45f * (float)i /
+            (float)(count > 0 ? count : 1);
         textures_[(size_t)i] = bongo_cat_image_texture_model(
             path(setting_->GetTextureFileName(i)).c_str(), direct_textures_,
             nullptr, nullptr, &texture_alpha_[(size_t)i],

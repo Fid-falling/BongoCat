@@ -38,11 +38,13 @@ static void model_load_progress(void *userdata, float progress) {
         !app->live2d)
         return;
     uint64_t now = SDL_GetTicksNS();
-    if (progress < .999f && now - app->model_load_last_frame_ns < 16000000ull)
+    if (progress < .98f && now - app->model_load_last_frame_ns < 16000000ull)
         return;
     uint64_t previous = app->model_load_last_frame_ns;
     app->model_load_last_frame_ns = now;
     float elapsed = (float)((now - previous) / 1000000000.0);
+    bongo_cat_app_drain_input(app, false);
+    bongo_cat_app_update_hover(app, now);
     if (!app->smoke_freeze_model && elapsed > 0.0f)
         bongo_cat_app_step_live2d(app, elapsed);
     app->last_frame_ns = now;

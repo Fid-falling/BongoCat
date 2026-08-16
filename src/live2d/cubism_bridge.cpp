@@ -168,7 +168,7 @@ extern "C" BongoCatResult bongo_cat_live2d_load(BongoCatLive2D *runtime,
             delete model;
             return result;
         }
-        if (progress) progress(userdata, 0.98f);
+        if (progress) progress(userdata, 1.0f);
         runtime->model = model;
         delete previous;
         return BONGO_CAT_OK;

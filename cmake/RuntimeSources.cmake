@@ -14,6 +14,7 @@ set(BONGO_CAT_RUNTIME_INTERNAL_INCLUDE_DIRS
 set(BONGO_CAT_MEDIA_SOURCES
   src/media/audio.c
   src/media/image.c
+  src/media/image_decode.c
   src/media/image_info.c
   src/media/image_resize.c
   src/media/image_alpha.c
