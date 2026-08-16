@@ -87,17 +87,34 @@ possible.
 
 ```text
 include/bongo_cat/       public C interfaces and data structures
-src/core/             config, paths, input state, catalogs, hashes
-src/runtime/          application lifecycle, model import, and UI flow
-src/render/           OpenGL helpers and overlays
-src/live2d/           Cubism bridge and diagnostic backend
-src/platform/         Win32, Cocoa, X11, input, and tray adapters
-src/ui/               Nuklear backend, preferences, themes, localization
-resources/assets/     bundled models, textures, locales, and tray assets
-tests/                native tests and fixtures
-cmake/                dependency, optimization, audit, and source-policy modules
-docs/                 audit evidence and parity notes
+src/core/                 config, paths, input state, catalogs, hashes
+src/runtime/              runtime orchestration (see docs/code-organization.md)
+  lifecycle/              startup, frame timing, storage, and app state
+  input/                  runtime input mapping and shortcuts
+  model/                  catalog, storage, and import pipelines
+  shell/                  window, tray, and modal-frame behavior
+  diagnostics/            frame and Live2D runtime audits
+src/render/               OpenGL helpers and overlays
+src/live2d/               Cubism bridge and diagnostic backend
+src/platform/             platform adapters grouped by OS
+  windows/                Win32 window, input, capture, tray, and UTF-8 glue
+  macos/                  Cocoa and Application Services glue
+  linux/                  X11 and native menu glue
+src/ui/                   UI implementation grouped by responsibility
+  backend/                Nuklear/SDL backend, input, scale, and cursors
+  rendering/              fonts, paint primitives, and native theme
+  theme/                  Catime theme components and icons
+  preferences/            preference pages, dialogs, model cards, and widgets
+resources/assets/         bundled models, textures, locales, and tray assets
+tests/                    native tests grouped by subsystem, plus fixtures
+cmake/                    dependency, platform, target, and source-policy modules
+docs/                     audit evidence, parity notes, and organization rules
 ```
+
+Internal headers remain private to `src`; only `include/bongo_cat` is a public
+include surface. New implementation files should live beside the subsystem
+that owns them, and CMake source lists should be updated in the matching
+`RuntimeSources.cmake` or target module.
 
 ## Dependencies
 

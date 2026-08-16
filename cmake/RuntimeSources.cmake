@@ -1,65 +1,175 @@
+set(BONGO_CAT_RUNTIME_INTERNAL_INCLUDE_DIRS
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/lifecycle"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/model"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/model/import"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/model/import/mver"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/model/import/nearby"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/shell"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/backend"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/preferences"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/rendering"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/theme")
+
+set(BONGO_CAT_MEDIA_SOURCES
+  src/media/audio.c
+  src/media/image.c
+  src/media/image_info.c
+  src/media/image_resize.c
+  src/media/image_alpha.c
+  src/media/stb_image_impl.c)
+
+set(BONGO_CAT_RENDER_SOURCES
+  src/render/gl_api.c
+  src/render/overlay.c
+  src/render/overlay_draw.c
+  src/render/mver_pointer_overlay.c
+  src/render/mver_pointer_overlay_draw.c)
+
+set(BONGO_CAT_RUNTIME_LIFECYCLE_SOURCES
+  src/runtime/lifecycle/app.c
+  src/runtime/lifecycle/assets.c
+  src/runtime/lifecycle/config_store.c
+  src/runtime/lifecycle/frame_clock.c
+  src/runtime/lifecycle/memory_policy.c
+  src/runtime/lifecycle/runtime_flow.c
+  src/runtime/lifecycle/startup.c
+  src/runtime/lifecycle/storage_paths.c)
+
+set(BONGO_CAT_RUNTIME_DIAGNOSTIC_SOURCES
+  src/runtime/diagnostics/frame_audit.c
+  src/runtime/diagnostics/frame_presentation_audit.c
+  src/runtime/diagnostics/live2d_audit.c
+  src/runtime/diagnostics/live2d_viewer_audit.c
+  src/runtime/diagnostics/live2d_visual_audit.c)
+
+set(BONGO_CAT_RUNTIME_INPUT_SOURCES
+  src/runtime/input/gamepad.c
+  src/runtime/input/mouse.c
+  src/runtime/input/mouse_mapping.c
+  src/runtime/input/shortcuts.c)
+
+set(BONGO_CAT_RUNTIME_MODEL_SOURCES
+  src/runtime/model/model_catalog_runtime.c
+  src/runtime/model/model_files.c
+  src/runtime/model/model_storage.c
+  src/runtime/model/model_update.c)
+
+set(BONGO_CAT_RUNTIME_IMPORT_SOURCES
+  src/runtime/model/import/model_import.c
+  src/runtime/model/import/model_import_digest.c
+  src/runtime/model/import/model_import_discovery.c
+  src/runtime/model/import/model_import_format.c
+  src/runtime/model/import/model_import_identity.c
+  src/runtime/model/import/model_import_metadata.c
+  src/runtime/model/import/model_import_package.c
+  src/runtime/model/import/model_import_report.c
+  src/runtime/model/import/model_import_scan.c
+  src/runtime/model/import/model_import_source.c
+  src/runtime/model/import/model_import_tauri.c
+  src/runtime/model/import/mver/model_import_mver.c
+  src/runtime/model/import/mver/model_import_mver_effect.c
+  src/runtime/model/import/mver/model_import_mver_image.c
+  src/runtime/model/import/mver/model_import_mver_labels.c
+  src/runtime/model/import/mver/model_import_mver_metadata.c
+  src/runtime/model/import/mver/model_import_mver_motion.c
+  src/runtime/model/import/mver/model_import_mver_patch.c
+  src/runtime/model/import/mver/model_import_mver_shortcut.c
+  src/runtime/model/import/nearby/model_import_nearby.c
+  src/runtime/model/import/nearby/model_import_nearby_cache.c
+  src/runtime/model/import/nearby/model_import_nearby_signature.c)
+
+set(BONGO_CAT_RUNTIME_SHELL_SOURCES
+  src/runtime/shell/modal_frame.c
+  src/runtime/shell/tray.c
+  src/runtime/shell/window.c
+  src/runtime/shell/window_background.c
+  src/runtime/shell/window_display.c
+  src/runtime/shell/window_drag.c
+  src/runtime/shell/window_geometry.c
+  src/runtime/shell/window_hit.c
+  src/runtime/shell/window_menu_actions.c
+  src/runtime/shell/window_menu_behavior.c
+  src/runtime/shell/window_menu_preview.c
+  src/runtime/shell/window_wheel.c)
+
+set(BONGO_CAT_UI_BACKEND_SOURCES
+  src/ui/backend/nuklear_impl.c
+  src/ui/backend/ui_backend.c
+  src/ui/backend/ui_cursor.c
+  src/ui/backend/ui_input.c
+  src/ui/backend/ui_resize_cache.c
+  src/ui/backend/ui_scale.c
+  src/ui/backend/ui_tooltip.c)
+
+set(BONGO_CAT_UI_RENDERING_SOURCES
+  src/ui/rendering/ui_animation.c
+  src/ui/rendering/ui_font.c
+  src/ui/rendering/ui_font_atlas.c
+  src/ui/rendering/ui_font_atlas_ranges.c
+  src/ui/rendering/ui_font_atlas_sources.c
+  src/ui/rendering/ui_font_atlas_upload.c
+  src/ui/rendering/ui_font_reload.c
+  src/ui/rendering/ui_native_theme.c
+  src/ui/rendering/ui_paint.c
+  src/ui/rendering/ui_paint_border.c
+  src/ui/rendering/ui_paint_cache.c
+  src/ui/rendering/ui_paint_shell.c)
+
+set(BONGO_CAT_UI_THEME_SOURCES
+  src/ui/theme/ui_catime.c
+  src/ui/theme/ui_catime_icons.c
+  src/ui/theme/ui_catime_tabs.c
+  src/ui/theme/ui_catime_theme.c)
+
+set(BONGO_CAT_UI_PREFERENCES_SOURCES
+  src/ui/preferences/preferences.c
+  src/ui/preferences/preferences_about.c
+  src/ui/preferences/preferences_about_community.c
+  src/ui/preferences/preferences_assets.c
+  src/ui/preferences/preferences_behavior_dialog.c
+  src/ui/preferences/preferences_behavior_rename.c
+  src/ui/preferences/preferences_behavior_row.c
+  src/ui/preferences/preferences_combo.c
+  src/ui/preferences/preferences_controls.c
+  src/ui/preferences/preferences_dialog.c
+  src/ui/preferences/preferences_fonts.c
+  src/ui/preferences/preferences_import.c
+  src/ui/preferences/preferences_language.c
+  src/ui/preferences/preferences_live_resize.c
+  src/ui/preferences/preferences_model.c
+  src/ui/preferences/preferences_model_card.c
+  src/ui/preferences/preferences_model_card_paint.c
+  src/ui/preferences/preferences_model_cover.c
+  src/ui/preferences/preferences_model_glyphs.c
+  src/ui/preferences/preferences_model_rename.c
+  src/ui/preferences/preferences_notice.c
+  src/ui/preferences/preferences_overlay.c
+  src/ui/preferences/preferences_pages.c
+  src/ui/preferences/preferences_render.c
+  src/ui/preferences/preferences_scale.c
+  src/ui/preferences/preferences_scrollbar.c
+  src/ui/preferences/preferences_shortcut_clear.c
+  src/ui/preferences/preferences_shortcuts.c
+  src/ui/preferences/preferences_smoke.c
+  src/ui/preferences/preferences_text_edit.c
+  src/ui/preferences/preferences_text_session.c
+  src/ui/preferences/preferences_theme.c
+  src/ui/preferences/preferences_toggle.c
+  src/ui/preferences/preferences_widgets.c)
+
 set(BONGO_CAT_RUNTIME_SOURCES
   src/core/app_state.c
-  src/media/audio.c
-  src/media/image.c src/media/image_info.c
-  src/media/image_resize.c src/media/image_alpha.c
-  src/media/stb_image_impl.c
-  src/platform/memory.c src/render/gl_api.c
-  src/render/overlay.c src/render/overlay_draw.c
-  src/render/mver_pointer_overlay.c src/render/mver_pointer_overlay_draw.c
-  src/runtime/app.c src/runtime/config_store.c
-  src/runtime/assets.c src/runtime/startup.c src/runtime/storage_paths.c
-  src/runtime/frame_audit.c src/runtime/frame_presentation_audit.c
-  src/runtime/frame_clock.c src/runtime/modal_frame.c
-  src/runtime/gamepad.c
-  src/runtime/live2d_audit.c src/runtime/live2d_visual_audit.c
-  src/runtime/live2d_viewer_audit.c
-  src/runtime/memory_policy.c src/runtime/mouse.c src/runtime/mouse_mapping.c
-  src/runtime/model_files.c src/runtime/model_catalog_runtime.c
-  src/runtime/model_update.c src/runtime/model_storage.c
-  src/runtime/model_import.c src/runtime/model_import_identity.c
-  src/runtime/model_import_digest.c src/runtime/model_import_source.c
-  src/runtime/model_import_package.c
-  src/runtime/model_import_discovery.c src/runtime/model_import_format.c
-  src/runtime/model_import_scan.c src/runtime/model_import_tauri.c
-  src/runtime/model_import_nearby.c src/runtime/model_import_nearby_cache.c
-  src/runtime/model_import_nearby_signature.c
-  src/runtime/model_import_mver_patch.c
-  src/runtime/model_import_mver.c src/runtime/model_import_mver_image.c
-  src/runtime/model_import_mver_shortcut.c src/runtime/model_import_mver_effect.c
-  src/runtime/model_import_mver_motion.c src/runtime/model_import_mver_labels.c
-  src/runtime/model_import_report.c src/runtime/model_import_mver_metadata.c
-  src/runtime/model_import_metadata.c src/runtime/runtime_flow.c
-  src/runtime/shortcuts.c src/runtime/tray.c
-  src/runtime/window.c src/runtime/window_background.c
-  src/runtime/window_display.c src/runtime/window_drag.c
-  src/runtime/window_geometry.c src/runtime/window_menu_actions.c
-  src/runtime/window_menu_behavior.c src/runtime/window_menu_preview.c
-  src/runtime/window_hit.c src/runtime/window_wheel.c
-  src/ui/nuklear_impl.c
-  src/ui/ui_backend.c src/ui/ui_tooltip.c src/ui/ui_resize_cache.c
-  src/ui/ui_scale.c
-  src/ui/ui_cursor.c src/ui/ui_animation.c src/ui/ui_paint.c
-  src/ui/ui_paint_cache.c src/ui/ui_paint_border.c src/ui/ui_paint_shell.c
-  src/ui/ui_font.c src/ui/ui_font_atlas.c src/ui/ui_font_atlas_sources.c
-  src/ui/ui_font_atlas_ranges.c src/ui/ui_font_atlas_upload.c
-  src/ui/ui_font_reload.c src/ui/ui_input.c
-  src/ui/ui_catime.c src/ui/ui_catime_tabs.c src/ui/ui_catime_theme.c
-  src/ui/ui_catime_icons.c src/ui/ui_native_theme.c
-  src/ui/preferences.c src/ui/preferences_scale.c src/ui/preferences_fonts.c
-  src/ui/preferences_render.c src/ui/preferences_language.c
-  src/ui/preferences_assets.c src/ui/preferences_about.c
-  src/ui/preferences_about_community.c src/ui/preferences_live_resize.c
-  src/ui/preferences_dialog.c src/ui/preferences_import.c
-  src/ui/preferences_overlay.c src/ui/preferences_behavior_dialog.c
-  src/ui/preferences_behavior_rename.c src/ui/preferences_behavior_row.c
-  src/ui/preferences_scrollbar.c src/ui/preferences_text_edit.c
-  src/ui/preferences_text_session.c src/ui/preferences_notice.c
-  src/ui/preferences_model.c src/ui/preferences_model_card.c
-  src/ui/preferences_model_rename.c
-  src/ui/preferences_model_cover.c src/ui/preferences_model_glyphs.c
-  src/ui/preferences_pages.c src/ui/preferences_theme.c
-  src/ui/preferences_shortcuts.c src/ui/preferences_shortcut_clear.c
-  src/ui/preferences_smoke.c src/ui/preferences_widgets.c
-  src/ui/preferences_controls.c src/ui/preferences_combo.c
-  src/ui/preferences_toggle.c)
+  src/platform/common/memory.c
+  ${BONGO_CAT_MEDIA_SOURCES}
+  ${BONGO_CAT_RENDER_SOURCES}
+  ${BONGO_CAT_RUNTIME_LIFECYCLE_SOURCES}
+  ${BONGO_CAT_RUNTIME_DIAGNOSTIC_SOURCES}
+  ${BONGO_CAT_RUNTIME_INPUT_SOURCES}
+  ${BONGO_CAT_RUNTIME_MODEL_SOURCES}
+  ${BONGO_CAT_RUNTIME_IMPORT_SOURCES}
+  ${BONGO_CAT_RUNTIME_SHELL_SOURCES}
+  ${BONGO_CAT_UI_BACKEND_SOURCES}
+  ${BONGO_CAT_UI_RENDERING_SOURCES}
+  ${BONGO_CAT_UI_THEME_SOURCES}
+  ${BONGO_CAT_UI_PREFERENCES_SOURCES})

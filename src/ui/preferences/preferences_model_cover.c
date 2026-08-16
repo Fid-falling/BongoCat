@@ -1,6 +1,6 @@
 #include "preferences_model_cover.h"
 #include "preferences_internal.h"
-#include "../runtime/runtime.h"
+#include "runtime.h"
 #include "bongo_cat/file.h"
 #include "bongo_cat/image.h"
 #include "bongo_cat/path.h"

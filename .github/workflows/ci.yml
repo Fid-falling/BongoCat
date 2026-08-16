@@ -48,13 +48,20 @@ jobs:
           cppcheck --enable=warning,performance,portability \
             --error-exitcode=1 --inline-suppr \
             --suppress=missingIncludeSystem --suppress=unknownMacro \
-            --std=c11 -Iinclude -Isrc/ui -Isrc/runtime "${c_files[@]}"
+            --std=c11 -Iinclude -Isrc/runtime \
+            -Isrc/runtime/lifecycle -Isrc/runtime/model \
+            -Isrc/runtime/model/import -Isrc/runtime/model/import/mver \
+            -Isrc/runtime/model/import/nearby -Isrc/runtime/shell \
+            -Isrc/ui/backend -Isrc/ui/preferences -Isrc/ui/rendering \
+            -Isrc/ui/theme -Isrc/platform/windows "${c_files[@]}"
           mapfile -d '' cpp_files < <(find src -type f -name '*.cpp' -print0)
           cppcheck --enable=warning,performance,portability \
             --error-exitcode=1 --inline-suppr \
             --suppress=missingIncludeSystem --suppress=unknownMacro \
             --suppress=passedByValueCallback --std=c++17 \
-            -Iinclude -Isrc/ui -Isrc/runtime "${cpp_files[@]}"
+            -Iinclude -Isrc/runtime -Isrc/runtime/model/import \
+            -Isrc/ui/backend -Isrc/ui/preferences -Isrc/ui/rendering \
+            -Isrc/ui/theme "${cpp_files[@]}"
 
       - name: Configure warning-clean Linux build
         run: |

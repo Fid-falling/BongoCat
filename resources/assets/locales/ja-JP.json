@@ -77,6 +77,7 @@
       },
       "model": {
         "title": "モデル",
+        "nearbyTitle": "近くのモデル",
         "labels": {
           "deleteModel": "モデルを削除"
         },
@@ -84,6 +85,7 @@
           "deleteSuccess": "「%s」を削除しました",
           "deleteModel": "「%s」を削除しますか？",
           "importSuccess": "インポートしました",
+          "importExists": "モデルは既に存在します",
           "clickOrDragToImport": "クリックまたはここへドラッグしてインポート",
           "openDirectoryFailed": "モデルフォルダーを開けません"
         },

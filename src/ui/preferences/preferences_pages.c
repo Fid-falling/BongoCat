@@ -6,7 +6,7 @@
 #include "bongo_cat/i18n.h"
 #include "bongo_cat/preferences.h"
 #include "bongo_cat/tray.h"
-#include "../runtime/runtime.h"
+#include "runtime.h"
 
 #include <SDL3/SDL.h>
 #include <string.h>

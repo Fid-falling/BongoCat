@@ -1,7 +1,7 @@
 #include "bongo_cat/platform.h"
 #include "windows_borderless.h"
 #include "windows_popup.h"
-#include "../ui/ui_native_theme.h"
+#include "ui_native_theme.h"
 
 #ifdef _WIN32
 #include <SDL3/SDL.h>

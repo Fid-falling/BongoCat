@@ -4,7 +4,7 @@
 
 #include <string.h>
 #ifdef _WIN32
-#include "../src/platform/windows_keys.h"
+#include "windows_keys.h"
 #endif
 
 void test_input(void) {

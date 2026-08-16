@@ -1,6 +1,6 @@
 #include "preferences_internal.h"
 #include "preferences_state.h"
-#include "../runtime/model_import.h"
+#include "model_import.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>

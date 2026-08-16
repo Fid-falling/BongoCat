@@ -7,7 +7,7 @@
 #include "ui_backend.h"
 #include "bongo_cat/i18n.h"
 #include "bongo_cat/preferences.h"
-#include "../runtime/modal_frame.h"
+#include "modal_frame.h"
 
 typedef struct BongoCatPreferenceNotice {
     char message[384];

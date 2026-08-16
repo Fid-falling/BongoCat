@@ -77,6 +77,7 @@
       },
       "model": {
         "title": "Modelo",
+        "nearbyTitle": "Modelos próximos",
         "labels": {
           "deleteModel": "Excluir modelo"
         },
@@ -84,6 +85,7 @@
           "deleteSuccess": "Modelo \"%s\" excluído",
           "deleteModel": "Tem certeza de que deseja excluir \"%s\"?",
           "importSuccess": "Importação bem-sucedida",
+          "importExists": "O modelo já existe",
           "clickOrDragToImport": "Clique ou arraste para importar",
           "openDirectoryFailed": "Não foi possível abrir a pasta do modelo"
         },

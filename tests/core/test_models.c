@@ -4,6 +4,7 @@
 #include "bongo_cat/path.h"
 
 #include <string.h>
+#include <stdlib.h>
 #include <yyjson.h>
 
 typedef struct ParameterSet {
@@ -121,37 +122,43 @@ static bool validate_model(const BongoCatModelEntry *model) {
 }
 
 void test_models(void) {
-    BongoCatModelCatalog catalog;
+    BongoCatModelCatalog *catalog = calloc(1, sizeof(*catalog));
+    BongoCatBehaviorCatalog *behaviors = calloc(1, sizeof(*behaviors));
     BongoCatError error = {0};
-    bongo_cat_models_init(&catalog);
-    CHECK(bongo_cat_models_scan(&catalog,
+    CHECK(catalog && behaviors);
+    if (!catalog || !behaviors) {
+        free(catalog);
+        free(behaviors);
+        return;
+    }
+    bongo_cat_models_init(catalog);
+    CHECK(bongo_cat_models_scan(catalog,
         BONGO_CAT_NATIVE_SOURCE_DIR "/resources/assets/models",
         false, &error) == BONGO_CAT_OK);
-    CHECK(catalog.count == 0);
-    bongo_cat_models_init(&catalog);
-    CHECK(bongo_cat_models_scan(&catalog, BONGO_CAT_NATIVE_SOURCE_DIR "/resources/assets/models",
+    CHECK(catalog->count == 0);
+    bongo_cat_models_init(catalog);
+    CHECK(bongo_cat_models_scan(catalog, BONGO_CAT_NATIVE_SOURCE_DIR "/resources/assets/models",
         true, &error) == BONGO_CAT_OK);
-    CHECK(catalog.count == 3);
-    const BongoCatModelEntry *standard = bongo_cat_models_find(&catalog, "standard");
-    const BongoCatModelEntry *keyboard = bongo_cat_models_find(&catalog, "keyboard");
-    const BongoCatModelEntry *gamepad = bongo_cat_models_find(&catalog, "gamepad");
+    CHECK(catalog->count == 3);
+    const BongoCatModelEntry *standard = bongo_cat_models_find(catalog, "standard");
+    const BongoCatModelEntry *keyboard = bongo_cat_models_find(catalog, "keyboard");
+    const BongoCatModelEntry *gamepad = bongo_cat_models_find(catalog, "gamepad");
     CHECK(standard && standard->mode == BONGO_CAT_MODE_STANDARD && validate_model(standard));
     CHECK(keyboard && keyboard->mode == BONGO_CAT_MODE_KEYBOARD && validate_model(keyboard));
     CHECK(gamepad && gamepad->mode == BONGO_CAT_MODE_GAMEPAD && validate_model(gamepad));
-    BongoCatBehaviorCatalog behaviors;
-    CHECK(bongo_cat_behaviors_load(&behaviors, standard, &error) == BONGO_CAT_OK);
-    CHECK(behaviors.count == 7);
-    CHECK(behaviors.entries[0].kind == BONGO_CAT_BEHAVIOR_MOTION);
-    CHECK(strcmp(behaviors.entries[0].group, "CAT_motion") == 0);
-    CHECK(strstr(behaviors.entries[0].sound, "live2d_motion1.flac") != NULL);
-    CHECK(behaviors.entries[6].kind == BONGO_CAT_BEHAVIOR_EXPRESSION);
+    CHECK(bongo_cat_behaviors_load(behaviors, standard, &error) == BONGO_CAT_OK);
+    CHECK(behaviors->count == 7);
+    CHECK(behaviors->entries[0].kind == BONGO_CAT_BEHAVIOR_MOTION);
+    CHECK(strcmp(behaviors->entries[0].group, "CAT_motion") == 0);
+    CHECK(strstr(behaviors->entries[0].sound, "live2d_motion1.flac") != NULL);
+    CHECK(behaviors->entries[6].kind == BONGO_CAT_BEHAVIOR_EXPRESSION);
 
-    bongo_cat_models_init(&catalog);
-    CHECK(bongo_cat_models_scan(&catalog,
+    bongo_cat_models_init(catalog);
+    CHECK(bongo_cat_models_scan(catalog,
         BONGO_CAT_NATIVE_SOURCE_DIR "/tests/fixtures/model-packages",
         false, &error) == BONGO_CAT_OK);
-    CHECK(catalog.count == 1);
-    const BongoCatModelEntry *v2 = bongo_cat_models_find(&catalog,
+    CHECK(catalog->count == 1);
+    const BongoCatModelEntry *v2 = bongo_cat_models_find(catalog,
         "test-package-v2");
     CHECK(v2 && v2->package_schema == 2 &&
         strcmp(v2->content_digest,
@@ -162,4 +169,6 @@ void test_models(void) {
         v2->source_format == BONGO_CAT_MODEL_SOURCE_TAURI &&
         v2->adapter_schema == 1 && v2->adapter_generator == 1 &&
         (v2->capabilities & BONGO_CAT_MODEL_CAPABILITY_KEYBOARD_INPUT));
+    free(behaviors);
+    free(catalog);
 }

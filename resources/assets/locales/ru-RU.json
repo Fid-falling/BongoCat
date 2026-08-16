@@ -77,6 +77,7 @@
       },
       "model": {
         "title": "Модель",
+        "nearbyTitle": "Ближайшие модели",
         "labels": {
           "deleteModel": "Удалить модель"
         },
@@ -84,6 +85,7 @@
           "deleteSuccess": "Модель \"%s\" удалена",
           "deleteModel": "Удалить модель \"%s\"?",
           "importSuccess": "Успешно импортировано",
+          "importExists": "Модель уже существует",
           "clickOrDragToImport": "Щёлкните или перетащите сюда для импорта",
           "openDirectoryFailed": "Не удалось открыть папку модели"
         },

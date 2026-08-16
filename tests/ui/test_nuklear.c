@@ -1,5 +1,5 @@
-#include "../src/ui/nuklear_config.h"
-#include "../src/ui/ui_paint_border.h"
+#include "nuklear_config.h"
+#include "ui_paint_border.h"
 
 #include <stdio.h>
 #include <stdlib.h>

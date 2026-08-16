@@ -1,5 +1,5 @@
 #include "bongo_cat/model.h"
-#include "../runtime/model_import.h"
+#include "model_import.h"
 
 #include <stdlib.h>
 

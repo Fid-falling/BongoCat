@@ -77,6 +77,7 @@
       },
       "model": {
         "title": "모델",
+        "nearbyTitle": "주변 모델",
         "labels": {
           "deleteModel": "모델 삭제"
         },
@@ -84,6 +85,7 @@
           "deleteSuccess": "\"%s\" 모델을 삭제했습니다",
           "deleteModel": "\"%s\" 모델을 삭제하시겠습니까?",
           "importSuccess": "가져오기 완료",
+          "importExists": "모델이 이미 존재합니다",
           "clickOrDragToImport": "클릭하거나 여기로 끌어와 가져오기",
           "openDirectoryFailed": "모델 폴더를 열 수 없습니다"
         },

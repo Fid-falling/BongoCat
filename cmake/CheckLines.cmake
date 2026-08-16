@@ -31,11 +31,14 @@ foreach(FILE IN LISTS FILES)
     set(LIMIT 396)
   elseif(RELATIVE_FILE STREQUAL "src/tools/mver_phase_metrics.c")
     set(LIMIT 321)
-  elseif(RELATIVE_FILE STREQUAL "src/runtime/live2d_audit.c")
+  elseif(RELATIVE_FILE STREQUAL
+      "src/runtime/diagnostics/live2d_audit.c")
     set(LIMIT 320)
-  elseif(RELATIVE_FILE STREQUAL "src/ui/preferences_import.c")
+  elseif(RELATIVE_FILE STREQUAL
+      "src/ui/preferences/preferences_import.c")
     set(LIMIT 320)
-  elseif(RELATIVE_FILE STREQUAL "src/ui/preferences_widgets.c")
+  elseif(RELATIVE_FILE STREQUAL
+      "src/ui/preferences/preferences_widgets.c")
     set(LIMIT 350)
   endif()
 

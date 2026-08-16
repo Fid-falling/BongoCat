@@ -5,9 +5,9 @@
 #include <stdlib.h>
 
 #ifdef _WIN32
-#include "../platform/windows_capture.h"
-#include "../platform/windows_diagnostics.h"
-#include "../platform/windows_layered.h"
+#include "windows_capture.h"
+#include "windows_diagnostics.h"
+#include "windows_layered.h"
 #include <SDL3/SDL_properties.h>
 #endif
 

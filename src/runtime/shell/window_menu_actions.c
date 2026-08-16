@@ -2,7 +2,7 @@
 #include "window_menu.h"
 #include "bongo_cat/i18n.h"
 #include "bongo_cat/preferences.h"
-#include "../ui/preferences_notice.h"
+#include "preferences_notice.h"
 
 #include <stdio.h>
 #include <string.h>
