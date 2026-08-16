@@ -36,6 +36,7 @@ bool bongo_cat_app_run_behavior(BongoCatApp *app,
             behavior->index ? -1 : behavior->index;
         if (!bongo_cat_live2d_set_expression(app->live2d, expression)) return false;
     }
+    bongo_cat_app_capture_behavior_state(app);
     app->dirty = true;
     return true;
 }

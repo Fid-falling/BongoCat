@@ -152,6 +152,7 @@ bool bongo_cat_window_behavior_commit_preview(BongoCatApp *app,
         if (companion != entry && bound && strcmp(bound, shortcut) == 0)
             bongo_cat_app_run_behavior(app, companion);
     }
+    bongo_cat_app_capture_behavior_state(app);
     app->dirty = true;
     return true;
 }

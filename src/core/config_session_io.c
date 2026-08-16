@@ -10,6 +10,8 @@
     "Session", object, key, target, error)
 #define read_object(object, key, target, error) bongo_cat_config_read_object( \
     "Session", object, key, target, error)
+#define read_array(object, key, target, error) bongo_cat_config_read_array( \
+    "Session", object, key, target, error)
 #define read_bool(object, key, target, error) bongo_cat_config_read_bool( \
     "Session", object, key, target, error)
 #define read_int(object, key, target, required, error) \
@@ -17,6 +19,12 @@
         "Session", object, key, target, required, error)
 #define read_float(object, key, target, error) bongo_cat_config_read_float( \
     "Session", object, key, target, error)
+#define read_string(object, key, target, length, error) \
+    bongo_cat_config_read_string( \
+        "Session", object, key, target, length, error)
+#define copy_text(target, capacity, value, length, field, error) \
+    bongo_cat_config_copy_text( \
+        "Session", target, capacity, value, length, field, error)
 
 static bool read_active_model(yyjson_val *root,
     BongoCatSessionState *session, BongoCatError *error) {
@@ -36,6 +44,38 @@ static bool read_active_model(yyjson_val *root,
     return true;
 }
 
+static bool read_active_behaviors(yyjson_val *array,
+    BongoCatSessionState *session, BongoCatError *error) {
+    if (!array) return true;
+    if (yyjson_arr_size(array) > BONGO_CAT_BEHAVIOR_BINDING_CAP)
+        return type_error(error, "activeBehaviors", "a smaller array");
+    session->active_behavior_count = 0;
+    size_t index, count;
+    yyjson_val *item;
+    yyjson_arr_foreach(array, index, count, item) {
+        if (!yyjson_is_obj(item))
+            return type_error(error, "activeBehaviors[]", "an object");
+        const char *model_id, *behavior_id;
+        size_t model_length, behavior_length;
+        if (!read_string(item, "modelId", &model_id, &model_length,
+                error) ||
+            !read_string(item, "behaviorId", &behavior_id,
+                &behavior_length, error)) return false;
+        if (!model_id || !model_length || !behavior_id || !behavior_length)
+            return type_error(error, "activeBehaviors[]",
+                "non-empty modelId and behaviorId strings");
+        BongoCatActiveBehavior *entry = &session->active_behaviors[
+            session->active_behavior_count++];
+        memset(entry, 0, sizeof(*entry));
+        if (!copy_text(entry->model_id, sizeof(entry->model_id), model_id,
+                model_length, "modelId", error) ||
+            !copy_text(entry->behavior_id, sizeof(entry->behavior_id),
+                behavior_id, behavior_length, "behaviorId", error))
+            return false;
+    }
+    return true;
+}
+
 BongoCatResult bongo_cat_session_load(const char *path,
     BongoCatSessionState *session, BongoCatError *error) {
     if (!path || !session) return BONGO_CAT_ERROR_ARGUMENT;
@@ -47,7 +87,9 @@ BongoCatResult bongo_cat_session_load(const char *path,
     BongoCatSessionState loaded = *session;
     yyjson_val *root = yyjson_doc_get_root(document);
     yyjson_val *window = NULL;
-    bool valid = read_object(root, "window", &window, error);
+    yyjson_val *active_behaviors = NULL;
+    bool valid = read_object(root, "window", &window, error) &&
+        read_array(root, "activeBehaviors", &active_behaviors, error);
     if (valid && window) {
         valid = read_bool(window, "visible", &loaded.window.visible, error) &&
             read_float(window, "scalePercent",
@@ -69,7 +111,8 @@ BongoCatResult bongo_cat_session_load(const char *path,
                     error) &&
                 read_int(size, "height", &loaded.window.height, true, error);
     }
-    if (valid) valid = read_active_model(root, &loaded, error);
+    if (valid) valid = read_active_model(root, &loaded, error) &&
+        read_active_behaviors(active_behaviors, &loaded, error);
     yyjson_doc_free(document);
     if (!valid) return BONGO_CAT_ERROR_FORMAT;
     bongo_cat_session_validate(&loaded);
@@ -81,6 +124,24 @@ static BongoCatResult build_error(BongoCatError *error) {
     bongo_cat_error_set(error, BONGO_CAT_ERROR_MEMORY,
         "Cannot allocate session JSON");
     return BONGO_CAT_ERROR_MEMORY;
+}
+
+static bool write_active_behaviors(yyjson_mut_doc *doc,
+    yyjson_mut_val *root, const BongoCatSessionState *session) {
+    yyjson_mut_val *array = yyjson_mut_arr(doc);
+    if (!array || !yyjson_mut_obj_add_val(
+            doc, root, "activeBehaviors", array)) return false;
+    for (size_t i = 0; i < session->active_behavior_count; ++i) {
+        const BongoCatActiveBehavior *entry =
+            &session->active_behaviors[i];
+        yyjson_mut_val *item = yyjson_mut_obj(doc);
+        if (!item || !yyjson_mut_obj_add_strcpy(
+                doc, item, "modelId", entry->model_id) ||
+            !yyjson_mut_obj_add_strcpy(
+                doc, item, "behaviorId", entry->behavior_id) ||
+            !yyjson_mut_arr_add_val(array, item)) return false;
+    }
+    return true;
 }
 
 BongoCatResult bongo_cat_session_save(const char *path,
@@ -122,7 +183,8 @@ BongoCatResult bongo_cat_session_save(const char *path,
         yyjson_mut_obj_add_int(doc, size, "width", canonical.window.width) &&
         yyjson_mut_obj_add_int(doc, size, "height", canonical.window.height) &&
         yyjson_mut_obj_add_strcpy(doc, root, "activeModelId",
-            canonical.active_model_id);
+            canonical.active_model_id) &&
+        write_active_behaviors(doc, root, &canonical);
     if (!built) {
         yyjson_mut_doc_free(doc);
         return build_error(error);

@@ -124,6 +124,7 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
         commit_model(app, entry, false, false);
         return true;
     }
+    bongo_cat_app_capture_behavior_state(app);
     bool replacing_model = app->loaded_model[0] != '\0';
     BongoCatError optional = {0};
     BongoCatBehaviorCatalog *behaviors = calloc(1, sizeof(*behaviors));
@@ -199,6 +200,7 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
         bongo_cat_overlay_clear(app->overlay);
     }
     snprintf(app->loaded_model, sizeof(app->loaded_model), "%s", entry->id);
+    bongo_cat_app_restore_behavior_state(app, entry->id);
     app->pointer_known = false;
     bool geometry_changed = apply_model_aspect(app, &render_options);
     if (app->window) {

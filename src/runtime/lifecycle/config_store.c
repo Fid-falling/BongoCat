@@ -51,6 +51,12 @@ static uint64_t session_hash(const BongoCatSessionState *session) {
     HASH_FIELD(session->window.width);
     HASH_FIELD(session->window.height);
     HASH_FIELD(session->active_model_id);
+    HASH_FIELD(session->active_behavior_count);
+    size_t behavior_count = session->active_behavior_count;
+    if (behavior_count > BONGO_CAT_BEHAVIOR_BINDING_CAP)
+        behavior_count = BONGO_CAT_BEHAVIOR_BINDING_CAP;
+    hash = hash_bytes(hash, session->active_behaviors,
+        behavior_count * sizeof(session->active_behaviors[0]));
 #undef HASH_FIELD
     return hash;
 }

@@ -53,6 +53,7 @@ set(BONGO_CAT_RUNTIME_INPUT_SOURCES
   src/runtime/input/shortcuts.c)
 
 set(BONGO_CAT_RUNTIME_MODEL_SOURCES
+  src/runtime/model/model_behavior_state.c
   src/runtime/model/model_catalog_runtime.c
   src/runtime/model/model_files.c
   src/runtime/model/model_storage.c

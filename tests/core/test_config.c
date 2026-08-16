@@ -25,8 +25,8 @@ static bool contains_text(const char *path, const char *needle) {
 }
 
 static void check_defaults_and_validation(void) {
-    BongoCatSettings settings;
-    BongoCatSessionState session;
+    static BongoCatSettings settings;
+    static BongoCatSessionState session;
     bongo_cat_settings_defaults(&settings);
     bongo_cat_session_defaults(&session);
     CHECK(settings.model.max_fps == 60 && settings.model.mouse_centered);
@@ -44,6 +44,14 @@ static void check_defaults_and_validation(void) {
     settings.window.hide_delay_seconds = NAN;
     session.window.scale_percent = -2.0f;
     session.window.opacity_percent = NAN;
+    session.active_behavior_count = 3;
+    memcpy(session.active_behaviors[0].model_id, "model",
+        sizeof("model"));
+    memcpy(session.active_behaviors[0].behavior_id, "model:motion:Tap:0",
+        sizeof("model:motion:Tap:0"));
+    session.active_behaviors[1] = session.active_behaviors[0];
+    memcpy(session.active_behaviors[2].model_id, "other",
+        sizeof("other"));
     bongo_cat_settings_validate(&settings);
     bongo_cat_session_validate(&session);
     CHECK(settings.model.max_fps == 240);
@@ -55,10 +63,12 @@ static void check_defaults_and_validation(void) {
     CHECK(session.window.scale_percent == 10.0f);
     CHECK(session.window.opacity_percent ==
         BONGO_CAT_DEFAULT_WINDOW_OPACITY_PERCENT);
+    CHECK(session.active_behavior_count == 1);
+    CHECK(strcmp(session.active_behaviors[0].model_id, "model") == 0);
 }
 
 static void check_override_canonicalization(void) {
-    BongoCatSettings settings;
+    static BongoCatSettings settings;
     bongo_cat_settings_defaults(&settings);
     settings.behavior_shortcut_count = 4;
     memcpy(settings.behavior_shortcuts[0].id, "motion:1",
@@ -89,7 +99,7 @@ static void check_override_canonicalization(void) {
 }
 
 static void check_shortcuts(void) {
-    BongoCatSettings settings;
+    static BongoCatSettings settings;
     bongo_cat_settings_defaults(&settings);
     memcpy(settings.shortcuts.visible_cat, "Control+B", sizeof("Control+B"));
     memcpy(settings.shortcuts.visible_preferences, "control+b",
@@ -120,8 +130,8 @@ void test_config(void) {
     for (int i = 0; i < BONGO_CAT_OBS_BACKGROUND_COLOR_COUNT; ++i)
         CHECK(bongo_cat_obs_background_color_rgb(i) == colors[i]);
 
-    BongoCatSettings settings;
-    BongoCatSessionState session;
+    static BongoCatSettings settings;
+    static BongoCatSessionState session;
     bongo_cat_settings_defaults(&settings);
     bongo_cat_session_defaults(&session);
     settings.model.max_fps = 30;
@@ -145,6 +155,15 @@ void test_config(void) {
     session.window.position_known = true;
     session.window.opacity_percent = 75.0f;
     memcpy(session.active_model_id, "model", sizeof("model"));
+    session.active_behavior_count = 2;
+    memcpy(session.active_behaviors[0].model_id, "model",
+        sizeof("model"));
+    memcpy(session.active_behaviors[0].behavior_id,
+        "model:motion:Tap:0", sizeof("model:motion:Tap:0"));
+    memcpy(session.active_behaviors[1].model_id, "model",
+        sizeof("model"));
+    memcpy(session.active_behaviors[1].behavior_id,
+        "model:expression:2", sizeof("model:expression:2"));
 
     const char *settings_path = "bongocat-settings.json";
     const char *session_path = "bongocat-session.json";
@@ -159,10 +178,13 @@ void test_config(void) {
     CHECK(!contains_text(settings_path, "activeModelId"));
     CHECK(contains_text(session_path, "\"format\": \"bongocat/session\""));
     CHECK(contains_text(session_path, "\"activeModelId\": \"model\""));
+    CHECK(contains_text(session_path, "\"activeBehaviors\""));
+    CHECK(contains_text(session_path,
+        "\"behaviorId\": \"model:expression:2\""));
     CHECK(!contains_text(session_path, "clickThrough"));
 
-    BongoCatSettings loaded_settings;
-    BongoCatSessionState loaded_session;
+    static BongoCatSettings loaded_settings;
+    static BongoCatSessionState loaded_session;
     bongo_cat_settings_defaults(&loaded_settings);
     bongo_cat_session_defaults(&loaded_session);
     CHECK(bongo_cat_settings_load(settings_path, &loaded_settings, &error) ==
@@ -181,6 +203,11 @@ void test_config(void) {
     CHECK(loaded_session.window.x == -321 &&
         loaded_session.window.opacity_percent == 75.0f);
     CHECK(strcmp(loaded_session.active_model_id, "model") == 0);
+    CHECK(loaded_session.active_behavior_count == 2);
+    CHECK(strcmp(loaded_session.active_behaviors[0].behavior_id,
+        "model:motion:Tap:0") == 0);
+    CHECK(strcmp(loaded_session.active_behaviors[1].behavior_id,
+        "model:expression:2") == 0);
 
     const char *unsupported = "bongocat-unsupported.json";
     write_text(unsupported,
@@ -215,8 +242,8 @@ void test_config(void) {
     CHECK(bongo_cat_session_load(unsupported, &loaded_session, &error) ==
         BONGO_CAT_ERROR_FORMAT);
 
-    BongoCatSettings canonical_settings;
-    BongoCatSessionState canonical_session;
+    static BongoCatSettings canonical_settings;
+    static BongoCatSessionState canonical_session;
     bongo_cat_settings_defaults(&canonical_settings);
     bongo_cat_session_defaults(&canonical_session);
     canonical_settings.model.max_fps = 900;

@@ -228,18 +228,6 @@ void bongo_cat_settings_defaults(BongoCatSettings *config) {
     memcpy(config->extensions_json, "{}", sizeof("{}"));
 }
 
-void bongo_cat_session_defaults(BongoCatSessionState *session) {
-    if (!session) return;
-    memset(session, 0, sizeof(*session));
-    session->window.visible = true;
-    session->window.scale_percent = BONGO_CAT_DEFAULT_WINDOW_SCALE_PERCENT;
-    session->window.opacity_percent =
-        BONGO_CAT_DEFAULT_WINDOW_OPACITY_PERCENT;
-    session->window.width = 612;
-    session->window.height = 354;
-    memcpy(session->active_model_id, "standard", sizeof("standard"));
-}
-
 void bongo_cat_settings_validate(BongoCatSettings *config) {
     if (!config) return;
     config->model.auto_release_seconds = clampf_or(
@@ -260,21 +248,4 @@ void bongo_cat_settings_validate(BongoCatSettings *config) {
     compact_model_overrides(config);
     validate_shortcuts(config);
     compact_behavior_overrides(config);
-}
-
-void bongo_cat_session_validate(BongoCatSessionState *session) {
-    if (!session) return;
-    session->window.scale_percent = clampf_or(session->window.scale_percent,
-        10.0f, 500.0f, BONGO_CAT_DEFAULT_WINDOW_SCALE_PERCENT);
-    session->window.opacity_percent = clampf_or(
-        session->window.opacity_percent, 10.0f, 100.0f,
-        BONGO_CAT_DEFAULT_WINDOW_OPACITY_PERCENT);
-    if (session->window.width < 64) session->window.width = 64;
-    if (session->window.height < 64) session->window.height = 64;
-    if (session->window.width > 8192) session->window.width = 8192;
-    if (session->window.height > 8192) session->window.height = 8192;
-    if (!normalize_text(session->active_model_id,
-            sizeof(session->active_model_id)) ||
-        !session->active_model_id[0])
-        memcpy(session->active_model_id, "standard", sizeof("standard"));
 }

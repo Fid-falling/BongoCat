@@ -149,6 +149,9 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     const char *id, BongoCatError *error);
 bool bongo_cat_app_run_behavior(BongoCatApp *app,
     const BongoCatBehaviorEntry *behavior);
+void bongo_cat_app_capture_behavior_state(BongoCatApp *app);
+void bongo_cat_app_restore_behavior_state(BongoCatApp *app,
+    const char *model_id);
 BongoCatResult bongo_cat_app_import_model(BongoCatApp *app, const char *source, BongoCatError *error);
 BongoCatResult bongo_cat_app_remove_model(BongoCatApp *app, const char *id, BongoCatError *error);
 void bongo_cat_app_rescan_models(BongoCatApp *app);

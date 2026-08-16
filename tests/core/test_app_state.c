@@ -13,6 +13,8 @@ typedef struct ParameterValue {
 static ParameterValue parameters[128];
 static size_t parameter_count;
 static bool left_hand, right_hand, left_trigger, right_trigger, left_thumb;
+static bool active_motions[8];
+static int active_expression = -1;
 int bongo_cat_test_failures;
 
 static float parameter(const char *id) {
@@ -38,6 +40,33 @@ bool bongo_cat_live2d_parameter(BongoCatLive2D *live2d, const char *id,
     return true;
 }
 
+bool bongo_cat_live2d_start_motion(BongoCatLive2D *live2d,
+    const char *group, int index) {
+    (void)live2d; (void)group;
+    if (index < 0 || index >= (int)(sizeof(active_motions) /
+        sizeof(active_motions[0]))) return false;
+    active_motions[index] = true;
+    return true;
+}
+
+bool bongo_cat_live2d_motion_selected(const BongoCatLive2D *live2d,
+    const char *group, int index) {
+    (void)live2d; (void)group;
+    return index >= 0 && index < (int)(sizeof(active_motions) /
+        sizeof(active_motions[0])) && active_motions[index];
+}
+
+bool bongo_cat_live2d_set_expression(BongoCatLive2D *live2d, int index) {
+    (void)live2d;
+    active_expression = index;
+    return true;
+}
+
+int bongo_cat_live2d_expression(const BongoCatLive2D *live2d) {
+    (void)live2d;
+    return active_expression;
+}
+
 int bongo_cat_overlay_key(BongoCatOverlay *overlay, const char *name, bool pressed) {
     (void)overlay;
     if (strcmp(name, "KeyA") == 0 || strcmp(name, "DPadLeft") == 0)
@@ -58,6 +87,58 @@ static BongoCatInputEvent input(BongoCatInputKind kind, const char *name, float 
     BongoCatInputEvent event = {.kind = kind, .value = value};
     snprintf(event.name, sizeof(event.name), "%s", name);
     return event;
+}
+
+static void check_behavior_state(BongoCatApp *app) {
+    snprintf(app->loaded_model, sizeof(app->loaded_model), "model-a");
+    app->behaviors.count = 3;
+    app->behaviors.entries[0] = (BongoCatBehaviorEntry){
+        .kind = BONGO_CAT_BEHAVIOR_MOTION, .index = 1};
+    snprintf(app->behaviors.entries[0].id,
+        sizeof(app->behaviors.entries[0].id), "model-a:motion:Tap:1");
+    snprintf(app->behaviors.entries[0].group,
+        sizeof(app->behaviors.entries[0].group), "Tap");
+    app->behaviors.entries[1] = (BongoCatBehaviorEntry){
+        .kind = BONGO_CAT_BEHAVIOR_MOTION, .index = 2};
+    snprintf(app->behaviors.entries[1].id,
+        sizeof(app->behaviors.entries[1].id), "model-a:motion:Tap:2");
+    snprintf(app->behaviors.entries[1].group,
+        sizeof(app->behaviors.entries[1].group), "Tap");
+    app->behaviors.entries[2] = (BongoCatBehaviorEntry){
+        .kind = BONGO_CAT_BEHAVIOR_EXPRESSION, .index = 3};
+    snprintf(app->behaviors.entries[2].id,
+        sizeof(app->behaviors.entries[2].id), "model-a:expression:3");
+
+    app->session.active_behavior_count = 1;
+    snprintf(app->session.active_behaviors[0].model_id,
+        sizeof(app->session.active_behaviors[0].model_id), "model-b");
+    snprintf(app->session.active_behaviors[0].behavior_id,
+        sizeof(app->session.active_behaviors[0].behavior_id),
+        "model-b:expression:1");
+    active_motions[1] = true;
+    active_expression = 3;
+    bongo_cat_app_capture_behavior_state(app);
+    CHECK(app->session.active_behavior_count == 3);
+    CHECK(strcmp(app->session.active_behaviors[0].model_id,
+        "model-b") == 0);
+    CHECK(strcmp(app->session.active_behaviors[1].behavior_id,
+        "model-a:motion:Tap:1") == 0);
+    CHECK(strcmp(app->session.active_behaviors[2].behavior_id,
+        "model-a:expression:3") == 0);
+
+    active_motions[1] = false;
+    active_expression = -1;
+    bongo_cat_app_restore_behavior_state(app, "model-a");
+    CHECK(active_motions[1]);
+    CHECK(!active_motions[2]);
+    CHECK(active_expression == 3);
+
+    active_motions[1] = false;
+    active_expression = -1;
+    bongo_cat_app_capture_behavior_state(app);
+    CHECK(app->session.active_behavior_count == 1);
+    CHECK(strcmp(app->session.active_behaviors[0].model_id,
+        "model-b") == 0);
 }
 
 int main(void) {
@@ -131,5 +212,6 @@ int main(void) {
     CHECK(parameter("CatParamStickShowLeftHand") == 0.0f);
     CHECK(parameter("CatParamLeftHandDown") == 0.0f);
     CHECK(!right_hand && !left_trigger && !right_trigger && !left_thumb);
+    check_behavior_state(&app);
     return bongo_cat_test_failures ? 1 : 0;
 }

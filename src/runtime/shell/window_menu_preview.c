@@ -105,6 +105,8 @@ void bongo_cat_window_menu_restore(void *userdata, BongoCatMenuAction selected) 
     bool keep_expression = keep_model ||
         (selected >= BONGO_CAT_MENU_EXPRESSION_FIRST &&
         selected < BONGO_CAT_MENU_EXPRESSION_FIRST + BONGO_CAT_BEHAVIOR_CAP);
+    bool committed_expression = selected >= BONGO_CAT_MENU_EXPRESSION_FIRST &&
+        selected < BONGO_CAT_MENU_EXPRESSION_FIRST + BONGO_CAT_BEHAVIOR_CAP;
     if (!keep_scale &&
         SDL_fabsf(app->session.window.scale_percent - state->scale) > .01f) {
         bongo_cat_window_set_scale(app, state->scale);
@@ -123,6 +125,8 @@ void bongo_cat_window_menu_restore(void *userdata, BongoCatMenuAction selected) 
         bongo_cat_app_step_live2d(app, 1.0f / 60.0f);
         changed = true;
     }
+    if (committed_expression)
+        bongo_cat_app_capture_behavior_state(app);
     if (changed) bongo_cat_app_render_now(app);
 }
 

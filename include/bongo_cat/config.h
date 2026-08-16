@@ -91,6 +91,11 @@ typedef struct BongoCatModelLabel {
     char label[BONGO_CAT_ID_CAP];
 } BongoCatModelLabel;
 
+typedef struct BongoCatActiveBehavior {
+    char model_id[BONGO_CAT_ID_CAP];
+    char behavior_id[BONGO_CAT_BEHAVIOR_ID_CAP];
+} BongoCatActiveBehavior;
+
 #define BONGO_CAT_SETTINGS_EXTENSIONS_CAP 4096
 
 typedef struct BongoCatSettings {
@@ -108,6 +113,8 @@ typedef struct BongoCatSettings {
 typedef struct BongoCatSessionState {
     BongoCatWindowState window;
     char active_model_id[BONGO_CAT_ID_CAP];
+    BongoCatActiveBehavior active_behaviors[BONGO_CAT_BEHAVIOR_BINDING_CAP];
+    size_t active_behavior_count;
 } BongoCatSessionState;
 
 #ifdef __cplusplus

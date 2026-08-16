@@ -10,6 +10,7 @@ void bongo_cat_app_shutdown(BongoCatApp *app, const char *stage,
     bongo_cat_runtime_stage(app, stage);
     SDL_Log("[runtime] Shutdown started: stage=%s exit_code=%d",
         stage, exit_code);
+    bongo_cat_app_capture_behavior_state(app);
     bongo_cat_config_store_flush(app);
     bongo_cat_preferences_destroy(app->preferences);
     bongo_cat_i18n_destroy(app->i18n);
