@@ -288,13 +288,13 @@ int bongo_cat_app_run(int argc, char **argv) {
     if (!initialize(app, argc, argv, &error)) {
         bongo_cat_startup_failure(app, &error);
         if (app->smoke) bongo_cat_startup_ci_failure(app, &error);
-        shutdown(app); free(app);
+        shutdown(app); bongo_cat_runtime_clean_shutdown(app, 1); free(app);
         bongo_cat_platform_single_instance_end();
         return 1;
     }
     loop(app);
-    shutdown(app);
     int exit_code = app->exit_code;
+    shutdown(app); bongo_cat_runtime_clean_shutdown(app, exit_code);
     free(app); bongo_cat_platform_single_instance_end();
     return exit_code;
 }

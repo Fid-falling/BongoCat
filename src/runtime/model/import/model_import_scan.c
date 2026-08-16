@@ -145,7 +145,7 @@ static BongoCatResult scan_with_budget(const char *root,
             if (item != BONGO_CAT_OK && result == BONGO_CAT_OK) result = item;
         }
     }
-    if (scan.limited) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+    if (scan.limited) SDL_Log(
         "Model folder scan reached its directory budget");
     free(queue); free(work); return result;
 }

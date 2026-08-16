@@ -49,6 +49,7 @@ typedef struct BongoCatApp {
     char smoke_viewer_trace[BONGO_CAT_PATH_CAP];
     char pending_model_cover_path[BONGO_CAT_PATH_CAP];
     char loaded_model[BONGO_CAT_ID_CAP];
+    char loading_model[BONGO_CAT_ID_CAP];
     BongoCatModelMode loaded_mode;
     bool running;
     bool settings_store_valid;
@@ -74,6 +75,7 @@ typedef struct BongoCatApp {
     bool smoke_runtime_flow;
     bool smoke_freeze_model;
     unsigned smoke_runtime_stage;
+    unsigned model_load_runtime_stage;
     unsigned model_selection_serial;
     uint64_t smoke_runtime_flow_ns;
     int smoke_language;

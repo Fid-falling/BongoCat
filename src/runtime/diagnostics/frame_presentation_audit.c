@@ -138,7 +138,7 @@ static void log_post_present_buffer(const char *name, GLenum buffer) {
 }
 
 void bongo_cat_frame_presented_audit(BongoCatApp *app) {
-    if (!app || audit.presented || !audit.prepared) return;
+    if (!app || !app->smoke || audit.presented || !audit.prepared) return;
     audit.presented = true;
     SDL_Log("First-frame presentation: success=1 framebuffer_visible=%d "
         "window_opacity=%.3f obs_background=%d obs_background_color=%s",

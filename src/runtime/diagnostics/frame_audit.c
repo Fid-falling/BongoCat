@@ -171,12 +171,11 @@ static void record_frame(BongoCatApp *app, const unsigned char *pixels,
 }
 
 void bongo_cat_frame_audit(BongoCatApp *app, int width, int height) {
-    if (!app || width < 2 || height < 2) return;
+    if (!app || !app->smoke || width < 2 || height < 2) return;
     if (!app->smoke_frame_audited) {
         app->smoke_frame_audited = true;
         log_first_frame(app, width, height);
     }
-    if (!app->smoke) return;
     char path[BONGO_CAT_PATH_CAP];
     size_t pitch = (size_t)width * 4, bytes = pitch * (size_t)height;
     unsigned char *pixels = malloc(bytes);
