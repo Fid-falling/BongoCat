@@ -1,6 +1,7 @@
 #include "bongo_cat/preferences.h"
 #include "bongo_cat/app.h"
 #include "bongo_cat/memory.h"
+#include "bongo_cat/memory_policy.h"
 #include "bongo_cat/platform.h"
 #include "preferences_controls.h"
 #include "preferences_model_cover.h"
@@ -23,6 +24,21 @@ void bongo_cat_preferences_apply_theme(BongoCatPreferences *value) {
     value->style_theme = dark;
     bongo_cat_ui_apply_theme(&value->ui.context, dark != 0);
     bongo_cat_ui_native_theme_apply(value->window, dark != 0);
+}
+
+void bongo_cat_preferences_page_cache_clear(BongoCatPreferences *value,
+    int previous_page, int next_page) {
+    if (!value || previous_page == next_page) return;
+    bool released = false;
+    if (previous_page == 2 && next_page != 2) {
+        bongo_cat_preferences_model_cover_cache_clear(value->app);
+        released = true;
+    }
+    if (previous_page == 4 && next_page != 4) {
+        bongo_cat_preferences_support_assets_clear(value);
+        released = true;
+    }
+    if (released) bongo_cat_memory_policy_ui_loaded();
 }
 
 BongoCatPreferences *bongo_cat_preferences_create(BongoCatApp *app) {

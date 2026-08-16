@@ -101,8 +101,14 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
     if (!value->page_seen) {
         value->page_seen = true; value->last_page = value->page;
     } else if (value->last_page != value->page) {
+        bool had_dynamic_glyphs = value->last_page == 2;
+        bool needs_dynamic_glyphs = value->page == 2;
+        bongo_cat_preferences_page_cache_clear(value,
+            value->last_page, value->page);
         value->last_page = value->page;
         value->page_transition_ns = SDL_GetTicksNS();
+        if (had_dynamic_glyphs != needs_dynamic_glyphs) value->font_reload_pending = true;
+        value->render_dirty = true;
     }
     nk_group_end(context);
     }
@@ -222,7 +228,6 @@ static bool draw_frame(BongoCatPreferences *value, float width, float height,
     root_style_restore(context, &saved);
     return close_requested;
 }
-
 void bongo_cat_preferences_render(BongoCatPreferences *value) {
     if (!value || !value->window) return;
     bongo_cat_preferences_drag_tick(value);
@@ -241,8 +246,7 @@ void bongo_cat_preferences_render(BongoCatPreferences *value) {
             "Preferences GL context could not be activated: %s", SDL_GetError());
         return;
     }
-    value->render_retry_ns = 0;
-    bongo_cat_preferences_refresh_raster(value);
+    value->render_retry_ns = 0; bongo_cat_preferences_refresh_raster(value);
     bongo_cat_preferences_reload_language(value);
     if (value->font_reload_pending &&
         !bongo_cat_preferences_reload_fonts(value)) {
@@ -261,8 +265,7 @@ void bongo_cat_preferences_render(BongoCatPreferences *value) {
     value->ui.frame_building = false;
     bongo_cat_preferences_shortcut_smoke(value);
     BongoCatUIPalette palette = bongo_cat_ui_palette(dark);
-    glDisable(GL_SCISSOR_TEST);
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glDisable(GL_SCISSOR_TEST); glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glClearColor(value->transparent_window ? 0.0f : palette.background.r / 255.0f,
         value->transparent_window ? 0.0f : palette.background.g / 255.0f,
         value->transparent_window ? 0.0f : palette.background.b / 255.0f,
@@ -277,6 +280,11 @@ void bongo_cat_preferences_render(BongoCatPreferences *value) {
             "Preferences frame presentation failed: %s", SDL_GetError());
     } else bongo_cat_memory_policy_ui_frame_presented();
     bongo_cat_preferences_record_frame(value);
+    if (value->shortcut_recording || bongo_cat_pref_controls_animating(
+        &value->ui.context) || bongo_cat_ui_animations_active(&value->ui.context))
+        value->render_dirty = true;
+    else if (!value->chrome_dragging && !value->live_resize_active)
+        bongo_cat_ui_trim_idle(&value->ui);
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
     bongo_cat_ui_cursor_apply(&value->ui);
     if (close_requested) {
@@ -289,8 +297,4 @@ void bongo_cat_preferences_render(BongoCatPreferences *value) {
         if (!bongo_cat_preferences_import_open(value->import_dialog, value->window))
             value->render_dirty = true;
     }
-    if (value->shortcut_recording ||
-        bongo_cat_pref_controls_animating(&value->ui.context) ||
-        bongo_cat_ui_animations_active(&value->ui.context))
-        value->render_dirty = true;
 }

@@ -13,7 +13,9 @@ struct BongoCatUIPaintTexture {
 };
 
 #define PAINT_CACHE_COUNT 48
-#define PAINT_CACHE_BYTE_LIMIT (32u * 1024u * 1024u)
+/* Effects are regenerated when evicted, so keep the cache bounded instead
+   of allowing a long settings session to retain a large GPU allocation. */
+#define PAINT_CACHE_BYTE_LIMIT (16u * 1024u * 1024u)
 
 static BongoCatUIPaintTexture textures[PAINT_CACHE_COUNT];
 static uint64_t use_counter;

@@ -6,6 +6,7 @@
 #include "ui_font_atlas.h"
 #include "ui_paint.h"
 #include "bongo_cat/i18n.h"
+#include "bongo_cat/memory_policy.h"
 
 #include <SDL3/SDL.h>
 #include <string.h>
@@ -34,17 +35,22 @@ void bongo_cat_preferences_fonts_resolve(BongoCatPreferences *value,
     if (!value->app->i18n) return;
     bongo_cat_i18n_glyph_ranges(value->app->i18n, value->glyph_ranges,
         sizeof(value->glyph_ranges) / sizeof(value->glyph_ranges[0]));
-    bongo_cat_preferences_model_glyphs(value->app, value->glyph_ranges,
-        sizeof(value->glyph_ranges) / sizeof(value->glyph_ranges[0]));
+    /* Model and behavior labels can contain hundreds of otherwise unused
+       glyphs. Bake them only for the pages that can display those labels. */
+    if (value->page == 2)
+        bongo_cat_preferences_model_glyphs(value->app, value->glyph_ranges,
+            sizeof(value->glyph_ranges) / sizeof(value->glyph_ranges[0]));
     fonts->ranges = value->glyph_ranges;
 }
 
 static bool reload(BongoCatPreferences *value,
     const BongoCatPreferenceFonts *fonts, float raster_scale) {
-    return bongo_cat_ui_font_atlas_reload(&value->ui, fonts->body,
+    bool reloaded = bongo_cat_ui_font_atlas_reload(&value->ui, fonts->body,
         fonts->body_fallback, fonts->body_korean_fallback, fonts->heading,
         fonts->heading_fallback, fonts->heading_korean_fallback, fonts->ranges,
         raster_scale);
+    if (reloaded) bongo_cat_memory_policy_ui_loaded();
+    return reloaded;
 }
 
 bool bongo_cat_preferences_reload_fonts(BongoCatPreferences *value) {

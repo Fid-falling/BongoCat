@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define UI_COMMAND_BUFFER_TRIM_LIMIT (1024u * 1024u)
+
 typedef struct UIVertex {
     float position[2];
     float uv[2];
@@ -66,6 +68,12 @@ static bool create_device(BongoCatUIBackend *ui, BongoCatError *error) {
     ui->gl.attribute_pointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(UIVertex),
         (void *)offsetof(UIVertex, color));
     return true;
+}
+
+static void trim_commands(BongoCatUIBackend *ui) {
+    if (!ui || ui->commands.allocated <= UI_COMMAND_BUFFER_TRIM_LIMIT) return;
+    nk_buffer_free(&ui->commands);
+    nk_buffer_init_default(&ui->commands);
 }
 
 bool bongo_cat_ui_init(BongoCatUIBackend *ui, SDL_Window *window,
@@ -201,8 +209,18 @@ void bongo_cat_ui_render(BongoCatUIBackend *ui) {
     }
     nk_clear(&ui->context);
     nk_buffer_clear(&ui->commands);
+    /* Complex pages can grow this buffer substantially. Once a simple frame
+       is back on screen, release that transient capacity without affecting
+       the commands that were just presented. */
+    if (ui->last_draw_commands < 256) trim_commands(ui);
     glDisable(GL_SCISSOR_TEST);
     ui->last_gl_error = glGetError();
+}
+
+void bongo_cat_ui_trim_idle(BongoCatUIBackend *ui) {
+    if (!ui) return;
+    bongo_cat_ui_paint_destroy(ui);
+    trim_commands(ui);
 }
 
 bool bongo_cat_ui_frame_valid(const BongoCatUIBackend *ui) {

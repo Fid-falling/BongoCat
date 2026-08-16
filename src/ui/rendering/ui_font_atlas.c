@@ -61,11 +61,14 @@ bool bongo_cat_ui_font_atlas_create(BongoCatUIBackend *ui,
     nk_font_atlas_begin(&ui->atlas);
     GLint maximum_texture = 0;
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maximum_texture);
-    float scale_limit = maximum_texture >= 16384 ? 2.0f :
-        (maximum_texture >= 8192 ? 1.25f : 1.0f);
+    /* Keep the atlas bounded on high-DPI displays. The UI is laid out in
+       logical pixels, so a 1.5x raster is enough for crisp text while a 2x
+       atlas can quadruple both the texture and bake working memory. */
+    float scale_limit = maximum_texture >= 8192 ? 1.5f : 1.0f;
     float font_scale = NK_CLAMP(1.0f, raster_scale, scale_limit);
     if (font_scale + .01f < raster_scale) SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
-        "Preferences font raster scale limited to %.2fx by GPU texture size %d",
+        "Preferences font raster scale limited to %.2fx by the UI memory "
+        "budget (GPU texture limit %d)",
         font_scale, maximum_texture);
     const UIFontSource *body_source = body_loaded ? &body : NULL;
     const UIFontSource *fallback_source = body_fallback_loaded ?

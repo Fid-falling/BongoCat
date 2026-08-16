@@ -40,18 +40,23 @@ void bongo_cat_preferences_assets_load(BongoCatPreferences *value) {
         &value->logo_width, &value->logo_height);
     int width = 0, height = 0;
     value->icon_texture = load(value, "ui-symbols.png", 0, &width, &height);
-    value->icon_texture_hidpi = load(value, "ui-symbols@4x.png", 0,
-        &width, &height);
+    value->icon_hidpi_attempted = false;
 }
 
-void bongo_cat_preferences_icon_draw(const BongoCatPreferences *value,
+void bongo_cat_preferences_icon_draw(BongoCatPreferences *value,
     struct nk_command_buffer *canvas, int icon, struct nk_rect bounds,
     struct nk_color color) {
     if (!value || !value->icon_texture || icon < 0 ||
         icon >= BONGO_CAT_UI_ICON_COUNT) return;
     bool large = bounds.w > 24.0f || bounds.h > 24.0f;
-    bool hidpi = value->icon_texture_hidpi && (large ||
-        value->ui.raster_scale > 1.05f);
+    bool needs_hidpi = large || value->ui.raster_scale > 1.05f;
+    if (needs_hidpi && !value->icon_hidpi_attempted) {
+        int width = 0, height = 0;
+        value->icon_hidpi_attempted = true;
+        value->icon_texture_hidpi = load(value, "ui-symbols@4x.png", 0,
+            &width, &height);
+    }
+    bool hidpi = value->icon_texture_hidpi && needs_hidpi;
     int cell = hidpi ? 96 : 24;
     int atlas_width = cell * BONGO_CAT_UI_ICON_COUNT;
     unsigned int texture = hidpi ? value->icon_texture_hidpi : value->icon_texture;
@@ -83,11 +88,18 @@ static void clear(unsigned int *texture) {
     *texture = 0;
 }
 
-void bongo_cat_preferences_assets_clear(BongoCatPreferences *value) {
-    clear(&value->logo_texture);
-    clear(&value->icon_texture);
-    clear(&value->icon_texture_hidpi);
+void bongo_cat_preferences_support_assets_clear(BongoCatPreferences *value) {
+    if (!value) return;
     clear(&value->catime_texture);
     clear(&value->vlaina_texture);
     value->support_assets_loaded = false;
+}
+
+void bongo_cat_preferences_assets_clear(BongoCatPreferences *value) {
+    if (!value) return;
+    clear(&value->logo_texture);
+    clear(&value->icon_texture);
+    clear(&value->icon_texture_hidpi);
+    value->icon_hidpi_attempted = false;
+    bongo_cat_preferences_support_assets_clear(value);
 }

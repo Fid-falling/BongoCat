@@ -27,6 +27,7 @@ struct BongoCatPreferences {
     unsigned int logo_texture;
     unsigned int icon_texture;
     unsigned int icon_texture_hidpi;
+    bool icon_hidpi_attempted;
     int logo_width;
     int logo_height;
     unsigned int catime_texture;
@@ -109,13 +110,16 @@ void bongo_cat_preferences_live_resize_uninstall(BongoCatPreferences *value);
 void bongo_cat_preferences_record_frame(BongoCatPreferences *value);
 void bongo_cat_preferences_assets_load(BongoCatPreferences *value);
 void bongo_cat_preferences_support_assets_load(BongoCatPreferences *value);
+void bongo_cat_preferences_support_assets_clear(BongoCatPreferences *value);
 void bongo_cat_preferences_process_model_selection(BongoCatPreferences *value);
 void bongo_cat_preferences_model_load_progress(BongoCatPreferences *value,
     float progress);
 void bongo_cat_preferences_assets_clear(BongoCatPreferences *value);
 void bongo_cat_preferences_model_cover_cache_clear(BongoCatApp *app);
+void bongo_cat_preferences_page_cache_clear(BongoCatPreferences *value,
+    int previous_page, int next_page);
 void bongo_cat_preferences_smoke_frame(BongoCatPreferences *value);
-void bongo_cat_preferences_icon_draw(const BongoCatPreferences *value,
+void bongo_cat_preferences_icon_draw(BongoCatPreferences *value,
     struct nk_command_buffer *canvas, int icon, struct nk_rect bounds,
     struct nk_color color);
 
