@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
-project(BongoCat VERSION 0.1.0 DESCRIPTION "BongoCat" HOMEPAGE_URL "https://bongocat.pet" LANGUAGES C CXX)
+project(BongoCat VERSION 2.0.0 DESCRIPTION "BongoCat" HOMEPAGE_URL "https://bongocat.pet" LANGUAGES C CXX)
+include(cmake/Version.cmake)
 include(FetchContent)
 include(CTest)
 option(BONGO_CAT_FETCH_DEPS "Download pinned open-source dependencies" ON)
@@ -14,7 +15,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 include(cmake/ReleaseOptimize.cmake)
-
 add_library(bongo_cat_warnings INTERFACE)
 if(MSVC)
   target_compile_options(bongo_cat_warnings INTERFACE /W4 /permissive- /utf-8)
@@ -54,7 +54,6 @@ elseif(BONGO_CAT_REQUIRE_CUBISM)
 else()
   message(WARNING "Cubism SDK missing; building the diagnostic backend")
 endif()
-
 add_library(bongo_cat_core STATIC
   src/core/config_defaults.c src/core/config_names.c src/core/config_fields.c src/core/config_io.c src/core/config_settings_save.c
   src/core/config_file.c src/core/config_session_io.c
@@ -65,7 +64,7 @@ add_library(bongo_cat_core STATIC
   src/core/model_catalog.c src/core/model_package.c
   src/core/model_behavior.c
   src/core/path.c src/core/path_io.c src/core/json.c src/core/shortcut.c)
-target_include_directories(bongo_cat_core PUBLIC include)
+target_include_directories(bongo_cat_core PUBLIC "${BONGO_CAT_GENERATED_INCLUDE_DIR}" include)
 target_link_libraries(bongo_cat_core PUBLIC yyjson PRIVATE bongo_cat_warnings)
 include(cmake/CubismAssets.cmake)
 if(WIN32)
@@ -75,7 +74,7 @@ endif()
 include(cmake/RuntimeSources.cmake)
 add_library(bongo_cat_runtime STATIC
   ${BONGO_CAT_RUNTIME_SOURCES} ${BONGO_CAT_LIVE2D_SOURCES})
-target_include_directories(bongo_cat_runtime PUBLIC include)
+target_include_directories(bongo_cat_runtime PUBLIC "${BONGO_CAT_GENERATED_INCLUDE_DIR}" include)
 target_include_directories(bongo_cat_runtime SYSTEM PRIVATE
   ${BONGO_CAT_STB_INCLUDE_DIR} ${BONGO_CAT_NUKLEAR_INCLUDE_DIR})
 target_link_libraries(bongo_cat_runtime PRIVATE bongo_cat_warnings)
@@ -215,7 +214,8 @@ if(WIN32)
   add_custom_target(bongo_cat_asset_pack DEPENDS "${BONGO_CAT_ASSET_PACK}")
   file(TO_CMAKE_PATH "${BONGO_CAT_ASSET_PACK}" BONGO_CAT_ASSET_PACK_RC)
   file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/icon.ico" BONGO_CAT_ICON_RC)
-  set(BONGO_CAT_WINDOWS_MANIFEST "${CMAKE_CURRENT_SOURCE_DIR}/cmake/windows.manifest")
+  set(BONGO_CAT_WINDOWS_MANIFEST "${CMAKE_CURRENT_BINARY_DIR}/windows.manifest")
+  configure_file(cmake/windows.manifest.in "${BONGO_CAT_WINDOWS_MANIFEST}" @ONLY)
   if(MSVC)
     set(BONGO_CAT_MANIFEST_RESOURCE "")
     target_link_options(bongo_cat PRIVATE "/MANIFEST:EMBED"
@@ -264,7 +264,7 @@ if(BUILD_TESTING)
   add_test(NAME ui COMMAND bongo_cat_ui_tests)
   add_executable(bongo_cat_app_state_tests tests/test_app_state.c src/core/app_state.c)
   target_link_libraries(bongo_cat_app_state_tests PRIVATE bongo_cat_warnings)
-  target_include_directories(bongo_cat_app_state_tests PRIVATE include)
+  target_include_directories(bongo_cat_app_state_tests PRIVATE "${BONGO_CAT_GENERATED_INCLUDE_DIR}" include)
   add_test(NAME app-state COMMAND bongo_cat_app_state_tests)
   set(BONGO_CAT_MVER_IMPORT_TEST_SOURCES
     tests/test_mver_import.c

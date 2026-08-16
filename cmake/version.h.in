@@ -1,0 +1,6 @@
+#ifndef BONGO_CAT_VERSION_H
+#define BONGO_CAT_VERSION_H
+
+#define BONGO_CAT_VERSION "@PROJECT_VERSION@"
+
+#endif

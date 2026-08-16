@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "bongo_cat/version.h"
+
 #define BONGO_CAT_NAME "BongoCat"
 #define BONGO_CAT_PET_WINDOW_TITLE "BongoCat - Pet"
 #define BONGO_CAT_SETTINGS_WINDOW_TITLE "BongoCat - Settings"
@@ -13,7 +15,6 @@
 #define BONGO_CAT_APP_ID "com.bongocat.desktop"
 #define BONGO_CAT_NAME_W L"BongoCat"
 #define BONGO_CAT_PET_WINDOW_TITLE_W L"BongoCat - Pet"
-#define BONGO_CAT_VERSION "0.1.0"
 #define BONGO_CAT_PATH_CAP 1024
 #define BONGO_CAT_ID_CAP 128
 #define BONGO_CAT_SHORTCUT_CAP 128

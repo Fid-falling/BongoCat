@@ -154,8 +154,8 @@ cmake --build build-cubism --config Release --target package
 ```
 
 Release archives use the conventional product-version-platform-architecture
-format, for example `BongoCat-0.1.0-windows-x64.zip`. The executable inside
-keeps the stable `BongoCat.exe` name so upgrades do not break shortcuts.
+format. The executable inside keeps the stable `BongoCat.exe` name so upgrades
+do not break shortcuts.
 
 ### Diagnostic or Unix build
 
