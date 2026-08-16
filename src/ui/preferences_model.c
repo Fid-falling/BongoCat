@@ -126,12 +126,23 @@ static size_t model_count(const BongoCatPreferences *value, bool managed) {
     return count;
 }
 
+static int preset_model_order(const BongoCatModelEntry *entry) {
+    if (!entry || !entry->preset) return 3;
+    if (!strcmp(entry->id, "standard")) return 0;
+    if (!strcmp(entry->id, "keyboard")) return 1;
+    if (!strcmp(entry->id, "gamepad")) return 2;
+    return 3;
+}
+
 static void draw_models(BongoCatPreferences *value,
     struct nk_context *context, bool managed) {
-    for (size_t i = 0; i < value->app->models.count; ++i) {
-        const BongoCatModelEntry *entry = &value->app->models.entries[i];
-        if (entry->managed != managed) continue;
-        bongo_cat_preferences_model_card(value, context, entry);
+    for (int order = 0; order <= 3; ++order) {
+        for (size_t i = 0; i < value->app->models.count; ++i) {
+            const BongoCatModelEntry *entry = &value->app->models.entries[i];
+            if (entry->managed != managed || preset_model_order(entry) != order)
+                continue;
+            bongo_cat_preferences_model_card(value, context, entry);
+        }
     }
 }
 
