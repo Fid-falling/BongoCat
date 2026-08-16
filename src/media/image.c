@@ -31,7 +31,7 @@ void bongo_cat_image_free(BongoCatImage *image) {
     memset(image, 0, sizeof(*image));
 }
 static unsigned int upload(const BongoCatImage *image, GLuint texture,
-    bool model_texture, BongoCatImageProgress progress, void *userdata) {
+    bool model_texture) {
     bool created = texture == 0;
     if (created) glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -53,25 +53,7 @@ static unsigned int upload(const BongoCatImage *image, GLuint texture,
         }
     }
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    if (created && model_texture) {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, image->width,
-            image->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-        size_t row_bytes = (size_t)image->width * 4;
-        int rows_per_chunk = row_bytes > 0
-            ? (int)((4u * 1024u * 1024u) / row_bytes) : 1;
-        rows_per_chunk = SDL_clamp(rows_per_chunk, 1, image->height);
-        for (int y = 0; y < image->height; y += rows_per_chunk) {
-            int rows = SDL_min(rows_per_chunk, image->height - y);
-            /* Rendering the old model changes texture bindings while loading. */
-            glBindTexture(GL_TEXTURE_2D, texture);
-            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, image->width, rows,
-                GL_RGBA, GL_UNSIGNED_BYTE,
-                image->pixels + (size_t)y * row_bytes);
-            if (progress)
-                progress(userdata, (float)(y + rows) / image->height);
-        }
-    } else if (created) {
+    if (created) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, image->width,
             image->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image->pixels);
     } else {
@@ -84,7 +66,7 @@ static unsigned int upload(const BongoCatImage *image, GLuint texture,
 unsigned int bongo_cat_image_texture(const char *path, int *width, int *height, BongoCatError *error) {
     BongoCatImage image;
     if (bongo_cat_image_load(path, &image, error) != BONGO_CAT_OK) return 0;
-    GLuint texture = upload(&image, 0, false, NULL, NULL);
+    GLuint texture = upload(&image, 0, false);
     if (width) *width = image.width;
     if (height) *height = image.height;
     bongo_cat_image_free(&image);
@@ -98,7 +80,7 @@ unsigned int bongo_cat_image_texture_thumbnail(const char *path, int max_width,
     if (max_width > 0 && max_height > 0 &&
         bongo_cat_image_decode_wic_responsive(path, &image,
             max_width, max_height, NULL, NULL)) {
-        GLuint texture = upload(&image, 0, false, NULL, NULL);
+        GLuint texture = upload(&image, 0, false);
         if (width) *width = image.width;
         if (height) *height = image.height;
         bongo_cat_image_free(&image);
@@ -118,7 +100,7 @@ unsigned int bongo_cat_image_texture_thumbnail(const char *path, int max_width,
         if (scaled) {
             BongoCatImage thumbnail = {
                 .pixels = scaled->pixels, .width = scaled->w, .height = scaled->h};
-            GLuint texture = upload(&thumbnail, 0, false, NULL, NULL);
+            GLuint texture = upload(&thumbnail, 0, false);
             if (width) *width = thumbnail.width;
             if (height) *height = thumbnail.height;
             SDL_DestroySurface(scaled);
@@ -128,7 +110,7 @@ unsigned int bongo_cat_image_texture_thumbnail(const char *path, int max_width,
         target_width = image.width;
         target_height = image.height;
     }
-    GLuint texture = upload(&image, 0, false, NULL, NULL);
+    GLuint texture = upload(&image, 0, false);
     if (width) *width = target_width;
     if (height) *height = target_height;
     bongo_cat_image_free(&image);
@@ -186,8 +168,7 @@ unsigned int bongo_cat_image_texture_model(const char *path, bool direct_decode,
     stage = (ImageProgressStage){progress, userdata, .30f, .30f};
     bongo_cat_image_make_alpha_mask_progress(&image, alpha, staged, &stage);
     bongo_cat_gl_clear_errors();
-    stage = (ImageProgressStage){progress, userdata, .60f, .30f};
-    GLuint texture = upload(&image, 0, true, staged, &stage);
+    GLuint texture = upload(&image, 0, true);
     GLenum upload_error = glGetError();
 #ifdef _WIN32
     if (upload_error == GL_OUT_OF_MEMORY &&
@@ -205,8 +186,7 @@ unsigned int bongo_cat_image_texture_model(const char *path, bool direct_decode,
             bongo_cat_image_make_alpha_mask_progress(
                 &image, alpha, staged, &stage);
             bongo_cat_gl_clear_errors();
-            stage = (ImageProgressStage){progress, userdata, .97f, .02f};
-            texture = upload(&image, 0, true, staged, &stage);
+            texture = upload(&image, 0, true);
             upload_error = glGetError();
             if (upload_error == GL_NO_ERROR) SDL_LogWarn(
                 SDL_LOG_CATEGORY_RENDER,
@@ -270,7 +250,7 @@ unsigned int bongo_cat_image_composite_texture(const char *base, const char *lef
     if (erase_left) erase_paw(&image, true);
     if (erase_right) erase_paw(&image, false);
     bool valid = blend_file(&image, left, error) && blend_file(&image, right, error);
-    if (valid) texture = upload(&image, texture, false, NULL, NULL);
+    if (valid) texture = upload(&image, texture, false);
     bongo_cat_image_free(&image);
     return texture;
 }
