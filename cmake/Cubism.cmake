@@ -39,7 +39,8 @@ set_target_properties(Live2DCubismCore PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES "${CUBISM_CORE_PATH}/include")
 
 set(BUILD_UTILS OFF CACHE BOOL "" FORCE)
-add_subdirectory("${CUBISM_GLEW_PATH}/build/cmake" "${CMAKE_BINARY_DIR}/cubism-glew")
+add_subdirectory("${CUBISM_GLEW_PATH}/build/cmake" "${CMAKE_BINARY_DIR}/cubism-glew"
+  EXCLUDE_FROM_ALL)
 set(FRAMEWORK_SOURCE OpenGL)
 add_subdirectory("${CUBISM_FRAMEWORK_PATH}" "${CMAKE_BINARY_DIR}/cubism-framework")
 include(cmake/CubismShaderOptimize.cmake)
