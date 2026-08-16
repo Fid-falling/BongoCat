@@ -33,6 +33,20 @@ static void model_load_progress(void *userdata, float progress) {
     BongoCatApp *app = userdata;
     if (app && app->preferences)
         bongo_cat_preferences_model_load_progress(app->preferences, progress);
+    /* The main loop is blocked during loading, so advance the visible model here. */
+    if (!app || !app->loaded_model[0] || !app->model_load_last_frame_ns ||
+        !app->live2d)
+        return;
+    uint64_t now = SDL_GetTicksNS();
+    if (progress < .999f && now - app->model_load_last_frame_ns < 16000000ull)
+        return;
+    uint64_t previous = app->model_load_last_frame_ns;
+    app->model_load_last_frame_ns = now;
+    float elapsed = (float)((now - previous) / 1000000000.0);
+    if (!app->smoke_freeze_model && elapsed > 0.0f)
+        bongo_cat_app_step_live2d(app, elapsed);
+    app->last_frame_ns = now;
+    bongo_cat_app_render_now(app);
 }
 
 static bool apply_model_aspect(BongoCatApp *app,
@@ -117,9 +131,13 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
         return false;
     }
     bongo_cat_live2d_reshape(app->live2d, pixel_width, pixel_height);
-    if (bongo_cat_live2d_load(app->live2d, entry->directory,
+    app->model_load_last_frame_ns = replacing_model ? SDL_GetTicksNS() : 0;
+    BongoCatResult load_result = bongo_cat_live2d_load(app->live2d, entry->directory,
         entry->setting_file, entry->preset, &render_options,
-        model_load_progress, app, failure) != BONGO_CAT_OK) {
+        model_load_progress, app, failure);
+    app->model_load_last_frame_ns = 0;
+    if (replacing_model) app->last_frame_ns = SDL_GetTicksNS();
+    if (load_result != BONGO_CAT_OK) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", failure->message);
         if (restore_context && previous_window && previous_context &&
             !SDL_GL_MakeCurrent(previous_window, previous_context))

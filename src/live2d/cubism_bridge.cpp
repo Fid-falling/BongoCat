@@ -1,5 +1,4 @@
 #include "bongo_cat/file.h"
-#include "bongo_cat/memory.h"
 #include "bongo_cat/model.h"
 #if defined(CSM_TARGET_WIN_GL) || defined(CSM_TARGET_LINUX_GL)
 #include <GL/glew.h>
@@ -123,36 +122,6 @@ struct BongoCatLive2D {
     int height = 354;
 };
 
-static bool restore_previous(BongoCatLive2D *runtime,
-    bongo_cat::NativeModel *previous, BongoCatError *primary) noexcept {
-    if (!previous) { runtime->model = nullptr; return true; }
-    BongoCatError restore_error = {};
-    try {
-        if (previous->load_textures(&restore_error, nullptr, nullptr)) {
-            runtime->model = previous;
-            return true;
-        }
-    } catch (const std::bad_alloc &) {
-        bongo_cat_error_set(&restore_error, BONGO_CAT_ERROR_MEMORY,
-            "Out of memory while restoring the previous model");
-    } catch (const std::exception &exception) {
-        bongo_cat_error_set(&restore_error, BONGO_CAT_ERROR_CUBISM,
-            "Previous model restore failed: %s", exception.what());
-    } catch (...) {
-        bongo_cat_error_set(&restore_error, BONGO_CAT_ERROR_CUBISM,
-            "Previous model restore failed with an unknown exception");
-    }
-    if (primary) {
-        char original[sizeof(primary->message)];
-        std::snprintf(original, sizeof(original), "%s", primary->message);
-        bongo_cat_error_set(primary, primary->code,
-            "%s; restore failed: %s", original, restore_error.message);
-    }
-    delete previous;
-    runtime->model = nullptr;
-    return false;
-}
-
 extern "C" BongoCatLive2D *bongo_cat_live2d_create(const char *asset_root,
     BongoCatError *error) {
     resource_root = asset_root ? asset_root : "";
@@ -180,7 +149,6 @@ extern "C" BongoCatResult bongo_cat_live2d_load(BongoCatLive2D *runtime,
     if (!runtime) return BONGO_CAT_ERROR_ARGUMENT;
     bongo_cat::NativeModel *previous = runtime->model;
     bongo_cat::NativeModel *model = nullptr;
-    bool previous_released = false;
     try {
         model = new(std::nothrow) bongo_cat::NativeModel();
         if (!model) {
@@ -193,24 +161,16 @@ extern "C" BongoCatResult bongo_cat_live2d_load(BongoCatLive2D *runtime,
             delete model;
             return error ? error->code : BONGO_CAT_ERROR_CUBISM;
         }
-        if (previous) {
-            previous_released = true;
-            previous->release_render_resources();
-            glFinish();
-        }
+        /* Keep the previous renderer alive until the replacement is complete. */
         model->reshape(runtime->width, runtime->height);
         if (!model->load_textures(error, progress, userdata)) {
             BongoCatResult result = error ? error->code : BONGO_CAT_ERROR_CUBISM;
             delete model;
-            glFinish();
-            restore_previous(runtime, previous, error);
-            glFinish();
-            bongo_cat_platform_trim_memory();
             return result;
         }
         if (progress) progress(userdata, 0.98f);
-        delete previous;
         runtime->model = model;
+        delete previous;
         return BONGO_CAT_OK;
     } catch (const std::bad_alloc &) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_MEMORY,
@@ -223,12 +183,6 @@ extern "C" BongoCatResult bongo_cat_live2d_load(BongoCatLive2D *runtime,
             "Live2D model load failed with an unknown exception");
     }
     delete model;
-    if (previous_released) {
-        glFinish();
-        restore_previous(runtime, previous, error);
-        glFinish();
-        bongo_cat_platform_trim_memory();
-    }
     return error ? error->code : BONGO_CAT_ERROR_CUBISM;
 }
 

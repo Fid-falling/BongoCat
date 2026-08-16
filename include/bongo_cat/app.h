@@ -57,6 +57,7 @@ typedef struct BongoCatApp {
     bool session_store_blocked;
     bool autostart_launch;
     uint64_t startup_raise_due_ns;
+    uint64_t model_load_last_frame_ns;
     bool smoke;
     bool smoke_preferences;
     bool smoke_preference_shortcut;
