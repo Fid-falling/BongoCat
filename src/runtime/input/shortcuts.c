@@ -31,7 +31,11 @@ bool bongo_cat_app_run_behavior(BongoCatApp *app,
             BongoCatError error = {0};
             bongo_cat_audio_play(app->audio, behavior->sound, &error);
         }
-    } else if (!bongo_cat_live2d_set_expression(app->live2d, behavior->index)) return false;
+    } else {
+        int expression = bongo_cat_live2d_expression(app->live2d) ==
+            behavior->index ? -1 : behavior->index;
+        if (!bongo_cat_live2d_set_expression(app->live2d, expression)) return false;
+    }
     app->dirty = true;
     return true;
 }
