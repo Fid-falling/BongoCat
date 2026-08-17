@@ -94,6 +94,7 @@ set(BONGO_CAT_RUNTIME_SHELL_SOURCES
   src/runtime/shell/window_hit.c
   src/runtime/shell/window_menu_actions.c
   src/runtime/shell/window_menu_behavior.c
+  src/runtime/shell/window_menu_behavior_test.c
   src/runtime/shell/window_menu_preview.c
   src/runtime/shell/window_wheel.c)
 

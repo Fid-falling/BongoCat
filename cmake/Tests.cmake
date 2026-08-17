@@ -66,6 +66,16 @@ if(BUILD_TESTING)
   endif()
   add_test(NAME model-import-unit COMMAND bongo_cat_mver_import_tests)
 
+  if(BONGO_CAT_CUBISM_ENABLED)
+    add_executable(bongo_cat_motion_state_tests
+      tests/live2d/test_motion_state.cpp)
+    target_include_directories(bongo_cat_motion_state_tests PRIVATE
+      src/live2d tests/support)
+    target_link_libraries(bongo_cat_motion_state_tests PRIVATE
+      bongo_cat_runtime bongo_cat_warnings)
+    add_test(NAME live2d-motion-state COMMAND bongo_cat_motion_state_tests)
+  endif()
+
   if(WIN32)
     add_executable(bongo_cat_windows_capture_tests
       tests/platform/test_windows_capture.c)

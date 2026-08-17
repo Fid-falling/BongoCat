@@ -178,6 +178,7 @@ void NativeModel::load_motions(BongoCatLive2DLoadProgress progress,
     motion_toggle_partners_.clear();
     motion_toggle_owners_.clear();
     selected_motion_keys_.clear();
+    clear_motion_runs();
     int total = 0, completed = 0;
     for (int group_index = 0; group_index < setting_->GetMotionGroupCount();
         ++group_index)

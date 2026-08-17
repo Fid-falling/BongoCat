@@ -66,6 +66,10 @@ bool bongo_cat_live2d_parameter(BongoCatLive2D *value, const char *id, BongoCatP
 bool bongo_cat_live2d_start_motion(BongoCatLive2D *value, const char *group, int index) {
     (void)value; (void)group; (void)index; return false;
 }
+bool bongo_cat_live2d_restore_motion_state(BongoCatLive2D *value,
+    const char *group, int index) {
+    (void)value; (void)group; (void)index; return false;
+}
 bool bongo_cat_live2d_preview_motion(BongoCatLive2D *value,
     const char *group, int index) {
     (void)value; (void)group; (void)index; return false;
@@ -81,9 +85,19 @@ bool bongo_cat_live2d_motion_selected(const BongoCatLive2D *value,
     const char *group, int index) {
     (void)value; (void)group; (void)index; return false;
 }
+bool bongo_cat_live2d_motion_persistent(const BongoCatLive2D *value,
+    const char *group, int index) {
+    (void)value; (void)group; (void)index; return false;
+}
 bool bongo_cat_live2d_motion_visible(const BongoCatLive2D *value,
     const char *group, int index) {
     (void)value; (void)group; (void)index; return true;
+}
+bool bongo_cat_live2d_motion_same_toggle(const BongoCatLive2D *value,
+    const char *left_group, int left_index,
+    const char *right_group, int right_index) {
+    (void)value; (void)left_group; (void)left_index;
+    (void)right_group; (void)right_index; return false;
 }
 bool bongo_cat_live2d_set_expression(BongoCatLive2D *value, int index) {
     (void)value; (void)index; return false;

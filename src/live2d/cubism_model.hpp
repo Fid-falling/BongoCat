@@ -42,11 +42,15 @@ public:
     bool set_parameter(const char *id, float value);
     bool parameter(const char *id, float *minimum, float *maximum, float *value);
     bool start_motion(const char *group, int index);
+    bool restore_motion_state(const char *group, int index);
     bool preview_motion(const char *group, int index);
     bool restore_motion_preview();
     bool commit_motion_preview(const char *group, int index);
     bool motion_selected(const char *group, int index) const;
+    bool motion_persistent(const char *group, int index) const;
     bool motion_visible(const char *group, int index) const;
+    bool motion_same_toggle(const char *left_group, int left_index,
+        const char *right_group, int right_index) const;
     bool set_expression(int index);
     int expression() const { return expression_index_; }
     bool visual_state(BongoCatLive2DVisualState *state) const;
@@ -57,13 +61,26 @@ public:
     struct MotionStateCurve {
         std::string target, id;
         float start = 0.0f, end = 0.0f;
+        float normal = 0.0f;
+        int parameter = -1;
+        int part = -1;
+        bool model_opacity = false;
     };
     struct MotionState {
         std::string group;
         int index = -1;
         std::vector<MotionStateCurve> curves;
+        bool self_contained = false;
     };
 private:
+    struct MotionRun {
+        Csm::CubismMotionQueueEntryHandle handle =
+            Csm::InvalidMotionQueueEntryHandleValue;
+        std::string key;
+        bool one_shot = false;
+        bool selected = false;
+        bool committed = false;
+    };
     struct ModelBounds {
         float min_x = 0.0f;
         float min_y = 0.0f;
@@ -84,6 +101,15 @@ private:
         const std::vector<unsigned char> &bytes);
     void pair_motion_states();
     std::string motion_to_play(const std::string &key, bool *selected) const;
+    bool motion_is_persistent(const std::string &key) const;
+    void record_motion_run(Csm::CubismMotionQueueEntryHandle handle,
+        const std::string &key, bool selected, bool committed);
+    void stop_motion_runs(const std::string &key);
+    void expire_motion_runs();
+    void clear_motion_runs();
+    void expire_expression_fade();
+    bool apply_motion_curve(const MotionStateCurve &curve, float value);
+    bool restore_motion_defaults(const std::string &key);
     void select_motion(const std::string &key, bool selected);
     void release_textures();
     void release_renderer();
@@ -117,6 +143,7 @@ private:
     int renderer_width_ = 0;
     int renderer_height_ = 0;
     int expression_index_ = -1;
+    bool expression_clearing_ = false;
     BongoCatLive2DVisualState visual_state_{};
     bool visual_state_ready_ = false;
     bool motion_updated_ = false;
@@ -127,6 +154,7 @@ private:
     bool direct_textures_ = false;
     bool external_parameters_dirty_ = false;
     std::vector<std::string> idle_motion_keys_;
+    std::vector<MotionRun> motion_runs_;
     ViewerLookUpdater *viewer_look_ = nullptr;
     int last_idle_motion_ = -1;
     float opacity_snapshot_ = -1.0f;
@@ -134,7 +162,14 @@ private:
     std::string motion_preview_key_;
     bool motion_preview_selected_ = false;
     bool motion_preview_active_ = false;
+    bool motion_preview_completed_ = false;
 };
+
+bool motion_toggle_pair(const NativeModel::MotionState &left,
+    const NativeModel::MotionState &right, bool *left_enabled);
+bool motion_enables_state(const NativeModel::MotionState &state);
+bool motion_run_clears_selection(bool one_shot, bool committed,
+    bool replacement_running);
 
 } // namespace bongo_cat
 

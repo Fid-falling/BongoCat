@@ -15,6 +15,7 @@ static size_t parameter_count;
 static bool left_hand, right_hand, left_trigger, right_trigger, left_thumb;
 static bool active_motions[8];
 static int active_expression = -1;
+static int restored_motion_count;
 int bongo_cat_test_failures;
 
 static float parameter(const char *id) {
@@ -49,11 +50,41 @@ bool bongo_cat_live2d_start_motion(BongoCatLive2D *live2d,
     return true;
 }
 
+bool bongo_cat_live2d_restore_motion_state(BongoCatLive2D *live2d,
+    const char *group, int index) {
+    (void)live2d; (void)group;
+    if (index < 0 || index >= (int)(sizeof(active_motions) /
+        sizeof(active_motions[0]))) return false;
+    active_motions[index] = true;
+    restored_motion_count++;
+    return true;
+}
+
 bool bongo_cat_live2d_motion_selected(const BongoCatLive2D *live2d,
     const char *group, int index) {
     (void)live2d; (void)group;
     return index >= 0 && index < (int)(sizeof(active_motions) /
         sizeof(active_motions[0])) && active_motions[index];
+}
+
+bool bongo_cat_live2d_motion_persistent(const BongoCatLive2D *live2d,
+    const char *group, int index) {
+    (void)live2d; (void)group;
+    return index == 1;
+}
+
+bool bongo_cat_live2d_motion_visible(const BongoCatLive2D *live2d,
+    const char *group, int index) {
+    (void)live2d; (void)group; (void)index;
+    return true;
+}
+
+bool bongo_cat_live2d_motion_same_toggle(const BongoCatLive2D *live2d,
+    const char *left_group, int left_index,
+    const char *right_group, int right_index) {
+    (void)live2d; (void)left_group; (void)left_index;
+    (void)right_group; (void)right_index;
+    return false;
 }
 
 bool bongo_cat_live2d_set_expression(BongoCatLive2D *live2d, int index) {
@@ -116,6 +147,7 @@ static void check_behavior_state(BongoCatApp *app) {
         sizeof(app->session.active_behaviors[0].behavior_id),
         "model-b:expression:1");
     active_motions[1] = true;
+    active_motions[2] = true;
     active_expression = 3;
     bongo_cat_app_capture_behavior_state(app);
     CHECK(app->session.active_behavior_count == 3);
@@ -127,11 +159,13 @@ static void check_behavior_state(BongoCatApp *app) {
         "model-a:expression:3") == 0);
 
     active_motions[1] = false;
+    active_motions[2] = false;
     active_expression = -1;
     bongo_cat_app_restore_behavior_state(app, "model-a");
     CHECK(active_motions[1]);
     CHECK(!active_motions[2]);
     CHECK(active_expression == 3);
+    CHECK(restored_motion_count == 1);
 
     active_motions[1] = false;
     active_expression = -1;

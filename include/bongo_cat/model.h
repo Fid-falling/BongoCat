@@ -141,6 +141,8 @@ bool bongo_cat_live2d_set_parameter(BongoCatLive2D *live2d, const char *id, floa
 bool bongo_cat_live2d_parameter(BongoCatLive2D *live2d, const char *id,
     BongoCatParameterRange *range);
 bool bongo_cat_live2d_start_motion(BongoCatLive2D *live2d, const char *group, int index);
+bool bongo_cat_live2d_restore_motion_state(BongoCatLive2D *live2d,
+    const char *group, int index);
 bool bongo_cat_live2d_preview_motion(BongoCatLive2D *live2d,
     const char *group, int index);
 bool bongo_cat_live2d_restore_motion_preview(BongoCatLive2D *live2d);
@@ -148,8 +150,13 @@ bool bongo_cat_live2d_commit_motion_preview(BongoCatLive2D *live2d,
     const char *group, int index);
 bool bongo_cat_live2d_motion_selected(const BongoCatLive2D *live2d,
     const char *group, int index);
+bool bongo_cat_live2d_motion_persistent(const BongoCatLive2D *live2d,
+    const char *group, int index);
 bool bongo_cat_live2d_motion_visible(const BongoCatLive2D *live2d,
     const char *group, int index);
+bool bongo_cat_live2d_motion_same_toggle(const BongoCatLive2D *live2d,
+    const char *left_group, int left_index,
+    const char *right_group, int right_index);
 bool bongo_cat_live2d_set_expression(BongoCatLive2D *live2d, int index);
 int bongo_cat_live2d_expression(const BongoCatLive2D *live2d);
 bool bongo_cat_live2d_visual_state(const BongoCatLive2D *live2d,

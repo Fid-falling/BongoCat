@@ -41,6 +41,31 @@ bool bongo_cat_app_run_behavior(BongoCatApp *app,
     return true;
 }
 
+static bool hidden_toggle_has_visible_binding(BongoCatApp *app,
+    const BongoCatBehaviorEntry *behavior, const char *shortcut) {
+    if (!app || !behavior || !shortcut || !shortcut[0] ||
+        behavior->kind != BONGO_CAT_BEHAVIOR_MOTION ||
+        bongo_cat_live2d_motion_visible(app->live2d,
+            behavior->group, behavior->index)) return false;
+    for (size_t i = 0; i < app->behaviors.count; ++i) {
+        const BongoCatBehaviorEntry *candidate = &app->behaviors.entries[i];
+        if (candidate == behavior ||
+            candidate->kind != BONGO_CAT_BEHAVIOR_MOTION ||
+            !bongo_cat_live2d_motion_visible(app->live2d,
+                candidate->group, candidate->index) ||
+            !bongo_cat_live2d_motion_same_toggle(app->live2d,
+                behavior->group, behavior->index,
+                candidate->group, candidate->index)) continue;
+        for (size_t j = 0; j < app->settings.behavior_shortcut_count; ++j) {
+            const BongoCatBehaviorShortcut *binding =
+                &app->settings.behavior_shortcuts[j];
+            if (strcmp(binding->id, candidate->id) == 0 &&
+                strcmp(binding->shortcut, shortcut) == 0) return true;
+        }
+    }
+    return false;
+}
+
 static bool behavior_shortcut(BongoCatApp *app, const BongoCatInputEvent *event) {
     bool handled = false;
     for (size_t i = 0; i < app->settings.behavior_shortcut_count; ++i) {
@@ -57,8 +82,10 @@ static bool behavior_shortcut(BongoCatApp *app, const BongoCatInputEvent *event)
                     handled = true;
                 }
             } else if (bongo_cat_shortcut_matches(&app->shortcut_state,
-                event, shortcut->shortcut)) handled =
-                    bongo_cat_app_run_behavior(app, behavior) || handled;
+                event, shortcut->shortcut) &&
+                !hidden_toggle_has_visible_binding(app, behavior,
+                    shortcut->shortcut)) handled =
+                        bongo_cat_app_run_behavior(app, behavior) || handled;
         }
     }
     if (handled) return true;

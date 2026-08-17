@@ -235,14 +235,28 @@ extern "C" bool bongo_cat_live2d_parameter(BongoCatLive2D *runtime, const char *
 extern "C" bool bongo_cat_live2d_start_motion(BongoCatLive2D *runtime, const char *group, int index) {
     return runtime && runtime->model && runtime->model->start_motion(group, index);
 }
+extern "C" bool bongo_cat_live2d_restore_motion_state(BongoCatLive2D *runtime,
+    const char *group, int index) {
+    return runtime && runtime->model &&
+        runtime->model->restore_motion_state(group, index);
+}
 extern "C" bool bongo_cat_live2d_preview_motion(BongoCatLive2D *runtime, const char *group, int index) {
     return runtime && runtime->model && runtime->model->preview_motion(group, index); }
 extern "C" bool bongo_cat_live2d_restore_motion_preview(BongoCatLive2D *runtime) { return runtime && runtime->model && runtime->model->restore_motion_preview(); }
 extern "C" bool bongo_cat_live2d_commit_motion_preview(BongoCatLive2D *runtime, const char *group, int index) {
     return runtime && runtime->model && runtime->model->commit_motion_preview(group, index); }
 extern "C" bool bongo_cat_live2d_motion_selected(const BongoCatLive2D *runtime, const char *group, int index) { return runtime && runtime->model && runtime->model->motion_selected(group, index); }
+extern "C" bool bongo_cat_live2d_motion_persistent(const BongoCatLive2D *runtime,
+    const char *group, int index) {
+    return runtime && runtime->model &&
+        runtime->model->motion_persistent(group, index); }
 extern "C" bool bongo_cat_live2d_motion_visible(const BongoCatLive2D *runtime, const char *group, int index) {
     return runtime && runtime->model && runtime->model->motion_visible(group, index); }
+extern "C" bool bongo_cat_live2d_motion_same_toggle(
+    const BongoCatLive2D *runtime, const char *left_group, int left_index,
+    const char *right_group, int right_index) {
+    return runtime && runtime->model && runtime->model->motion_same_toggle(
+        left_group, left_index, right_group, right_index); }
 extern "C" bool bongo_cat_live2d_set_expression(BongoCatLive2D *runtime, int index) {
     return runtime && runtime->model && runtime->model->set_expression(index); }
 extern "C" int bongo_cat_live2d_expression(const BongoCatLive2D *runtime) {

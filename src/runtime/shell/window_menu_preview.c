@@ -66,7 +66,14 @@ void bongo_cat_window_menu_preview(void *userdata, BongoCatMenuAction action) {
         bongo_cat_window_behavior_menu_action(action)) {
         bongo_cat_modal_frame_tick(&state->modal_frame);
         return;
-    } else if (bongo_cat_window_behavior_preview(app, action)) {
+    } else {
+        if (next_group == 5 &&
+            bongo_cat_live2d_expression(app->live2d) != state->expression)
+            bongo_cat_live2d_set_expression(app->live2d, state->expression);
+        if (!bongo_cat_window_behavior_preview(app, action)) {
+            bongo_cat_app_render_now(app);
+            return;
+        }
         state->applied = action;
         bongo_cat_modal_frame_tick(&state->modal_frame);
         return;
