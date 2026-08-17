@@ -149,10 +149,7 @@ void bongo_cat_windows_borderless_set_click_through(HWND window, bool enabled) {
     LONG_PTR style = GetWindowLongPtrW(window, GWL_EXSTYLE);
     LONG_PTR next = enabled ? style | WS_EX_TRANSPARENT :
         style & ~WS_EX_TRANSPARENT;
-    if (next != style) {
-        SetWindowLongPtrW(window, GWL_EXSTYLE, next);
-        SetWindowPos(window, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE |
-            SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
-    }
+    /* The hit-test property is immediate; a frame refresh flickers OpenGL windows. */
+    if (next != style) SetWindowLongPtrW(window, GWL_EXSTYLE, next);
 }
 #endif

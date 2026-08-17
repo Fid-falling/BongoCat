@@ -1,4 +1,5 @@
 #include "windows_capture.h"
+#include "windows_borderless.h"
 #include "windows_diagnostics.h"
 #include "windows_direct_input.h"
 #include "windows_input.h"
@@ -9,12 +10,47 @@
 #include <stdio.h>
 
 static int failures;
+static int window_position_messages;
+static int nonclient_size_messages;
 
 #define CHECK(value) do { if (!(value)) { \
     fprintf(stderr, "%s:%d: check failed: %s\n", \
         __FILE__, __LINE__, #value); \
     failures++; \
 } } while (0)
+
+static LRESULT CALLBACK click_through_test_proc(HWND window, UINT message,
+    WPARAM wparam, LPARAM lparam) {
+    if (message == WM_WINDOWPOSCHANGED) window_position_messages++;
+    if (message == WM_NCCALCSIZE) nonclient_size_messages++;
+    return DefWindowProcW(window, message, wparam, lparam);
+}
+
+static void test_click_through_does_not_refresh_frame(void) {
+    const wchar_t class_name[] = L"BongoCat click-through test";
+    WNDCLASSW type = {.lpfnWndProc = click_through_test_proc,
+        .hInstance = GetModuleHandleW(NULL), .lpszClassName = class_name};
+    ATOM registered = RegisterClassW(&type);
+    CHECK(registered != 0 || GetLastError() == ERROR_CLASS_ALREADY_EXISTS);
+    HWND window = CreateWindowExW(WS_EX_LAYERED, class_name,
+        L"BongoCat click-through test", WS_POPUP, 0, 0, 32, 32,
+        NULL, NULL, GetModuleHandleW(NULL), NULL);
+    CHECK(window != NULL);
+    if (!window) return;
+    bongo_cat_windows_borderless_install(window);
+    window_position_messages = 0;
+    nonclient_size_messages = 0;
+    bongo_cat_windows_borderless_set_click_through(window, true);
+    CHECK((GetWindowLongPtrW(window, GWL_EXSTYLE) & WS_EX_TRANSPARENT) != 0);
+    CHECK(SendMessageW(window, WM_NCHITTEST, 0, 0) == HTTRANSPARENT);
+    bongo_cat_windows_borderless_set_click_through(window, false);
+    CHECK((GetWindowLongPtrW(window, GWL_EXSTYLE) & WS_EX_TRANSPARENT) == 0);
+    CHECK(window_position_messages == 0);
+    CHECK(nonclient_size_messages == 0);
+    bongo_cat_windows_borderless_uninstall(window);
+    DestroyWindow(window);
+    if (registered) UnregisterClassW(class_name, GetModuleHandleW(NULL));
+}
 
 static void test_popup_completion(void) {
     HWND window = CreateWindowExW(0, L"STATIC", L"BongoCat popup test",
@@ -134,6 +170,7 @@ static void test_capture_styles(void) {
 }
 
 int main(void) {
+    test_click_through_does_not_refresh_frame();
     test_capture_styles();
     test_tray_restart_notification();
     test_popup_completion();
