@@ -38,6 +38,35 @@ static void model_runtime_stage(BongoCatApp *app, const char *stage,
     SDL_Log("[runtime] Model load %s: id=%s", stage, id);
 }
 
+static bool behavior_cacheable(const BongoCatModelEntry *entry) {
+    /* Installed packages are content-addressed and immutable. Nearby models
+       are managed by their source directory, so do not retain stale data. */
+    return entry && (entry->preset || (!entry->managed &&
+        entry->content_digest[0]));
+}
+
+static bool behavior_cache_matches(const BongoCatApp *app,
+    const BongoCatModelEntry *entry) {
+    return app && app->behavior_cache_valid && behavior_cacheable(entry) &&
+        strcmp(app->behavior_cache_model_id, entry->id) == 0 &&
+        (entry->preset || strcmp(app->behavior_cache_digest,
+            entry->content_digest) == 0);
+}
+
+static void behavior_cache_store(BongoCatApp *app,
+    const BongoCatModelEntry *entry) {
+    if (!app || !behavior_cacheable(entry)) {
+        if (app) app->behavior_cache_valid = false;
+        return;
+    }
+    app->behavior_cache = app->behaviors;
+    snprintf(app->behavior_cache_model_id,
+        sizeof(app->behavior_cache_model_id), "%s", entry->id);
+    snprintf(app->behavior_cache_digest, sizeof(app->behavior_cache_digest),
+        "%s", entry->content_digest);
+    app->behavior_cache_valid = true;
+}
+
 static void model_progress_runtime_stage(BongoCatApp *app, float progress) {
     static const char *names[] = {"", "model-core", "texture-loading",
         "finalizing"};
@@ -53,6 +82,9 @@ static void model_progress_runtime_stage(BongoCatApp *app, float progress) {
 static void model_load_progress(void *userdata, float progress) {
     BongoCatApp *app = userdata;
     model_progress_runtime_stage(app, progress);
+    /* Keep native window procedures responsive while the main loop is
+       synchronously loading Cubism and OpenGL resources. */
+    SDL_PumpEvents();
     if (app && app->preferences)
         bongo_cat_preferences_model_load_progress(app->preferences, progress);
     /* The main loop is blocked during loading, so advance the visible model here. */
@@ -133,8 +165,15 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
             "Cannot allocate model behavior state");
         return false;
     }
-    if (bongo_cat_behaviors_load(behaviors, entry, &optional) != BONGO_CAT_OK)
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", optional.message);
+    bool behavior_catalog_valid = behavior_cache_matches(app, entry);
+    if (behavior_catalog_valid) {
+        *behaviors = app->behavior_cache;
+    } else {
+        behavior_catalog_valid = bongo_cat_behaviors_load(
+            behaviors, entry, &optional) == BONGO_CAT_OK;
+        if (!behavior_catalog_valid)
+            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", optional.message);
+    }
     BongoCatLive2DRenderOptions render_options = {0};
     bool adapted_profile = bongo_cat_import_render_options(
         entry->adapter_directory, &render_options);
@@ -190,7 +229,15 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     app->model_render_options = render_options;
     bongo_cat_app_reset_pointer_tracking(app);
     bongo_cat_live2d_set_render_options(app->live2d, &render_options);
+    if (app->loaded_model[0] && app->behavior_catalog_valid) {
+        const BongoCatModelEntry *previous_entry = bongo_cat_models_find(
+            &app->models, app->loaded_model);
+        behavior_cache_store(app, previous_entry);
+    } else if (app->loaded_model[0]) {
+        app->behavior_cache_valid = false;
+    }
     app->behaviors = *behaviors;
+    app->behavior_catalog_valid = behavior_catalog_valid;
     free(behaviors);
     optional = (BongoCatError){0};
     if (bongo_cat_overlay_load(app->overlay, entry->adapter_directory,

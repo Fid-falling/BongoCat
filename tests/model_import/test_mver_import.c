@@ -162,6 +162,34 @@ static void font_reload_defers_during_frame(void) {
         NULL, NULL, NULL, NULL, NULL, 1.0f));
 }
 
+static void model_visual_expires_without_window(void) {
+    BongoCatPreferences value = {0};
+    value.model_load_visual_active = true;
+    value.model_load_visual_started_ns = SDL_GetTicksNS() -
+        BONGO_CAT_MODEL_LOAD_VISUAL_DURATION_NS;
+    CHECK(!bongo_cat_preferences_needs_frame(&value));
+    CHECK(!value.model_load_visual_active && value.model_load_progress == 1.0f);
+}
+
+static void model_visual_curve(void) {
+    BongoCatPreferences value = {0};
+    bongo_cat_preferences_model_visual_begin(&value, "curve");
+    value.model_loading = true;
+    uint64_t now = SDL_GetTicksNS();
+    value.model_load_visual_started_ns = now -
+        BONGO_CAT_MODEL_LOAD_VISUAL_RAMP_NS;
+    float ramp = bongo_cat_preferences_model_visual_progress(&value, "curve");
+    CHECK(ramp > .79f && ramp < .81f);
+    value.model_load_visual_started_ns = now - 4000000000ull;
+    float waiting = bongo_cat_preferences_model_visual_progress(&value, "curve");
+    CHECK(waiting > .86f && waiting < .89f);
+    value.model_loading = false;
+    value.model_load_visual_completion_ns = SDL_GetTicksNS() -
+        BONGO_CAT_MODEL_LOAD_VISUAL_COMPLETE_NS;
+    float complete = bongo_cat_preferences_model_visual_progress(&value, "curve");
+    CHECK(complete == 1.0f && !value.model_load_visual_active);
+}
+
 static void container_discovery(void) {
     char root[BONGO_CAT_PATH_CAP], package[BONGO_CAT_PATH_CAP];
     char mode[BONGO_CAT_PATH_CAP];
@@ -263,6 +291,8 @@ int main(void) {
     metadata_backfills_labels();
     behavior_labels_add_font_glyphs();
     font_reload_defers_during_frame();
+    model_visual_expires_without_window();
+    model_visual_curve();
     failures += test_mver_nearby_identity();
     failures += test_model_import_identity();
     container_discovery();

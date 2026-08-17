@@ -8,9 +8,7 @@
 
 #define DIGEST_ROOT_CAP 12
 
-typedef struct DigestStamp {
-    uint64_t sum, exclusive, bytes, files, entries;
-} DigestStamp;
+typedef struct DigestStamp { uint64_t sum, exclusive, bytes, files, entries; } DigestStamp;
 
 typedef struct DigestWalk {
     const char *root;
@@ -20,13 +18,11 @@ typedef struct DigestWalk {
     DigestStamp *content;
     const char *override_root;
     DigestStamp *overrides;
+    BongoCatImportDigestCache *cache;
     int depth;
 } DigestWalk;
 
-typedef struct DigestRoot {
-    char path[BONGO_CAT_PATH_CAP];
-    const char *group;
-} DigestRoot;
+typedef struct DigestRoot { char path[BONGO_CAT_PATH_CAP]; const char *group; } DigestRoot;
 
 static bool separator(char value) { return value == '/' || value == '\\'; }
 
@@ -97,11 +93,13 @@ static bool stamp_path(const char *path, DigestWalk *walk) {
         walk->depth--;
         return ok;
     }
-    uint64_t size = 0;
-    if (!bongo_cat_path_file_size(path, &size) || walk->stamp->files >= 8192 ||
+    uint64_t size = 0, modified = 0;
+    if (!bongo_cat_path_file_info(path, &size, &modified) ||
+        walk->stamp->files >= 8192 ||
         size > 1073741824ull - walk->stamp->bytes) return false;
     char file_hash[65];
-    if (bongo_cat_sha256_file(path, file_hash, NULL) != BONGO_CAT_OK)
+    if (!bongo_cat_import_digest_file_cached(walk->cache, path, size,
+        modified, file_hash))
         return false;
     uint64_t value = mix(hash_text(walk->group) ^
         hash_text(relative_path(walk->root, path)) ^ hash_text(file_hash) ^
@@ -133,10 +131,11 @@ static bool stamp_path(const char *path, DigestWalk *walk) {
 
 static bool stamp_root(const char *root, const char *group,
     DigestStamp *stamp, const BongoCatImportCandidate *candidate,
-    DigestStamp *content, DigestStamp *overrides) {
+    DigestStamp *content, DigestStamp *overrides,
+    BongoCatImportDigestCache *cache) {
     if (!root || !root[0]) return true;
     DigestWalk walk = {root, group, stamp,
-        candidate->assets, content, candidate->overrides, overrides, 0};
+        candidate->assets, content, candidate->overrides, overrides, cache, 0};
     return stamp_path(root, &walk);
 }
 
@@ -208,8 +207,8 @@ static void add_tauri_preview_roots(const BongoCatImportCandidate *candidate,
         add_root(roots, count, path, "authored-cover");
 }
 
-static bool stamp_equal(const DigestStamp *value, uint64_t sum,
-    uint64_t exclusive, uint64_t bytes, uint64_t files) {
+static bool stamp_equal(const DigestStamp *value, uint64_t sum, uint64_t exclusive,
+    uint64_t bytes, uint64_t files) {
     return value->sum == sum && value->exclusive == exclusive &&
         value->bytes == bytes && value->files == files;
 }
@@ -238,8 +237,10 @@ static bool candidate_placeholder(const BongoCatImportCandidate *candidate,
         0x83fd63c53a241538ull, 1711338ull, 51ull);
 }
 
-bool bongo_cat_import_candidate_inspect(const BongoCatImportCandidate *candidate,
-    char output[65], bool *placeholder, BongoCatError *error) {
+bool bongo_cat_import_candidate_inspect_cached(
+    const BongoCatImportCandidate *candidate, char output[65],
+    bool *placeholder, BongoCatImportDigestCache *cache,
+    BongoCatError *error) {
     if (!candidate || !output) return false;
     char setting[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_join(setting, sizeof(setting),
@@ -264,7 +265,7 @@ bool bongo_cat_import_candidate_inspect(const BongoCatImportCandidate *candidate
     DigestStamp stamp = {0}, content = {0}, overrides = {0};
     for (size_t i = 0; i < root_count; ++i) {
         if (stamp_root(roots[i].path, roots[i].group, &stamp, candidate,
-                &content, &overrides)) continue;
+                &content, &overrides, cache)) continue;
         bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
             "Cannot fingerprint imported model assets: %s",
             candidate->package_root);
@@ -285,6 +286,12 @@ bool bongo_cat_import_candidate_inspect(const BongoCatImportCandidate *candidate
     if (placeholder)
         *placeholder = candidate_placeholder(candidate, &content, &overrides);
     return true;
+}
+
+bool bongo_cat_import_candidate_inspect(const BongoCatImportCandidate *candidate,
+    char output[65], bool *placeholder, BongoCatError *error) {
+    return bongo_cat_import_candidate_inspect_cached(candidate, output,
+        placeholder, NULL, error);
 }
 
 bool bongo_cat_import_candidate_digest(const BongoCatImportCandidate *candidate,

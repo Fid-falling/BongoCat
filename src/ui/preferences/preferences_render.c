@@ -9,14 +9,8 @@
 #include <SDL3/SDL_opengl.h>
 #include <math.h>
 #include <stdio.h>
-typedef struct RootStyle {
-    struct nk_vec2 padding;
-    struct nk_vec2 group_padding;
-    struct nk_vec2 spacing;
-    struct nk_style_item fixed;
-    struct nk_color background;
-    float group_border;
-} RootStyle;
+typedef struct RootStyle { struct nk_vec2 padding, group_padding, spacing;
+    struct nk_style_item fixed; struct nk_color background; float group_border; } RootStyle;
 static const char *tr(const BongoCatPreferences *value, const char *key,
     const char *fallback) {
     return bongo_cat_i18n_get(value->app->i18n, key, fallback);
@@ -248,11 +242,15 @@ void bongo_cat_preferences_render(BongoCatPreferences *value) {
     }
     value->render_retry_ns = 0; bongo_cat_preferences_refresh_raster(value);
     bongo_cat_preferences_reload_language(value);
-    if (value->font_reload_pending &&
-        !bongo_cat_preferences_reload_fonts(value)) {
-        value->font_reload_pending = false;
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-            "Deferred preferences font atlas rebuild failed");
+    if (value->font_reload_pending) {
+        if (value->font_reload_defer_once) {
+            value->font_reload_defer_once = false;
+            value->render_dirty = true;
+        } else if (!bongo_cat_preferences_reload_fonts(value)) {
+            value->font_reload_pending = false;
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                "Deferred preferences font atlas rebuild failed");
+        }
     }
     bongo_cat_preferences_apply_theme(value);
     float width = 0.0f, height = 0.0f;
@@ -280,8 +278,10 @@ void bongo_cat_preferences_render(BongoCatPreferences *value) {
             "Preferences frame presentation failed: %s", SDL_GetError());
     } else bongo_cat_memory_policy_ui_frame_presented();
     bongo_cat_preferences_record_frame(value);
-    if (value->shortcut_recording || bongo_cat_pref_controls_animating(
-        &value->ui.context) || bongo_cat_ui_animations_active(&value->ui.context))
+    bool importing = bongo_cat_preferences_import_status(value->import_dialog, NULL, NULL, NULL);
+    if (value->shortcut_recording || value->model_load_visual_active || importing ||
+        bongo_cat_pref_controls_animating(&value->ui.context) ||
+        bongo_cat_ui_animations_active(&value->ui.context))
         value->render_dirty = true;
     else if (!value->chrome_dragging && !value->live_resize_active)
         bongo_cat_ui_trim_idle(&value->ui);

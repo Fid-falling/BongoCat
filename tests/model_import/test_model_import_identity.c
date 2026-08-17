@@ -22,7 +22,7 @@ int test_model_import_identity(void) {
     if (!temporary) return failures;
     char root[BONGO_CAT_PATH_CAP], data[BONGO_CAT_PATH_CAP];
     char source[BONGO_CAT_PATH_CAP], config[BONGO_CAT_PATH_CAP];
-    char manifest[BONGO_CAT_PATH_CAP];
+    char manifest[BONGO_CAT_PATH_CAP], missing[BONGO_CAT_PATH_CAP];
     unsigned long long nonce = (unsigned long long)SDL_GetTicksNS();
     snprintf(root, sizeof(root), "%s/bongo-cat-import-identity-%llu",
         temporary, nonce);
@@ -35,6 +35,7 @@ int test_model_import_identity(void) {
     CHECK(child(config, sizeof(config), source, "config.json", false));
     CHECK(child(manifest, sizeof(manifest), source,
         "img/standard/cat_model/cat.model3.json", false));
+    CHECK(child(missing, sizeof(missing), root, "missing", false));
     BongoCatError error = {0};
     BongoCatImportDiscovery discovered = {0};
     CHECK(bongo_cat_import_mver_discover(source, &discovered, &error) == 1);
@@ -42,14 +43,25 @@ int test_model_import_identity(void) {
     bool placeholder = true;
     CHECK(bongo_cat_import_candidate_inspect(&discovered.candidates[0],
         digest, &placeholder, &error) && !placeholder);
-    BongoCatImportReceipt first = {0}, repeated = {0};
-    CHECK(bongo_cat_import_install(config, data, &first, &error) ==
-        BONGO_CAT_OK);
+    BongoCatImportReceipt first = {0}, repeated = {0}, wrapped = {0};
+    BongoCatImportSession *session = bongo_cat_import_session_create(data,
+        &error);
+    CHECK(session != NULL);
+    CHECK(session && bongo_cat_import_session_install(session, config, &first,
+        &error) == BONGO_CAT_OK);
     CHECK(first.count == 1 && first.installed_count == 1 && first.installed[0]);
-    CHECK(bongo_cat_import_install(manifest, data, &repeated, &error) ==
-        BONGO_CAT_OK);
+    CHECK(session && bongo_cat_import_session_install(session, missing, NULL,
+        &error) != BONGO_CAT_OK);
+    error = (BongoCatError){0};
+    CHECK(session && bongo_cat_import_session_install(session, manifest,
+        &repeated, &error) == BONGO_CAT_OK);
     CHECK(repeated.count == 1 && repeated.installed_count == 0 &&
         !repeated.installed[0] && strcmp(first.ids[0], repeated.ids[0]) == 0);
+    bongo_cat_import_session_destroy(session);
+    CHECK(bongo_cat_import_install(manifest, data, &wrapped, &error) ==
+        BONGO_CAT_OK);
+    CHECK(wrapped.count == 1 && wrapped.installed_count == 0 &&
+        strcmp(first.ids[0], wrapped.ids[0]) == 0);
     char models_root[BONGO_CAT_PATH_CAP], adapter_metadata[BONGO_CAT_PATH_CAP];
     CHECK(child(models_root, sizeof(models_root), data, "models", false));
     BongoCatModelCatalog *installed = calloc(1, sizeof(*installed));

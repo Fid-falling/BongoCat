@@ -48,6 +48,9 @@ typedef struct BongoCatPackageMetadata {
     uint32_t capabilities;
 } BongoCatPackageMetadata;
 
+typedef struct BongoCatImportDigestCache BongoCatImportDigestCache;
+typedef struct BongoCatImportSession BongoCatImportSession;
+
 typedef BongoCatResult (*BongoCatImportVisitor)(void *userdata,
     const char *source, BongoCatImportDiscovery *discovery, BongoCatError *error);
 
@@ -86,9 +89,20 @@ bool bongo_cat_import_candidate_digest(const BongoCatImportCandidate *candidate,
     char output[65], BongoCatError *error);
 bool bongo_cat_import_candidate_inspect(const BongoCatImportCandidate *candidate,
     char output[65], bool *placeholder, BongoCatError *error);
+bool bongo_cat_import_candidate_inspect_cached(
+    const BongoCatImportCandidate *candidate, char output[65],
+    bool *placeholder, BongoCatImportDigestCache *cache,
+    BongoCatError *error);
+BongoCatImportDigestCache *bongo_cat_import_digest_cache_create(void);
+void bongo_cat_import_digest_cache_destroy(BongoCatImportDigestCache *cache);
+bool bongo_cat_import_digest_file_cached(BongoCatImportDigestCache *cache,
+    const char *path, uint64_t size, uint64_t modified, char output[65]);
 bool bongo_cat_import_prepare_package_metadata(
     BongoCatImportDiscovery *discovery,
     BongoCatPackageMetadata *metadata, BongoCatError *error);
+bool bongo_cat_import_prepare_package_metadata_cached(
+    BongoCatImportDiscovery *discovery, BongoCatPackageMetadata *metadata,
+    BongoCatImportDigestCache *cache, BongoCatError *error);
 const BongoCatModelEntry *bongo_cat_import_find_existing_package(
     const BongoCatModelCatalog *catalog,
     const BongoCatPackageMetadata *metadata, BongoCatModelMode mode);
@@ -116,5 +130,11 @@ BongoCatResult bongo_cat_import_nearby(BongoCatApp *app,
 BongoCatResult bongo_cat_import_install(const char *source,
     const char *data_root, BongoCatImportReceipt *receipt,
     BongoCatError *error);
+BongoCatImportSession *bongo_cat_import_session_create(const char *data_root,
+    BongoCatError *error);
+void bongo_cat_import_session_destroy(BongoCatImportSession *session);
+BongoCatResult bongo_cat_import_session_install(
+    BongoCatImportSession *session, const char *source,
+    BongoCatImportReceipt *receipt, BongoCatError *error);
 
 #endif

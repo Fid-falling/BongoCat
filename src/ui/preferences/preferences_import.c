@@ -1,4 +1,4 @@
-#include "preferences_internal.h"
+#include "preferences_import_internal.h"
 #include "preferences_state.h"
 #include "model_import.h"
 
@@ -6,37 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-typedef struct BongoCatImportJob {
-    size_t count;
-    char **paths;
-    char data_root[BONGO_CAT_PATH_CAP];
-    char first_id[BONGO_CAT_ID_CAP];
-    bool first_id_installed;
-    size_t resolved_count;
-    size_t installed_count;
-    BongoCatResult result;
-    BongoCatError error;
-    BongoCatImportDialog *dialog;
-    bool completion;
-} BongoCatImportJob;
-
-enum {
-    BONGO_CAT_IMPORT_EVENT_CODE = 0x42434e49,
-    BONGO_CAT_IMPORT_COMPLETE_CODE = 0x42434e4a
-};
-
-struct BongoCatImportDialog {
-    SDL_Mutex *mutex;
-    Uint32 event_type;
-    SDL_WindowID window_id;
-    SDL_Thread *worker;
-    BongoCatImportJob *worker_job;
-    int references;
-    bool active;
-    bool open;
-    bool busy;
-};
 
 static void free_job(BongoCatImportJob *job) {
     if (!job) return;
@@ -54,21 +23,6 @@ static void release_dialog(BongoCatImportDialog *dialog) {
         SDL_DestroyMutex(dialog->mutex);
         SDL_free(dialog);
     }
-}
-
-BongoCatImportDialog *bongo_cat_preferences_import_create(void) {
-    BongoCatImportDialog *dialog = SDL_calloc(1, sizeof(*dialog));
-    if (!dialog) return NULL;
-    dialog->event_type = SDL_RegisterEvents(1);
-    dialog->mutex = SDL_CreateMutex();
-    if (dialog->event_type == (Uint32)-1 || !dialog->mutex) {
-        if (dialog->mutex) SDL_DestroyMutex(dialog->mutex);
-        SDL_free(dialog);
-        return NULL;
-    }
-    dialog->references = 1;
-    dialog->active = true;
-    return dialog;
 }
 
 void bongo_cat_preferences_import_destroy(BongoCatImportDialog *dialog) {
@@ -92,17 +46,11 @@ void bongo_cat_preferences_import_destroy(BongoCatImportDialog *dialog) {
     }
     dialog->worker_job = NULL;
     dialog->busy = false;
+    dialog->started_ns = 0;
+    dialog->completed = dialog->total = 0;
     SDL_UnlockMutex(dialog->mutex);
     if (release_worker) release_dialog(dialog);
     release_dialog(dialog);
-}
-
-bool bongo_cat_preferences_import_is_open(const BongoCatImportDialog *dialog) {
-    if (!dialog) return false;
-    SDL_LockMutex(dialog->mutex);
-    bool open = dialog->open || dialog->busy;
-    SDL_UnlockMutex(dialog->mutex);
-    return open;
 }
 
 static BongoCatImportJob *copy_job(const char *const *files) {
@@ -134,11 +82,15 @@ static int SDLCALL import_worker(void *userdata) {
         SDL_ClearError();
     }
     job->result = BONGO_CAT_ERROR_FORMAT;
-    for (size_t i = 0; i < job->count; ++i) {
+    BongoCatImportSession *session = bongo_cat_import_session_create(
+        job->data_root, &job->error);
+    if (!session) job->result = job->error.code ? job->error.code :
+        BONGO_CAT_ERROR_IO;
+    for (size_t i = 0; session && i < job->count; ++i) {
         BongoCatImportReceipt receipt;
         BongoCatError error = {0};
-        BongoCatResult result = bongo_cat_import_install(job->paths[i],
-            job->data_root, &receipt, &error);
+        BongoCatResult result = bongo_cat_import_session_install(session,
+            job->paths[i], &receipt, &error);
         if (result == BONGO_CAT_OK) {
             for (size_t j = 0; j < receipt.count; ++j) {
                 if (!job->first_id[0] ||
@@ -155,7 +107,12 @@ static int SDLCALL import_worker(void *userdata) {
             job->result = result;
             job->error = error;
         }
+        SDL_LockMutex(job->dialog->mutex);
+        if (job->dialog->worker_job == job)
+            job->dialog->completed = i + 1;
+        SDL_UnlockMutex(job->dialog->mutex);
     }
+    bongo_cat_import_session_destroy(session);
     if (job->resolved_count) job->result = BONGO_CAT_OK;
     if (!job->resolved_count && !job->error.message[0])
         bongo_cat_error_set(&job->error, BONGO_CAT_ERROR_FORMAT,
@@ -175,6 +132,8 @@ static int SDLCALL import_worker(void *userdata) {
     if (!notify) {
         job->dialog->worker_job = NULL;
         job->dialog->busy = false;
+        job->dialog->started_ns = 0;
+        job->dialog->completed = job->dialog->total = 0;
     }
     SDL_UnlockMutex(job->dialog->mutex);
     if (!notify) {
@@ -198,11 +157,16 @@ static bool start_job(BongoCatImportDialog *dialog, BongoCatApp *app,
     dialog->window_id = window_id;
     dialog->busy = true;
     dialog->worker_job = job;
+    dialog->started_ns = SDL_GetTicksNS();
+    dialog->completed = 0;
+    dialog->total = job->count;
     ++dialog->references;
     dialog->worker = SDL_CreateThread(import_worker, "bongo-cat-model-import", job);
     if (!dialog->worker) {
         dialog->worker_job = NULL;
         dialog->busy = false;
+        dialog->started_ns = 0;
+        dialog->completed = dialog->total = 0;
         --dialog->references;
     }
     SDL_UnlockMutex(dialog->mutex);
@@ -241,7 +205,7 @@ bool bongo_cat_preferences_import_open(BongoCatImportDialog *dialog,
     dialog->window_id = SDL_GetWindowID(window);
     ++dialog->references;
     SDL_UnlockMutex(dialog->mutex);
-    SDL_ShowOpenFolderDialog(import_callback, dialog, window, NULL, false);
+    SDL_ShowOpenFolderDialog(import_callback, dialog, window, NULL, true);
     return true;
 }
 
@@ -254,13 +218,15 @@ static void complete_job(BongoCatImportDialog *dialog, BongoCatApp *app,
         dialog->worker = NULL;
         dialog->worker_job = NULL;
         dialog->busy = false;
+        dialog->started_ns = 0;
+        dialog->completed = dialog->total = 0;
     }
     SDL_UnlockMutex(dialog->mutex);
     if (worker) SDL_WaitThread(worker, NULL);
     if (job->result == BONGO_CAT_OK && job->first_id[0] &&
         job->first_id_installed) {
         SDL_GL_MakeCurrent(app->window, app->gl_context);
-        bongo_cat_app_rescan_models(app);
+        bongo_cat_app_refresh_installed_models(app);
         if (!bongo_cat_app_select_model(app, job->first_id)) {
             job->result = BONGO_CAT_ERROR_CUBISM;
             bongo_cat_error_set(&job->error, job->result,

@@ -10,23 +10,46 @@
 #include <string.h>
 
 #define MODEL_CARD_HEIGHT 214
-#define MODEL_LOAD_REPORTED_LIMIT .60f
+#define MODEL_LOAD_RENDER_INTERVAL_NS 33333333ull
 
 static const char *tr(BongoCatApp *app, const char *key,
     const char *fallback) {
     return bongo_cat_i18n_get(app->i18n, key, fallback);
 }
 
+static float visual_wait_progress(uint64_t elapsed) {
+    if (elapsed <= BONGO_CAT_MODEL_LOAD_VISUAL_RAMP_NS)
+        return .8f * (float)((double)elapsed /
+            BONGO_CAT_MODEL_LOAD_VISUAL_RAMP_NS);
+    uint64_t slow_elapsed = elapsed - BONGO_CAT_MODEL_LOAD_VISUAL_RAMP_NS;
+    uint64_t slow_duration = BONGO_CAT_MODEL_LOAD_VISUAL_DURATION_NS -
+        BONGO_CAT_MODEL_LOAD_VISUAL_RAMP_NS;
+    float slow = slow_duration ? (float)((double)slow_elapsed / slow_duration) : 1.0f;
+    return .8f + (BONGO_CAT_MODEL_LOAD_VISUAL_WAIT_CAP - .8f) *
+        NK_CLAMP(0.0f, slow, 1.0f);
+}
+
+void bongo_cat_preferences_model_visual_begin(BongoCatPreferences *value,
+    const char *model_id) {
+    if (!value || !model_id || !model_id[0]) return;
+    value->model_load_visual_active = true;
+    value->model_load_visual_started_ns = SDL_GetTicksNS();
+    value->model_load_visual_completion_ns = 0;
+    value->model_load_progress = 0.0f;
+    snprintf(value->model_load_visual_id,
+        sizeof(value->model_load_visual_id), "%s", model_id);
+}
+
 void bongo_cat_preferences_model_load_progress(BongoCatPreferences *value,
     float progress) {
     if (!value || !value->model_loading) return;
-    value->model_load_progress = NK_CLAMP(0.0f,
-        progress * MODEL_LOAD_REPORTED_LIMIT, MODEL_LOAD_REPORTED_LIMIT);
-    value->render_dirty = true;
+    (void)progress;
     uint64_t now = SDL_GetTicksNS();
-    bool due = progress >= .999f ||
-        progress - value->model_load_render_progress >= .02f ||
-        now - value->model_load_render_ns >= 16000000ull;
+    uint64_t elapsed = now - value->model_load_visual_started_ns;
+    value->model_load_progress = visual_wait_progress(elapsed);
+    value->render_dirty = true;
+    bool due = !value->model_load_render_ns ||
+        now - value->model_load_render_ns >= MODEL_LOAD_RENDER_INTERVAL_NS;
     if (value->window && due) {
         value->model_load_render_progress = progress;
         value->model_load_render_ns = now;
@@ -34,19 +57,42 @@ void bongo_cat_preferences_model_load_progress(BongoCatPreferences *value,
     }
 }
 
-static void finish_model_load_progress(BongoCatPreferences *value) {
-    if (!value || !value->window) {
-        if (value) value->model_load_progress = 1.0f;
-        return;
-    }
-    float start = value->model_load_progress;
-    for (int i = 1; i <= 10; ++i) {
-        float amount = (float)i / 10.0f;
+float bongo_cat_preferences_model_visual_progress(BongoCatPreferences *value,
+    const char *model_id) {
+    if (!value || !model_id || !value->model_load_visual_active ||
+        strcmp(value->model_load_visual_id, model_id)) return 0.0f;
+    uint64_t now = SDL_GetTicksNS();
+    uint64_t elapsed = now - value->model_load_visual_started_ns;
+    if (!value->model_loading && !value->model_selection_pending) {
+        if (!value->model_load_visual_completion_ns)
+            value->model_load_visual_completion_ns = now;
+        uint64_t completed = now - value->model_load_visual_completion_ns;
+        float amount = NK_CLAMP(0.0f, (float)((double)completed /
+            BONGO_CAT_MODEL_LOAD_VISUAL_COMPLETE_NS), 1.0f);
+        float start = visual_wait_progress(elapsed);
         value->model_load_progress = start + (1.0f - start) * amount;
+        if (amount >= 1.0f) {
+            value->model_load_visual_active = false;
+            value->model_load_visual_completion_ns = 0;
+            value->model_load_progress = 1.0f;
+        }
         value->render_dirty = true;
-        bongo_cat_preferences_render(value);
-        if (i < 10) SDL_Delay(8);
+        return value->model_load_progress;
     }
+    value->model_load_progress = visual_wait_progress(elapsed);
+    value->render_dirty = true;
+    return value->model_load_progress;
+}
+
+static void finish_model_load_progress(BongoCatPreferences *value) {
+    if (!value) return;
+    if (value->model_load_visual_active) {
+        uint64_t now = SDL_GetTicksNS();
+        value->model_load_visual_completion_ns = now;
+        value->model_load_progress = visual_wait_progress(now -
+            value->model_load_visual_started_ns);
+    } else value->model_load_progress = 1.0f;
+    value->render_dirty = true;
 }
 
 void bongo_cat_preferences_process_model_selection(BongoCatPreferences *value) {
@@ -60,11 +106,17 @@ void bongo_cat_preferences_process_model_selection(BongoCatPreferences *value) {
     value->model_load_progress = 0.0f;
     value->model_load_render_progress = 0.0f;
     value->model_load_render_ns = 0;
+    if (!value->model_load_visual_active || strcmp(value->model_load_visual_id, id))
+        bongo_cat_preferences_model_visual_begin(value, id);
     snprintf(value->loading_model_id, sizeof(value->loading_model_id), "%s", id);
     BongoCatError error = {0};
     bool selected = bongo_cat_app_select_model_with_error(value->app, id, &error);
     if (selected) finish_model_load_progress(value);
-    else value->model_load_progress = 0.0f;
+    else {
+        value->model_load_progress = 0.0f;
+        value->model_load_visual_active = false;
+        value->model_load_visual_id[0] = '\0';
+    }
     value->model_loading = false;
     value->loading_model_id[0] = '\0';
     if (!selected) bongo_cat_preferences_notice_show(value->app, tr(value->app,
@@ -89,8 +141,10 @@ void bongo_cat_preferences_import_complete(BongoCatApp *app,
     } else bongo_cat_preferences_notice_show(app, message,
         result != BONGO_CAT_OK || partial);
     if (result == BONGO_CAT_OK) {
-        if (installed_count)
-            bongo_cat_preferences_reload_fonts(app->preferences);
+        if (installed_count && app->preferences->page == 2) {
+            app->preferences->font_reload_pending = true;
+            app->preferences->font_reload_defer_once = true;
+        }
         SDL_Log("Resolved %zu model package(s); installed %zu new package(s)",
             resolved_count, installed_count);
     }

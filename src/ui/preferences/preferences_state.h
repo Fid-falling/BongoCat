@@ -5,6 +5,11 @@
 #include "preferences_scrollbar.h"
 #include "preferences_text_session.h"
 #include "ui_backend.h"
+
+#define BONGO_CAT_MODEL_LOAD_VISUAL_DURATION_NS 5000000000ull
+#define BONGO_CAT_MODEL_LOAD_VISUAL_RAMP_NS 3000000000ull
+#define BONGO_CAT_MODEL_LOAD_VISUAL_COMPLETE_NS 160000000ull
+#define BONGO_CAT_MODEL_LOAD_VISUAL_WAIT_CAP 0.95f
 #include "bongo_cat/i18n.h"
 #include "bongo_cat/preferences.h"
 #include "modal_frame.h"
@@ -45,14 +50,19 @@ struct BongoCatPreferences {
     bool frame_checked;
     bool render_dirty;
     bool font_reload_pending;
+    bool font_reload_defer_once;
     bool smoke_behavior_open_pending;
     bool model_selection_pending;
     bool model_loading;
+    bool model_load_visual_active;
     float model_load_progress;
     float model_load_render_progress;
     uint64_t model_load_render_ns;
+    uint64_t model_load_visual_started_ns;
+    uint64_t model_load_visual_completion_ns;
     char pending_model_id[BONGO_CAT_ID_CAP];
     char loading_model_id[BONGO_CAT_ID_CAP];
+    char model_load_visual_id[BONGO_CAT_ID_CAP];
     uint64_t last_render_ns;
     float pending_raster_scale;
     uint64_t raster_retry_ns;
@@ -112,8 +122,12 @@ void bongo_cat_preferences_assets_load(BongoCatPreferences *value);
 void bongo_cat_preferences_support_assets_load(BongoCatPreferences *value);
 void bongo_cat_preferences_support_assets_clear(BongoCatPreferences *value);
 void bongo_cat_preferences_process_model_selection(BongoCatPreferences *value);
+void bongo_cat_preferences_model_visual_begin(BongoCatPreferences *value,
+    const char *model_id);
 void bongo_cat_preferences_model_load_progress(BongoCatPreferences *value,
     float progress);
+float bongo_cat_preferences_model_visual_progress(BongoCatPreferences *value,
+    const char *model_id);
 void bongo_cat_preferences_assets_clear(BongoCatPreferences *value);
 void bongo_cat_preferences_model_cover_cache_clear(BongoCatApp *app);
 void bongo_cat_preferences_page_cache_clear(BongoCatPreferences *value,

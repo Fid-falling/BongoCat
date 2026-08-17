@@ -61,7 +61,9 @@ set(BONGO_CAT_RUNTIME_MODEL_SOURCES
 
 set(BONGO_CAT_RUNTIME_IMPORT_SOURCES
   src/runtime/model/import/model_import.c
+  src/runtime/model/import/model_import_adapter.c
   src/runtime/model/import/model_import_digest.c
+  src/runtime/model/import/model_import_digest_cache.c
   src/runtime/model/import/model_import_discovery.c
   src/runtime/model/import/model_import_format.c
   src/runtime/model/import/model_import_identity.c
@@ -140,6 +142,7 @@ set(BONGO_CAT_UI_PREFERENCES_SOURCES
   src/ui/preferences/preferences_dialog.c
   src/ui/preferences/preferences_fonts.c
   src/ui/preferences/preferences_import.c
+  src/ui/preferences/preferences_import_dialog.c
   src/ui/preferences/preferences_language.c
   src/ui/preferences/preferences_live_resize.c
   src/ui/preferences/preferences_model.c

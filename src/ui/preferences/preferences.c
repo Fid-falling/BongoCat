@@ -93,6 +93,9 @@ void bongo_cat_preferences_close(BongoCatPreferences *value) {
     value->transparent_window = false;
     value->ui_initialized = false;
     value->font_reload_pending = false;
+    value->font_reload_defer_once = false;
+    value->model_load_visual_active = false;
+    value->model_load_visual_completion_ns = 0;
     value->smoke_behavior_open_pending = false;
     value->native_drag = false;
     value->chrome_dragging = false;
@@ -118,9 +121,19 @@ bool bongo_cat_preferences_open_model_import(BongoCatPreferences *value,
         value->import_dialog, parent);
 }
 bool bongo_cat_preferences_visible(const BongoCatPreferences *value) { return value && value->window; }
-bool bongo_cat_preferences_needs_frame(const BongoCatPreferences *value) {
-    if (!value || !value->window) return false;
+bool bongo_cat_preferences_needs_frame(BongoCatPreferences *value) {
+    if (!value) return false;
     uint64_t now = SDL_GetTicksNS();
+    if (value->model_load_visual_active &&
+        !value->model_load_visual_completion_ns && !value->model_loading &&
+        !value->model_selection_pending && now -
+        value->model_load_visual_started_ns >=
+            BONGO_CAT_MODEL_LOAD_VISUAL_DURATION_NS) {
+        value->model_load_visual_active = false;
+        value->model_load_progress = 1.0f;
+        value->render_dirty = true;
+    }
+    if (!value->window) return false;
     if (value->render_retry_ns > now) return false;
     bool raster_due = value->pending_raster_scale > 0.0f &&
         value->raster_retry_ns <= now;

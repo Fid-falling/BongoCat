@@ -72,6 +72,8 @@ void bongo_cat_preferences_import_destroy(BongoCatImportDialog *dialog);
 bool bongo_cat_preferences_import_open(BongoCatImportDialog *dialog,
     SDL_Window *window);
 bool bongo_cat_preferences_import_is_open(const BongoCatImportDialog *dialog);
+bool bongo_cat_preferences_import_status(const BongoCatImportDialog *dialog,
+    uint64_t *started_ns, size_t *completed, size_t *total);
 bool bongo_cat_preferences_import_event(BongoCatImportDialog *dialog,
     BongoCatApp *app, const SDL_Event *event);
 

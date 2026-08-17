@@ -5,6 +5,7 @@
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 typedef struct TreeContext {
@@ -109,24 +110,52 @@ static void scan_nearby_root(BongoCatApp *app, const char *root) {
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
 }
 
-void bongo_cat_app_rescan_models(BongoCatApp *app) {
-    if (!app) return;
+static void scan_owned_models(BongoCatApp *app, bool cleanup) {
     BongoCatError error = {0};
     char root[BONGO_CAT_PATH_CAP];
     bongo_cat_models_init(&app->models);
     bongo_cat_path_join(root, sizeof(root), app->asset_root, "models");
     bongo_cat_models_scan(&app->models, root, true, &error);
     if (custom_root(app, root, sizeof(root))) {
-        bongo_cat_model_cleanup_imports(root, &error);
+        if (cleanup) bongo_cat_model_cleanup_imports(root, &error);
         bongo_cat_models_scan(&app->models, root, false, &error);
     }
-    const char *base = SDL_GetBasePath();
-    if (!SDL_getenv("BONGO_CAT_DISABLE_NEARBY_MODEL_SCAN"))
-        scan_nearby_root(app, base);
+}
+
+static void finish_model_catalog(BongoCatApp *app) {
     prune_behavior_shortcuts(app);
     for (size_t i = 0; i < app->models.count; ++i)
         bongo_cat_import_apply_metadata(app, app->models.entries[i].id,
             app->models.entries[i].adapter_directory);
+}
+
+void bongo_cat_app_rescan_models(BongoCatApp *app) {
+    if (!app) return;
+    scan_owned_models(app, true);
+    const char *base = SDL_GetBasePath();
+    if (!SDL_getenv("BONGO_CAT_DISABLE_NEARBY_MODEL_SCAN"))
+        scan_nearby_root(app, base);
+    finish_model_catalog(app);
+}
+
+void bongo_cat_app_refresh_installed_models(BongoCatApp *app) {
+    if (!app) return;
+    BongoCatModelCatalog *previous = malloc(sizeof(*previous));
+    if (!previous) {
+        bongo_cat_app_rescan_models(app);
+        return;
+    }
+    *previous = app->models;
+    scan_owned_models(app, false);
+    for (size_t i = 0; i < previous->count &&
+        app->models.count < BONGO_CAT_MODEL_CAP; ++i) {
+        const BongoCatModelEntry *entry = &previous->entries[i];
+        if (!entry->managed || bongo_cat_models_find(&app->models, entry->id))
+            continue;
+        app->models.entries[app->models.count++] = *entry;
+    }
+    free(previous);
+    finish_model_catalog(app);
 }
 
 BongoCatResult bongo_cat_app_remove_model(BongoCatApp *app, const char *id,

@@ -22,6 +22,14 @@ typedef struct BongoCatApp {
     BongoCatShortcutState shortcut_state;
     BongoCatModelCatalog models;
     BongoCatBehaviorCatalog behaviors;
+    /* One immutable installed package's behavior catalog can be reused when
+       the user toggles back to it. Nearby source models are excluded because
+       their files may change outside the application. */
+    BongoCatBehaviorCatalog behavior_cache;
+    char behavior_cache_model_id[BONGO_CAT_ID_CAP];
+    char behavior_cache_digest[65];
+    bool behavior_cache_valid;
+    bool behavior_catalog_valid;
     BongoCatLive2DRenderOptions model_render_options;
     BongoCatI18n *i18n;
     BongoCatPlatform platform;
@@ -155,6 +163,7 @@ void bongo_cat_app_restore_behavior_state(BongoCatApp *app,
 BongoCatResult bongo_cat_app_import_model(BongoCatApp *app, const char *source, BongoCatError *error);
 BongoCatResult bongo_cat_app_remove_model(BongoCatApp *app, const char *id, BongoCatError *error);
 void bongo_cat_app_rescan_models(BongoCatApp *app);
+void bongo_cat_app_refresh_installed_models(BongoCatApp *app);
 void bongo_cat_config_store_flush(BongoCatApp *app);
 
 #endif

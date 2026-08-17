@@ -50,17 +50,18 @@ static const char *display_source(const BongoCatImportCandidate *candidate,
     return source;
 }
 
-bool bongo_cat_import_prepare_package_metadata(
+bool bongo_cat_import_prepare_package_metadata_cached(
     BongoCatImportDiscovery *discovery,
-    BongoCatPackageMetadata *metadata, BongoCatError *error) {
+    BongoCatPackageMetadata *metadata, BongoCatImportDigestCache *cache,
+    BongoCatError *error) {
     char family_material[BONGO_CAT_IMPORT_CANDIDATE_CAP * 66 + 32];
     size_t used = 0, output = 0;
     for (size_t i = 0; i < discovery->count; ++i) {
         BongoCatImportCandidate candidate = discovery->candidates[i];
         BongoCatPackageMetadata *item = &metadata[output];
         bool placeholder = false;
-        if (!bongo_cat_import_candidate_inspect(&candidate,
-            item->content_digest, &placeholder, error)) return false;
+        if (!bongo_cat_import_candidate_inspect_cached(&candidate,
+            item->content_digest, &placeholder, cache, error)) return false;
         if (placeholder) continue;
         discovery->candidates[output] = candidate;
         int written = snprintf(family_material + used,
@@ -93,6 +94,13 @@ bool bongo_cat_import_prepare_package_metadata(
                 "family-%s", digest);
     }
     return true;
+}
+
+bool bongo_cat_import_prepare_package_metadata(
+    BongoCatImportDiscovery *discovery,
+    BongoCatPackageMetadata *metadata, BongoCatError *error) {
+    return bongo_cat_import_prepare_package_metadata_cached(discovery,
+        metadata, NULL, error);
 }
 
 const BongoCatModelEntry *bongo_cat_import_find_existing_package(

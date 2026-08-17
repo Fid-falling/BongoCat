@@ -46,6 +46,19 @@ bool bongo_cat_preferences_model_import_card(BongoCatPreferences *value,
     nk_fill_rect(canvas, bounds, 14, hover ? p.hover_pink : p.hover);
     bongo_cat_ui_paint_dashed_rounded(context, bounds, 14, 2, 5, 5,
         hover ? p.pink : p.accent);
+    uint64_t import_started = 0;
+    bool importing = bongo_cat_preferences_import_status(value->import_dialog,
+        &import_started, NULL, NULL);
+    if (importing && import_started) {
+        const double lap_ns = 5000000000.0;
+        double elapsed = (double)(SDL_GetTicksNS() - import_started);
+        float progress = (float)fmod(elapsed / lap_ns, 1.0);
+        struct nk_rect outline =
+            bongo_cat_preferences_model_card_outline_bounds(bounds, 2.0f);
+        bongo_cat_preferences_model_card_draw_progress(canvas, outline,
+            13.0f, 2.0f, progress, p.pink);
+        value->render_dirty = true;
+    }
     float cx = bounds.x + bounds.w * .5f, cy = bounds.y + 91;
     bongo_cat_preferences_icon_draw(value, canvas,
         BONGO_CAT_UI_ICON_UPLOAD, nk_rect(cx - 20, cy - 20, 40, 40), p.pink);
@@ -77,6 +90,8 @@ void bongo_cat_preferences_model_select(BongoCatPreferences *value,
         return;
     snprintf(value->pending_model_id, sizeof(value->pending_model_id), "%s",
         entry->id);
+    if (strcmp(entry->id, value->app->session.active_model_id))
+        bongo_cat_preferences_model_visual_begin(value, entry->id);
     value->model_selection_pending = true;
     value->model_load_progress = 0.0f;
     bongo_cat_preferences_invalidate(value);
@@ -160,12 +175,9 @@ void bongo_cat_preferences_model_card(BongoCatPreferences *value,
     struct nk_context *context, const BongoCatModelEntry *entry) {
     BongoCatApp *app = value->app;
     bool selected = !strcmp(entry->id, app->session.active_model_id);
-    bool transitioning = value->model_selection_pending || value->model_loading;
-    const char *transition_id = value->model_loading ? value->loading_model_id :
-        value->pending_model_id;
-    bool transition_target = transitioning && transition_id[0] &&
-        !strcmp(entry->id, transition_id);
-    bool selected_visual = selected && !transitioning;
+    bool visual_target = value->model_load_visual_active &&
+        !strcmp(entry->id, value->model_load_visual_id);
+    bool selected_visual = selected && !visual_target;
     struct nk_rect bounds;
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return;
     bounds.y += 5.0f; bounds.h += 1.0f;
@@ -202,13 +214,14 @@ void bongo_cat_preferences_model_card(BongoCatPreferences *value,
     bool name_hover = bongo_cat_preferences_model_name_draw(value,
         context, canvas, entry, name_bounds, p);
     bool action_hover = false;
-    draw_actions(value, context, canvas, bounds, entry, p, selected_visual,
+    draw_actions(value, context, canvas, bounds, entry, p, selected,
         &action_hover);
     float outline_width = 1.0f + selection_amount;
     struct nk_rect outline = bongo_cat_preferences_model_card_outline_bounds(
         bounds, outline_width);
-    float progress = selected_visual ? 1.0f : transition_target ?
-        value->model_load_progress : 0.0f;
+    float progress = visual_target ?
+        bongo_cat_preferences_model_visual_progress(value, entry->id) :
+        selected_visual ? 1.0f : 0.0f;
     struct nk_color outline_color = progress >= .999f ? p.pink :
         bongo_cat_ui_color_mix(
             bongo_cat_ui_color_mix(p.border_subtle, p.accent, lift),

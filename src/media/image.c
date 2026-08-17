@@ -139,7 +139,16 @@ unsigned int bongo_cat_image_texture_model(const char *path, bool direct_decode,
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &hardware_limit);
     if (hardware_limit < 1) hardware_limit = BONGO_CAT_LIVE2D_EFFICIENT_TEXTURE_LIMIT;
 #ifdef _WIN32
-    int decode_limit = hardware_limit;
+    /*
+     * A model atlas can advertise 8192px even when the pet is rendered in a
+     * few hundred pixels. Decoding that atlas at full size costs hundreds of
+     * MB of temporary RAM and makes alpha-mask generation and glTexImage2D
+     * dominate model switching. Keep a bounded working size for normal loads;
+     * this is still well above the largest bundled 1024px atlas. The hardware
+     * limit remains authoritative on low-end GPUs.
+     */
+    int decode_limit = SDL_min(hardware_limit,
+        BONGO_CAT_LIVE2D_EFFICIENT_TEXTURE_LIMIT);
     /* Preset atlases are verified byte-identical in WIC and stb. Keep WIC for
        custom PNG color metadata and for memory-bounded oversized decoding. */
     bool scaled = bongo_cat_image_needs_wic_scaling(path, decode_limit);
