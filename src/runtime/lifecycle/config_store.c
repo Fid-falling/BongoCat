@@ -51,6 +51,12 @@ static uint64_t session_hash(const BongoCatSessionState *session) {
     HASH_FIELD(session->window.width);
     HASH_FIELD(session->window.height);
     HASH_FIELD(session->active_model_id);
+    HASH_FIELD(session->additional_model_count);
+    size_t model_count = session->additional_model_count;
+    if (model_count > BONGO_CAT_ADDITIONAL_MODEL_CAP)
+        model_count = BONGO_CAT_ADDITIONAL_MODEL_CAP;
+    hash = hash_bytes(hash, session->additional_model_ids,
+        model_count * sizeof(session->additional_model_ids[0]));
     HASH_FIELD(session->active_behavior_count);
     size_t behavior_count = session->active_behavior_count;
     if (behavior_count > BONGO_CAT_BEHAVIOR_BINDING_CAP)
@@ -163,7 +169,7 @@ void bongo_cat_config_store_update(BongoCatApp *app, uint64_t now) {
     if (!app || app->smoke || !app->settings_path[0] || !app->session_path[0]) return;
     uint64_t settings = settings_hash(&app->settings);
     uint64_t session = session_hash(&app->session);
-    if (!app->settings_store_blocked) {
+    if (!app->secondary_pet && !app->settings_store_blocked) {
         if (settings != app->settings_observed_hash) {
             app->settings_observed_hash = settings;
             app->settings_save_due_ns = now + SAVE_DELAY_NS;
@@ -179,7 +185,8 @@ void bongo_cat_config_store_update(BongoCatApp *app, uint64_t now) {
             !app->session_save_due_ns)
             app->session_save_due_ns = now + SAVE_DELAY_NS;
     }
-    if (!app->settings_store_blocked && app->settings_save_due_ns &&
+    if (!app->secondary_pet && !app->settings_store_blocked &&
+        app->settings_save_due_ns &&
         now >= app->settings_save_due_ns)
         app->settings_save_due_ns = save_settings(app)
             ? 0 : now + RETRY_DELAY_NS;
@@ -193,7 +200,7 @@ void bongo_cat_config_store_flush(BongoCatApp *app) {
     if (!app || app->smoke || !app->settings_path[0] || !app->session_path[0]) return;
     uint64_t settings = settings_hash(&app->settings);
     uint64_t session = session_hash(&app->session);
-    if (!app->settings_store_blocked &&
+    if (!app->secondary_pet && !app->settings_store_blocked &&
         settings != app->settings_saved_hash) save_settings(app);
     if (!app->session_store_blocked &&
         session != app->session_saved_hash) save_session(app);

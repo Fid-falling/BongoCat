@@ -29,19 +29,34 @@ static void check_defaults_and_validation(void) {
     static BongoCatSessionState session;
     bongo_cat_settings_defaults(&settings);
     bongo_cat_session_defaults(&session);
-    CHECK(settings.model.max_fps == 60 && settings.model.mouse_centered);
+    CHECK(settings.model.max_fps == 60 && settings.model.mouse_centered &&
+        !settings.model.multiple_pets);
     CHECK(settings.window.always_on_top && !settings.window.keep_in_screen);
     CHECK(!settings.window.obs_background);
+    CHECK(!settings.window.random_expression &&
+        settings.window.random_expression_interval_seconds ==
+        BONGO_CAT_DEFAULT_RANDOM_EXPRESSION_SECONDS);
     CHECK(settings.window.obs_background_color ==
         BONGO_CAT_OBS_BACKGROUND_GREEN);
     CHECK(session.window.visible && session.window.width == 612 &&
         session.window.height == 354);
     CHECK(strcmp(session.active_model_id, "standard") == 0);
-
+    CHECK(session.additional_model_count == 0);
+    CHECK(bongo_cat_session_add_model(&session, "keyboard"));
+    CHECK(bongo_cat_session_add_model(&session, "keyboard"));
+    CHECK(bongo_cat_session_add_model(&session, "gamepad"));
+    CHECK(session.additional_model_count == 2 &&
+        bongo_cat_session_model_active(&session, "standard") &&
+        bongo_cat_session_model_active(&session, "keyboard"));
+    CHECK(bongo_cat_session_remove_model(&session, "keyboard"));
+    CHECK(session.additional_model_count == 1 &&
+        !bongo_cat_session_model_active(&session, "keyboard"));
+    bongo_cat_session_clear_additional_models(&session);
     settings.model.max_fps = 900;
     settings.model.auto_release_seconds = NAN;
     settings.window.obs_background_color = BONGO_CAT_OBS_BACKGROUND_COLOR_COUNT;
     settings.window.hide_delay_seconds = NAN;
+    settings.window.random_expression_interval_seconds = NAN;
     session.window.scale_percent = -2.0f;
     session.window.opacity_percent = NAN;
     session.active_behavior_count = 3;
@@ -58,6 +73,8 @@ static void check_defaults_and_validation(void) {
     CHECK(settings.model.auto_release_seconds ==
         BONGO_CAT_DEFAULT_AUTO_RELEASE_SECONDS);
     CHECK(settings.window.hide_delay_seconds == 0.0f);
+    CHECK(settings.window.random_expression_interval_seconds ==
+        BONGO_CAT_DEFAULT_RANDOM_EXPRESSION_SECONDS);
     CHECK(settings.window.obs_background_color ==
         BONGO_CAT_OBS_BACKGROUND_GREEN);
     CHECK(session.window.scale_percent == 10.0f);
@@ -135,10 +152,13 @@ void test_config(void) {
     bongo_cat_settings_defaults(&settings);
     bongo_cat_session_defaults(&session);
     settings.model.max_fps = 30;
+    settings.model.multiple_pets = true;
     settings.model.mirror = true;
     settings.model.mouse_centered = false;
     settings.window.pass_through = true;
     settings.window.obs_background = true;
+    settings.window.random_expression = true;
+    settings.window.random_expression_interval_seconds = 12.0f;
     settings.window.obs_background_color = BONGO_CAT_OBS_BACKGROUND_BLUE;
     settings.app.language = BONGO_CAT_LANG_ZH_CN;
     memcpy(settings.extensions_json, "{\"example\":{\"enabled\":true}}",
@@ -155,6 +175,8 @@ void test_config(void) {
     session.window.position_known = true;
     session.window.opacity_percent = 75.0f;
     memcpy(session.active_model_id, "model", sizeof("model"));
+    CHECK(bongo_cat_session_add_model(&session, "keyboard"));
+    CHECK(bongo_cat_session_add_model(&session, "gamepad"));
     session.active_behavior_count = 2;
     memcpy(session.active_behaviors[0].model_id, "model",
         sizeof("model"));
@@ -174,10 +196,15 @@ void test_config(void) {
         BONGO_CAT_OK);
     CHECK(contains_text(settings_path, "\"format\": \"bongocat/settings\""));
     CHECK(contains_text(settings_path, "\"captureBackground\": true"));
+    CHECK(contains_text(settings_path, "\"randomExpression\": true"));
+    CHECK(contains_text(settings_path,
+        "\"randomExpressionIntervalSeconds\": 12.0"));
+    CHECK(contains_text(settings_path, "\"multiplePets\": true"));
     CHECK(contains_text(settings_path, "\"example\""));
     CHECK(!contains_text(settings_path, "activeModelId"));
     CHECK(contains_text(session_path, "\"format\": \"bongocat/session\""));
     CHECK(contains_text(session_path, "\"activeModelId\": \"model\""));
+    CHECK(contains_text(session_path, "\"additionalModelIds\""));
     CHECK(contains_text(session_path, "\"activeBehaviors\""));
     CHECK(contains_text(session_path,
         "\"behaviorId\": \"model:expression:2\""));
@@ -191,9 +218,12 @@ void test_config(void) {
         BONGO_CAT_OK);
     CHECK(bongo_cat_session_load(session_path, &loaded_session, &error) ==
         BONGO_CAT_OK);
-    CHECK(loaded_settings.model.max_fps == 30 && loaded_settings.model.mirror);
+    CHECK(loaded_settings.model.max_fps == 30 && loaded_settings.model.mirror &&
+        loaded_settings.model.multiple_pets);
     CHECK(loaded_settings.window.pass_through &&
-        loaded_settings.window.obs_background);
+        loaded_settings.window.obs_background &&
+        loaded_settings.window.random_expression &&
+        loaded_settings.window.random_expression_interval_seconds == 12.0f);
     CHECK(loaded_settings.app.language == BONGO_CAT_LANG_ZH_CN);
     CHECK(strstr(loaded_settings.extensions_json,
         "\"enabled\":true") != NULL);
@@ -203,6 +233,9 @@ void test_config(void) {
     CHECK(loaded_session.window.x == -321 &&
         loaded_session.window.opacity_percent == 75.0f);
     CHECK(strcmp(loaded_session.active_model_id, "model") == 0);
+    CHECK(loaded_session.additional_model_count == 2 &&
+        bongo_cat_session_model_active(&loaded_session, "keyboard") &&
+        bongo_cat_session_model_active(&loaded_session, "gamepad"));
     CHECK(loaded_session.active_behavior_count == 2);
     CHECK(strcmp(loaded_session.active_behaviors[0].behavior_id,
         "model:motion:Tap:0") == 0);

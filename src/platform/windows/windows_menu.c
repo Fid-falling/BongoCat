@@ -41,15 +41,22 @@ static void destroy_unattached(HMENU menu, HMENU sizes, HMENU opacity,
 BongoCatMenuAction bongo_cat_platform_context_menu(BongoCatPlatform *platform,
     const BongoCatMenuLabels *labels) {
     if (!platform || !labels) return BONGO_CAT_MENU_NONE;
-    HMENU menu = CreatePopupMenu(), sizes = CreatePopupMenu(), opacity = CreatePopupMenu();
+    HMENU menu = CreatePopupMenu();
+    if (!menu) return BONGO_CAT_MENU_NONE;
+    HMENU sizes = CreatePopupMenu(), opacity = CreatePopupMenu();
     HMENU models = CreatePopupMenu();
     HMENU motions = labels->motion_count ? CreatePopupMenu() : NULL;
     HMENU expressions = labels->expression_count ? CreatePopupMenu() : NULL;
-    if (!menu || !sizes || !opacity || !models ||
+    if (!sizes || !opacity || !models ||
         (labels->motion_count && !motions) ||
         (labels->expression_count && !expressions)) {
         destroy_unattached(menu, sizes, opacity, models, motions, expressions);
         return BONGO_CAT_MENU_NONE;
+    }
+    if (labels->remove_pet_visible) {
+        menu_text(menu, MF_STRING, BONGO_CAT_MENU_REMOVE_PET,
+            labels->remove_pet);
+        AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
     }
     menu_text(menu, MF_STRING, BONGO_CAT_MENU_PREFERENCES, labels->preferences);
     menu_text(menu, MF_STRING, BONGO_CAT_MENU_HIDE, labels->hide);

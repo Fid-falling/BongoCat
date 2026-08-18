@@ -53,6 +53,8 @@ struct BongoCatPreferences {
     bool font_reload_defer_once;
     bool smoke_behavior_open_pending;
     bool model_selection_pending;
+    bool pending_model_multiple;
+    bool pending_model_active;
     bool model_loading;
     bool model_load_visual_active;
     float model_load_progress;

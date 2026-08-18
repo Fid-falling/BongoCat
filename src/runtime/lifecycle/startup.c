@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <limits.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -130,6 +131,23 @@ static bool parse_arguments(BongoCatApp *app, int argc, char **argv,
         } else if (strncmp(arg, "--storage-root=", 15) == 0) {
             if (!store_argument(app->storage_root, sizeof(app->storage_root),
                 arg + 15, "Storage", error)) return false;
+        } else if (strncmp(arg, "--secondary-pet=", 16) == 0) {
+            if (!store_argument(app->secondary_model_id,
+                sizeof(app->secondary_model_id), arg + 16,
+                "Secondary model", error)) return false;
+            app->secondary_pet = app->secondary_model_id[0] != '\0';
+        } else if (strncmp(arg, "--secondary-position=", 21) == 0) {
+            char *separator = NULL, *end = NULL;
+            long x = strtol(arg + 21, &separator, 10);
+            long y = separator && *separator == ',' ?
+                strtol(separator + 1, &end, 10) : 0;
+            app->secondary_origin_known = separator != arg + 21 && end &&
+                end != separator + 1 && !*end && x >= INT_MIN && x <= INT_MAX &&
+                y >= INT_MIN && y <= INT_MAX;
+            if (app->secondary_origin_known) {
+                app->secondary_origin_x = (int)x;
+                app->secondary_origin_y = (int)y;
+            }
         } else if (strncmp(arg, "--ci-import=", 12) == 0) {
             if (!store_argument(app->smoke_import_path, sizeof(app->smoke_import_path),
                 arg + 12, "Import", error)) return false;

@@ -52,6 +52,7 @@ typedef enum BongoCatMenuAction {
     BONGO_CAT_MENU_OPACITY_100,
     BONGO_CAT_MENU_EXIT,
     BONGO_CAT_MENU_MODEL_ADD,
+    BONGO_CAT_MENU_REMOVE_PET,
     BONGO_CAT_MENU_MODEL_FIRST = 1000,
     BONGO_CAT_MENU_MOTION_FIRST = 2000,
     BONGO_CAT_MENU_EXPRESSION_FIRST = 3000
@@ -74,6 +75,8 @@ typedef struct BongoCatMenuLabels {
     void (*preview_tick)(void *userdata);
     BongoCatMenuPreview restore;
     void *preview_userdata;
+    const char *remove_pet;
+    bool remove_pet_visible;
 } BongoCatMenuLabels;
 
 typedef void (*BongoCatTrayClick)(void *userdata);

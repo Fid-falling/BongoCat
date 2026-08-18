@@ -22,6 +22,7 @@
           "keepInScreen": "Auf dem Bildschirm halten",
           "windowSize": "Fenstergröße",
           "opacity": "Deckkraft",
+          "randomExpression": "Zufällige Ausdrücke",
           "obsBackground": "Einfarbiger Hintergrund",
           "autoReleaseDelay": "Verzögerung der automatischen Freigabe",
           "hideOnHover": "Beim Darüberfahren ausblenden",
@@ -175,6 +176,9 @@
     }
   },
   "native": {
+    "multiplePets": "Mehrere gleichzeitig anzeigen",
+    "multiplePetsLimit": "Bis zu 8 Desktop-Begleiter k\u00f6nnen gleichzeitig angezeigt werden",
+    "removeDesktopPet": "Diesen Desktop-Begleiter entfernen",
     "modelLoadFailed": "Dieses Modell kann nicht angezeigt werden",
     "noBehaviors": "Keine Einträge",
     "support": {

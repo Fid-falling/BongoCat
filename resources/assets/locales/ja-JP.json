@@ -22,6 +22,7 @@
           "keepInScreen": "画面内に保持",
           "windowSize": "ウィンドウサイズ",
           "opacity": "不透明度",
+          "randomExpression": "ランダム表情",
           "obsBackground": "単色背景",
           "autoReleaseDelay": "自動リリースまでの時間",
           "hideOnHover": "ホバー時に非表示",
@@ -175,6 +176,9 @@
     }
   },
   "native": {
+    "multiplePets": "複数を同時に表示",
+    "multiplePetsLimit": "\u4e00\u5ea6\u306b\u8868\u793a\u3067\u304d\u308b\u30c7\u30b9\u30af\u30c8\u30c3\u30d7\u30da\u30c3\u30c8\u306f 8 \u4f53\u307e\u3067\u3067\u3059",
+    "removeDesktopPet": "\u3053\u306e\u30da\u30c3\u30c8\u3092\u8868\u793a\u304b\u3089\u5916\u3059",
     "modelLoadFailed": "このモデルを表示できません",
     "noBehaviors": "項目がありません",
     "support": {

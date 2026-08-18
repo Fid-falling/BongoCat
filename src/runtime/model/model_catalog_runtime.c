@@ -15,7 +15,32 @@ typedef struct TreeContext {
     unsigned depth;
 } TreeContext;
 
+typedef struct ModelSelection {
+    char additional[BONGO_CAT_ADDITIONAL_MODEL_CAP][BONGO_CAT_ID_CAP];
+    size_t count;
+} ModelSelection;
+
 enum { MODEL_TREE_DEPTH_CAP = 32 };
+
+static ModelSelection capture_model_selection(const BongoCatApp *app) {
+    ModelSelection selection = {0};
+    selection.count = app->session.additional_model_count;
+    if (selection.count > BONGO_CAT_ADDITIONAL_MODEL_CAP)
+        selection.count = BONGO_CAT_ADDITIONAL_MODEL_CAP;
+    memcpy(selection.additional, app->session.additional_model_ids,
+        selection.count * sizeof(selection.additional[0]));
+    return selection;
+}
+
+static void restore_model_selection(BongoCatApp *app,
+    const ModelSelection *selection) {
+    bongo_cat_session_clear_additional_models(&app->session);
+    for (size_t i = 0; i < selection->count; ++i)
+        if (bongo_cat_models_find(&app->models, selection->additional[i]))
+            bongo_cat_session_add_model(&app->session,
+                selection->additional[i]);
+    bongo_cat_multi_pet_primary_update(app, SDL_GetTicksNS());
+}
 
 static bool copy_tree(const char *source, const char *target, unsigned depth,
     BongoCatError *error);
@@ -177,11 +202,22 @@ BongoCatResult bongo_cat_app_remove_model(BongoCatApp *app, const char *id,
             : "Built-in models cannot be removed: %s", id);
         return BONGO_CAT_ERROR_ARGUMENT;
     }
-    bool selected = !strcmp(id, app->session.active_model_id) ||
+    bool primary = !strcmp(id, app->session.active_model_id) ||
         !strcmp(id, app->loaded_model);
+    bool additional = !primary && bongo_cat_app_model_active(app, id);
+    ModelSelection previous_selection = capture_model_selection(app);
     char directory[BONGO_CAT_PATH_CAP];
     snprintf(directory, sizeof(directory), "%s", entry->storage_directory);
-    if (selected) {
+    if (additional) {
+        BongoCatError deactivate_error = {0};
+        if (!bongo_cat_app_set_model_active(app, id, false,
+                &deactivate_error)) {
+            bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM,
+                "Cannot stop the active model: %s",
+                deactivate_error.message);
+            return BONGO_CAT_ERROR_PLATFORM;
+        }
+    } else if (primary) {
         BongoCatError load_error = {0};
         bool replacement = false;
         for (size_t i = 0; i < app->models.count; ++i)
@@ -201,15 +237,19 @@ BongoCatResult bongo_cat_app_remove_model(BongoCatApp *app, const char *id,
     }
     if (!bongo_cat_model_remove_tree(directory, error)) {
         bongo_cat_app_rescan_models(app);
-        if (selected && bongo_cat_models_find(&app->models, id)) {
+        bool restore_selection = additional;
+        if (primary && bongo_cat_models_find(&app->models, id)) {
             BongoCatError restore_error = {0};
-            if (!bongo_cat_app_select_model_with_error(app, id,
-                &restore_error))
+            restore_selection = bongo_cat_app_select_model_with_error(app, id,
+                &restore_error);
+            if (!restore_selection)
                 SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
                     "Unable to restore model after deletion failed: %s",
                     restore_error.message[0] ? restore_error.message :
                     "unknown error");
         }
+        if (restore_selection)
+            restore_model_selection(app, &previous_selection);
         return BONGO_CAT_ERROR_IO;
     }
     bongo_cat_settings_set_model_label(&app->settings, id, "");

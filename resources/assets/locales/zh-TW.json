@@ -22,6 +22,7 @@
           "keepInScreen": "保持在螢幕內",
           "windowSize": "視窗尺寸",
           "opacity": "不透明度",
+          "randomExpression": "隨機表情",
           "obsBackground": "純色背景",
           "autoReleaseDelay": "按鍵自動釋放延遲",
           "hideOnHover": "滑鼠游標移入隱藏",
@@ -175,6 +176,9 @@
     }
   },
   "native": {
+    "multiplePets": "同時顯示多個",
+    "multiplePetsLimit": "\u6700\u591a\u53ef\u540c\u6642\u986f\u793a 8 \u500b\u684c\u5bf5",
+    "removeDesktopPet": "\u79fb\u9664\u6b64\u684c\u5bf5",
     "modelLoadFailed": "\u6a21\u578b\u7121\u6cd5\u986f\u793a",
     "noBehaviors": "暫無可用項目",
     "support": {

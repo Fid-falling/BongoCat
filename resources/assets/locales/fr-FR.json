@@ -22,6 +22,7 @@
           "keepInScreen": "Maintenir à l'écran",
           "windowSize": "Taille de la fenêtre",
           "opacity": "Opacité",
+          "randomExpression": "Expressions aléatoires",
           "obsBackground": "Arrière-plan uni",
           "autoReleaseDelay": "Délai de relâchement automatique",
           "hideOnHover": "Masquer au survol",
@@ -175,6 +176,9 @@
     }
   },
   "native": {
+    "multiplePets": "Afficher plusieurs modèles",
+    "multiplePetsLimit": "Jusqu'\u00e0 8 mascottes peuvent \u00eatre affich\u00e9es \u00e0 la fois",
+    "removeDesktopPet": "Retirer cette mascotte du bureau",
     "modelLoadFailed": "Impossible d'afficher ce modèle",
     "noBehaviors": "Aucun élément",
     "support": {

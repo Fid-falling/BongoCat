@@ -1,4 +1,5 @@
 #include "preferences_widgets.h"
+#include "preferences_widgets_internal.h"
 #include "preferences_controls.h"
 #include "preferences_shortcut_clear.h"
 #include "ui_animation.h"
@@ -10,14 +11,6 @@
 #include <SDL3/SDL.h>
 #include <math.h>
 #include <stdio.h>
-typedef struct FormStyle {
-    struct nk_style_item background;
-    struct nk_color window_color;
-    struct nk_color border_color;
-    struct nk_vec2 padding;
-    struct nk_vec2 spacing;
-    float border;
-} FormStyle;
 static struct nk_context *section_context;
 static bool section_first;
 static const float description_line_height = 19.0f;
@@ -59,7 +52,7 @@ static void restore_style(struct nk_context *context, const FormStyle *saved) {
     context->style.window.spacing = saved->spacing;
     context->style.window.group_border = saved->border;
 }
-static bool form_begin(struct nk_context *context, const char *id,
+bool bongo_cat_pref_form_begin(struct nk_context *context, const char *id,
     int lines, FormStyle *saved) {
     saved->background = context->style.window.fixed_background;
     saved->window_color = context->style.window.background;
@@ -84,8 +77,11 @@ static bool form_begin(struct nk_context *context, const char *id,
     }
     return true;
 }
-static void form_end(struct nk_context *context, const FormStyle *saved) {
+void bongo_cat_pref_form_end(struct nk_context *context,
+    const FormStyle *saved) {
     nk_group_end(context); restore_style(context, saved); }
+#define form_begin bongo_cat_pref_form_begin
+#define form_end bongo_cat_pref_form_end
 static float left_width(struct nk_context *context) {
     return NK_MAX(220.0f, nk_window_get_content_region(context).w - 228.0f);
 }
@@ -95,13 +91,16 @@ static void form_title_sized(struct nk_context *context, const char *title,
     float left = NK_MAX(220.0f, available - control_width - 8.0f);
     nk_layout_row_begin(context, NK_STATIC, 36, 2);
     nk_layout_row_push(context, left);
+    bongo_cat_pref_form_label(context, title);
+    nk_layout_row_push(context, NK_MAX(control_width, available - left - 8.0f));
+}
+void bongo_cat_pref_form_label(struct nk_context *context, const char *title) {
     nk_style_push_font(context, bongo_cat_ui_label_font(context));
     struct nk_vec2 text_padding = context->style.text.padding;
     context->style.text.padding.x += 5.0f;
     nk_label(context, title, NK_TEXT_LEFT);
     context->style.text.padding = text_padding;
     nk_style_pop_font(context);
-    nk_layout_row_push(context, NK_MAX(control_width, available - left - 8.0f));
 }
 static void form_title(struct nk_context *context, const char *title) { form_title_sized(context, title, 220.0f); }
 static void description(struct nk_context *context, const char *text,

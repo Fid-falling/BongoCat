@@ -7,6 +7,8 @@
 static bool write_model(yyjson_mut_doc *doc, yyjson_mut_val *object,
     const BongoCatModelPreferences *value) {
     return object &&
+        yyjson_mut_obj_add_bool(doc, object, "multiplePets",
+            value->multiple_pets) &&
         yyjson_mut_obj_add_bool(doc, object, "modelMirrored", value->mirror) &&
         yyjson_mut_obj_add_bool(doc, object, "pointerMirrored",
             value->mouse_mirror) &&
@@ -32,11 +34,16 @@ static bool write_window(yyjson_mut_doc *doc, yyjson_mut_val *object,
             value->keep_in_screen) &&
         yyjson_mut_obj_add_bool(doc, object, "captureBackground",
             value->obs_background) &&
+        yyjson_mut_obj_add_bool(doc, object, "randomExpression",
+            value->random_expression) &&
         yyjson_mut_obj_add_strcpy(doc, object, "captureBackgroundColor",
             bongo_cat_obs_background_color_name(
                 value->obs_background_color)) &&
         yyjson_mut_obj_add_real(doc, object, "hideDelaySeconds",
-            value->hide_delay_seconds);
+            value->hide_delay_seconds) &&
+        yyjson_mut_obj_add_real(doc, object,
+            "randomExpressionIntervalSeconds",
+            value->random_expression_interval_seconds);
 }
 
 static bool write_app(yyjson_mut_doc *doc, yyjson_mut_val *object,

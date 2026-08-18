@@ -1,6 +1,7 @@
 #include "config_internal.h"
 #include "bongo_cat/path.h"
 
+#include <stdio.h>
 #include <string.h>
 
 #define SESSION_FORMAT "bongocat/session"
@@ -76,6 +77,27 @@ static bool read_active_behaviors(yyjson_val *array,
     return true;
 }
 
+static bool read_additional_models(yyjson_val *array,
+    BongoCatSessionState *session, BongoCatError *error) {
+    if (!array) return true;
+    if (yyjson_arr_size(array) > BONGO_CAT_ADDITIONAL_MODEL_CAP)
+        return type_error(error, "additionalModelIds", "a smaller array");
+    session->additional_model_count = 0;
+    size_t index, count;
+    yyjson_val *item;
+    yyjson_arr_foreach(array, index, count, item) {
+        if (!yyjson_is_str(item) || !yyjson_get_len(item) ||
+            yyjson_get_len(item) >= BONGO_CAT_ID_CAP ||
+            strlen(yyjson_get_str(item)) != yyjson_get_len(item))
+            return type_error(error, "additionalModelIds[]",
+                "a non-empty model id within the supported length");
+        snprintf(session->additional_model_ids[
+            session->additional_model_count++], BONGO_CAT_ID_CAP, "%s",
+            yyjson_get_str(item));
+    }
+    return true;
+}
+
 BongoCatResult bongo_cat_session_load(const char *path,
     BongoCatSessionState *session, BongoCatError *error) {
     if (!path || !session) return BONGO_CAT_ERROR_ARGUMENT;
@@ -88,8 +110,10 @@ BongoCatResult bongo_cat_session_load(const char *path,
     yyjson_val *root = yyjson_doc_get_root(document);
     yyjson_val *window = NULL;
     yyjson_val *active_behaviors = NULL;
+    yyjson_val *additional_models = NULL;
     bool valid = read_object(root, "window", &window, error) &&
-        read_array(root, "activeBehaviors", &active_behaviors, error);
+        read_array(root, "activeBehaviors", &active_behaviors, error) &&
+        read_array(root, "additionalModelIds", &additional_models, error);
     if (valid && window) {
         valid = read_bool(window, "visible", &loaded.window.visible, error) &&
             read_float(window, "scalePercent",
@@ -112,6 +136,7 @@ BongoCatResult bongo_cat_session_load(const char *path,
                 read_int(size, "height", &loaded.window.height, true, error);
     }
     if (valid) valid = read_active_model(root, &loaded, error) &&
+        read_additional_models(additional_models, &loaded, error) &&
         read_active_behaviors(active_behaviors, &loaded, error);
     yyjson_doc_free(document);
     if (!valid) return BONGO_CAT_ERROR_FORMAT;
@@ -141,6 +166,17 @@ static bool write_active_behaviors(yyjson_mut_doc *doc,
                 doc, item, "behaviorId", entry->behavior_id) ||
             !yyjson_mut_arr_add_val(array, item)) return false;
     }
+    return true;
+}
+
+static bool write_additional_models(yyjson_mut_doc *doc,
+    yyjson_mut_val *root, const BongoCatSessionState *session) {
+    yyjson_mut_val *array = yyjson_mut_arr(doc);
+    if (!array || !yyjson_mut_obj_add_val(
+            doc, root, "additionalModelIds", array)) return false;
+    for (size_t i = 0; i < session->additional_model_count; ++i)
+        if (!yyjson_mut_arr_add_strcpy(
+                doc, array, session->additional_model_ids[i])) return false;
     return true;
 }
 
@@ -184,6 +220,7 @@ BongoCatResult bongo_cat_session_save(const char *path,
         yyjson_mut_obj_add_int(doc, size, "height", canonical.window.height) &&
         yyjson_mut_obj_add_strcpy(doc, root, "activeModelId",
             canonical.active_model_id) &&
+        write_additional_models(doc, root, &canonical) &&
         write_active_behaviors(doc, root, &canonical);
     if (!built) {
         yyjson_mut_doc_free(doc);

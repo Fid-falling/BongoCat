@@ -73,6 +73,11 @@ void bongo_cat_preferences_page_cat(BongoCatApp *app, struct nk_context *context
     if (old_opacity != window_state->opacity_percent && !app->hover_hidden)
         bongo_cat_platform_set_opacity(&app->platform,
             window_state->opacity_percent / 100.0f);
+    bongo_cat_pref_toggle_float(context, "random-expression", tr(app,
+        "pages.preference.cat.labels.randomExpression", "Random Expressions"),
+        &window->random_expression, 1.0f,
+        &window->random_expression_interval_seconds, 3600.0f, 1.0f,
+        BONGO_CAT_DEFAULT_RANDOM_EXPRESSION_SECONDS);
 
     section_gap(context, 10);
     bongo_cat_pref_section(context, tr(app, "pages.preference.cat.labels.modelSettings",

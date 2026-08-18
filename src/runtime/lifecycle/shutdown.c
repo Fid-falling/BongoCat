@@ -5,6 +5,8 @@
 #include "bongo_cat/preferences.h"
 #include "bongo_cat/tray.h"
 
+#include <stdlib.h>
+
 void bongo_cat_app_shutdown(BongoCatApp *app, const char *stage,
     int exit_code) {
     bongo_cat_runtime_stage(app, stage);
@@ -12,6 +14,7 @@ void bongo_cat_app_shutdown(BongoCatApp *app, const char *stage,
         stage, exit_code);
     bongo_cat_app_capture_behavior_state(app);
     bongo_cat_config_store_flush(app);
+    bongo_cat_multi_pet_shutdown(app);
     bongo_cat_preferences_destroy(app->preferences);
     bongo_cat_i18n_destroy(app->i18n);
     bongo_cat_tray_destroy(app->tray);
@@ -19,6 +22,8 @@ void bongo_cat_app_shutdown(BongoCatApp *app, const char *stage,
     bongo_cat_audio_destroy(app->audio);
     bongo_cat_overlay_destroy(app->overlay);
     bongo_cat_live2d_destroy(app->live2d);
+    free(app->behavior_cache);
+    app->behavior_cache = NULL;
     bongo_cat_platform_shutdown(&app->platform);
     bongo_cat_runtime_log_stop();
     bongo_cat_window_destroy(app);

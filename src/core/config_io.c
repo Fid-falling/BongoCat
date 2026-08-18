@@ -59,7 +59,8 @@ static bool parse_background_color(const char *value,
 
 static bool read_model(yyjson_val *object, BongoCatModelPreferences *value,
     BongoCatError *error) {
-    return read_bool(object, "modelMirrored", &value->mirror, error) &&
+    return read_bool(object, "multiplePets", &value->multiple_pets, error) &&
+        read_bool(object, "modelMirrored", &value->mirror, error) &&
         read_bool(object, "pointerMirrored", &value->mouse_mirror, error) &&
         read_bool(object, "centerPointerTracking", &value->mouse_centered,
             error) &&
@@ -77,7 +78,12 @@ static bool read_window(yyjson_val *object, BongoCatWindowPreferences *value,
         !read_bool(object, "keepOnScreen", &value->keep_in_screen, error) ||
         !read_bool(object, "captureBackground", &value->obs_background,
             error) ||
+        !read_bool(object, "randomExpression", &value->random_expression,
+            error) ||
         !read_float(object, "hideDelaySeconds", &value->hide_delay_seconds,
+            error) ||
+        !read_float(object, "randomExpressionIntervalSeconds",
+            &value->random_expression_interval_seconds,
             error)) return false;
     const char *color;
     size_t length;

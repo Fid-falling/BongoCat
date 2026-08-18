@@ -9,6 +9,9 @@
 #include <stdlib.h>
 #include <string.h>
 static void select_model_state(BongoCatApp *app, const BongoCatModelEntry *entry) {
+    if (app->settings.model.multiple_pets)
+        bongo_cat_session_remove_model(&app->session, entry->id);
+    else bongo_cat_session_clear_additional_models(&app->session);
     snprintf(app->session.active_model_id, sizeof(app->session.active_model_id), "%s",
         entry->id);
     app->loaded_mode = entry->mode;
@@ -47,7 +50,8 @@ static bool behavior_cacheable(const BongoCatModelEntry *entry) {
 
 static bool behavior_cache_matches(const BongoCatApp *app,
     const BongoCatModelEntry *entry) {
-    return app && app->behavior_cache_valid && behavior_cacheable(entry) &&
+    return app && app->behavior_cache && app->behavior_cache_valid &&
+        behavior_cacheable(entry) &&
         strcmp(app->behavior_cache_model_id, entry->id) == 0 &&
         (entry->preset || strcmp(app->behavior_cache_digest,
             entry->content_digest) == 0);
@@ -59,7 +63,13 @@ static void behavior_cache_store(BongoCatApp *app,
         if (app) app->behavior_cache_valid = false;
         return;
     }
-    app->behavior_cache = app->behaviors;
+    if (!app->behavior_cache)
+        app->behavior_cache = malloc(sizeof(*app->behavior_cache));
+    if (!app->behavior_cache) {
+        app->behavior_cache_valid = false;
+        return;
+    }
+    *app->behavior_cache = app->behaviors;
     snprintf(app->behavior_cache_model_id,
         sizeof(app->behavior_cache_model_id), "%s", entry->id);
     snprintf(app->behavior_cache_digest, sizeof(app->behavior_cache_digest),
@@ -167,7 +177,7 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     }
     bool behavior_catalog_valid = behavior_cache_matches(app, entry);
     if (behavior_catalog_valid) {
-        *behaviors = app->behavior_cache;
+        *behaviors = *app->behavior_cache;
     } else {
         behavior_catalog_valid = bongo_cat_behaviors_load(
             behaviors, entry, &optional) == BONGO_CAT_OK;
@@ -248,6 +258,7 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     }
     snprintf(app->loaded_model, sizeof(app->loaded_model), "%s", entry->id);
     bongo_cat_app_restore_behavior_state(app, entry->id);
+    bongo_cat_random_expression_reset(app);
     app->pointer_known = false;
     bool geometry_changed = apply_model_aspect(app, &render_options);
     if (app->window) {

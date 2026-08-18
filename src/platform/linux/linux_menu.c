@@ -16,6 +16,7 @@ typedef struct LinuxMenuRow {
 #define LINUX_MENU_HINT ((BongoCatMenuAction)-4)
 #define LINUX_MENU_MOTIONS ((BongoCatMenuAction)-5)
 #define LINUX_MENU_EXPRESSIONS ((BongoCatMenuAction)-6)
+#define LINUX_MENU_SEPARATOR ((BongoCatMenuAction)-7)
 
 typedef struct LinuxMenuPalette {
     unsigned long surface, field, border, text, muted, accent;
@@ -47,15 +48,47 @@ static LinuxMenuPalette palette(Display *display, bool dark) {
     return value;
 }
 
+static bool row_selectable(const LinuxMenuRow *row) {
+    return row->action != LINUX_MENU_HINT &&
+        row->action != LINUX_MENU_SEPARATOR;
+}
+
+static int row_height(const LinuxMenuRow *row) {
+    return row->action == LINUX_MENU_SEPARATOR ? 13 : 34;
+}
+
+static int rows_height(const LinuxMenuRow *rows, int count) {
+    int height = 0;
+    for (int i = 0; i < count; ++i) height += row_height(&rows[i]);
+    return height;
+}
+
+static int row_at(const LinuxMenuRow *rows, int count, int y) {
+    int top = 8;
+    for (int i = 0; i < count; ++i) {
+        int height = row_height(&rows[i]);
+        if (y >= top && y < top + height) return i;
+        top += height;
+    }
+    return -1;
+}
+
 static void draw_menu(Display *display, Window window, GC gc,
     const LinuxMenuRow *rows, int count, int hover,
     const LinuxMenuPalette *colors) {
+    int height = rows_height(rows, count) + 16;
     XSetForeground(display, gc, colors->surface); XFillRectangle(display, window, gc,
-        0, 0, 340, (unsigned)(count * 34 + 16));
+        0, 0, 340, (unsigned)height);
     XSetForeground(display, gc, colors->border); XDrawRectangle(display, window, gc,
-        0, 0, 339, (unsigned)(count * 34 + 15));
+        0, 0, 339, (unsigned)(height - 1));
+    int y = 8;
     for (int index = 0; index < count; ++index) {
-        int y = 8 + index * 34;
+        if (rows[index].action == LINUX_MENU_SEPARATOR) {
+            XSetForeground(display, gc, colors->border);
+            XDrawLine(display, window, gc, 12, y + 6, 327, y + 6);
+            y += row_height(&rows[index]);
+            continue;
+        }
         bool hint = rows[index].action == LINUX_MENU_HINT;
         if (index == hover && !hint) {
             XSetForeground(display, gc, colors->field);
@@ -65,6 +98,7 @@ static void draw_menu(Display *display, Window window, GC gc,
             index == hover ? colors->accent : colors->text);
         XDrawString(display, window, gc, 20, y + 21, rows[index].label,
             (int)strlen(rows[index].label));
+        y += row_height(&rows[index]);
     }
     XFlush(display);
 }
@@ -75,7 +109,7 @@ static int popup_rows(Display *display, Window owner, const LinuxMenuRow *rows,
     Window root; int root_x, root_y, win_x, win_y; unsigned mask;
     XQueryPointer(display, DefaultRootWindow(display), &root, &owner,
         &root_x, &root_y, &win_x, &win_y, &mask);
-    int height = count * 34 + 16;
+    int height = rows_height(rows, count) + 16;
     int screen_width = DisplayWidth(display, DefaultScreen(display));
     int screen_height = DisplayHeight(display, DefaultScreen(display));
     if (root_x > screen_width - 342) root_x = screen_width - 342;
@@ -117,9 +151,8 @@ static int popup_rows(Display *display, Window owner, const LinuxMenuRow *rows,
         if (event.type == Expose) draw_menu(display, menu, gc, rows, count,
             hover, &colors);
         else if (event.type == MotionNotify) {
-            int next = event.xmotion.y >= 8 ? (event.xmotion.y - 8) / 34 : -1;
-            next = next >= 0 && next < count &&
-                rows[next].action != LINUX_MENU_HINT ? next : -1;
+            int next = row_at(rows, count, event.xmotion.y);
+            next = next >= 0 && row_selectable(&rows[next]) ? next : -1;
             if (next != hover && labels->preview)
                 labels->preview(labels->preview_userdata, next >= 0 ?
                     rows[next].action : BONGO_CAT_MENU_NONE);
@@ -131,9 +164,9 @@ static int popup_rows(Display *display, Window owner, const LinuxMenuRow *rows,
                 BONGO_CAT_MENU_NONE);
             draw_menu(display, menu, gc, rows, count, hover, &colors);
         } else if (event.type == ButtonPress) {
-            int next = event.xbutton.y >= 8 ? (event.xbutton.y - 8) / 34 : -1;
+            int next = row_at(rows, count, event.xbutton.y);
             if (next < 0 || next >= count) selected = -2;
-            else if (rows[next].action != LINUX_MENU_HINT) selected = next;
+            else if (row_selectable(&rows[next])) selected = next;
         } else if (event.type == KeyPress &&
             XLookupKeysym(&event.xkey, 0) == XK_Escape) selected = -2;
     }
@@ -157,7 +190,13 @@ BongoCatMenuAction bongo_cat_linux_context_menu(BongoCatPlatform *platform,
         labels->pass_through);
     snprintf(top, sizeof(top), "%s%s", labels->always_on_top_checked ? "[x] " : "",
         labels->always_on_top);
-    LinuxMenuRow main_rows[10]; int main_count = 0;
+    LinuxMenuRow main_rows[12]; int main_count = 0;
+    if (labels->remove_pet_visible) {
+        main_rows[main_count++] = (LinuxMenuRow){labels->remove_pet,
+            BONGO_CAT_MENU_REMOVE_PET};
+        main_rows[main_count++] = (LinuxMenuRow){NULL,
+            LINUX_MENU_SEPARATOR};
+    }
     main_rows[main_count++] = (LinuxMenuRow){labels->preferences, BONGO_CAT_MENU_PREFERENCES};
     main_rows[main_count++] = (LinuxMenuRow){labels->hide, BONGO_CAT_MENU_HIDE};
     main_rows[main_count++] = (LinuxMenuRow){pass, BONGO_CAT_MENU_PASS_THROUGH};

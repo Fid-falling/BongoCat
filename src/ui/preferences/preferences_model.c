@@ -100,8 +100,11 @@ void bongo_cat_preferences_process_model_selection(BongoCatPreferences *value) {
         return;
     char id[BONGO_CAT_ID_CAP];
     snprintf(id, sizeof(id), "%s", value->pending_model_id);
+    bool multiple = value->pending_model_multiple;
+    bool active = value->pending_model_active;
     value->pending_model_id[0] = '\0';
     value->model_selection_pending = false;
+    value->pending_model_multiple = false;
     value->model_loading = true;
     value->model_load_progress = 0.0f;
     value->model_load_render_progress = 0.0f;
@@ -110,7 +113,9 @@ void bongo_cat_preferences_process_model_selection(BongoCatPreferences *value) {
         bongo_cat_preferences_model_visual_begin(value, id);
     snprintf(value->loading_model_id, sizeof(value->loading_model_id), "%s", id);
     BongoCatError error = {0};
-    bool selected = bongo_cat_app_select_model_with_error(value->app, id, &error);
+    bool selected = multiple ? bongo_cat_app_set_model_active(
+        value->app, id, active, &error) :
+        bongo_cat_app_select_model_with_error(value->app, id, &error);
     if (selected) finish_model_load_progress(value);
     else {
         value->model_load_progress = 0.0f;
@@ -122,7 +127,8 @@ void bongo_cat_preferences_process_model_selection(BongoCatPreferences *value) {
     if (!selected) bongo_cat_preferences_notice_show(value->app, tr(value->app,
         "native.modelLoadFailed", "Unable to display this model"), true);
     bongo_cat_preferences_invalidate(value);
-    if (value->window) bongo_cat_preferences_render(value);
+    /* Render on the next input frame. A nested render here would replay the
+       card click that queued this selection and immediately toggle it back. */
 }
 
 void bongo_cat_preferences_import_complete(BongoCatApp *app,
@@ -205,6 +211,11 @@ void bongo_cat_preferences_page_model(BongoCatPreferences *value,
     BongoCatApp *app = value->app;
     smoke_model_behavior(value);
     bongo_cat_preferences_model_covers_begin(app);
+    bool multiple = app->settings.model.multiple_pets;
+    if (bongo_cat_pref_toggle(context, "multiple-pets", tr(app,
+            "native.multiplePets",
+            "Display multiple"), "", &multiple))
+        bongo_cat_app_set_multiple_pets(app, multiple);
     bongo_cat_pref_section(context,
         tr(app, "pages.preference.model.title", "Installed models"));
     float width = nk_window_get_content_region(context).w;

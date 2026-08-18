@@ -6,6 +6,9 @@
 #include <SDL3/SDL.h>
 
 BongoCatResult bongo_cat_window_create(BongoCatApp *app, BongoCatError *error);
+bool bongo_cat_app_initialize(BongoCatApp *app, int argc,
+    char **argv, BongoCatError *error);
+void bongo_cat_app_loop(BongoCatApp *app);
 BongoCatResult bongo_cat_app_locate_assets(BongoCatApp *app, BongoCatError *error);
 bool bongo_cat_startup_prepare(BongoCatApp *app, int argc, char **argv,
     BongoCatError *error);
@@ -95,8 +98,26 @@ void bongo_cat_frame_capture_pending(BongoCatApp *app, int width, int height);
 void bongo_cat_app_render_now(BongoCatApp *app);
 bool bongo_cat_app_capture_pending_frame(BongoCatApp *app);
 void bongo_cat_runtime_flow_update(BongoCatApp *app, uint64_t now);
+void bongo_cat_random_expression_update(BongoCatApp *app, uint64_t now);
+void bongo_cat_random_expression_reset(BongoCatApp *app);
 void bongo_cat_config_store_load(BongoCatApp *app);
 void bongo_cat_config_store_update(BongoCatApp *app, uint64_t now);
 void bongo_cat_config_store_flush(BongoCatApp *app);
+bool bongo_cat_multi_pet_secondary_argument(int argc, char **argv);
+bool bongo_cat_multi_pet_state_directory(char *target, size_t capacity,
+    const char *root, const char *model_id);
+void bongo_cat_multi_pet_update(BongoCatApp *app, uint64_t now);
+void bongo_cat_multi_pet_primary_update(BongoCatApp *app, uint64_t now);
+bool bongo_cat_multi_pet_request_remove(BongoCatApp *app);
+bool bongo_cat_multi_pet_request_pass_through(BongoCatApp *app,
+    bool enabled);
+void bongo_cat_multi_pet_pass_through_requests_update(BongoCatApp *app);
+void bongo_cat_multi_pet_clear_pass_through_request(BongoCatApp *app,
+    const char *model_id);
+bool bongo_cat_multi_pet_take_remove_request(BongoCatApp *app,
+    const char *model_id);
+void bongo_cat_multi_pet_clear_remove_request(BongoCatApp *app,
+    const char *model_id);
+void bongo_cat_multi_pet_shutdown(BongoCatApp *app);
 
 #endif

@@ -27,6 +27,10 @@ static bool select_model(BongoCatApp *app, const char *id) {
 }
 
 void bongo_cat_window_show_context_menu(BongoCatApp *app) {
+    if (!app) return;
+    bool dark_theme = app->settings.app.theme == BONGO_CAT_THEME_DARK ||
+        (app->settings.app.theme == BONGO_CAT_THEME_AUTO &&
+            SDL_GetSystemTheme() == SDL_SYSTEM_THEME_DARK);
     BongoCatWindowMenuPreview preview;
     bongo_cat_window_menu_preview_init(&preview, app);
     const char *model_names[BONGO_CAT_MODEL_CAP];
@@ -44,9 +48,6 @@ void bongo_cat_window_show_context_menu(BongoCatApp *app) {
     bongo_cat_window_behavior_labels(app, motion_names, motion_checked,
         &motion_count, expression_names, &expression_count,
         &current_expression);
-    bool dark_theme = app->settings.app.theme == BONGO_CAT_THEME_DARK ||
-        (app->settings.app.theme == BONGO_CAT_THEME_AUTO &&
-            SDL_GetSystemTheme() == SDL_SYSTEM_THEME_DARK);
     BongoCatMenuLabels labels = {
         tr(app, "composables.useAppMenu.labels.preference", "Preferences"),
         tr(app, "composables.useAppMenu.labels.hideCat", "Hide Cat"),
@@ -68,7 +69,10 @@ void bongo_cat_window_show_context_menu(BongoCatApp *app) {
         app->session.window.opacity_percent, app->settings.window.pass_through,
         app->settings.window.always_on_top, dark_theme,
         bongo_cat_window_menu_preview, bongo_cat_window_menu_preview_tick,
-        bongo_cat_window_menu_restore, &preview};
+        bongo_cat_window_menu_restore, &preview,
+        tr(app, "native.removeDesktopPet", "Remove this desktop pet"),
+        app->secondary_pet || (app->settings.model.multiple_pets &&
+            app->session.additional_model_count > 0)};
     BongoCatMenuAction action = bongo_cat_platform_context_menu(
         &app->platform, &labels);
     if (bongo_cat_window_menu_preview_applied(&preview, action))
@@ -78,16 +82,22 @@ void bongo_cat_window_show_context_menu(BongoCatApp *app) {
 
 void bongo_cat_window_menu_action(BongoCatApp *app,
     BongoCatMenuAction action) {
-    if (action == BONGO_CAT_MENU_PREFERENCES)
-        bongo_cat_preferences_show(app->preferences);
-    else if (action == BONGO_CAT_MENU_MODEL_ADD)
-        bongo_cat_preferences_open_model_import(app->preferences, app->window);
-    else if (action == BONGO_CAT_MENU_HIDE)
+    if (action == BONGO_CAT_MENU_PREFERENCES) {
+        if (app->preferences) bongo_cat_preferences_show(app->preferences);
+    } else if (action == BONGO_CAT_MENU_MODEL_ADD) {
+        if (app->preferences)
+            bongo_cat_preferences_open_model_import(app->preferences,
+                app->window);
+    } else if (action == BONGO_CAT_MENU_HIDE)
         bongo_cat_window_set_visible(app, false);
     else if (action == BONGO_CAT_MENU_PASS_THROUGH) {
-        app->settings.window.pass_through = !app->settings.window.pass_through;
-        bongo_cat_window_mark_hit_dirty(app);
-        bongo_cat_window_sync_click_through(app);
+        bool enabled = !app->settings.window.pass_through;
+        if (!app->secondary_pet ||
+            bongo_cat_multi_pet_request_pass_through(app, enabled)) {
+            app->settings.window.pass_through = enabled;
+            bongo_cat_window_mark_hit_dirty(app);
+            bongo_cat_window_sync_click_through(app);
+        }
     } else if (action == BONGO_CAT_MENU_ALWAYS_ON_TOP) {
         app->settings.window.always_on_top = !app->settings.window.always_on_top;
         bongo_cat_platform_set_always_on_top(&app->platform,
@@ -111,9 +121,28 @@ void bongo_cat_window_menu_action(BongoCatApp *app,
     } else if (action >= BONGO_CAT_MENU_MODEL_FIRST &&
         action < BONGO_CAT_MENU_MODEL_FIRST + BONGO_CAT_MODEL_CAP) {
         size_t index = (size_t)(action - BONGO_CAT_MENU_MODEL_FIRST);
-        if (index < app->models.count)
+        if (!app->secondary_pet && index < app->models.count)
             select_model(app, app->models.entries[index].id);
-    } else if (action == BONGO_CAT_MENU_EXIT) app->running = false;
+    } else if (action == BONGO_CAT_MENU_REMOVE_PET) {
+        if (app->secondary_pet) {
+            if (bongo_cat_multi_pet_request_remove(app)) app->running = false;
+        } else if (app->settings.model.multiple_pets &&
+            app->session.additional_model_count) {
+            char model_id[BONGO_CAT_ID_CAP];
+            BongoCatError error = {0};
+            snprintf(model_id, sizeof(model_id), "%s",
+                app->session.active_model_id);
+            if (!bongo_cat_app_set_model_active(app, model_id, false, &error))
+                SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                    "[runtime] Multi-pet primary remove failed: model=%s "
+                    "error=%s", model_id,
+                    error.message[0] ? error.message : "unknown error");
+        }
+    } else if (action == BONGO_CAT_MENU_EXIT) {
+        if (app->secondary_pet) {
+            if (bongo_cat_multi_pet_request_remove(app)) app->running = false;
+        } else app->running = false;
+    }
     bongo_cat_preferences_invalidate(app->preferences);
 }
 

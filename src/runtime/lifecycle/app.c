@@ -32,8 +32,12 @@ static bool load_selected_model(BongoCatApp *app, BongoCatError *error) {
         "No usable Live2D model could be loaded");
     return false;
 }
-static bool initialize(BongoCatApp *app, int argc, char **argv, BongoCatError *error) {
+bool bongo_cat_app_initialize(BongoCatApp *app, int argc, char **argv,
+    BongoCatError *error) {
     memset(app, 0, sizeof(*app));
+    if (argc > 0 && argv && argv[0])
+        snprintf(app->executable_path, sizeof(app->executable_path),
+            "%s", argv[0]);
     app->smoke_language = -1;
     app->smoke_theme = -1;
     app->smoke_preference_page = -1;
@@ -44,6 +48,21 @@ static bool initialize(BongoCatApp *app, int argc, char **argv, BongoCatError *e
     bongo_cat_models_init(&app->models);
     if (!bongo_cat_startup_prepare(app, argc, argv, error)) return false;
     bongo_cat_config_store_load(app);
+    if (app->secondary_pet) {
+        snprintf(app->session.active_model_id,
+            sizeof(app->session.active_model_id), "%s",
+            app->secondary_model_id);
+        bongo_cat_session_clear_additional_models(&app->session);
+        if (!app->session_store_valid && app->secondary_origin_known) {
+            app->session.window.position_known = true;
+            app->session.window.x = app->secondary_origin_x;
+            app->session.window.y = app->secondary_origin_y;
+        }
+        /* The control file reveals the child on its first update. Starting
+           hidden prevents a stale child session from flashing on screen. */
+        app->session.window.visible = false;
+    } else if (!app->settings.model.multiple_pets)
+        bongo_cat_session_clear_additional_models(&app->session);
     if (app->smoke_language >= 0)
         app->settings.app.language = (BongoCatLanguage)app->smoke_language;
     if (app->smoke_theme >= 0) app->settings.app.theme = (BongoCatTheme)app->smoke_theme;
@@ -51,7 +70,8 @@ static bool initialize(BongoCatApp *app, int argc, char **argv, BongoCatError *e
     if (app->smoke_model[0])
         snprintf(app->session.active_model_id, sizeof(app->session.active_model_id),
             "%s", app->smoke_model);
-    if (!app->autostart_launch) app->session.window.visible = true;
+    if (!app->secondary_pet && !app->autostart_launch)
+        app->session.window.visible = true;
     bongo_cat_startup_stage(app, "configuration-ready");
     if (bongo_cat_window_create(app, error) != BONGO_CAT_OK) return false;
     bongo_cat_startup_stage(app, "window-ready");
@@ -87,13 +107,16 @@ static bool initialize(BongoCatApp *app, int argc, char **argv, BongoCatError *e
         }
     }
     app->running = true;
-    optional = (BongoCatError){0}; app->tray = bongo_cat_tray_create(app, &optional);
-    if (!app->tray && app->settings.app.tray_visible)
+    optional = (BongoCatError){0}; app->tray = app->secondary_pet ? NULL :
+        bongo_cat_tray_create(app, &optional);
+    if (!app->secondary_pet && !app->tray && app->settings.app.tray_visible)
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", optional.message);
-    app->preferences = bongo_cat_preferences_create(app);
-    if (!app->preferences) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+    app->preferences = app->secondary_pet ? NULL :
+        bongo_cat_preferences_create(app);
+    if (!app->secondary_pet && !app->preferences)
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
         "Preferences are unavailable because their state could not be allocated");
-    if (!app->tray && !app->session.window.visible) {
+    if (!app->secondary_pet && !app->tray && !app->session.window.visible) {
         bongo_cat_window_set_visible(app, true);
     }
     bongo_cat_live2d_audit_run(app);
@@ -123,7 +146,9 @@ static bool initialize(BongoCatApp *app, int argc, char **argv, BongoCatError *e
     if (app->smoke_preferences) bongo_cat_preferences_show(app->preferences);
     app->last_frame_ns = SDL_GetTicksNS();
     app->dirty = true;
-    app->startup_raise_due_ns = !app->smoke && !app->autostart_launch && app->session.window.visible ? app->last_frame_ns + 250000000ull : 0;
+    app->startup_raise_due_ns = !app->secondary_pet && !app->smoke &&
+        !app->autostart_launch && app->session.window.visible ?
+        app->last_frame_ns + 250000000ull : 0;
     if (app->smoke_deadline_ns) app->smoke_deadline_ns += app->last_frame_ns;
     if (!app->session.window.visible) bongo_cat_startup_ready(app);
     return true;
@@ -135,6 +160,7 @@ static void handle_event(BongoCatApp *app, const SDL_Event *event) {
         event->type <= SDL_EVENT_GAMEPAD_TOUCHPAD_UP) bongo_cat_gamepad_event(app, event);
 }
 void bongo_cat_app_drain_input(BongoCatApp *app, bool allow_shortcuts) {
+    if (app && app->secondary_pet) allow_shortcuts = false;
     BongoCatInputEvent event;
     while (bongo_cat_input_pop(&app->input, &event)) {
         if (app->smoke_ignore_global_input) continue;
@@ -226,11 +252,12 @@ static void take_instance_wake(BongoCatApp *app) {
     bongo_cat_platform_raise_window(app->window);
     SDL_Log("Existing instance requested window reveal");
 }
-static void loop(BongoCatApp *app) {
+void bongo_cat_app_loop(BongoCatApp *app) {
     uint64_t iterations = 0, wakes = 0, zero_waits = 0;
     while (app->running) {
         iterations++;
         int wait_ms = bongo_cat_window_wait_timeout(app, SDL_GetTicksNS());
+        if (app->secondary_pet && wait_ms > 100) wait_ms = 100;
         if (!wait_ms) zero_waits++;
         bongo_cat_preferences_input_begin(app->preferences);
         SDL_Event event;
@@ -244,6 +271,8 @@ static void loop(BongoCatApp *app) {
         bongo_cat_preferences_input_end(app->preferences);
         take_instance_wake(app);
         uint64_t now = SDL_GetTicksNS(); bongo_cat_window_update_wheel_animation(app, now);
+        bongo_cat_multi_pet_update(app, now);
+        bongo_cat_random_expression_update(app, now);
         bongo_cat_window_update_display_recovery(app, now);
         bongo_cat_runtime_flow_update(app, now);
         bongo_cat_window_apply_pending_resize(app);
@@ -262,27 +291,4 @@ static void loop(BongoCatApp *app) {
     if (app->smoke) SDL_Log("Smoke loop: iterations=%llu wakes=%llu zero_waits=%llu",
         (unsigned long long)iterations, (unsigned long long)wakes,
         (unsigned long long)zero_waits);
-}
-int bongo_cat_app_run(int argc, char **argv) {
-    if (!bongo_cat_platform_single_instance_begin()) return 0;
-    BongoCatApp *app = calloc(1, sizeof(*app));
-    if (!app) {
-        BongoCatError memory = {0}; bongo_cat_error_set(&memory,
-            BONGO_CAT_ERROR_MEMORY, "Cannot allocate application state");
-        bongo_cat_startup_failure(NULL, &memory);
-        bongo_cat_platform_single_instance_end(); return 1;
-    }
-    BongoCatError error = {0};
-    if (!initialize(app, argc, argv, &error)) {
-        bongo_cat_startup_failure(app, &error);
-        if (app->smoke) bongo_cat_startup_ci_failure(app, &error);
-        bongo_cat_app_shutdown(app, "shutdown:startup-failure", 1); free(app);
-        bongo_cat_platform_single_instance_end();
-        return 1;
-    }
-    loop(app);
-    int exit_code = app->exit_code;
-    bongo_cat_app_shutdown(app, "shutdown:normal", exit_code);
-    free(app); bongo_cat_platform_single_instance_end();
-    return exit_code;
 }

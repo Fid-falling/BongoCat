@@ -14,6 +14,7 @@ typedef struct BongoCatTray BongoCatTray;
 typedef struct BongoCatOverlay BongoCatOverlay;
 typedef struct BongoCatPreferences BongoCatPreferences;
 typedef struct BongoCatI18n BongoCatI18n;
+typedef struct BongoCatMultiPetRuntime BongoCatMultiPetRuntime;
 
 typedef struct BongoCatApp {
     BongoCatSettings settings;
@@ -24,8 +25,9 @@ typedef struct BongoCatApp {
     BongoCatBehaviorCatalog behaviors;
     /* One immutable installed package's behavior catalog can be reused when
        the user toggles back to it. Nearby source models are excluded because
-       their files may change outside the application. */
-    BongoCatBehaviorCatalog behavior_cache;
+       their files may change outside the application. Allocate it lazily so
+       single-model child processes do not reserve the catalog. */
+    BongoCatBehaviorCatalog *behavior_cache;
     char behavior_cache_model_id[BONGO_CAT_ID_CAP];
     char behavior_cache_digest[65];
     bool behavior_cache_valid;
@@ -38,6 +40,7 @@ typedef struct BongoCatApp {
     BongoCatTray *tray;
     BongoCatOverlay *overlay;
     BongoCatPreferences *preferences;
+    BongoCatMultiPetRuntime *multi_pet;
     SDL_Window *window;
     void *gl_context;
     char settings_path[BONGO_CAT_PATH_CAP];
@@ -50,6 +53,10 @@ typedef struct BongoCatApp {
     char storage_root[BONGO_CAT_PATH_CAP];
     char asset_root[BONGO_CAT_PATH_CAP];
     char locale_root[BONGO_CAT_PATH_CAP];
+    char executable_path[BONGO_CAT_PATH_CAP];
+    char primary_state_root[BONGO_CAT_PATH_CAP];
+    char primary_log_root[BONGO_CAT_PATH_CAP];
+    char secondary_model_id[BONGO_CAT_ID_CAP];
     char smoke_import_path[BONGO_CAT_PATH_CAP];
     char smoke_model[BONGO_CAT_ID_CAP];
     char smoke_runtime_model[BONGO_CAT_ID_CAP];
@@ -65,6 +72,15 @@ typedef struct BongoCatApp {
     bool settings_store_blocked;
     bool session_store_blocked;
     bool autostart_launch;
+    bool secondary_pet;
+    bool secondary_origin_known;
+    bool secondary_control_known;
+    bool secondary_control_visible;
+    bool secondary_control_pass_through;
+    int secondary_origin_x, secondary_origin_y;
+    uint64_t secondary_control_check_ns;
+    uint64_t secondary_control_failure_ns;
+    uint64_t secondary_settings_check_ns;
     uint64_t startup_raise_due_ns;
     uint64_t model_load_last_frame_ns;
     bool smoke;
@@ -99,6 +115,9 @@ typedef struct BongoCatApp {
     uint64_t display_recovery_due_ns;
     uint64_t mouse_last_ns;
     uint64_t frame_audit_bmp_ns;
+    uint64_t random_expression_due_ns;
+    float random_expression_interval_seconds;
+    uint32_t random_expression_state;
     uint64_t settings_saved_hash, settings_observed_hash;
     uint64_t session_saved_hash, session_observed_hash;
     uint64_t settings_save_due_ns, session_save_due_ns;
@@ -155,6 +174,11 @@ void bongo_cat_app_shortcuts(BongoCatApp *app, const BongoCatInputEvent *event);
 bool bongo_cat_app_select_model(BongoCatApp *app, const char *id);
 bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     const char *id, BongoCatError *error);
+bool bongo_cat_app_model_active(const BongoCatApp *app, const char *id);
+size_t bongo_cat_app_active_model_count(const BongoCatApp *app);
+bool bongo_cat_app_set_model_active(BongoCatApp *app, const char *id,
+    bool active, BongoCatError *error);
+void bongo_cat_app_set_multiple_pets(BongoCatApp *app, bool enabled);
 bool bongo_cat_app_run_behavior(BongoCatApp *app,
     const BongoCatBehaviorEntry *behavior);
 void bongo_cat_app_capture_behavior_state(BongoCatApp *app);

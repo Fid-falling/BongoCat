@@ -7,6 +7,7 @@
 #define BONGO_CAT_DEFAULT_MAX_FPS 60
 #define BONGO_CAT_DEFAULT_WINDOW_SCALE_PERCENT 100.0f
 #define BONGO_CAT_DEFAULT_WINDOW_OPACITY_PERCENT 100.0f
+#define BONGO_CAT_DEFAULT_RANDOM_EXPRESSION_SECONDS 5.0f
 
 typedef enum BongoCatTheme { BONGO_CAT_THEME_AUTO, BONGO_CAT_THEME_LIGHT, BONGO_CAT_THEME_DARK } BongoCatTheme;
 typedef enum BongoCatLanguage {
@@ -36,6 +37,7 @@ typedef enum BongoCatObsBackgroundColor {
 } BongoCatObsBackgroundColor;
 
 typedef struct BongoCatModelPreferences {
+    bool multiple_pets;
     bool mirror;
     bool mouse_mirror;
     bool mouse_centered;
@@ -50,8 +52,10 @@ typedef struct BongoCatWindowPreferences {
     bool hide_on_hover;
     bool keep_in_screen;
     bool obs_background;
+    bool random_expression;
     BongoCatObsBackgroundColor obs_background_color;
     float hide_delay_seconds;
+    float random_expression_interval_seconds;
 } BongoCatWindowPreferences;
 
 typedef struct BongoCatWindowState {
@@ -113,6 +117,8 @@ typedef struct BongoCatSettings {
 typedef struct BongoCatSessionState {
     BongoCatWindowState window;
     char active_model_id[BONGO_CAT_ID_CAP];
+    char additional_model_ids[BONGO_CAT_ADDITIONAL_MODEL_CAP][BONGO_CAT_ID_CAP];
+    size_t additional_model_count;
     BongoCatActiveBehavior active_behaviors[BONGO_CAT_BEHAVIOR_BINDING_CAP];
     size_t active_behavior_count;
 } BongoCatSessionState;
@@ -125,6 +131,13 @@ void bongo_cat_settings_defaults(BongoCatSettings *settings);
 void bongo_cat_settings_validate(BongoCatSettings *settings);
 void bongo_cat_session_defaults(BongoCatSessionState *session);
 void bongo_cat_session_validate(BongoCatSessionState *session);
+bool bongo_cat_session_model_active(const BongoCatSessionState *session,
+    const char *model_id);
+bool bongo_cat_session_add_model(BongoCatSessionState *session,
+    const char *model_id);
+bool bongo_cat_session_remove_model(BongoCatSessionState *session,
+    const char *model_id);
+void bongo_cat_session_clear_additional_models(BongoCatSessionState *session);
 bool bongo_cat_settings_shortcut_conflicts(const BongoCatSettings *settings,
     const char *shortcut, const char *exclude);
 const char *bongo_cat_settings_model_label(const BongoCatSettings *settings,
