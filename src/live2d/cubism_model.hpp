@@ -37,7 +37,7 @@ public:
     void draw();
     void set_mirror(bool mirror);
     void set_render_options(const BongoCatLive2DRenderOptions &options);
-    void set_dragging(float x, float y);
+    void set_dragging(float x, float y, bool angle_z = false);
     void prepare_viewer_audit();
     bool set_parameter(const char *id, float value);
     bool parameter(const char *id, float *minimum, float *maximum, float *value);

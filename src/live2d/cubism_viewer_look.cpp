@@ -20,6 +20,7 @@ ViewerLookUpdater::ViewerLookUpdater(Csm::CubismModel &model)
     : Csm::ICubismUpdater(Csm::CubismUpdateOrder_Look) {
     add_parameter(model, "ParamAngleX", Axis::X);
     add_parameter(model, "ParamAngleY", Axis::Y);
+    add_parameter(model, "ParamAngleZ", Axis::Z);
     add_parameter(model, "ParamEyeBallX", Axis::X);
     add_parameter(model, "ParamEyeBallY", Axis::Y);
     add_parameter(model, "ParamBodyAngleX", Axis::X);
@@ -27,7 +28,7 @@ ViewerLookUpdater::ViewerLookUpdater(Csm::CubismModel &model)
 
 void ViewerLookUpdater::add_parameter(Csm::CubismModel &model,
     const char *id, Axis axis) {
-    if (parameter_count_ >= 5) return;
+    if (parameter_count_ >= 6) return;
     Csm::CubismIdHandle handle =
         Csm::CubismFramework::GetIdManager()->GetId(id);
     Csm::csmInt32 index = model.GetParameterIndex(handle);
@@ -36,9 +37,10 @@ void ViewerLookUpdater::add_parameter(Csm::CubismModel &model,
 }
 
 void ViewerLookUpdater::set_target(Csm::csmFloat32 x,
-    Csm::csmFloat32 y) {
+    Csm::csmFloat32 y, bool angle_z_enabled) {
     target_x_ = std::max(-1.0f, std::min(1.0f, x));
     target_y_ = std::max(-1.0f, std::min(1.0f, y));
+    angle_z_enabled_ = angle_z_enabled;
 }
 
 void ViewerLookUpdater::update_target(Csm::csmFloat32 delta_seconds) {
@@ -96,15 +98,22 @@ void ViewerLookUpdater::OnLateUpdate(Csm::CubismModel *model,
     const Csm::csmFloat32 input_y = y();
     for (Csm::csmInt32 i = 0; i < parameter_count_; ++i) {
         const Parameter &parameter = parameters_[i];
-        const Csm::csmFloat32 current =
-            model->GetParameterValue(parameter.index);
-        const Csm::csmFloat32 bound = current >= 0.0f
+        if (parameter.axis == Axis::Z && !angle_z_enabled_) continue;
+        const Csm::csmFloat32 current = model->GetParameterValue(parameter.index);
+        Csm::csmFloat32 input = parameter.axis == Axis::X ? input_x : input_y;
+        Csm::csmFloat32 gain = viewer_input_gain;
+        Csm::csmFloat32 bound = current >= 0.0f
             ? model->GetParameterMaximumValue(parameter.index)
             : model->GetParameterMinimumValue(parameter.index);
-        const Csm::csmFloat32 input =
-            parameter.axis == Axis::X ? input_x : input_y;
+        if (parameter.axis == Axis::Z) {
+            input = -input_x * input_y;
+            gain = 1.0f;
+            bound = input >= 0.0f
+                ? model->GetParameterMaximumValue(parameter.index)
+                : model->GetParameterMinimumValue(parameter.index);
+        }
         model->AddParameterValue(parameter.index,
-            input * std::fabs(bound) * viewer_input_gain, parameter.weight);
+            input * std::fabs(bound) * gain, parameter.weight);
     }
 }
 

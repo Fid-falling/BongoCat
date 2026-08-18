@@ -123,11 +123,11 @@ void NativeModel::set_render_options(const BongoCatLive2DRenderOptions &options)
     render_options_ = options;
 }
 
-void NativeModel::set_dragging(float x, float y) {
+void NativeModel::set_dragging(float x, float y, bool angle_z) {
     if (!viewer_look_) return;
     x = std::max(-1.0f, std::min(1.0f, x));
     y = std::max(-1.0f, std::min(1.0f, y));
-    viewer_look_->set_target(x, y);
+    viewer_look_->set_target(x, y, angle_z);
     external_parameters_dirty_ = true;
 }
 
@@ -136,8 +136,10 @@ void NativeModel::prepare_viewer_audit() {
     suppress_eye_blink_ = true;
     _motionManager->StopAllMotions();
     clear_motion_runs();
-    for (int i = 0; i < _model->GetParameterCount(); ++i)
+    for (int i = 0; i < _model->GetParameterCount(); ++i) {
         _model->SetParameterValue(i, _model->GetParameterDefaultValue(i));
+        pending_parameters_[(size_t)i] = 0;
+    }
     _model->SaveParameters();
 }
 

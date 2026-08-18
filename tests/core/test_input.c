@@ -91,6 +91,11 @@ void test_input(void) {
         0.5f, 0.0f, 'Y', true) == 30.0f);
     CHECK(bongo_cat_mouse_parameter_value(-30.0f, 30.0f,
         0.0f, 0.0f, 'Z', false) == -30.0f);
+    CHECK(bongo_cat_mouse_centered_ratio(80.0, 80.0, 0.0, 100.0) == 0.5f);
+    CHECK(bongo_cat_mouse_centered_ratio(0.0, 80.0, 0.0, 100.0) == 0.0f);
+    CHECK(bongo_cat_mouse_centered_ratio(100.0, 80.0, 0.0, 100.0) == 1.0f);
+    CHECK(bongo_cat_mouse_centered_ratio(40.0, 80.0, 0.0, 100.0) == 0.25f);
+    CHECK(bongo_cat_mouse_centered_ratio(90.0, 80.0, 0.0, 100.0) == 0.75f);
 
     bongo_cat_input_init(&state);
     event.kind = BONGO_CAT_INPUT_KEY_DOWN;

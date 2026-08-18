@@ -125,8 +125,10 @@ static bool model_pointer_ratios(BongoCatApp *app, double x, double y,
     double center_x, center_y; SDL_Rect bounds;
     if (!x_ratio || !y_ratio || !model_pointer_bounds(app, &bounds,
         &center_x, &center_y)) return false;
-    *x_ratio = clamp_ratio(0.5f + (float)((x - center_x) / bounds.w));
-    *y_ratio = clamp_ratio(0.5f + (float)((y - center_y) / bounds.h));
+    *x_ratio = bongo_cat_mouse_centered_ratio(x, center_x, bounds.x,
+        bounds.x + bounds.w);
+    *y_ratio = bongo_cat_mouse_centered_ratio(y, center_y, bounds.y,
+        bounds.y + bounds.h);
     return true;
 }
 
@@ -163,7 +165,9 @@ void bongo_cat_app_apply_mouse_coordinates(BongoCatApp *app, double hand_x,
         set_parameter(app, "ParamMouseX", 1.0f - hand_x_ratio, hand_y_ratio);
         set_parameter(app, "ParamMouseY", hand_x_ratio, hand_y_ratio);
     }
-    bongo_cat_live2d_set_dragging(app->live2d, drag_x, drag_y);
+    if (app->settings.model.mouse_centered)
+        bongo_cat_live2d_set_centered_dragging(app->live2d, drag_x, drag_y);
+    else bongo_cat_live2d_set_dragging(app->live2d, drag_x, drag_y);
     app->dirty = true;
 }
 
@@ -193,10 +197,17 @@ bool bongo_cat_app_audit_screen_pointer(BongoCatApp *app) {
         bounds.y + bounds.h * 0.5, 1.0f / 60.0f);
     for (int frame = 0; frame < 90; ++frame)
         bongo_cat_app_step_live2d(app, 1.0f / 60.0f);
-    BongoCatParameterRange x, y;
+    BongoCatParameterRange x, y, z;
     bool passed = bongo_cat_live2d_parameter(app->live2d, "ParamAngleX", &x) &&
         bongo_cat_live2d_parameter(app->live2d, "ParamAngleY", &y) &&
         fabsf(x.value) < 0.5f && fabsf(y.value) < 0.5f;
+    bool has_z = bongo_cat_live2d_parameter(app->live2d, "ParamAngleZ", &z);
+    bongo_cat_app_apply_mouse_position(app, bounds.x + bounds.w * 0.8,
+        bounds.y + bounds.h * 0.2, 1.0f / 60.0f);
+    for (int frame = 0; frame < 90; ++frame)
+        bongo_cat_app_step_live2d(app, 1.0f / 60.0f);
+    passed = (!has_z || (bongo_cat_live2d_parameter(app->live2d,
+        "ParamAngleZ", &z) && fabsf(z.value) < 0.25f)) && passed;
     app->settings.model.mouse_centered = mouse_centered;
     return passed;
 }

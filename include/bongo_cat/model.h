@@ -136,6 +136,8 @@ void bongo_cat_live2d_set_mirror(BongoCatLive2D *live2d, bool mirror);
 void bongo_cat_live2d_set_render_options(BongoCatLive2D *live2d,
     const BongoCatLive2DRenderOptions *options);
 void bongo_cat_live2d_set_dragging(BongoCatLive2D *live2d, float x, float y);
+void bongo_cat_live2d_set_centered_dragging(BongoCatLive2D *live2d,
+    float x, float y);
 void bongo_cat_live2d_prepare_viewer_audit(BongoCatLive2D *live2d);
 bool bongo_cat_live2d_set_parameter(BongoCatLive2D *live2d, const char *id, float value);
 bool bongo_cat_live2d_parameter(BongoCatLive2D *live2d, const char *id,

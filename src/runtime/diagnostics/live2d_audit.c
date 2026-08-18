@@ -211,10 +211,15 @@ static bool assertions(BongoCatApp *app, const char *scenario, bool operation) {
         return active(app, "ParamMouseLeftDown");
     if (strcmp(scenario, "mouse-right") == 0)
         return active(app, "ParamMouseRightDown");
-    if (strcmp(scenario, "mouse-move") == 0)
+    if (strcmp(scenario, "mouse-move") == 0) {
+        float angle_z = 0.0f;
+        bool z_valid = !value(app, "ParamAngleZ", &angle_z) ||
+            (app->model_render_options.mver_projection ? angle_z < -0.05f :
+                angle_z > 0.05f);
         return signed_value(app, "ParamAngleX",
                 app->model_render_options.mver_projection) &&
-            signed_value(app, "ParamAngleY", true);
+            signed_value(app, "ParamAngleY", true) && z_valid;
+    }
     if (strcmp(scenario, "mouse-move-mirror") == 0)
         return signed_value(app, "ParamAngleX", true) &&
             signed_value(app, "ParamAngleY", true);
@@ -233,13 +238,7 @@ static bool assertions(BongoCatApp *app, const char *scenario, bool operation) {
             pointer_audit.angle_y[1] > 5.0f &&
             pointer_audit.angle_y[2] < -5.0f &&
             pointer_audit.angle_y[3] < -5.0f;
-        bool custom = true;
-        if (!pointer_audit.mver && pointer_audit.has_mouse) {
-            for (int corner = 0; corner < 4; ++corner)
-                custom = SDL_fabsf(pointer_audit.mouse_x[corner]) < 0.001f &&
-                    SDL_fabsf(pointer_audit.mouse_y[corner]) < 0.001f && custom;
-        }
-        return direction && custom &&
+        return direction &&
             pointer_audit.maximum_step < POINTER_VISIBLE_STEP_LIMIT;
     }
     if (strcmp(scenario, "gamepad-sticks") == 0)

@@ -36,6 +36,27 @@ bool bongo_cat_mouse_step(BongoCatMouseTracking *tracking, float delta_seconds,
     return true;
 }
 
+float bongo_cat_mouse_centered_ratio(double position, double center,
+    double minimum, double maximum) {
+    if (!isfinite(position) || !isfinite(center) || !isfinite(minimum) ||
+        !isfinite(maximum) || maximum <= minimum) return 0.5f;
+    if (center < minimum) center = minimum;
+    if (center > maximum) center = maximum;
+    if (position < center) {
+        double span = center - minimum;
+        if (span <= 0.0) return 0.5f;
+        double ratio = 0.5 * (position - minimum) / span;
+        return (float)(ratio < 0.0 ? 0.0 : ratio);
+    }
+    if (position > center) {
+        double span = maximum - center;
+        if (span <= 0.0) return 0.5f;
+        double ratio = 0.5 + 0.5 * (position - center) / span;
+        return (float)(ratio > 1.0 ? 1.0 : ratio);
+    }
+    return 0.5f;
+}
+
 float bongo_cat_mouse_parameter_value(float minimum, float maximum,
     float x_ratio, float y_ratio, char axis, bool mirror) {
     float value;

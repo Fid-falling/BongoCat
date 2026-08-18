@@ -77,13 +77,18 @@ Desktop tracking is model-centered by default, so look direction changes only
 when the pointer crosses the pet's visible center. Users can disable the
 setting to retain the legacy screen/work-area-centered coordinate mapping.
 In model-centered mode, the authored hand and device range maps absolutely to
-the full display containing the pet; legacy mode retains Mver relative input.
+the full display containing the pet, while gaze maps each side of the pet
+center independently to the corresponding display edge. This keeps the pet
+center neutral and preserves the full authored look range near display edges.
+Legacy mode retains Mver relative input.
 The display is selected from the pet's visible center. Negative-coordinate,
 stacked, and mixed-DPI layouts retain desktop coordinates, and display mode,
 topology, or scale changes invalidate and immediately resample the mapping.
-`ParamAngleZ` is not synthesized by the Viewer-equivalent path. Models that
-author `ParamMouseX` or `ParamMouseY` receive the normalized pointer domain in
-addition to Cubism dragging; missing parameters remain a no-op.
+In model-centered mode, `ParamAngleZ` receives the Mver-compatible `-X * Y`
+pointer tilt when present, scaled to its authored positive or negative extent.
+Legacy mode does not synthesize Z. Models that author `ParamMouseX` or
+`ParamMouseY` receive the normalized pointer domain in addition to Cubism
+dragging; missing parameters remain a no-op.
 
 Mver 0.1.6 remains the compatibility baseline for package discovery, imported
 files, configuration, shortcuts, window composition, and projection only. A
