@@ -58,6 +58,7 @@
         },
         "hints": {
           "showTrayIcon": "启用后，在系统托盘中显示应用图标。",
+          "autostartFailed": "无法更新开机启动设置",
           "inputMonitoringPermission": "开启输入监控权限，以便接收系统的键盘和鼠标事件来响应你的操作。",
           "inputMonitoringPermissionGuide": "开启输入监控权限后，应用才能接收系统的键盘和鼠标事件，从而响应你的操作。\n\n操作方式：\n1. 打开「系统设置」→「隐私与安全性」→「输入监控」。\n2. 若列表中已存在 BongoCat，请先选中它，点击「-」按钮将其删除。\n3. 点击「+」按钮，找到并添加 BongoCat 应用。\n4. 重启应用，以确保权限正式生效。",
           "administratorPermission": "以管理员身份运行应用，可以更稳定地捕获部分系统级按键与输入事件。",
@@ -85,8 +86,16 @@
         "hints": {
           "deleteSuccess": "已删除“%s”",
           "deleteModel": "你确定要删除“%s”吗？",
+          "deleteFailed": "无法删除此模型",
           "importSuccess": "导入成功",
           "importExists": "模型已存在，无需重复导入",
+          "importPartial": "部分模型已导入，但仍有一个或多个项目导入失败",
+          "importInvalidSource": "所选来源已不存在或无法使用",
+          "importInvalidFormat": "未找到支持的模型，或模型包文件不完整",
+          "importFileAccess": "无法读取或保存模型文件，请检查文件权限和可用磁盘空间",
+          "importOutOfMemory": "内存不足，无法导入此模型",
+          "importLoadFailed": "模型已导入，但无法正常显示",
+          "importFailed": "模型导入失败，请检查所选文件后重试",
           "clickOrDragToImport": "点击或拖动至此区域导入",
           "openDirectoryFailed": "无法打开模型目录"
         },
@@ -181,6 +190,12 @@
     "removeDesktopPet": "\u5173\u95ed\u6b64\u684c\u5ba0",
     "modelLoadFailed": "\u6a21\u578b\u65e0\u6cd5\u663e\u793a",
     "noBehaviors": "暂无可用项目",
+    "preferencesWindowTitle": "BongoCat - 设置",
+    "startup": {
+      "failed": "BongoCat 无法启动。",
+      "detail": "请查看诊断日志了解技术详情。",
+      "diagnosticLog": "诊断日志："
+    },
     "support": {
       "title": "支持开发团队",
       "heroText": "感谢你的支持。每一次使用与分享，都让 BongoCat 继续成长。",
@@ -193,7 +208,9 @@
       "refactorDeveloper": "(将BongoCat用C语言重构的开发者)",
       "community": "社区",
       "qqGroup": "QQ 群",
-      "coffee": "请开发团队喝杯咖啡？"
+      "coffee": "请开发团队喝杯咖啡？",
+      "starOnGitHub": "GitHub 加星",
+      "by": "作者："
     },
     "shortcut": {
       "toggleCat": "显示/隐藏",

@@ -58,6 +58,7 @@
         },
         "hints": {
           "showTrayIcon": "Wenn aktiviert, wird das Anwendungssymbol im Infobereich angezeigt.",
+          "autostartFailed": "Die Einstellung für den automatischen Start konnte nicht aktualisiert werden",
           "inputMonitoringPermission": "Aktivieren Sie die Eingabeüberwachung, um Tastatur- und Mausereignisse vom System zu empfangen.",
           "inputMonitoringPermissionGuide": "Die Berechtigung zur Eingabeüberwachung ist erforderlich, damit die Anwendung Tastatur- und Mausereignisse vom System empfangen kann.\n\nSchritte:\n1. Öffnen Sie Systemeinstellungen > Datenschutz & Sicherheit > Eingabeüberwachung.\n2. Falls BongoCat bereits aufgeführt ist, wählen Sie es aus und entfernen Sie es mit der Schaltfläche \"-\".\n3. Klicken Sie auf \"+\", um BongoCat zu suchen und hinzuzufügen.\n4. Starten Sie die Anwendung neu, damit die Berechtigung wirksam wird.",
           "administratorPermission": "Als Administrator kann die Anwendung bestimmte Systemtasten und Eingabeereignisse zuverlässiger erfassen.",
@@ -85,8 +86,16 @@
         "hints": {
           "deleteSuccess": "\"%s\" wurde gelöscht",
           "deleteModel": "Möchten Sie \"%s\" wirklich löschen?",
+          "deleteFailed": "Dieses Modell konnte nicht gelöscht werden",
           "importSuccess": "Erfolgreich importiert",
           "importExists": "Modell ist bereits vorhanden",
+          "importPartial": "Einige Modelle wurden importiert, aber mindestens ein Element ist fehlgeschlagen",
+          "importInvalidSource": "Die ausgewählte Quelle ist nicht mehr vorhanden oder kann nicht verwendet werden",
+          "importInvalidFormat": "Es wurde kein unterstütztes Modell gefunden oder das Modellpaket ist unvollständig",
+          "importFileAccess": "Die Modelldateien konnten nicht gelesen oder gespeichert werden. Prüfen Sie die Dateiberechtigungen und den verfügbaren Speicherplatz",
+          "importOutOfMemory": "Zum Importieren dieses Modells ist nicht genügend Arbeitsspeicher verfügbar",
+          "importLoadFailed": "Das Modell wurde importiert, konnte aber nicht angezeigt werden",
+          "importFailed": "Der Modellimport ist fehlgeschlagen. Prüfen Sie die ausgewählten Dateien und versuchen Sie es erneut",
           "clickOrDragToImport": "Zum Importieren klicken oder hierher ziehen",
           "openDirectoryFailed": "Modellordner konnte nicht geöffnet werden"
         },
@@ -181,6 +190,12 @@
     "removeDesktopPet": "Diesen Desktop-Begleiter schlie\u00dfen",
     "modelLoadFailed": "Dieses Modell kann nicht angezeigt werden",
     "noBehaviors": "Keine Einträge",
+    "preferencesWindowTitle": "BongoCat - Einstellungen",
+    "startup": {
+      "failed": "BongoCat konnte nicht gestartet werden.",
+      "detail": "Technische Details finden Sie im Diagnoseprotokoll.",
+      "diagnosticLog": "Diagnoseprotokoll:"
+    },
     "support": {
       "title": "Entwicklungsteam unterstützen",
       "heroText": "Vielen Dank für Ihre Unterstützung. Jede Nutzung und Weitergabe hilft BongoCat, weiter zu wachsen.",
@@ -193,7 +208,9 @@
       "refactorDeveloper": "(Entwickler, der BongoCat in C neu aufgebaut hat)",
       "community": "Community",
       "qqGroup": "QQ-Gruppe",
-      "coffee": "Dem Entwicklungsteam einen Kaffee spendieren?"
+      "coffee": "Dem Entwicklungsteam einen Kaffee spendieren?",
+      "starOnGitHub": "GitHub-Stern",
+      "by": "von "
     },
     "shortcut": {
       "toggleCat": "Ein-/ausblenden",

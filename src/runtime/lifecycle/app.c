@@ -73,13 +73,13 @@ bool bongo_cat_app_initialize(BongoCatApp *app, int argc, char **argv,
     if (!app->secondary_pet && !app->autostart_launch)
         app->session.window.visible = true;
     bongo_cat_startup_stage(app, "configuration-ready");
-    if (bongo_cat_window_create(app, error) != BONGO_CAT_OK) return false;
-    bongo_cat_startup_stage(app, "window-ready");
     if (bongo_cat_app_locate_assets(app, error) != BONGO_CAT_OK) return false;
     bongo_cat_startup_stage(app, "assets-ready");
     BongoCatError optional = {0};
     app->i18n = bongo_cat_i18n_create(app->locale_root, app->settings.app.language, &optional);
     if (!app->i18n) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", optional.message);
+    if (bongo_cat_window_create(app, error) != BONGO_CAT_OK) return false;
+    bongo_cat_startup_stage(app, "window-ready");
     if (bongo_cat_platform_init(&app->platform, app->window, &app->input, error) != BONGO_CAT_OK) return false;
     bongo_cat_window_apply(app);
     bongo_cat_startup_stage(app, "platform-ready");

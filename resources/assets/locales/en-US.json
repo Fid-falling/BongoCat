@@ -58,6 +58,7 @@
         },
         "hints": {
           "showTrayIcon": "When enabled, the app icon is displayed in the system tray.",
+          "autostartFailed": "Unable to update launch-on-startup settings",
           "inputMonitoringPermission": "Enable input monitoring to receive keyboard and mouse events from the system.",
           "inputMonitoringPermissionGuide": "Input Monitoring permission is required for the app to receive keyboard and mouse events from the system.\n\nSteps:\n1. Open System Settings → Privacy & Security → Input Monitoring.\n2. If BongoCat already appears in the list, select it and click the \"-\" button to remove it.\n3. Click the \"+\" button to find and add BongoCat.\n4. Restart the app for the permission to take effect.",
           "administratorPermission": "Running the app as administrator helps capture some system-level keys and input events more reliably.",
@@ -85,8 +86,16 @@
         "hints": {
           "deleteSuccess": "Deleted \"%s\"",
           "deleteModel": "Are you sure you want to delete \"%s\"?",
+          "deleteFailed": "Unable to delete this model",
           "importSuccess": "Imported Successfully",
           "importExists": "Model already exists",
+          "importPartial": "Some models were imported, but one or more items failed",
+          "importInvalidSource": "The selected source no longer exists or cannot be used",
+          "importInvalidFormat": "No supported model was found, or the model package is incomplete",
+          "importFileAccess": "The model files could not be read or saved. Check file permissions and available disk space",
+          "importOutOfMemory": "There is not enough memory to import this model",
+          "importLoadFailed": "The model was imported, but it could not be displayed",
+          "importFailed": "Model import failed. Check the selected files and try again",
           "clickOrDragToImport": "Click or drag here to import",
           "openDirectoryFailed": "Unable to open model directory"
         },
@@ -181,6 +190,12 @@
     "removeDesktopPet": "Close this desktop pet",
     "modelLoadFailed": "Unable to display this model",
     "noBehaviors": "No items",
+    "preferencesWindowTitle": "BongoCat - Preferences",
+    "startup": {
+      "failed": "BongoCat could not start.",
+      "detail": "See the diagnostic log for technical details.",
+      "diagnosticLog": "Diagnostic log:"
+    },
     "support": {
       "title": "Support the Dev Team",
       "heroText": "Thank you for your support. Every use and share helps BongoCat continue to grow.",
@@ -193,7 +208,9 @@
       "refactorDeveloper": "(Developer who rebuilt BongoCat in C)",
       "community": "Community",
       "qqGroup": "QQ Group",
-      "coffee": "Buy the development team a coffee?"
+      "coffee": "Buy the development team a coffee?",
+      "starOnGitHub": "Star on GitHub",
+      "by": "by "
     },
     "shortcut": {
       "toggleCat": "Show/Hide",

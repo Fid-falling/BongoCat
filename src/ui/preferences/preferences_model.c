@@ -131,17 +131,47 @@ void bongo_cat_preferences_process_model_selection(BongoCatPreferences *value) {
        card click that queued this selection and immediately toggle it back. */
 }
 
+static const char *import_failure_message(BongoCatApp *app,
+    BongoCatResult result, bool partial) {
+    if (partial) return tr(app,
+        "pages.preference.model.hints.importPartial",
+        "Some models were imported, but one or more items failed");
+    switch (result) {
+    case BONGO_CAT_ERROR_ARGUMENT:
+        return tr(app, "pages.preference.model.hints.importInvalidSource",
+            "The selected source no longer exists or cannot be used");
+    case BONGO_CAT_ERROR_FORMAT:
+        return tr(app, "pages.preference.model.hints.importInvalidFormat",
+            "No supported model was found, or the model package is incomplete");
+    case BONGO_CAT_ERROR_IO:
+        return tr(app, "pages.preference.model.hints.importFileAccess",
+            "The model files could not be read or saved");
+    case BONGO_CAT_ERROR_MEMORY:
+        return tr(app, "pages.preference.model.hints.importOutOfMemory",
+            "There is not enough memory to import this model");
+    case BONGO_CAT_ERROR_CUBISM:
+        return tr(app, "pages.preference.model.hints.importLoadFailed",
+            "The model was imported, but it could not be displayed");
+    default:
+        return tr(app, "pages.preference.model.hints.importFailed",
+            "Model import failed. Check the selected files and try again");
+    }
+}
+
 void bongo_cat_preferences_import_complete(BongoCatApp *app,
     BongoCatResult result, const BongoCatError *error, size_t resolved_count,
     size_t installed_count) {
     if (!app || !app->preferences) return;
     bool partial = result == BONGO_CAT_OK && error && error->message[0];
     const char *message = result != BONGO_CAT_OK || partial
-        ? (error && error->message[0] ? error->message : "Model import failed")
+        ? import_failure_message(app, result, partial)
         : installed_count ? tr(app,
             "pages.preference.model.hints.importSuccess", "Model imported")
         : tr(app, "pages.preference.model.hints.importExists",
             "Model already exists");
+    if ((result != BONGO_CAT_OK || partial) && error && error->message[0])
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+            "Model import failed: %s", error->message);
     if (app->smoke) {
         if (result != BONGO_CAT_OK || partial) app->exit_code = 1;
     } else bongo_cat_preferences_notice_show(app, message,

@@ -111,7 +111,11 @@ static void remove_model(BongoCatApp *app) {
     BongoCatError error = {0};
     if (bongo_cat_app_remove_model(app, remove_dialog.model_id,
         &error) != BONGO_CAT_OK) {
-        bongo_cat_preferences_notice_show(app, error.message, true);
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+            "Model removal failed: %s", error.message);
+        bongo_cat_preferences_notice_show(app, tr(app,
+            "pages.preference.model.hints.deleteFailed",
+            "Unable to delete this model"), true);
     } else {
         char message[sizeof(remove_dialog.model_name) + 128];
         snprintf(message, sizeof(message), tr(app,

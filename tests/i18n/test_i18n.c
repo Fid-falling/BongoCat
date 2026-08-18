@@ -80,6 +80,16 @@ int main(void) {
     snprintf(root, sizeof(root), "%s/resources/assets/locales", BONGO_CAT_NATIVE_SOURCE_DIR);
     yyjson_doc *reference = load(root, "zh-CN");
     if (!reference) return 1;
+    const char *required_ui_keys[] = {
+        "pages.preference.general.hints.autostartFailed",
+        "pages.preference.model.hints.deleteFailed",
+        "pages.preference.model.hints.importFailed",
+        "native.preferencesWindowTitle",
+        "native.startup.failed",
+        "native.startup.detail",
+        "native.startup.diagnosticLog",
+        "native.support.starOnGitHub",
+        "native.support.by"};
     const uint32_t expected[] = {'A', 0x4e2d, 0x8a2d, 0x00e7, 0x00fc,
         0x65e5, 0xd55c, 0x00ea, 0x0420, 0x00f1};
     for (int language = 0; language < BONGO_CAT_LANG_COUNT; ++language) {
@@ -95,6 +105,16 @@ int main(void) {
             !covers_value(ranges, yyjson_doc_get_root(document))) {
             fprintf(stderr, "Missing U+%04X for %s\n", expected[language], name);
             return 3;
+        }
+        for (size_t i = 0; i < sizeof(required_ui_keys) /
+            sizeof(required_ui_keys[0]); ++i) {
+            const char *missing = "__missing_translation__";
+            if (!strcmp(bongo_cat_i18n_get(i18n, required_ui_keys[i], missing),
+                missing)) {
+                fprintf(stderr, "Missing required translation %s for %s\n",
+                    required_ui_keys[i], name);
+                return 7;
+            }
         }
         bongo_cat_i18n_destroy(i18n);
         yyjson_doc_free(document);

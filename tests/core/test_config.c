@@ -143,6 +143,14 @@ void test_config(void) {
     check_defaults_and_validation();
     check_shortcuts();
     check_override_canonicalization();
+    BongoCatLanguage language;
+    CHECK(!strcmp(bongo_cat_language_name(BONGO_CAT_LANG_ZH_HANT),
+        "zh-Hant"));
+    CHECK(bongo_cat_language_parse("zh-Hant", &language) &&
+        language == BONGO_CAT_LANG_ZH_HANT);
+    CHECK(bongo_cat_language_parse("zh-TW", &language) &&
+        language == BONGO_CAT_LANG_ZH_HANT);
+    CHECK(!bongo_cat_language_parse("zh-Hans", &language));
     const uint32_t colors[] = {0x00ff00, 0x0000ff, 0xff0000, 0xff00ff};
     for (int i = 0; i < BONGO_CAT_OBS_BACKGROUND_COLOR_COUNT; ++i)
         CHECK(bongo_cat_obs_background_color_rgb(i) == colors[i]);

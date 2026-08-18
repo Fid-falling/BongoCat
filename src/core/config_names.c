@@ -1,14 +1,31 @@
 #include "bongo_cat/config.h"
 
+#include <string.h>
+
 const char *bongo_cat_theme_name(BongoCatTheme value) {
     const char *names[] = {"auto", "light", "dark"};
     return (unsigned)value <= BONGO_CAT_THEME_DARK ? names[value] : names[0];
 }
 
 const char *bongo_cat_language_name(BongoCatLanguage value) {
-    const char *names[] = {"en-US", "zh-CN", "zh-TW", "fr-FR", "de-DE",
+    const char *names[] = {"en-US", "zh-CN", "zh-Hant", "fr-FR", "de-DE",
         "ja-JP", "ko-KR", "pt-BR", "ru-RU", "es-ES"};
     return (unsigned)value < BONGO_CAT_LANG_COUNT ? names[value] : names[0];
+}
+
+bool bongo_cat_language_parse(const char *name, BongoCatLanguage *value) {
+    if (!name || !value) return false;
+    if (!strcmp(name, "zh-TW")) {
+        *value = BONGO_CAT_LANG_ZH_HANT;
+        return true;
+    }
+    for (int i = 0; i < BONGO_CAT_LANG_COUNT; ++i) {
+        if (strcmp(name, bongo_cat_language_name((BongoCatLanguage)i)))
+            continue;
+        *value = (BongoCatLanguage)i;
+        return true;
+    }
+    return false;
 }
 
 const char *bongo_cat_mode_name(BongoCatModelMode value) {

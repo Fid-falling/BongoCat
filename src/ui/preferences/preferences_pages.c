@@ -119,7 +119,9 @@ static void update_autostart(BongoCatApp *app, bool old_value) {
     if (bongo_cat_platform_set_autostart(app->settings.app.autostart, &error) == BONGO_CAT_OK) return;
     app->settings.app.autostart = old_value;
     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
-    bongo_cat_preferences_notice_show(app, error.message, true);
+    bongo_cat_preferences_notice_show(app, tr(app,
+        "pages.preference.general.hints.autostartFailed",
+        "Unable to update launch-on-startup settings"), true);
 }
 
 void bongo_cat_preferences_page_general(BongoCatApp *app, struct nk_context *context) {
@@ -141,7 +143,7 @@ void bongo_cat_preferences_page_general(BongoCatApp *app, struct nk_context *con
     section_gap(context, 6);
     const int language_to_ui[] = {2, 0, 1, 3, 4, 5, 6, 7, 8, 9};
     const BongoCatLanguage ui_to_language[] = {
-        BONGO_CAT_LANG_ZH_CN, BONGO_CAT_LANG_ZH_TW,
+        BONGO_CAT_LANG_ZH_CN, BONGO_CAT_LANG_ZH_HANT,
         BONGO_CAT_LANG_EN_US, BONGO_CAT_LANG_FR_FR,
         BONGO_CAT_LANG_DE_DE, BONGO_CAT_LANG_JA_JP,
         BONGO_CAT_LANG_KO_KR, BONGO_CAT_LANG_PT_BR,

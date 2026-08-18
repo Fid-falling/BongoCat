@@ -8,13 +8,12 @@
 #include "bongo_cat/version.h"
 
 #define BONGO_CAT_NAME "BongoCat"
-#define BONGO_CAT_PET_WINDOW_TITLE "BongoCat - Pet"
-#define BONGO_CAT_SETTINGS_WINDOW_TITLE "BongoCat - Settings"
+#define BONGO_CAT_PET_WINDOW_TITLE BONGO_CAT_NAME
 #define BONGO_CAT_SLUG "bongo-cat"
 #define BONGO_CAT_EXECUTABLE "BongoCat"
 #define BONGO_CAT_APP_ID "com.bongocat.desktop"
 #define BONGO_CAT_NAME_W L"BongoCat"
-#define BONGO_CAT_PET_WINDOW_TITLE_W L"BongoCat - Pet"
+#define BONGO_CAT_PET_WINDOW_TITLE_W BONGO_CAT_NAME_W
 #define BONGO_CAT_PATH_CAP 1024
 #define BONGO_CAT_ID_CAP 128
 #define BONGO_CAT_SHORTCUT_CAP 128

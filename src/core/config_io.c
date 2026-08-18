@@ -37,15 +37,6 @@ static bool parse_theme(const char *value, BongoCatTheme *target) {
     return true;
 }
 
-static bool parse_language(const char *value, BongoCatLanguage *target) {
-    for (int i = 0; i < BONGO_CAT_LANG_COUNT; ++i)
-        if (!strcmp(value, bongo_cat_language_name((BongoCatLanguage)i))) {
-            *target = (BongoCatLanguage)i;
-            return true;
-        }
-    return false;
-}
-
 static bool parse_background_color(const char *value,
     BongoCatObsBackgroundColor *target) {
     for (int i = 0; i < BONGO_CAT_OBS_BACKGROUND_COLOR_COUNT; ++i)
@@ -108,7 +99,7 @@ static bool read_app(yyjson_val *object, BongoCatApplicationPreferences *value,
     if (text && !parse_theme(text, &value->theme))
         return type_error(error, "theme", "auto, light, or dark");
     if (!read_string(object, "language", &text, &length, error)) return false;
-    if (text && !parse_language(text, &value->language))
+    if (text && !bongo_cat_language_parse(text, &value->language))
         return type_error(error, "language", "a supported locale string");
     return true;
 }

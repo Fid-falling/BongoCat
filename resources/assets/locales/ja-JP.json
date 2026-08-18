@@ -58,6 +58,7 @@
         },
         "hints": {
           "showTrayIcon": "有効にすると、システムトレイにアプリアイコンを表示します。",
+          "autostartFailed": "起動時に実行する設定を更新できません",
           "inputMonitoringPermission": "システムからキーボードとマウスのイベントを受け取るには、入力監視を有効にしてください。",
           "inputMonitoringPermissionGuide": "システムからキーボードとマウスのイベントを受け取るには、入力監視の権限が必要です。\n\n手順：\n1. システム設定 > プライバシーとセキュリティ > 入力監視を開きます。\n2. BongoCatがすでに一覧にある場合は選択し、\"-\"ボタンで削除します。\n3. \"+\"ボタンをクリックしてBongoCatを探し、追加します。\n4. 権限を反映するため、アプリを再起動します。",
           "administratorPermission": "管理者として実行すると、一部のシステムキーや入力イベントをより確実に取得できます。",
@@ -85,8 +86,16 @@
         "hints": {
           "deleteSuccess": "「%s」を削除しました",
           "deleteModel": "「%s」を削除しますか？",
+          "deleteFailed": "このモデルを削除できません",
           "importSuccess": "インポートしました",
           "importExists": "モデルは既に存在します",
+          "importPartial": "一部のモデルをインポートしましたが、1件以上の項目で失敗しました",
+          "importInvalidSource": "選択したインポート元は存在しないか、使用できません",
+          "importInvalidFormat": "対応するモデルが見つからないか、モデルパッケージが不完全です",
+          "importFileAccess": "モデルファイルを読み込みまたは保存できません。ファイルの権限とディスクの空き容量を確認してください",
+          "importOutOfMemory": "メモリが不足しているため、このモデルをインポートできません",
+          "importLoadFailed": "モデルはインポートされましたが、表示できませんでした",
+          "importFailed": "モデルのインポートに失敗しました。選択したファイルを確認して、もう一度お試しください",
           "clickOrDragToImport": "クリックまたはここへドラッグしてインポート",
           "openDirectoryFailed": "モデルフォルダーを開けません"
         },
@@ -181,6 +190,12 @@
     "removeDesktopPet": "\u3053\u306e\u30c7\u30b9\u30af\u30c8\u30c3\u30d7\u30da\u30c3\u30c8\u3092\u9589\u3058\u308b",
     "modelLoadFailed": "このモデルを表示できません",
     "noBehaviors": "項目がありません",
+    "preferencesWindowTitle": "BongoCat - 設定",
+    "startup": {
+      "failed": "BongoCat を起動できませんでした。",
+      "detail": "技術的な詳細は診断ログを確認してください。",
+      "diagnosticLog": "診断ログ："
+    },
     "support": {
       "title": "開発チームを支援",
       "heroText": "ご支援ありがとうございます。利用や共有の一つひとつがBongoCatの成長につながります。",
@@ -193,7 +208,9 @@
       "refactorDeveloper": "（BongoCatをCで再構築した開発者）",
       "community": "コミュニティ",
       "qqGroup": "QQグループ",
-      "coffee": "開発チームにコーヒーを贈りますか？"
+      "coffee": "開発チームにコーヒーを贈りますか？",
+      "starOnGitHub": "GitHubでスター",
+      "by": "開発："
     },
     "shortcut": {
       "toggleCat": "表示/非表示",

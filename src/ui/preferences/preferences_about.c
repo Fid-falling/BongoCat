@@ -119,7 +119,8 @@ static void star_button(BongoCatPreferences *value,
         nk_rect(bounds.x + 22, bounds.y + 14.5f, 19, 19), nk_rgb(255, 255, 255));
     text(canvas, nk_rect(bounds.x + 50, bounds.y +
         (bounds.h - value->ui.label_font->height) * .5f,
-        bounds.w - 62, value->ui.label_font->height), "Star on GitHub",
+        bounds.w - 62, value->ui.label_font->height), tr(value,
+        "native.support.starOnGitHub", "Star on GitHub"),
         value->ui.label_font, nk_rgb(255, 255, 255));
     link_cursor(context, bounds);
     if (hit(context, bounds))
@@ -129,7 +130,8 @@ static void hero_title(BongoCatPreferences *value, struct nk_context *context,
     struct nk_command_buffer *canvas, struct nk_rect bounds,
     BongoCatUIPalette p) {
     const char *title = "BongoCat";
-    const char *by = "by ", *developer = "BongoCat-pet";
+    const char *by = tr(value, "native.support.by", "by ");
+    const char *developer = "BongoCat-pet";
     float gap = 8, title_width = width(value->ui.hero_font, title);
     float by_width = width(value->ui.caption_font, by),
         developer_width = width(value->ui.caption_font, developer);

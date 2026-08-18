@@ -13,7 +13,7 @@ typedef enum BongoCatTheme { BONGO_CAT_THEME_AUTO, BONGO_CAT_THEME_LIGHT, BONGO_
 typedef enum BongoCatLanguage {
     BONGO_CAT_LANG_EN_US,
     BONGO_CAT_LANG_ZH_CN,
-    BONGO_CAT_LANG_ZH_TW,
+    BONGO_CAT_LANG_ZH_HANT,
     BONGO_CAT_LANG_FR_FR,
     BONGO_CAT_LANG_DE_DE,
     BONGO_CAT_LANG_JA_JP,
@@ -154,6 +154,7 @@ BongoCatResult bongo_cat_session_save(const char *path,
     const BongoCatSessionState *session, BongoCatError *error);
 const char *bongo_cat_theme_name(BongoCatTheme value);
 const char *bongo_cat_language_name(BongoCatLanguage value);
+bool bongo_cat_language_parse(const char *name, BongoCatLanguage *value);
 const char *bongo_cat_mode_name(BongoCatModelMode value);
 const char *bongo_cat_obs_background_color_name(
     BongoCatObsBackgroundColor value);

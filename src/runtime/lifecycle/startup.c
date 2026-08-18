@@ -1,6 +1,7 @@
 #include "runtime.h"
 #include "runtime_state.h"
 #include "bongo_cat/file.h"
+#include "bongo_cat/i18n.h"
 #include "bongo_cat/path.h"
 #include "storage_paths.h"
 
@@ -115,10 +116,9 @@ static bool parse_arguments(BongoCatApp *app, int argc, char **argv,
             int page = atoi(arg + 21);
             if (page >= 0 && page < 5) app->smoke_preference_page = page;
         } else if (strncmp(arg, "--ci-language=", 14) == 0) {
-            const char *name = arg + 14;
-            for (int value = 0; value < BONGO_CAT_LANG_COUNT; ++value)
-                if (strcmp(name, bongo_cat_language_name((BongoCatLanguage)value)) == 0)
-                    app->smoke_language = value;
+            BongoCatLanguage language;
+            if (bongo_cat_language_parse(arg + 14, &language))
+                app->smoke_language = language;
         } else if (strncmp(arg, "--ci-theme=", 11) == 0) {
             const char *name = arg + 11;
             for (int value = 0; value <= BONGO_CAT_THEME_DARK; ++value)
@@ -266,14 +266,27 @@ static void native_error_box(const char *message) {
 }
 #endif
 
+static const char *startup_tr(BongoCatApp *app, const char *key,
+    const char *fallback) {
+    return app && app->i18n
+        ? bongo_cat_i18n_get(app->i18n, key, fallback) : fallback;
+}
+
 void bongo_cat_startup_failure(BongoCatApp *app, const BongoCatError *error) {
     const char *message = error && error->message[0] ? error->message : "Initialization failed";
     if (app) { bongo_cat_startup_stage(app, "failed"); write_error(app, "startup-error.log", message); }
     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Startup failed: %s", message);
     char body[BONGO_CAT_PATH_CAP + 384];
-    snprintf(body, sizeof(body), "BongoCat could not start.\n\n%s%s%s", message,
-        app && app->log_root[0] ? "\n\nDiagnostic log:\n" : "",
-        app && app->log_root[0] ? startup_log_path : "");
+    const char *heading = startup_tr(app, "native.startup.failed",
+        "BongoCat could not start.");
+    const char *detail = startup_tr(app, "native.startup.detail",
+        "See the diagnostic log for technical details.");
+    const char *diagnostic = startup_tr(app, "native.startup.diagnosticLog",
+        "Diagnostic log:");
+    bool has_log = app && app->log_root[0];
+    snprintf(body, sizeof(body), "%s\n\n%s%s%s%s%s", heading, detail,
+        has_log ? "\n\n" : "", has_log ? diagnostic : "",
+        has_log ? "\n" : "", has_log ? startup_log_path : "");
     if (app && app->smoke) return;
     if (!SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, BONGO_CAT_NAME, body,
         app ? app->window : NULL)) {
