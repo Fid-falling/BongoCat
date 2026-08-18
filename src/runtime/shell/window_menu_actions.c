@@ -70,7 +70,7 @@ void bongo_cat_window_show_context_menu(BongoCatApp *app) {
         app->settings.window.always_on_top, dark_theme,
         bongo_cat_window_menu_preview, bongo_cat_window_menu_preview_tick,
         bongo_cat_window_menu_restore, &preview,
-        tr(app, "native.removeDesktopPet", "Remove this desktop pet"),
+        tr(app, "native.removeDesktopPet", "Close this desktop pet"),
         app->secondary_pet || (app->settings.model.multiple_pets &&
             app->session.additional_model_count > 0)};
     BongoCatMenuAction action = bongo_cat_platform_context_menu(
@@ -83,7 +83,10 @@ void bongo_cat_window_show_context_menu(BongoCatApp *app) {
 void bongo_cat_window_menu_action(BongoCatApp *app,
     BongoCatMenuAction action) {
     if (action == BONGO_CAT_MENU_PREFERENCES) {
-        if (app->preferences) bongo_cat_preferences_show(app->preferences);
+        if (app->secondary_pet)
+            bongo_cat_multi_pet_request_preferences(app);
+        else if (app->preferences)
+            bongo_cat_preferences_show(app->preferences);
     } else if (action == BONGO_CAT_MENU_MODEL_ADD) {
         if (app->preferences)
             bongo_cat_preferences_open_model_import(app->preferences,
@@ -125,22 +128,31 @@ void bongo_cat_window_menu_action(BongoCatApp *app,
             select_model(app, app->models.entries[index].id);
     } else if (action == BONGO_CAT_MENU_REMOVE_PET) {
         if (app->secondary_pet) {
-            if (bongo_cat_multi_pet_request_remove(app)) app->running = false;
+            if (bongo_cat_multi_pet_request_remove(app)) {
+                bongo_cat_platform_set_visible(&app->platform, false);
+                app->running = false;
+            }
         } else if (app->settings.model.multiple_pets &&
             app->session.additional_model_count) {
             char model_id[BONGO_CAT_ID_CAP];
             BongoCatError error = {0};
             snprintf(model_id, sizeof(model_id), "%s",
                 app->session.active_model_id);
+            bool visible = app->session.window.visible;
+            if (visible) bongo_cat_platform_set_visible(&app->platform, false);
             if (!bongo_cat_app_set_model_active(app, model_id, false, &error))
                 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                     "[runtime] Multi-pet primary remove failed: model=%s "
                     "error=%s", model_id,
                     error.message[0] ? error.message : "unknown error");
+            if (visible) bongo_cat_platform_set_visible(&app->platform, true);
         }
     } else if (action == BONGO_CAT_MENU_EXIT) {
         if (app->secondary_pet) {
-            if (bongo_cat_multi_pet_request_remove(app)) app->running = false;
+            if (bongo_cat_multi_pet_request_exit(app)) {
+                bongo_cat_platform_set_visible(&app->platform, false);
+                app->running = false;
+            }
         } else app->running = false;
     }
     bongo_cat_preferences_invalidate(app->preferences);

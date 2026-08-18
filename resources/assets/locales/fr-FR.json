@@ -178,7 +178,7 @@
   "native": {
     "multiplePets": "Afficher plusieurs modèles",
     "multiplePetsLimit": "Jusqu'\u00e0 8 mascottes peuvent \u00eatre affich\u00e9es \u00e0 la fois",
-    "removeDesktopPet": "Retirer cette mascotte du bureau",
+    "removeDesktopPet": "Fermer cette mascotte de bureau",
     "modelLoadFailed": "Impossible d'afficher ce modèle",
     "noBehaviors": "Aucun élément",
     "support": {

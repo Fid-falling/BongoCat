@@ -53,11 +53,6 @@ BongoCatMenuAction bongo_cat_platform_context_menu(BongoCatPlatform *platform,
         destroy_unattached(menu, sizes, opacity, models, motions, expressions);
         return BONGO_CAT_MENU_NONE;
     }
-    if (labels->remove_pet_visible) {
-        menu_text(menu, MF_STRING, BONGO_CAT_MENU_REMOVE_PET,
-            labels->remove_pet);
-        AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
-    }
     menu_text(menu, MF_STRING, BONGO_CAT_MENU_PREFERENCES, labels->preferences);
     menu_text(menu, MF_STRING, BONGO_CAT_MENU_HIDE, labels->hide);
     AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
@@ -112,6 +107,11 @@ BongoCatMenuAction bongo_cat_platform_context_menu(BongoCatPlatform *platform,
     free(expression_label);
     AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
     menu_text(menu, MF_STRING, BONGO_CAT_MENU_EXIT, labels->exit);
+    if (labels->remove_pet_visible) {
+        AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
+        menu_text(menu, MF_STRING, BONGO_CAT_MENU_REMOVE_PET,
+            labels->remove_pet);
+    }
     POINT point; GetCursorPos(&point);
     HWND window = native_window(platform);
     bongo_cat_ui_native_menu_prepare(platform->window, labels->dark_theme);

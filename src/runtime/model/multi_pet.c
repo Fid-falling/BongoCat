@@ -234,6 +234,29 @@ size_t bongo_cat_app_active_model_count(const BongoCatApp *app) {
         ? 1 + app->session.additional_model_count : app ? 1 : 0;
 }
 
+static bool load_pet_window(const BongoCatApp *app, const char *model_id,
+    BongoCatWindowState *window) {
+    char directory[BONGO_CAT_PATH_CAP], path[BONGO_CAT_PATH_CAP];
+    BongoCatSessionState session;
+    BongoCatError error = {0};
+    bongo_cat_session_defaults(&session);
+    if (!bongo_cat_multi_pet_state_directory(directory, sizeof(directory),
+            app->primary_state_root, model_id) ||
+        !bongo_cat_path_join(path, sizeof(path), directory, "session.json") ||
+        bongo_cat_session_load(path, &session, &error) != BONGO_CAT_OK ||
+        !session.window.position_known) return false;
+    *window = session.window;
+    return true;
+}
+static void adopt_pet_window(BongoCatApp *app,
+    const BongoCatWindowState *window) {
+    if (!bongo_cat_window_apply_geometry(app, window->x, window->y,
+            window->scale_percent, window->width, window->height)) return;
+    app->session.window.opacity_percent = window->opacity_percent;
+    bongo_cat_platform_set_opacity(&app->platform,
+        window->opacity_percent / 100.0f);
+}
+
 bool bongo_cat_app_set_model_active(BongoCatApp *app, const char *id,
     bool active, BongoCatError *error) {
     if (!app || !id || !bongo_cat_models_find(&app->models, id)) {
@@ -254,11 +277,15 @@ bool bongo_cat_app_set_model_active(BongoCatApp *app, const char *id,
     } else if (primary) {
         if (!app->session.additional_model_count) return true;
         char replacement[BONGO_CAT_ID_CAP];
+        BongoCatWindowState replacement_window;
         snprintf(replacement, sizeof(replacement), "%s",
             app->session.additional_model_ids[0]);
+        bool preserve_window = load_pet_window(app, replacement,
+            &replacement_window);
         if (!bongo_cat_app_select_model_with_error(app, replacement, error))
             return false;
         bongo_cat_session_remove_model(&app->session, replacement);
+        if (preserve_window) adopt_pet_window(app, &replacement_window);
     } else bongo_cat_session_remove_model(&app->session, id);
     bongo_cat_multi_pet_primary_update(app, SDL_GetTicksNS());
     return true;

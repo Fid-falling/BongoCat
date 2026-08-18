@@ -178,7 +178,7 @@
   "native": {
     "multiplePets": "여러 개 동시에 표시",
     "multiplePetsLimit": "\ub370\uc2a4\ud06c\ud1b1 \ud3ab\uc740 \ud55c \ubc88\uc5d0 \ucd5c\ub300 8\uac1c\uae4c\uc9c0 \ud45c\uc2dc\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4",
-    "removeDesktopPet": "\uc774 \ub370\uc2a4\ud06c\ud1b1 \ud3ab \uc81c\uac70",
+    "removeDesktopPet": "\uc774 \ub370\uc2a4\ud06c\ud1b1 \ud3ab \ub2eb\uae30",
     "modelLoadFailed": "이 모델을 표시할 수 없습니다",
     "noBehaviors": "항목 없음",
     "support": {

@@ -178,7 +178,7 @@
   "native": {
     "multiplePets": "Mehrere gleichzeitig anzeigen",
     "multiplePetsLimit": "Bis zu 8 Desktop-Begleiter k\u00f6nnen gleichzeitig angezeigt werden",
-    "removeDesktopPet": "Diesen Desktop-Begleiter entfernen",
+    "removeDesktopPet": "Diesen Desktop-Begleiter schlie\u00dfen",
     "modelLoadFailed": "Dieses Modell kann nicht angezeigt werden",
     "noBehaviors": "Keine Einträge",
     "support": {

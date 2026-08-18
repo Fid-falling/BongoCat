@@ -178,7 +178,7 @@
   "native": {
     "multiplePets": "Mostrar varias a la vez",
     "multiplePetsLimit": "Se pueden mostrar hasta 8 mascotas a la vez",
-    "removeDesktopPet": "Quitar esta mascota del escritorio",
+    "removeDesktopPet": "Cerrar esta mascota de escritorio",
     "modelLoadFailed": "No se puede mostrar este modelo",
     "noBehaviors": "No hay elementos",
     "support": {

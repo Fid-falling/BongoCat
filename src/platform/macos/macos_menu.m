@@ -87,11 +87,6 @@ BongoCatMenuAction bongo_cat_macos_context_menu(BongoCatPlatform *platform,
     BongoCatMenuTarget *target = [[BongoCatMenuTarget alloc] initWithLabels:labels];
     NSMenu *menu = [[NSMenu alloc] initWithTitle:@""];
     [menu setDelegate:target];
-    if (labels->remove_pet_visible) {
-        add_item(menu, target, labels->remove_pet,
-            BONGO_CAT_MENU_REMOVE_PET, false);
-        [menu addItem:[NSMenuItem separatorItem]];
-    }
     add_item(menu, target, labels->preferences, BONGO_CAT_MENU_PREFERENCES, false);
     add_item(menu, target, labels->hide, BONGO_CAT_MENU_HIDE, false);
     [menu addItem:[NSMenuItem separatorItem]];
@@ -120,6 +115,11 @@ BongoCatMenuAction bongo_cat_macos_context_menu(BongoCatPlatform *platform,
     [models release]; [modelRoot release];
     [menu addItem:[NSMenuItem separatorItem]];
     add_item(menu, target, labels->exit, BONGO_CAT_MENU_EXIT, false);
+    if (labels->remove_pet_visible) {
+        [menu addItem:[NSMenuItem separatorItem]];
+        add_item(menu, target, labels->remove_pet,
+            BONGO_CAT_MENU_REMOVE_PET, false);
+    }
     NSTimer *previewTimer = nil;
     if (labels->preview_tick) {
         previewTimer = [NSTimer timerWithTimeInterval:1.0 / 60.0 target:target

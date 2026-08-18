@@ -109,8 +109,13 @@ bool bongo_cat_multi_pet_state_directory(char *target, size_t capacity,
 void bongo_cat_multi_pet_update(BongoCatApp *app, uint64_t now);
 void bongo_cat_multi_pet_primary_update(BongoCatApp *app, uint64_t now);
 bool bongo_cat_multi_pet_request_remove(BongoCatApp *app);
+bool bongo_cat_multi_pet_request_preferences(BongoCatApp *app);
+bool bongo_cat_multi_pet_request_exit(BongoCatApp *app);
 bool bongo_cat_multi_pet_request_pass_through(BongoCatApp *app,
     bool enabled);
+void bongo_cat_multi_pet_primary_requests_update(BongoCatApp *app);
+void bongo_cat_multi_pet_clear_primary_request(BongoCatApp *app,
+    const char *model_id);
 void bongo_cat_multi_pet_pass_through_requests_update(BongoCatApp *app);
 void bongo_cat_multi_pet_clear_pass_through_request(BongoCatApp *app,
     const char *model_id);

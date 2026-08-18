@@ -178,7 +178,7 @@
   "native": {
     "multiplePets": "同时显示多个",
     "multiplePetsLimit": "\u6700\u591a\u53ef\u540c\u65f6\u663e\u793a 8 \u4e2a\u684c\u5ba0",
-    "removeDesktopPet": "\u79fb\u9664\u6b64\u684c\u5ba0",
+    "removeDesktopPet": "\u5173\u95ed\u6b64\u684c\u5ba0",
     "modelLoadFailed": "\u6a21\u578b\u65e0\u6cd5\u663e\u793a",
     "noBehaviors": "暂无可用项目",
     "support": {

@@ -178,7 +178,7 @@
   "native": {
     "multiplePets": "複数を同時に表示",
     "multiplePetsLimit": "\u4e00\u5ea6\u306b\u8868\u793a\u3067\u304d\u308b\u30c7\u30b9\u30af\u30c8\u30c3\u30d7\u30da\u30c3\u30c8\u306f 8 \u4f53\u307e\u3067\u3067\u3059",
-    "removeDesktopPet": "\u3053\u306e\u30da\u30c3\u30c8\u3092\u8868\u793a\u304b\u3089\u5916\u3059",
+    "removeDesktopPet": "\u3053\u306e\u30c7\u30b9\u30af\u30c8\u30c3\u30d7\u30da\u30c3\u30c8\u3092\u9589\u3058\u308b",
     "modelLoadFailed": "このモデルを表示できません",
     "noBehaviors": "項目がありません",
     "support": {

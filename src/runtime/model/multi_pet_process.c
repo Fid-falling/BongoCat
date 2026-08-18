@@ -135,6 +135,7 @@ static bool spawn_pet(BongoCatApp *app, SecondaryPet *pet, size_t index,
     }
     bongo_cat_multi_pet_clear_remove_request(app, pet->model_id);
     bongo_cat_multi_pet_clear_pass_through_request(app, pet->model_id);
+    bongo_cat_multi_pet_clear_primary_request(app, pet->model_id);
     if (!write_control(app, pet)) {
         pet->failures++;
         pet->retry_ns = now + CHILD_RETRY_NS;
@@ -218,6 +219,7 @@ void bongo_cat_multi_pet_primary_update(BongoCatApp *app, uint64_t now) {
     BongoCatMultiPetRuntime *runtime = app->multi_pet;
     consume_remove_requests(app);
     bongo_cat_multi_pet_pass_through_requests_update(app);
+    bongo_cat_multi_pet_primary_requests_update(app);
     reap_pets(app, now);
     for (size_t i = 0; i < runtime->count; ++i) {
         SecondaryPet *pet = &runtime->pets[i];

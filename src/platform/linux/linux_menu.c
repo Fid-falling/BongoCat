@@ -190,13 +190,7 @@ BongoCatMenuAction bongo_cat_linux_context_menu(BongoCatPlatform *platform,
         labels->pass_through);
     snprintf(top, sizeof(top), "%s%s", labels->always_on_top_checked ? "[x] " : "",
         labels->always_on_top);
-    LinuxMenuRow main_rows[12]; int main_count = 0;
-    if (labels->remove_pet_visible) {
-        main_rows[main_count++] = (LinuxMenuRow){labels->remove_pet,
-            BONGO_CAT_MENU_REMOVE_PET};
-        main_rows[main_count++] = (LinuxMenuRow){NULL,
-            LINUX_MENU_SEPARATOR};
-    }
+    LinuxMenuRow main_rows[13]; int main_count = 0;
     main_rows[main_count++] = (LinuxMenuRow){labels->preferences, BONGO_CAT_MENU_PREFERENCES};
     main_rows[main_count++] = (LinuxMenuRow){labels->hide, BONGO_CAT_MENU_HIDE};
     main_rows[main_count++] = (LinuxMenuRow){pass, BONGO_CAT_MENU_PASS_THROUGH};
@@ -208,7 +202,14 @@ BongoCatMenuAction bongo_cat_linux_context_menu(BongoCatPlatform *platform,
     if (labels->expression_count) main_rows[main_count++] =
         (LinuxMenuRow){labels->expression, LINUX_MENU_EXPRESSIONS};
     main_rows[main_count++] = (LinuxMenuRow){labels->model, -3};
+    main_rows[main_count++] = (LinuxMenuRow){NULL, LINUX_MENU_SEPARATOR};
     main_rows[main_count++] = (LinuxMenuRow){labels->exit, BONGO_CAT_MENU_EXIT};
+    if (labels->remove_pet_visible) {
+        main_rows[main_count++] = (LinuxMenuRow){NULL,
+            LINUX_MENU_SEPARATOR};
+        main_rows[main_count++] = (LinuxMenuRow){labels->remove_pet,
+            BONGO_CAT_MENU_REMOVE_PET};
+    }
     BongoCatMenuAction action = popup_rows(display, owner, main_rows,
         main_count, labels);
     if (action == (BongoCatMenuAction)-1) {
