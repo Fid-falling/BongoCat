@@ -129,13 +129,10 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
         16 + 6.0f * (1.0f - page_progress));
     context->style.window.spacing = nk_vec2(10, 10);
     int scroll_page = NK_CLAMP(0, value->page, 4);
-    bool scroll_animating = fabsf(value->scroll_current[scroll_page] -
-        value->scroll_target[scroll_page]) > .5f;
+    bool scroll_animating = fabsf(value->scroll_current[scroll_page] - value->scroll_target[scroll_page]) > .5f;
     struct nk_style_scrollbar saved_scrollv = context->style.scrollv;
-    struct nk_rect scrollbar_hit = nk_rect(body_bounds.x + body_bounds.w - 14,
-        body_bounds.y, 14, body_bounds.h);
-    bool scrollbar_hover = !modal && nk_input_is_mouse_hovering_rect(
-        &context->input, scrollbar_hit);
+    struct nk_rect scrollbar_hit = nk_rect(body_bounds.x + body_bounds.w - 14, body_bounds.y, 14, body_bounds.h);
+    bool scrollbar_hover = !modal && nk_input_is_mouse_hovering_rect(&context->input, scrollbar_hit);
     context->style.scrollv.padding.x = scrollbar_hover ? 0.0f : 2.0f;
     context->style.scrollv.cursor_hover = nk_style_item_color(p.accent);
     context->style.scrollv.cursor_active = nk_style_item_color(p.accent);
@@ -155,10 +152,9 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
         draw_page(value, context);
         float wheel = context->input.mouse.scroll_delta.y;
         struct nk_panel *layout = context->current->layout;
-        float maximum = layout ? NK_MAX(0.0f,
-            layout->at_y + layout->row.height - layout->bounds.y - layout->bounds.h) : 0.0f;
-        if (wheel != 0.0f)
-            context->style.scrollv.cursor_normal = nk_style_item_color(p.accent);
+        float maximum = layout ? NK_MAX(0.0f, layout->at_y + layout->row.height - layout->bounds.y - layout->bounds.h) : 0.0f;
+        if (wheel != 0.0f) context->style.scrollv.cursor_normal =
+            nk_style_item_color(p.accent);
         context->input.mouse.scroll_delta.y = 0;
         nk_group_end(context);
         context->style.scrollv = saved_scrollv;
@@ -170,17 +166,18 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
             value->scroll_current[scroll_page] = actual;
             value->scroll_target[scroll_page] = actual;
         }
-        value->scroll_target[scroll_page] = NK_CLAMP(0.0f,
-            value->scroll_target[scroll_page], maximum);
+        value->scroll_target[scroll_page] = NK_CLAMP(0.0f, value->scroll_target[scroll_page], maximum);
         if (wheel != 0.0f)
             value->scroll_target[scroll_page] = NK_CLAMP(0.0f,
-                actual - wheel * 72.0f, maximum);
+                value->scroll_target[scroll_page] - wheel * 72.0f, maximum);
         else if (fabsf(actual - value->scroll_current[scroll_page]) > 2.0f)
             value->scroll_target[scroll_page] = NK_CLAMP(0.0f,
                 actual, maximum);
-        float next = actual + (value->scroll_target[scroll_page] - actual) * .24f;
-        if (fabsf(next - value->scroll_target[scroll_page]) < .5f)
-            next = value->scroll_target[scroll_page];
+        float blend = 1.0f - expf(-context->delta_time_seconds / .035f);
+        float next = actual +
+            (value->scroll_target[scroll_page] - actual) * blend;
+        if (fabsf(next - value->scroll_target[scroll_page]) < .5f) next =
+            value->scroll_target[scroll_page];
         value->scroll_current[scroll_page] = NK_CLAMP(0.0f, next, maximum);
         bool still_animating = fabsf(value->scroll_current[scroll_page] -
             value->scroll_target[scroll_page]) > .5f;
@@ -231,6 +228,9 @@ void bongo_cat_preferences_render(BongoCatPreferences *value) {
     if (value->render_retry_ns > now ||
         (!value->render_dirty && value->last_render_ns && !raster_due)) return;
     value->render_dirty = false;
+    value->ui.context.delta_time_seconds = value->last_render_ns ? NK_CLAMP(
+        .001f, (float)(now - value->last_render_ns) / 1000000000.0f, 1.0f / 60.0f) :
+        1.0f / 60.0f;
     value->last_render_ns = now;
     bongo_cat_preferences_input_end(value);
     if (!SDL_GL_MakeCurrent(value->window, value->gl_context)) {
