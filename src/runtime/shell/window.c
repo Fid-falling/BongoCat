@@ -2,7 +2,7 @@
 #include <SDL3/SDL_opengl.h>
 #include <stdio.h>
 
-static bool set_gl_attributes(bool multisampling) {
+static bool set_gl_attributes(int samples) {
     SDL_GL_ResetAttributes();
 #ifdef __APPLE__
     const int major = 4, minor = 1, profile = SDL_GL_CONTEXT_PROFILE_CORE;
@@ -17,13 +17,13 @@ static bool set_gl_attributes(bool multisampling) {
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1) &&
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0) &&
         SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8) &&
-        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, multisampling ? 1 : 0) &&
-        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, multisampling ? 4 : 0);
+        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, samples > 0 ? 1 : 0) &&
+        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, samples);
 }
 
-static bool try_window(BongoCatApp *app, bool transparent, bool multisampling,
+static bool try_window(BongoCatApp *app, bool transparent, int samples,
     char *failure, size_t capacity) {
-    if (!set_gl_attributes(multisampling)) {
+    if (!set_gl_attributes(samples)) {
         snprintf(failure, capacity, "OpenGL attributes: %s", SDL_GetError()); return false;
     }
     SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS |
@@ -52,11 +52,12 @@ BongoCatResult bongo_cat_window_create(BongoCatApp *app, BongoCatError *error) {
             "SDL initialization failed: %s", SDL_GetError());
         return BONGO_CAT_ERROR_PLATFORM;
     }
-    const bool options[][2] = {{true, true}, {true, false}, {false, false}};
+    /* Keep a lower-cost MSAA path for drivers that cannot provide 4 samples. */
+    const int options[][2] = {{true, 4}, {true, 2}, {true, 0}, {false, 0}};
     char failure[256] = {0};
     bool force_fallback = SDL_getenv("BONGO_CAT_TEST_GL_FALLBACK") != NULL;
     for (size_t i = 0; i < sizeof(options) / sizeof(options[0]); ++i) {
-        if (force_fallback && i == 0) {
+        if (force_fallback && options[i][1] > 0) {
             SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO, "Test requested OpenGL fallback"); continue;
         }
         if (try_window(app, options[i][0], options[i][1], failure, sizeof(failure))) {

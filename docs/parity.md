@@ -143,9 +143,8 @@ command-line arguments and trace formats.
 
 ## Live2D texture quality
 
-Live2D atlases retain their authored pixel dimensions for both bundled and
-imported models. The loader only downsamples an atlas when it exceeds the
-active GPU's `GL_MAX_TEXTURE_SIZE`, or retries at 2048 pixels after an explicit
-`GL_OUT_OF_MEMORY` upload failure. Model textures use the same linear,
-non-mipmapped sampling as Mver so changing the pet window size does not switch
-filtering behavior or silently select a lower-resolution source.
+Live2D atlases retain their authored pixel dimensions unless the Windows
+working-size cap or the active GPU's `GL_MAX_TEXTURE_SIZE` requires a smaller
+decode. Model textures use alpha-aware CPU-generated mipmaps with trilinear
+sampling, while bounded anisotropic filtering remains enabled when supported.
+This keeps minified edges stable without transparent-pixel color bleeding.

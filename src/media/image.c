@@ -36,9 +36,8 @@ static unsigned int upload(const BongoCatImage *image, GLuint texture,
     if (created) glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
     if (created) {
-        /* Pixi's default Live2D texture source uses linear filtering without
-         * generated mipmaps. This keeps the same sharpness and saves texture
-         * memory for large model atlases. */
+        /* Keep direct image/UI textures on the inexpensive linear path. Model
+         * textures switch to alpha-safe trilinear filtering after upload. */
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -53,7 +52,14 @@ static unsigned int upload(const BongoCatImage *image, GLuint texture,
         }
     }
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    if (created) {
+    if (created && model_texture) {
+        if (!bongo_cat_image_upload_mipmaps(image)) {
+            bongo_cat_gl_clear_errors();
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, image->width,
+                image->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image->pixels);
+        }
+    } else if (created) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, image->width,
             image->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image->pixels);
     } else {

@@ -36,10 +36,13 @@ function(bongo_cat_optimize_cubism_shaders target)
   set(output_source "${output_dir}/CubismShader_OpenGLES2.cpp")
   file(READ "${source_path}" source)
   string(REPLACE "\r\n" "\n" source "${source}")
-  # Match Pixi's Live2D texture defaults and avoid an unnecessary mip chain.
+  # The uploader selects trilinear filtering after building a complete,
+  # alpha-safe mip chain and retains linear filtering if that work fails.
+  # Do not overwrite that per-texture decision on every drawable.
   bongo_cat_replace_cubism_text(source
-    "GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR"
-    "GL_TEXTURE_MIN_FILTER, GL_LINEAR" "linear model texture sampling")
+    "glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);"
+    "/* Model upload owns minification filtering and fallback. */"
+    "model texture minification ownership")
 
   set(compile_anchor [=[
 _shaderSets[ShaderNames_MultMaskedInvertedPremultipliedAlpha]->ShaderProgram = _shaderSets[ShaderNames_NormalMaskedInvertedPremultipliedAlpha]->ShaderProgram;]=])

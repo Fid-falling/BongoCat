@@ -11,6 +11,7 @@ BongoCatResult bongo_cat_image_decode_pixels_responsive(const char *path,
 void bongo_cat_image_make_alpha_mask_progress(const BongoCatImage *image,
     BongoCatImageAlphaMask *mask, BongoCatImageProgress progress,
     void *userdata);
+bool bongo_cat_image_upload_mipmaps(const BongoCatImage *image);
 
 #ifdef _WIN32
 bool bongo_cat_image_needs_wic_scaling(const char *path, int limit);
