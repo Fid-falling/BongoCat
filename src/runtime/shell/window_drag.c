@@ -58,9 +58,15 @@ void bongo_cat_window_drag_motion(BongoCatApp *app,
 
 void bongo_cat_window_drag_end(BongoCatApp *app) {
     if (!app) return;
-    if (app->window_drag_active) SDL_CaptureMouse(false);
+    bool was_active = app->window_drag_active;
+    if (was_active) SDL_CaptureMouse(false);
     app->drag_candidate = false;
     bongo_cat_window_clamp_to_display(app);
     app->window_drag_active = false;
     bongo_cat_window_drag_bounds_clear(app);
+    if (was_active && app->settings.model.mouse_centered) {
+        float pointer_x = 0.0f, pointer_y = 0.0f;
+        SDL_GetGlobalMouseState(&pointer_x, &pointer_y);
+        bongo_cat_app_apply_mouse_position(app, pointer_x, pointer_y, 0.0f);
+    }
 }

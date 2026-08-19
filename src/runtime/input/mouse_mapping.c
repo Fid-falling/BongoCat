@@ -120,24 +120,16 @@ static bool model_pointer_bounds(BongoCatApp *app, SDL_Rect *bounds,
         bounds->w > 0 && bounds->h > 0;
 }
 
-static bool model_pointer_ratios(BongoCatApp *app, double x, double y,
-    float *x_ratio, float *y_ratio) {
-    double center_x, center_y; SDL_Rect bounds;
-    if (!x_ratio || !y_ratio || !model_pointer_bounds(app, &bounds,
-        &center_x, &center_y)) return false;
-    *x_ratio = bongo_cat_mouse_centered_ratio(x, center_x, bounds.x,
-        bounds.x + bounds.w);
-    *y_ratio = bongo_cat_mouse_centered_ratio(y, center_y, bounds.y,
-        bounds.y + bounds.h);
-    return true;
-}
-
 void bongo_cat_app_apply_mouse_coordinates(BongoCatApp *app, double hand_x,
     double hand_y, double gaze_x, double gaze_y) {
-    SDL_Point point = {(int)hand_x, (int)hand_y}; SDL_Rect bounds;
+    SDL_Point point = {(int)hand_x, (int)hand_y}; SDL_Rect bounds = {0};
+    double model_center_x = 0.0, model_center_y = 0.0;
     bool screen_mapped = app->settings.model.mouse_centered;
-    if (!(screen_mapped ? model_pointer_bounds(app, &bounds, NULL, NULL) :
-        mver_pointer_bounds(app, &bounds))) {
+    bool centered_bounds = screen_mapped && model_pointer_bounds(app, &bounds,
+        &model_center_x, &model_center_y);
+    bool mapped_bounds = centered_bounds || (!screen_mapped &&
+        mver_pointer_bounds(app, &bounds));
+    if (!mapped_bounds) {
         SDL_DisplayID display = SDL_GetDisplayForPoint(&point);
         if (!display || !SDL_GetDisplayBounds(display, &bounds)) return;
     }
@@ -148,8 +140,12 @@ void bongo_cat_app_apply_mouse_coordinates(BongoCatApp *app, double hand_x,
     if (!bongo_cat_mver_pointer_ratios(hand_x, hand_y, &pointer_bounds,
         &hand_x_ratio, &hand_y_ratio)) return;
     float gaze_x_ratio = hand_x_ratio, gaze_y_ratio = hand_y_ratio;
-    if (app->settings.model.mouse_centered)
-        model_pointer_ratios(app, gaze_x, gaze_y, &gaze_x_ratio, &gaze_y_ratio);
+    if (centered_bounds) {
+        gaze_x_ratio = bongo_cat_mouse_centered_ratio(gaze_x, model_center_x,
+            bounds.x, bounds.x + bounds.w);
+        gaze_y_ratio = bongo_cat_mouse_centered_ratio(gaze_y, model_center_y,
+            bounds.y, bounds.y + bounds.h);
+    }
     bool exact_pointer = bongo_cat_overlay_mver_pointer_enabled(app->overlay);
     bool mver = app->model_render_options.mver_projection;
     bool left_handed = app->model_render_options.pointer_left_handed ||
@@ -165,9 +161,12 @@ void bongo_cat_app_apply_mouse_coordinates(BongoCatApp *app, double hand_x,
         set_parameter(app, "ParamMouseX", 1.0f - hand_x_ratio, hand_y_ratio);
         set_parameter(app, "ParamMouseY", hand_x_ratio, hand_y_ratio);
     }
-    if (app->settings.model.mouse_centered)
-        bongo_cat_live2d_set_centered_dragging(app->live2d, drag_x, drag_y);
-    else bongo_cat_live2d_set_dragging(app->live2d, drag_x, drag_y);
+    /* Pointer and window messages are not atomic during a native window move. */
+    if (!app->settings.model.mouse_centered || !app->window_drag_active) {
+        if (app->settings.model.mouse_centered)
+            bongo_cat_live2d_set_centered_dragging(app->live2d, drag_x, drag_y);
+        else bongo_cat_live2d_set_dragging(app->live2d, drag_x, drag_y);
+    }
     app->dirty = true;
 }
 

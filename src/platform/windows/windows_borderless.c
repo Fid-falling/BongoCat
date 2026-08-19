@@ -11,6 +11,7 @@ static const wchar_t menu_binding_property[] = L"BongoCat.MenuBinding";
 static const wchar_t drag_binding_property[] = L"BongoCat.DragBinding";
 #define BONGO_CAT_MENU_PREVIEW_TIMER ((UINT_PTR)0xBC4E)
 #define BONGO_CAT_DRAG_MODAL_TIMER ((UINT_PTR)0xBC50)
+#define BONGO_CAT_DRAG_FRAME_INTERVAL_MS 16
 
 typedef struct WindowsMenuBinding {
     BongoCatMenuPreview preview;
@@ -21,7 +22,20 @@ typedef struct WindowsMenuBinding {
 typedef struct WindowsDragBinding {
     BongoCatModalTick tick;
     void *userdata;
+    ULONGLONG last_tick_ms;
+    bool ticking;
 } WindowsDragBinding;
+
+static void drag_tick(WindowsDragBinding *drag) {
+    if (!drag || !drag->tick || drag->ticking) return;
+    ULONGLONG now = GetTickCount64();
+    if (drag->last_tick_ms && now - drag->last_tick_ms <
+        BONGO_CAT_DRAG_FRAME_INTERVAL_MS) return;
+    drag->last_tick_ms = now;
+    drag->ticking = true;
+    drag->tick(drag->userdata);
+    drag->ticking = false;
+}
 
 static LONG_PTR borderless_style(LONG_PTR style) {
     return (style & ~(WS_CAPTION | WS_THICKFRAME | WS_SYSMENU |
@@ -70,11 +84,15 @@ static LRESULT CALLBACK borderless_window_proc(HWND window, UINT message,
         return 0;
     } else if (message == WM_TIMER &&
         wparam == BONGO_CAT_DRAG_MODAL_TIMER && drag && drag->tick) {
-        drag->tick(drag->userdata);
+        drag_tick(drag);
         return 0;
     }
-    return CallWindowProcW(original ? original : DefWindowProcW,
+    LRESULT result = CallWindowProcW(original ? original : DefWindowProcW,
         window, message, wparam, lparam);
+    /* Move messages keep frames flowing when the low-priority timer is starved. */
+    if (drag && (message == WM_MOUSEMOVE || message == WM_NCMOUSEMOVE))
+        drag_tick(drag);
+    return result;
 }
 
 void bongo_cat_windows_begin_drag(HWND window, BongoCatModalTick modal_tick,
@@ -83,8 +101,9 @@ void bongo_cat_windows_begin_drag(HWND window, BongoCatModalTick modal_tick,
     WindowsDragBinding binding = {modal_tick, userdata};
     bool bound = modal_tick && SetPropW(window, drag_binding_property, &binding);
     if (bound) {
-        modal_tick(userdata);
-        SetTimer(window, BONGO_CAT_DRAG_MODAL_TIMER, 16, NULL);
+        drag_tick(&binding);
+        SetTimer(window, BONGO_CAT_DRAG_MODAL_TIMER,
+            BONGO_CAT_DRAG_FRAME_INTERVAL_MS, NULL);
     }
     ReleaseCapture();
     SendMessageW(window, WM_NCLBUTTONDOWN, HTCAPTION, 0);
