@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(BongoCat VERSION 2.0.0 DESCRIPTION "BongoCat" HOMEPAGE_URL "https://bongocat.pet" LANGUAGES C CXX)
+project(BongoCat VERSION 0.1.0 DESCRIPTION "BongoCat" HOMEPAGE_URL "https://bongocat.pet" LANGUAGES C CXX)
 include(cmake/Version.cmake)
 include(FetchContent)
 include(CTest)

@@ -99,6 +99,8 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
         bool needs_dynamic_glyphs = value->page == 2;
         bongo_cat_preferences_page_cache_clear(value,
             value->last_page, value->page);
+        if (needs_dynamic_glyphs)
+            bongo_cat_app_refresh_nearby_models(value->app);
         value->last_page = value->page;
         value->page_transition_ns = SDL_GetTicksNS();
         if (had_dynamic_glyphs != needs_dynamic_glyphs) value->font_reload_pending = true;

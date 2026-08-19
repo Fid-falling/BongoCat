@@ -188,6 +188,7 @@ BongoCatResult bongo_cat_app_import_model(BongoCatApp *app, const char *source, 
 BongoCatResult bongo_cat_app_remove_model(BongoCatApp *app, const char *id, BongoCatError *error);
 void bongo_cat_app_rescan_models(BongoCatApp *app);
 void bongo_cat_app_refresh_installed_models(BongoCatApp *app);
+void bongo_cat_app_refresh_nearby_models(BongoCatApp *app);
 void bongo_cat_config_store_flush(BongoCatApp *app);
 
 #endif

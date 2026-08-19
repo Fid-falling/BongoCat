@@ -53,7 +53,9 @@ BongoCatPreferences *bongo_cat_preferences_create(BongoCatApp *app) {
 }
 void bongo_cat_preferences_show(BongoCatPreferences *value) {
     if (!value) return;
-    if (!value->window && !bongo_cat_preferences_open_window(value)) {
+    bool opening = !value->window;
+    if (opening) bongo_cat_app_refresh_nearby_models(value->app);
+    if (opening && !bongo_cat_preferences_open_window(value)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Preferences failed: %s", SDL_GetError());
         bongo_cat_preferences_close(value);
         return;

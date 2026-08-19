@@ -92,3 +92,50 @@ cleanup:
     SDL_free(temporary);
     return failures;
 }
+
+int test_mver_nearby_refresh(void) {
+    failures = 0;
+    const char *base = SDL_GetBasePath();
+    char *temporary = SDL_GetCurrentDirectory();
+    CHECK(base != NULL && temporary != NULL);
+    if (!base || !temporary) {
+        SDL_free(temporary);
+        return failures;
+    }
+
+    unsigned long long nonce = (unsigned long long)SDL_GetTicksNS();
+    char source[BONGO_CAT_PATH_CAP], data[BONGO_CAT_PATH_CAP];
+    snprintf(source, sizeof(source), "%s/bongo-cat-nearby-refresh-%llu",
+        base, nonce);
+    snprintf(data, sizeof(data), "%s/bongo-cat-nearby-refresh-data-%llu",
+        temporary, nonce);
+    CHECK(SDL_CreateDirectory(data));
+
+    BongoCatApp *app = calloc(1, sizeof(*app));
+    CHECK(app != NULL);
+    if (!app) goto cleanup;
+    bongo_cat_settings_defaults(&app->settings);
+    bongo_cat_session_defaults(&app->session);
+    bongo_cat_models_init(&app->models);
+    snprintf(app->asset_root, sizeof(app->asset_root),
+        "%s/resources/assets", BONGO_CAT_NATIVE_SOURCE_DIR);
+    snprintf(app->data_root, sizeof(app->data_root), "%s", data);
+    snprintf(app->cache_root, sizeof(app->cache_root), "%s", data);
+
+    bongo_cat_app_refresh_nearby_models(app);
+    size_t before = app->models.count;
+    CHECK(mver_fixture(source));
+    bongo_cat_app_refresh_nearby_models(app);
+    CHECK(app->models.count == before + 1);
+    CHECK(app->models.entries[app->models.count - 1].managed);
+    CHECK(strcmp(app->models.entries[app->models.count - 1].display_name,
+        bongo_cat_path_name(source)) == 0);
+    CHECK(strcmp(app->session.active_model_id, "standard") == 0);
+    free(app);
+
+cleanup:
+    CHECK(bongo_cat_model_remove_tree(source, NULL));
+    CHECK(bongo_cat_model_remove_tree(data, NULL));
+    SDL_free(temporary);
+    return failures;
+}

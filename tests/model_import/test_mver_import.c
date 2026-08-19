@@ -21,6 +21,7 @@ static int failures;
 
 int test_preferences_text(void);
 int test_mver_nearby_identity(void);
+int test_mver_nearby_refresh(void);
 int test_model_import_identity(void);
 
 static bool chord(const char *json, bool gamepad, const char *expected) {
@@ -294,6 +295,7 @@ int main(void) {
     model_visual_expires_without_window();
     model_visual_curve();
     failures += test_mver_nearby_identity();
+    failures += test_mver_nearby_refresh();
     failures += test_model_import_identity();
     container_discovery();
     tauri_exact_discovery();
