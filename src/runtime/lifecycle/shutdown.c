@@ -15,6 +15,8 @@ void bongo_cat_app_shutdown(BongoCatApp *app, const char *stage,
     bongo_cat_app_capture_behavior_state(app);
     bongo_cat_config_store_flush(app);
     bongo_cat_multi_pet_shutdown(app);
+    bongo_cat_model_refresh_shutdown(app);
+    bongo_cat_import_nearby_shutdown();
     bongo_cat_preferences_destroy(app->preferences);
     bongo_cat_i18n_destroy(app->i18n);
     bongo_cat_tray_destroy(app->tray);

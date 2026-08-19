@@ -27,6 +27,7 @@ struct BongoCatPreferences {
     SDL_GLContext gl_context;
     bool owns_gl_context;
     bool transparent_window;
+    bool visible;
     bool ui_initialized;
     BongoCatUIBackend ui;
     unsigned int logo_texture;
@@ -51,6 +52,7 @@ struct BongoCatPreferences {
     bool render_dirty;
     bool font_reload_pending;
     bool font_reload_defer_once;
+    bool model_glyphs_loaded;
     bool smoke_behavior_open_pending;
     bool model_selection_pending;
     bool pending_model_multiple;

@@ -154,6 +154,7 @@ bool bongo_cat_app_initialize(BongoCatApp *app, int argc, char **argv,
     return true;
 }
 static void handle_event(BongoCatApp *app, const SDL_Event *event) {
+    if (bongo_cat_model_refresh_event(app, event)) return;
     if (bongo_cat_preferences_event(app->preferences, event)) return;
     if (!bongo_cat_window_event(app, event)) app->running = false;
     if (event->type >= SDL_EVENT_GAMEPAD_AXIS_MOTION &&
@@ -266,6 +267,7 @@ void bongo_cat_app_loop(BongoCatApp *app) {
                 handle_event(app, &event);
         }
         bongo_cat_preferences_input_end(app->preferences);
+        bongo_cat_model_refresh_update(app);
         take_instance_wake(app);
         uint64_t now = SDL_GetTicksNS(); bongo_cat_window_update_wheel_animation(app, now);
         bongo_cat_multi_pet_update(app, now);

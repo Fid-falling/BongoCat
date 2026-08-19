@@ -56,12 +56,7 @@ static bool add_motion_group(yyjson_mut_doc *output, yyjson_mut_val *items,
     const char *group, const BongoCatImportCandidate *candidate,
     const BongoCatMverLabels *labels, BongoCatError *error) {
     yyjson_val *available = yyjson_obj_get(motions, group);
-    if (yyjson_is_arr(configured) && yyjson_arr_size(configured) > 0 &&
-        !yyjson_is_arr(available)) {
-        bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
-            "Mver motion bindings reference a missing Live2D motion group: %s", group);
-        return false;
-    }
+    if (yyjson_is_arr(configured) && !yyjson_is_arr(available)) return true;
     size_t count = yyjson_is_arr(available) ? yyjson_arr_size(available) : 0;
     return add_rows(output, items, configured, candidate, "motion", field,
         group, count, labels, error);

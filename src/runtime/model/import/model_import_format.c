@@ -72,6 +72,11 @@ static bool mode_config_valid(yyjson_val *mode, BongoCatModelMode value,
         numbered_asset(directory, "lefthand") && numbered_asset(directory, "righthand");
 }
 
+static bool mode_uses_live2d(yyjson_val *mode) {
+    yyjson_val *enabled = yyjson_obj_get(mode, "l2d");
+    return !yyjson_is_bool(enabled) || yyjson_get_bool(enabled);
+}
+
 static bool model_at(const char *directory, char *setting, size_t capacity) {
     return bongo_cat_path_find_unique_suffix(directory, ".model3.json",
         setting, capacity) == 1 &&
@@ -104,6 +109,10 @@ static bool add_mode(BongoCatImportDiscovery *discovery, const char *source,
             "Mver mode has invalid input mappings or numbered assets: %s", mode_root);
         return false;
     }
+    /* Mver distributions bundle fallback Live2D files for modes that are
+       configured to use static sprites. They are runtime templates, not
+       authored model variants, so they must not become import candidates. */
+    if (!mode_uses_live2d(mode_config)) return true;
     if (discovery->count >= BONGO_CAT_IMPORT_CANDIDATE_CAP) return false;
     BongoCatImportCandidate *candidate = &discovery->candidates[discovery->count];
     if (!find_mode_model(source, mode_root, candidate->directory, sizeof(candidate->directory),

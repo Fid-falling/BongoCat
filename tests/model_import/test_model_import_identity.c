@@ -15,11 +15,28 @@ static int failures;
     failures++; \
 } } while (0)
 
+static void disabled_mver_live2d_is_not_imported(const char *temporary) {
+    char root[BONGO_CAT_PATH_CAP], config[BONGO_CAT_PATH_CAP];
+    snprintf(root, sizeof(root), "%s/bongo-cat-disabled-mver-%llu", temporary,
+        (unsigned long long)SDL_GetTicksNS());
+    CHECK(mver_fixture(root));
+    CHECK(child(config, sizeof(config), root, "config.json", false));
+    CHECK(write_text(config, "{\"standard\":{\"l2d\":false,"
+        "\"keyboard\":[[65]],\"hand\":[[65]]}}"));
+    BongoCatImportDiscovery discovery = {0};
+    BongoCatError error = {0};
+    CHECK(bongo_cat_import_mver_discover_exact(root, &discovery, &error) < 0);
+    CHECK(discovery.count == 0);
+    CHECK(strstr(error.message, "no supported model modes") != NULL);
+    CHECK(bongo_cat_model_remove_tree(root, NULL));
+}
+
 int test_model_import_identity(void) {
     failures = 0;
     char *temporary = SDL_GetCurrentDirectory();
     CHECK(temporary != NULL);
     if (!temporary) return failures;
+    disabled_mver_live2d_is_not_imported(temporary);
     char root[BONGO_CAT_PATH_CAP], data[BONGO_CAT_PATH_CAP];
     char source[BONGO_CAT_PATH_CAP], config[BONGO_CAT_PATH_CAP];
     char manifest[BONGO_CAT_PATH_CAP], missing[BONGO_CAT_PATH_CAP];

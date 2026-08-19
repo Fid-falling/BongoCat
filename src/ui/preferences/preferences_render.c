@@ -11,14 +11,12 @@
 #include <stdio.h>
 typedef struct RootStyle { struct nk_vec2 padding, group_padding, spacing;
     struct nk_style_item fixed; struct nk_color background; float group_border; } RootStyle;
-static const char *tr(const BongoCatPreferences *value, const char *key,
-    const char *fallback) {
+static const char *tr(const BongoCatPreferences *value, const char *key, const char *fallback) {
     return bongo_cat_i18n_get(value->app->i18n, key, fallback);
 }
-static void draw_icon(void *userdata, struct nk_command_buffer *canvas,
-    int icon, struct nk_rect bounds, struct nk_color color) {
-    bongo_cat_preferences_icon_draw(userdata, canvas, icon, bounds, color);
-}
+static void draw_icon(void *userdata, struct nk_command_buffer *canvas, int icon,
+    struct nk_rect bounds, struct nk_color color) {
+    bongo_cat_preferences_icon_draw(userdata, canvas, icon, bounds, color); }
 static void draw_page(BongoCatPreferences *value, struct nk_context *context) {
     switch (value->page) {
     case 0: bongo_cat_preferences_page_cat(value->app, context); break;
@@ -95,15 +93,15 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
     if (!value->page_seen) {
         value->page_seen = true; value->last_page = value->page;
     } else if (value->last_page != value->page) {
-        bool had_dynamic_glyphs = value->last_page == 2;
-        bool needs_dynamic_glyphs = value->page == 2;
+        bool load_model_glyphs = value->page == 2 && !value->model_glyphs_loaded;
         bongo_cat_preferences_page_cache_clear(value,
             value->last_page, value->page);
-        if (needs_dynamic_glyphs)
-            bongo_cat_app_refresh_nearby_models(value->app);
         value->last_page = value->page;
         value->page_transition_ns = SDL_GetTicksNS();
-        if (had_dynamic_glyphs != needs_dynamic_glyphs) value->font_reload_pending = true;
+        if (load_model_glyphs) {
+            value->model_glyphs_loaded = true; value->font_reload_pending = true;
+            value->font_reload_defer_once = true;
+        }
         value->render_dirty = true;
     }
     nk_group_end(context);
@@ -222,7 +220,7 @@ static bool draw_frame(BongoCatPreferences *value, float width, float height,
     return close_requested;
 }
 void bongo_cat_preferences_render(BongoCatPreferences *value) {
-    if (!value || !value->window) return;
+    if (!value || !value->window || !value->visible) return;
     bongo_cat_preferences_drag_tick(value);
     uint64_t now = SDL_GetTicksNS();
     bool raster_due = value->pending_raster_scale > 0.0f &&

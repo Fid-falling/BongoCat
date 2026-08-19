@@ -11,6 +11,26 @@
 #define NEARBY_ADAPTER_DIRECTORY "model-adapters"
 #define NEARBY_SCAN_BUDGET_NS 500000000ull
 
+static SDL_InitState nearby_scan_lock_init;
+static SDL_Mutex *nearby_scan_lock;
+
+static SDL_Mutex *scan_lock(void) {
+    if (SDL_ShouldInit(&nearby_scan_lock_init)) {
+        nearby_scan_lock = SDL_CreateMutex();
+        SDL_SetInitialized(&nearby_scan_lock_init,
+            nearby_scan_lock != NULL);
+    }
+    return nearby_scan_lock;
+}
+
+void bongo_cat_import_nearby_shutdown(void) {
+    if (!SDL_ShouldQuit(&nearby_scan_lock_init)) return;
+    SDL_Mutex *mutex = nearby_scan_lock;
+    nearby_scan_lock = NULL;
+    SDL_SetInitialized(&nearby_scan_lock_init, false);
+    SDL_DestroyMutex(mutex);
+}
+
 static bool parent_path(const char *path, char *parent, size_t capacity) {
     size_t length = path ? strlen(path) : 0;
     while (length && (path[length - 1] == '/' || path[length - 1] == '\\'))
@@ -160,7 +180,7 @@ static int discover_direct(const char *root, bool bounded,
     return found;
 }
 
-static BongoCatResult import_root(BongoCatApp *app, const char *root,
+static BongoCatResult import_root_unlocked(BongoCatApp *app, const char *root,
     bool bounded, BongoCatError *error) {
     if (!app || !root || !app->cache_root[0])
         return BONGO_CAT_ERROR_ARGUMENT;
@@ -190,6 +210,15 @@ static BongoCatResult import_root(BongoCatApp *app, const char *root,
         snprintf(app->session.active_model_id,
             sizeof(app->session.active_model_id), "%s", first_created);
     free(discovery);
+    return result;
+}
+
+static BongoCatResult import_root(BongoCatApp *app, const char *root,
+    bool bounded, BongoCatError *error) {
+    SDL_Mutex *mutex = scan_lock();
+    if (mutex) SDL_LockMutex(mutex);
+    BongoCatResult result = import_root_unlocked(app, root, bounded, error);
+    if (mutex) SDL_UnlockMutex(mutex);
     return result;
 }
 

@@ -37,7 +37,7 @@ void bongo_cat_preferences_fonts_resolve(BongoCatPreferences *value,
         sizeof(value->glyph_ranges) / sizeof(value->glyph_ranges[0]));
     /* Model and behavior labels can contain hundreds of otherwise unused
        glyphs. Bake them only for the pages that can display those labels. */
-    if (value->page == 2)
+    if (value->model_glyphs_loaded)
         bongo_cat_preferences_model_glyphs(value->app, value->glyph_ranges,
             sizeof(value->glyph_ranges) / sizeof(value->glyph_ranges[0]));
     fonts->ranges = value->glyph_ranges;

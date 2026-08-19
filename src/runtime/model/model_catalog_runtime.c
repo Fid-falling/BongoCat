@@ -135,11 +135,6 @@ static void scan_nearby_root(BongoCatApp *app, const char *root) {
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
 }
 
-static void scan_nearby_models(BongoCatApp *app) {
-    if (SDL_getenv("BONGO_CAT_DISABLE_NEARBY_MODEL_SCAN")) return;
-    scan_nearby_root(app, SDL_GetBasePath());
-}
-
 static void scan_owned_models(BongoCatApp *app, bool cleanup) {
     BongoCatError error = {0};
     char root[BONGO_CAT_PATH_CAP];
@@ -152,22 +147,31 @@ static void scan_owned_models(BongoCatApp *app, bool cleanup) {
     }
 }
 
-static void finish_model_catalog(BongoCatApp *app) {
+void bongo_cat_model_catalog_finish(BongoCatApp *app) {
     prune_behavior_shortcuts(app);
     for (size_t i = 0; i < app->models.count; ++i)
         bongo_cat_import_apply_metadata(app, app->models.entries[i].id,
             app->models.entries[i].adapter_directory);
 }
 
+void bongo_cat_model_catalog_scan(BongoCatApp *app, bool cleanup,
+    const char *nearby_root) {
+    if (!app) return;
+    scan_owned_models(app, cleanup);
+    if (nearby_root && !SDL_getenv("BONGO_CAT_DISABLE_NEARBY_MODEL_SCAN"))
+        scan_nearby_root(app, nearby_root);
+}
+
 void bongo_cat_app_rescan_models(BongoCatApp *app) {
     if (!app) return;
-    scan_owned_models(app, true);
-    scan_nearby_models(app);
-    finish_model_catalog(app);
+    bongo_cat_model_refresh_invalidate(app);
+    bongo_cat_model_catalog_scan(app, true, SDL_GetBasePath());
+    bongo_cat_model_catalog_finish(app);
 }
 
 void bongo_cat_app_refresh_installed_models(BongoCatApp *app) {
     if (!app) return;
+    bongo_cat_model_refresh_invalidate(app);
     BongoCatModelCatalog *previous = malloc(sizeof(*previous));
     if (!previous) {
         bongo_cat_app_rescan_models(app);
@@ -183,19 +187,20 @@ void bongo_cat_app_refresh_installed_models(BongoCatApp *app) {
         app->models.entries[app->models.count++] = *entry;
     }
     free(previous);
-    finish_model_catalog(app);
+    bongo_cat_model_catalog_finish(app);
 }
 
 void bongo_cat_app_refresh_nearby_models(BongoCatApp *app) {
     if (!app || SDL_getenv("BONGO_CAT_DISABLE_NEARBY_MODEL_SCAN")) return;
+    bongo_cat_model_refresh_invalidate(app);
     char active_model_id[BONGO_CAT_ID_CAP];
     snprintf(active_model_id, sizeof(active_model_id), "%s",
         app->session.active_model_id);
     scan_owned_models(app, false);
-    scan_nearby_models(app);
+    scan_nearby_root(app, SDL_GetBasePath());
     snprintf(app->session.active_model_id,
         sizeof(app->session.active_model_id), "%s", active_model_id);
-    finish_model_catalog(app);
+    bongo_cat_model_catalog_finish(app);
 }
 
 BongoCatResult bongo_cat_app_remove_model(BongoCatApp *app, const char *id,

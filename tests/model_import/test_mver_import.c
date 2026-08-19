@@ -6,24 +6,20 @@
 #include "runtime.h"
 #include "test_mver_support.h"
 #include "bongo_cat/path.h"
-
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <yyjson.h>
-
 static int failures;
 #define CHECK(value) do { if (!(value)) { \
     fprintf(stderr, "%s:%d: check failed: %s\n", __FILE__, __LINE__, #value); \
     failures++; \
 } } while (0)
-
-int test_preferences_text(void);
-int test_mver_nearby_identity(void);
+int test_preferences_text(void); int test_mver_nearby_identity(void);
 int test_mver_nearby_refresh(void);
+int test_mver_missing_motion_groups(void);
 int test_model_import_identity(void);
-
 static bool chord(const char *json, bool gamepad, const char *expected) {
     yyjson_doc *document = yyjson_read(json, strlen(json), 0);
     BongoCatImportCandidate candidate = {0};
@@ -290,6 +286,7 @@ int main(void) {
     CHECK(dpad.count == 1 && strcmp(dpad.items[0], "DPadUp") == 0);
     labels_from_shortcut_rows();
     metadata_backfills_labels();
+    failures += test_mver_missing_motion_groups();
     behavior_labels_add_font_glyphs();
     font_reload_defers_during_frame();
     model_visual_expires_without_window();

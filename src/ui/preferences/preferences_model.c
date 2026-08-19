@@ -50,7 +50,7 @@ void bongo_cat_preferences_model_load_progress(BongoCatPreferences *value,
     value->render_dirty = true;
     bool due = !value->model_load_render_ns ||
         now - value->model_load_render_ns >= MODEL_LOAD_RENDER_INTERVAL_NS;
-    if (value->window && due) {
+    if (bongo_cat_preferences_visible(value) && due) {
         value->model_load_render_progress = progress;
         value->model_load_render_ns = now;
         bongo_cat_preferences_render(value);

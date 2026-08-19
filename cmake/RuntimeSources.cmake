@@ -57,6 +57,7 @@ set(BONGO_CAT_RUNTIME_INPUT_SOURCES
 set(BONGO_CAT_RUNTIME_MODEL_SOURCES
   src/runtime/model/model_behavior_state.c
   src/runtime/model/model_catalog_runtime.c
+  src/runtime/model/model_catalog_refresh.c
   src/runtime/model/model_files.c
   src/runtime/model/multi_pet.c
   src/runtime/model/multi_pet_process.c
@@ -149,6 +150,7 @@ set(BONGO_CAT_UI_PREFERENCES_SOURCES
   src/ui/preferences/preferences_import.c
   src/ui/preferences/preferences_import_dialog.c
   src/ui/preferences/preferences_language.c
+  src/ui/preferences/preferences_lifecycle.c
   src/ui/preferences/preferences_live_resize.c
   src/ui/preferences/preferences_model.c
   src/ui/preferences/preferences_model_card.c

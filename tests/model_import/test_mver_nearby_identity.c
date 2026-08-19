@@ -125,12 +125,21 @@ int test_mver_nearby_refresh(void) {
     bongo_cat_app_refresh_nearby_models(app);
     size_t before = app->models.count;
     CHECK(mver_fixture(source));
-    bongo_cat_app_refresh_nearby_models(app);
+    bongo_cat_app_request_nearby_model_refresh(app);
+    /* A synchronous catalog mutation invalidates the in-flight snapshot. The
+       refresh worker must discard it, rerun, and commit only the newer scan. */
+    bongo_cat_app_refresh_installed_models(app);
+    uint64_t deadline = SDL_GetTicksNS() + 5000000000ull;
+    while (app->models.count == before && SDL_GetTicksNS() < deadline) {
+        bongo_cat_model_refresh_update(app);
+        SDL_Delay(2);
+    }
     CHECK(app->models.count == before + 1);
     CHECK(app->models.entries[app->models.count - 1].managed);
     CHECK(strcmp(app->models.entries[app->models.count - 1].display_name,
         bongo_cat_path_name(source)) == 0);
     CHECK(strcmp(app->session.active_model_id, "standard") == 0);
+    bongo_cat_model_refresh_shutdown(app);
     free(app);
 
 cleanup:

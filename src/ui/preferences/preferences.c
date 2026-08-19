@@ -30,10 +30,6 @@ void bongo_cat_preferences_page_cache_clear(BongoCatPreferences *value,
     int previous_page, int next_page) {
     if (!value || previous_page == next_page) return;
     bool released = false;
-    if (previous_page == 2 && next_page != 2) {
-        bongo_cat_preferences_model_cover_cache_clear(value->app);
-        released = true;
-    }
     if (previous_page == 4 && next_page != 4) {
         bongo_cat_preferences_support_assets_clear(value);
         released = true;
@@ -49,71 +45,10 @@ BongoCatPreferences *bongo_cat_preferences_create(BongoCatApp *app) {
         if (!value->import_dialog) { free(value); return NULL; } }
     if (value && app->smoke_preference_page >= 0)
         value->page = app->smoke_preference_page;
+    if (value) value->model_glyphs_loaded = value->page == 2;
     return value;
 }
-void bongo_cat_preferences_show(BongoCatPreferences *value) {
-    if (!value) return;
-    bool opening = !value->window;
-    if (opening) bongo_cat_app_refresh_nearby_models(value->app);
-    if (opening && !bongo_cat_preferences_open_window(value)) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Preferences failed: %s", SDL_GetError());
-        bongo_cat_preferences_close(value);
-        return;
-    }
-    value->render_dirty = true;
-    bongo_cat_preferences_render(value);
-    bongo_cat_platform_raise_window(value->window);
-}
-void bongo_cat_preferences_close(BongoCatPreferences *value) {
-    if (!value || !value->window) return;
-    bongo_cat_preferences_live_resize_uninstall(value);
-    if (bongo_cat_preferences_behavior_dialog_active(value))
-        bongo_cat_preferences_behavior_dialog_close(value);
-    bongo_cat_preferences_model_rename_finish(value, true);
-    bongo_cat_preferences_shortcut_cancel(value);
-    if (value->gl_context) SDL_GL_MakeCurrent(value->window, value->gl_context);
-    if (value->ui_initialized && value->input_active)
-        bongo_cat_preferences_input_end(value);
-    SDL_StopTextInput(value->window);
-    bongo_cat_preferences_model_cache_clear(value->app);
-    if (value->ui_initialized) {
-        bongo_cat_pref_controls_reset(&value->ui.context);
-        bongo_cat_ui_animations_reset(&value->ui.context);
-    }
-    bongo_cat_preferences_assets_clear(value);
-    if (value->ui_initialized) {
-        bongo_cat_ui_cursor_destroy(&value->ui);
-        bongo_cat_ui_destroy(&value->ui);
-    }
-    if (value->chrome_dragging) SDL_CaptureMouse(false);
-    if (value->owns_gl_context && value->gl_context)
-        SDL_GL_DestroyContext(value->gl_context);
-    SDL_DestroyWindow(value->window);
-    value->window = NULL;
-    value->gl_context = NULL;
-    value->owns_gl_context = false;
-    value->transparent_window = false;
-    value->ui_initialized = false;
-    value->font_reload_pending = false;
-    value->font_reload_defer_once = false;
-    value->model_load_visual_active = false;
-    value->model_load_visual_completion_ns = 0;
-    value->smoke_behavior_open_pending = false;
-    value->native_drag = false;
-    value->chrome_dragging = false;
-    value->pending_raster_scale = 0.0f;
-    value->raster_retry_ns = 0;
-    value->render_retry_ns = 0;
-    SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
-    SDL_GL_SetSwapInterval(1);
-    bongo_cat_platform_trim_memory();
-    bongo_cat_config_store_flush(value->app);
-}
-void bongo_cat_preferences_destroy(BongoCatPreferences *value) {
-    if (value) { bongo_cat_preferences_close(value);
-        bongo_cat_preferences_import_destroy(value->import_dialog);
-        free(value); }
-}
+
 void bongo_cat_preferences_request_model_import(BongoCatPreferences *value) {
     if (value && !bongo_cat_preferences_import_is_open(value->import_dialog))
         value->import_requested = true; }
@@ -122,7 +57,9 @@ bool bongo_cat_preferences_open_model_import(BongoCatPreferences *value,
     return value && parent && bongo_cat_preferences_import_open(
         value->import_dialog, parent);
 }
-bool bongo_cat_preferences_visible(const BongoCatPreferences *value) { return value && value->window; }
+bool bongo_cat_preferences_visible(const BongoCatPreferences *value) {
+    return value && value->window && value->visible;
+}
 bool bongo_cat_preferences_needs_frame(BongoCatPreferences *value) {
     if (!value) return false;
     uint64_t now = SDL_GetTicksNS();
@@ -135,13 +72,13 @@ bool bongo_cat_preferences_needs_frame(BongoCatPreferences *value) {
         value->model_load_progress = 1.0f;
         value->render_dirty = true;
     }
-    if (!value->window) return false;
+    if (!value->window || !value->visible) return false;
     if (value->render_retry_ns > now) return false;
     bool raster_due = value->pending_raster_scale > 0.0f &&
         value->raster_retry_ns <= now;
     return value->render_dirty || raster_due || value->chrome_dragging; }
 void bongo_cat_preferences_input_begin(BongoCatPreferences *value) {
-    if (!value || !value->window || value->input_active) return;
+    if (!value || !value->window || !value->visible || value->input_active) return;
     bongo_cat_ui_input_begin(&value->ui);
     value->input_active = true; }
 void bongo_cat_preferences_input_end(BongoCatPreferences *value) {
@@ -172,7 +109,8 @@ bool bongo_cat_preferences_chrome_drag_allowed(
 }
 
 void bongo_cat_preferences_drag_tick(BongoCatPreferences *value) {
-    if (!value || !value->window || !value->chrome_dragging) return;
+    if (!value || !value->window || !value->visible ||
+        !value->chrome_dragging) return;
     float pointer_x = 0.0f, pointer_y = 0.0f;
     SDL_MouseButtonFlags buttons = SDL_GetGlobalMouseState(
         &pointer_x, &pointer_y);
@@ -247,12 +185,13 @@ static bool chrome_event(BongoCatPreferences *value, const SDL_Event *event) {
 bool bongo_cat_preferences_event(BongoCatPreferences *value, const SDL_Event *event) {
     if (!value || !event) return false;
     if (bongo_cat_preferences_import_event(value->import_dialog, value->app,
-        event)) { value->render_dirty = value->window != NULL;
+        event)) { value->render_dirty = value->visible;
         return true; }
     if (!value->window) return false;
     if (event->type == SDL_EVENT_SYSTEM_THEME_CHANGED) {
         value->render_dirty = true; return false;
     }
+    if (!value->visible) return false;
     if (event_window(event) != SDL_GetWindowID(value->window)) return false;
     if (bongo_cat_preferences_scale_event(value, event)) return true;
     if (event->type == SDL_EVENT_WINDOW_FOCUS_LOST) {
@@ -283,3 +222,15 @@ bool bongo_cat_preferences_event(BongoCatPreferences *value, const SDL_Event *ev
 
 void bongo_cat_preferences_invalidate(BongoCatPreferences *value) {
     if (value) value->render_dirty = true; }
+
+void bongo_cat_preferences_models_changed(BongoCatPreferences *value) {
+    if (!value) return;
+    value->render_dirty = true;
+    if (value->page != 2) {
+        value->model_glyphs_loaded = false;
+        return;
+    }
+    value->model_glyphs_loaded = true;
+    value->font_reload_pending = value->ui_initialized;
+    value->font_reload_defer_once = value->font_reload_pending;
+}
