@@ -29,10 +29,10 @@ typedef struct BongoCatInputEvent {
     uint64_t sequence;
 } BongoCatInputEvent;
 
-typedef struct BongoCatAutoRelease {
+typedef struct BongoCatScheduledRelease {
     uint64_t deadline_ms;
     char name[BONGO_CAT_ID_CAP];
-} BongoCatAutoRelease;
+} BongoCatScheduledRelease;
 
 typedef struct BongoCatInputState {
     BongoCatInputEvent queue[BONGO_CAT_INPUT_QUEUE_CAP];
@@ -48,8 +48,9 @@ typedef struct BongoCatInputState {
     BongoCatInputEvent recovery[BONGO_CAT_INPUT_RECOVERY_CAP];
     atomic_uint_fast8_t recovery_head;
     atomic_uint_fast8_t recovery_tail;
-    BongoCatAutoRelease releases[BONGO_CAT_AUTO_RELEASE_CAP];
-    size_t release_count;
+    BongoCatScheduledRelease scheduled_releases[
+        BONGO_CAT_SCHEDULED_RELEASE_CAP];
+    size_t scheduled_release_count;
 } BongoCatInputState;
 
 void bongo_cat_input_init(BongoCatInputState *state);
@@ -61,9 +62,9 @@ bool bongo_cat_input_mouse(BongoCatInputState *state, double x, double y);
 bool bongo_cat_input_take_mouse(BongoCatInputState *state, double *x, double *y);
 bool bongo_cat_input_control_down(const BongoCatInputState *state);
 bool bongo_cat_input_shift_down(const BongoCatInputState *state);
-void bongo_cat_input_auto_release(BongoCatInputState *state,
+void bongo_cat_input_schedule_release(BongoCatInputState *state,
     const BongoCatInputEvent *event, uint64_t delay_ms);
-bool bongo_cat_input_take_release(BongoCatInputState *state, uint64_t now_ms,
-    BongoCatInputEvent *event);
+bool bongo_cat_input_take_scheduled_release(BongoCatInputState *state,
+    uint64_t now_ms, BongoCatInputEvent *event);
 
 #endif

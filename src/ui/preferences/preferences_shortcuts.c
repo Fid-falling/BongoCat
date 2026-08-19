@@ -183,7 +183,7 @@ void bongo_cat_preferences_page_shortcuts(BongoCatPreferences *value,
         "pages.preference.shortcut.title", "Shortcuts"));
     shortcut_row(value, context, "shortcut-cat", "native.shortcut.toggleCat",
         "Show/Hide",
-        keys->visible_cat, sizeof(keys->visible_cat));
+        keys->toggle_pet_visibility, sizeof(keys->toggle_pet_visibility));
     shortcut_row(value, context, "shortcut-pref", "native.shortcut.preferences",
         "Preferences",
         keys->visible_preferences, sizeof(keys->visible_preferences));

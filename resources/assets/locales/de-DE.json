@@ -24,7 +24,6 @@
           "opacity": "Deckkraft",
           "randomExpression": "Zufällige Ausdrücke",
           "obsBackground": "Einfarbiger Hintergrund",
-          "autoReleaseDelay": "Verzögerung der automatischen Freigabe",
           "hideOnHover": "Beim Darüberfahren ausblenden",
           "maxFPS": "Maximale Bildrate"
         },

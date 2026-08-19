@@ -24,7 +24,6 @@
           "opacity": "不透明度",
           "randomExpression": "随机表情",
           "obsBackground": "纯色背景",
-          "autoReleaseDelay": "按键自动释放延迟",
           "hideOnHover": "鼠标移入隐藏",
           "maxFPS": "最大帧率"
         },

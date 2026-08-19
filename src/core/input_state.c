@@ -18,8 +18,8 @@ void bongo_cat_input_init(BongoCatInputState *state) {
     memset(state->recovery, 0, sizeof(state->recovery));
     atomic_init(&state->recovery_head, 0);
     atomic_init(&state->recovery_tail, 0);
-    memset(state->releases, 0, sizeof(state->releases));
-    state->release_count = 0;
+    memset(state->scheduled_releases, 0, sizeof(state->scheduled_releases));
+    state->scheduled_release_count = 0;
 }
 
 bool bongo_cat_input_edge(bool states[BONGO_CAT_INPUT_KEY_STATE_CAP],
@@ -127,19 +127,20 @@ bool bongo_cat_input_shift_down(const BongoCatInputState *state) {
 }
 
 static size_t release_index(const BongoCatInputState *state, const char *name) {
-    for (size_t i = 0; i < state->release_count; ++i)
-        if (strcmp(state->releases[i].name, name) == 0) return i;
-    return state->release_count;
+    for (size_t i = 0; i < state->scheduled_release_count; ++i)
+        if (strcmp(state->scheduled_releases[i].name, name) == 0) return i;
+    return state->scheduled_release_count;
 }
 
 static void remove_release(BongoCatInputState *state, size_t index) {
-    if (index >= state->release_count) return;
-    state->releases[index] = state->releases[state->release_count - 1];
-    memset(&state->releases[--state->release_count], 0,
-        sizeof(state->releases[0]));
+    if (index >= state->scheduled_release_count) return;
+    state->scheduled_releases[index] =
+        state->scheduled_releases[state->scheduled_release_count - 1];
+    memset(&state->scheduled_releases[--state->scheduled_release_count], 0,
+        sizeof(state->scheduled_releases[0]));
 }
 
-void bongo_cat_input_auto_release(BongoCatInputState *state,
+void bongo_cat_input_schedule_release(BongoCatInputState *state,
     const BongoCatInputEvent *event, uint64_t delay_ms) {
     if (!state || !event || !event->name[0] ||
         (event->kind != BONGO_CAT_INPUT_KEY_DOWN && event->kind != BONGO_CAT_INPUT_KEY_UP)) return;
@@ -148,24 +149,27 @@ void bongo_cat_input_auto_release(BongoCatInputState *state,
         remove_release(state, index);
         return;
     }
-    if (index == state->release_count) {
-        if (state->release_count >= BONGO_CAT_AUTO_RELEASE_CAP) return;
-        index = state->release_count++;
-        snprintf(state->releases[index].name,
-            sizeof(state->releases[index].name), "%s", event->name);
+    if (index == state->scheduled_release_count) {
+        if (state->scheduled_release_count >=
+            BONGO_CAT_SCHEDULED_RELEASE_CAP) return;
+        index = state->scheduled_release_count++;
+        snprintf(state->scheduled_releases[index].name,
+            sizeof(state->scheduled_releases[index].name), "%s", event->name);
     }
-    state->releases[index].deadline_ms = event->timestamp_ms + delay_ms;
+    state->scheduled_releases[index].deadline_ms =
+        event->timestamp_ms + delay_ms;
 }
 
-bool bongo_cat_input_take_release(BongoCatInputState *state, uint64_t now_ms,
-    BongoCatInputEvent *event) {
+bool bongo_cat_input_take_scheduled_release(BongoCatInputState *state,
+    uint64_t now_ms, BongoCatInputEvent *event) {
     if (!state || !event) return false;
-    for (size_t i = 0; i < state->release_count; ++i) {
-        if (state->releases[i].deadline_ms > now_ms) continue;
+    for (size_t i = 0; i < state->scheduled_release_count; ++i) {
+        if (state->scheduled_releases[i].deadline_ms > now_ms) continue;
         memset(event, 0, sizeof(*event));
         event->kind = BONGO_CAT_INPUT_KEY_UP;
         event->timestamp_ms = now_ms;
-        snprintf(event->name, sizeof(event->name), "%s", state->releases[i].name);
+        snprintf(event->name, sizeof(event->name), "%s",
+            state->scheduled_releases[i].name);
         remove_release(state, i);
         return true;
     }

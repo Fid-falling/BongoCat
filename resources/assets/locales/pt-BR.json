@@ -24,7 +24,6 @@
           "opacity": "Opacidade",
           "randomExpression": "Expressões Aleatórias",
           "obsBackground": "Fundo sólido",
-          "autoReleaseDelay": "Atraso de Liberação Automática",
           "hideOnHover": "Ocultar ao Passar o Mouse",
           "maxFPS": "Taxa Máxima de Quadros"
         },

@@ -18,6 +18,9 @@ const char *bongo_cat_windows_key_name(const KBDLLHOOKSTRUCT *key, char output[1
 bool bongo_cat_windows_keyboard_event(BongoCatWindowsKeyboard *state,
     const KBDLLHOOKSTRUCT *key, WPARAM message, UINT *drop_key_up,
     BongoCatWindowsKeyEmit emit, void *userdata);
+bool bongo_cat_windows_keyboard_reconcile_key(BongoCatWindowsKeyboard *state,
+    unsigned code, uint64_t now_ms, bool physically_down,
+    BongoCatWindowsKeyEmit emit, void *userdata);
 void bongo_cat_windows_keyboard_reconcile(BongoCatWindowsKeyboard *state,
     uint64_t now_ms, BongoCatWindowsKeyEmit emit, void *userdata);
 #endif

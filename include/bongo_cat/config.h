@@ -3,7 +3,6 @@
 
 #include "bongo_cat/common.h"
 
-#define BONGO_CAT_DEFAULT_AUTO_RELEASE_SECONDS 3.0f
 #define BONGO_CAT_DEFAULT_MAX_FPS 60
 #define BONGO_CAT_DEFAULT_WINDOW_SCALE_PERCENT 100.0f
 #define BONGO_CAT_DEFAULT_WINDOW_OPACITY_PERCENT 100.0f
@@ -42,7 +41,6 @@ typedef struct BongoCatModelPreferences {
     bool mouse_mirror;
     bool mouse_centered;
     bool ignore_mouse;
-    float auto_release_seconds;
     int max_fps;
 } BongoCatModelPreferences;
 
@@ -77,7 +75,7 @@ typedef struct BongoCatApplicationPreferences {
 } BongoCatApplicationPreferences;
 
 typedef struct BongoCatShortcutPreferences {
-    char visible_cat[BONGO_CAT_SHORTCUT_CAP];
+    char toggle_pet_visibility[BONGO_CAT_SHORTCUT_CAP];
     char visible_preferences[BONGO_CAT_SHORTCUT_CAP];
     char mirror[BONGO_CAT_SHORTCUT_CAP];
     char pass_through[BONGO_CAT_SHORTCUT_CAP];

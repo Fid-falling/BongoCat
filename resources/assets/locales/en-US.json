@@ -24,7 +24,6 @@
           "opacity": "Opacity",
           "randomExpression": "Random Expressions",
           "obsBackground": "Solid Background",
-          "autoReleaseDelay": "Auto Release Delay",
           "hideOnHover": "Hide on Hover",
           "maxFPS": "Max Frame Rate"
         },

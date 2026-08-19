@@ -5,6 +5,19 @@
 #include <string.h>
 #ifdef _WIN32
 #include "windows_keys.h"
+
+typedef struct KeyEvents {
+    unsigned count;
+    bool down;
+    char name[BONGO_CAT_ID_CAP];
+} KeyEvents;
+
+static void collect_key(bool down, const char *name, void *userdata) {
+    KeyEvents *events = userdata;
+    events->count++;
+    events->down = down;
+    snprintf(events->name, sizeof(events->name), "%s", name);
+}
 #endif
 
 void test_input(void) {
@@ -20,6 +33,30 @@ void test_input(void) {
     CHECK(strcmp(bongo_cat_windows_key_name(&key, key_name), "PrintScreen") == 0);
     key.vkCode = VK_APPS;
     CHECK(strcmp(bongo_cat_windows_key_name(&key, key_name), "Apps") == 0);
+
+    BongoCatWindowsKeyboard keyboard = {0};
+    KeyEvents key_events = {0};
+    UINT drop_key_up = 0;
+    key.vkCode = 'A';
+    key.flags = 0;
+    CHECK(bongo_cat_windows_keyboard_event(&keyboard, &key, WM_KEYDOWN,
+        &drop_key_up, collect_key, &key_events));
+    uint64_t pressed_ms = keyboard.changed_ms['A'];
+    CHECK(key_events.count == 1 && key_events.down &&
+        strcmp(key_events.name, "KeyA") == 0);
+    CHECK(!bongo_cat_windows_keyboard_reconcile_key(&keyboard, 'A',
+        pressed_ms + 49, false, collect_key, &key_events));
+    CHECK(!bongo_cat_windows_keyboard_reconcile_key(&keyboard, 'A',
+        pressed_ms + 10000, true, collect_key, &key_events));
+    CHECK(key_events.count == 1 && keyboard.down['A']);
+    drop_key_up = 'A';
+    CHECK(bongo_cat_windows_keyboard_event(&keyboard, &key, WM_KEYUP,
+        &drop_key_up, collect_key, &key_events));
+    CHECK(drop_key_up == 0 && key_events.count == 1 && keyboard.down['A']);
+    CHECK(bongo_cat_windows_keyboard_reconcile_key(&keyboard, 'A',
+        pressed_ms + 10000, false, collect_key, &key_events));
+    CHECK(key_events.count == 2 && !key_events.down &&
+        strcmp(key_events.name, "KeyA") == 0 && !keyboard.down['A']);
 #endif
     BongoCatInputState state;
     bongo_cat_input_init(&state);
@@ -134,29 +171,14 @@ void test_input(void) {
     bongo_cat_input_init(&state);
     event.kind = BONGO_CAT_INPUT_KEY_DOWN;
     event.timestamp_ms = 100;
-    memcpy(event.name, "KeyA", sizeof("KeyA"));
-    bongo_cat_input_auto_release(&state, &event, 3000);
-    CHECK(!bongo_cat_input_take_release(&state, 3099, &output));
-    event.timestamp_ms = 200;
-    bongo_cat_input_auto_release(&state, &event, 3000);
-    CHECK(!bongo_cat_input_take_release(&state, 3199, &output));
-    CHECK(bongo_cat_input_take_release(&state, 3200, &output));
+    memcpy(event.name, "CapsLock", sizeof("CapsLock"));
+    bongo_cat_input_schedule_release(&state, &event, 100);
+    CHECK(!bongo_cat_input_take_scheduled_release(&state, 199, &output));
+    CHECK(bongo_cat_input_take_scheduled_release(&state, 200, &output));
     CHECK(output.kind == BONGO_CAT_INPUT_KEY_UP);
-    CHECK(strcmp(output.name, "KeyA") == 0);
-    bongo_cat_input_auto_release(&state, &event, 3000);
+    CHECK(strcmp(output.name, "CapsLock") == 0);
+    bongo_cat_input_schedule_release(&state, &event, 100);
     event.kind = BONGO_CAT_INPUT_KEY_UP;
-    bongo_cat_input_auto_release(&state, &event, 0);
-    CHECK(!bongo_cat_input_take_release(&state, 9999, &output));
-
-    bongo_cat_input_init(&state);
-    event.kind = BONGO_CAT_INPUT_KEY_DOWN;
-    event.timestamp_ms = 1000;
-    memcpy(event.name, "KeyB", sizeof("KeyB"));
-    bongo_cat_input_auto_release(&state, &event, 50);
-    CHECK(!bongo_cat_input_take_release(&state, 1049, &output));
-    CHECK(bongo_cat_input_take_release(&state, 1050, &output));
-    event.timestamp_ms = 2000;
-    bongo_cat_input_auto_release(&state, &event, 500);
-    CHECK(!bongo_cat_input_take_release(&state, 2499, &output));
-    CHECK(bongo_cat_input_take_release(&state, 2500, &output));
+    bongo_cat_input_schedule_release(&state, &event, 100);
+    CHECK(!bongo_cat_input_take_scheduled_release(&state, 9999, &output));
 }

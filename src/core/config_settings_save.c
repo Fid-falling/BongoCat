@@ -16,8 +16,6 @@ static bool write_model(yyjson_mut_doc *doc, yyjson_mut_val *object,
             value->mouse_centered) &&
         yyjson_mut_obj_add_bool(doc, object, "ignorePointerInput",
             value->ignore_mouse) &&
-        yyjson_mut_obj_add_real(doc, object, "inputReleaseDelaySeconds",
-            value->auto_release_seconds) &&
         yyjson_mut_obj_add_int(doc, object, "maximumFps", value->max_fps);
 }
 
@@ -63,7 +61,7 @@ static bool write_shortcuts(yyjson_mut_doc *doc, yyjson_mut_val *object,
     const BongoCatShortcutPreferences *value) {
     return object &&
         yyjson_mut_obj_add_strcpy(doc, object, "toggleVisibility",
-            value->visible_cat) &&
+            value->toggle_pet_visibility) &&
         yyjson_mut_obj_add_strcpy(doc, object, "openSettings",
             value->visible_preferences) &&
         yyjson_mut_obj_add_strcpy(doc, object, "toggleModelMirror",

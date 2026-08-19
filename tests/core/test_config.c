@@ -53,7 +53,6 @@ static void check_defaults_and_validation(void) {
         !bongo_cat_session_model_active(&session, "keyboard"));
     bongo_cat_session_clear_additional_models(&session);
     settings.model.max_fps = 900;
-    settings.model.auto_release_seconds = NAN;
     settings.window.obs_background_color = BONGO_CAT_OBS_BACKGROUND_COLOR_COUNT;
     settings.window.hide_delay_seconds = NAN;
     settings.window.random_expression_interval_seconds = NAN;
@@ -70,8 +69,6 @@ static void check_defaults_and_validation(void) {
     bongo_cat_settings_validate(&settings);
     bongo_cat_session_validate(&session);
     CHECK(settings.model.max_fps == 240);
-    CHECK(settings.model.auto_release_seconds ==
-        BONGO_CAT_DEFAULT_AUTO_RELEASE_SECONDS);
     CHECK(settings.window.hide_delay_seconds == 0.0f);
     CHECK(settings.window.random_expression_interval_seconds ==
         BONGO_CAT_DEFAULT_RANDOM_EXPRESSION_SECONDS);
@@ -118,7 +115,8 @@ static void check_override_canonicalization(void) {
 static void check_shortcuts(void) {
     static BongoCatSettings settings;
     bongo_cat_settings_defaults(&settings);
-    memcpy(settings.shortcuts.visible_cat, "Control+B", sizeof("Control+B"));
+    memcpy(settings.shortcuts.toggle_pet_visibility, "Control+B",
+        sizeof("Control+B"));
     memcpy(settings.shortcuts.visible_preferences, "control+b",
         sizeof("control+b"));
     settings.behavior_shortcut_count = 2;
@@ -129,14 +127,14 @@ static void check_shortcuts(void) {
     memcpy(settings.behavior_shortcuts[1].shortcut, "Control+M",
         sizeof("Control+M"));
     bongo_cat_settings_validate(&settings);
-    CHECK(strcmp(settings.shortcuts.visible_cat, "Control+B") == 0);
+    CHECK(strcmp(settings.shortcuts.toggle_pet_visibility, "Control+B") == 0);
     CHECK(!settings.shortcuts.visible_preferences[0]);
     CHECK(settings.behavior_shortcut_count == 1);
     CHECK(strcmp(settings.behavior_shortcuts[0].id, "motion:1") == 0);
     CHECK(strcmp(settings.behavior_shortcuts[0].shortcut, "Control+M") == 0);
     CHECK(bongo_cat_settings_shortcut_conflicts(&settings, "control+b", NULL));
     CHECK(!bongo_cat_settings_shortcut_conflicts(&settings, "control+b",
-        settings.shortcuts.visible_cat));
+        settings.shortcuts.toggle_pet_visibility));
 }
 
 void test_config(void) {
@@ -207,7 +205,7 @@ void test_config(void) {
     CHECK(contains_text(settings_path, "\"randomExpression\": true"));
     CHECK(contains_text(settings_path,
         "\"randomExpressionIntervalSeconds\": 12.0"));
-    CHECK(contains_text(settings_path, "\"multiplePets\": true"));
+    CHECK(contains_text(settings_path, "\"multiplePets\": true") && !contains_text(settings_path, "inputReleaseDelaySeconds"));
     CHECK(contains_text(settings_path, "\"example\""));
     CHECK(!contains_text(settings_path, "activeModelId"));
     CHECK(contains_text(session_path, "\"format\": \"bongocat/session\""));
@@ -259,6 +257,9 @@ void test_config(void) {
         "{\"format\":\"bongocat/session\",\"schemaVersion\":2}");
     CHECK(bongo_cat_session_load(unsupported, &loaded_session, &error) ==
         BONGO_CAT_ERROR_FORMAT);
+
+    write_text(unsupported, "{\"format\":\"bongocat/settings\",\"schemaVersion\":1,\"rendering\":{\"inputReleaseDelaySeconds\":3,\"maximumFps\":30}}");
+    CHECK(bongo_cat_settings_load(unsupported, &loaded_settings, &error) == BONGO_CAT_OK && loaded_settings.model.max_fps == 30);
 
     write_text(unsupported,
         "{\"format\":\"bongocat/settings\",\"schemaVersion\":1,"

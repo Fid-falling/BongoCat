@@ -34,7 +34,7 @@ static bool normalize_text(char *text, size_t capacity) {
 bool bongo_cat_settings_shortcut_conflicts(const BongoCatSettings *config,
     const char *shortcut, const char *exclude) {
     if (!config || !shortcut || !shortcut[0]) return false;
-    const char *global[] = {config->shortcuts.visible_cat,
+    const char *global[] = {config->shortcuts.toggle_pet_visibility,
         config->shortcuts.visible_preferences, config->shortcuts.mirror,
         config->shortcuts.pass_through, config->shortcuts.always_on_top};
     for (size_t i = 0; i < sizeof(global) / sizeof(global[0]); ++i)
@@ -103,7 +103,7 @@ bool bongo_cat_settings_set_model_label(BongoCatSettings *config,
 }
 
 static void validate_shortcuts(BongoCatSettings *config) {
-    char *global[] = {config->shortcuts.visible_cat,
+    char *global[] = {config->shortcuts.toggle_pet_visibility,
         config->shortcuts.visible_preferences, config->shortcuts.mirror,
         config->shortcuts.pass_through, config->shortcuts.always_on_top};
     for (size_t i = 0; i < sizeof(global) / sizeof(global[0]); ++i) {
@@ -215,8 +215,6 @@ static void compact_model_overrides(BongoCatSettings *config) {
 void bongo_cat_settings_defaults(BongoCatSettings *config) {
     if (!config) return;
     memset(config, 0, sizeof(*config));
-    config->model.auto_release_seconds =
-        BONGO_CAT_DEFAULT_AUTO_RELEASE_SECONDS;
     config->model.mouse_centered = true;
     config->model.max_fps = BONGO_CAT_DEFAULT_MAX_FPS;
     config->window.always_on_top = true;
@@ -232,9 +230,6 @@ void bongo_cat_settings_defaults(BongoCatSettings *config) {
 
 void bongo_cat_settings_validate(BongoCatSettings *config) {
     if (!config) return;
-    config->model.auto_release_seconds = clampf_or(
-        config->model.auto_release_seconds, 0.05f, 30.0f,
-        BONGO_CAT_DEFAULT_AUTO_RELEASE_SECONDS);
     if (config->model.max_fps < 1) config->model.max_fps = 1;
     if (config->model.max_fps > 240) config->model.max_fps = 240;
     config->window.hide_delay_seconds = clampf_or(

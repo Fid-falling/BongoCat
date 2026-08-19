@@ -56,8 +56,6 @@ static bool read_model(yyjson_val *object, BongoCatModelPreferences *value,
         read_bool(object, "centerPointerTracking", &value->mouse_centered,
             error) &&
         read_bool(object, "ignorePointerInput", &value->ignore_mouse, error) &&
-        read_float(object, "inputReleaseDelaySeconds",
-            &value->auto_release_seconds, error) &&
         read_int(object, "maximumFps", &value->max_fps, error);
 }
 
@@ -106,8 +104,8 @@ static bool read_app(yyjson_val *object, BongoCatApplicationPreferences *value,
 
 static bool read_shortcuts(yyjson_val *object,
     BongoCatShortcutPreferences *value, BongoCatError *error) {
-    return read_text(object, "toggleVisibility", value->visible_cat,
-            sizeof(value->visible_cat), error) &&
+    return read_text(object, "toggleVisibility", value->toggle_pet_visibility,
+            sizeof(value->toggle_pet_visibility), error) &&
         read_text(object, "openSettings", value->visible_preferences,
             sizeof(value->visible_preferences), error) &&
         read_text(object, "toggleModelMirror", value->mirror,

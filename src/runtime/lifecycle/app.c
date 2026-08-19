@@ -171,18 +171,15 @@ void bongo_cat_app_drain_input(BongoCatApp *app, bool allow_shortcuts) {
             if (file) { fprintf(file, "kind=%d name=%s value=%.3f\n",
                 event.kind, event.name, event.value); fclose(file); }
         }
-        uint64_t delay = strcmp(event.name, "CapsLock") == 0 ? 100 : 0;
-#ifdef _WIN32
-        if (event.kind == BONGO_CAT_INPUT_KEY_DOWN && !delay)
-            delay = (uint64_t)(app->settings.model.auto_release_seconds * 1000.0f);
-#endif
-        bongo_cat_input_auto_release(&app->input, &event, delay);
+        if (strcmp(event.name, "CapsLock") == 0)
+            bongo_cat_input_schedule_release(&app->input, &event, 100);
         if (allow_shortcuts && !bongo_cat_preferences_shortcuts_blocked(app->preferences))
             bongo_cat_app_shortcuts(app, &event);
         bongo_cat_app_apply_input(app, &event);
     }
     uint64_t now = SDL_GetTicks();
-    while (bongo_cat_input_take_release(&app->input, now, &event)) {
+    while (bongo_cat_input_take_scheduled_release(
+            &app->input, now, &event)) {
         if (allow_shortcuts && !bongo_cat_preferences_shortcuts_blocked(app->preferences))
             bongo_cat_app_shortcuts(app, &event);
         bongo_cat_app_apply_input(app, &event);

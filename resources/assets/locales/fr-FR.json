@@ -24,7 +24,6 @@
           "opacity": "Opacité",
           "randomExpression": "Expressions aléatoires",
           "obsBackground": "Arrière-plan uni",
-          "autoReleaseDelay": "Délai de relâchement automatique",
           "hideOnHover": "Masquer au survol",
           "maxFPS": "Fréquence d'images maximale"
         },

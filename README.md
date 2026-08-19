@@ -41,7 +41,7 @@ instead of a diagnostic build.
   example `A-*` plus `Z-*` directories) are also discovered. The source stays
   read-only and BongoCat caches only generated adapter files.
 - Keyboard and mouse input, pointer tracking, gamepad buttons and axes,
-  mirroring, automatic key release, and configurable shortcuts.
+  mirroring, lost-release recovery, and configurable shortcuts.
 - Optional keep-on-screen positioning, disabled by default. A fully unreachable
   window is recovered after a display is disconnected, without polling or
   interacting with fullscreen applications.

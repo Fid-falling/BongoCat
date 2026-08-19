@@ -50,7 +50,6 @@ isolated development runs that must ignore adjacent sources.
     "pointerMirrored": false,
     "centerPointerTracking": true,
     "ignorePointerInput": false,
-    "inputReleaseDelaySeconds": 3.0,
     "maximumFps": 60
   },
   "window": {

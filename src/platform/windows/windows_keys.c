@@ -105,19 +105,31 @@ bool bongo_cat_windows_keyboard_event(BongoCatWindowsKeyboard *state,
     return true;
 }
 
+bool bongo_cat_windows_keyboard_reconcile_key(BongoCatWindowsKeyboard *state,
+    unsigned code, uint64_t now_ms, bool physically_down,
+    BongoCatWindowsKeyEmit emit, void *userdata) {
+    if (!state || !emit || code >= BONGO_CAT_INPUT_KEY_STATE_CAP ||
+        !state->down[code] || !state->name[code][0] || physically_down ||
+        now_ms < state->changed_ms[code] ||
+        now_ms - state->changed_ms[code] < 50) return false;
+    char name[BONGO_CAT_ID_CAP];
+    snprintf(name, sizeof(name), "%s", state->name[code]);
+    state->down[code] = false;
+    state->name[code][0] = '\0';
+    state->changed_ms[code] = now_ms;
+    emit(false, name, userdata);
+    return true;
+}
+
 void bongo_cat_windows_keyboard_reconcile(BongoCatWindowsKeyboard *state,
     uint64_t now_ms, BongoCatWindowsKeyEmit emit, void *userdata) {
     if (!state || !emit) return;
     for (unsigned code = 0; code < BONGO_CAT_INPUT_KEY_STATE_CAP; ++code) {
         if (!state->down[code] || !state->name[code][0] ||
-            now_ms - state->changed_ms[code] < 50 ||
-            (GetAsyncKeyState((int)code) & 0x8000)) continue;
-        char name[BONGO_CAT_ID_CAP];
-        snprintf(name, sizeof(name), "%s", state->name[code]);
-        state->down[code] = false;
-        state->name[code][0] = '\0';
-        state->changed_ms[code] = now_ms;
-        emit(false, name, userdata);
+            now_ms < state->changed_ms[code] ||
+            now_ms - state->changed_ms[code] < 50) continue;
+        bongo_cat_windows_keyboard_reconcile_key(state, code, now_ms,
+            (GetAsyncKeyState((int)code) & 0x8000) != 0, emit, userdata);
     }
 }
 #endif

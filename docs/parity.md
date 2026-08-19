@@ -18,7 +18,7 @@ desktop runtime.
 
 - Observe global keyboard press and release events.
 - Observe global mouse buttons and coalesced pointer movement.
-- Preserve Windows automatic release timing for system keys.
+- Recover Windows key state when a release event is lost.
 - Support SDL game controllers, sticks, triggers, and hot plug.
 - Register behavior shortcuts and application shortcuts.
 - Request the required macOS input-monitoring permission.

@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 
-static void visible(BongoCatApp *app) {
+static void toggle_pet_visibility(BongoCatApp *app) {
     bongo_cat_window_set_visible(app, !app->session.window.visible);
 }
 
@@ -111,8 +111,9 @@ void bongo_cat_app_shortcuts(BongoCatApp *app, const BongoCatInputEvent *event) 
         return;
     }
     BongoCatShortcutPreferences *shortcuts = &app->settings.shortcuts;
-    if (bongo_cat_shortcut_matches(&app->shortcut_state, event, shortcuts->visible_cat)) {
-        visible(app);
+    if (bongo_cat_shortcut_matches(&app->shortcut_state, event,
+        shortcuts->toggle_pet_visibility)) {
+        toggle_pet_visibility(app);
     } else if (bongo_cat_shortcut_matches(&app->shortcut_state, event,
         shortcuts->visible_preferences)) {
         bongo_cat_preferences_visible(app->preferences) ?
@@ -151,7 +152,8 @@ static void test_press(BongoCatApp *app, const char *name) {
 bool bongo_cat_app_shortcuts_self_test(BongoCatApp *app) {
     if (!app || !app->preferences) return false;
     BongoCatShortcutPreferences *keys = &app->settings.shortcuts;
-    snprintf(keys->visible_cat, sizeof(keys->visible_cat), "Control+B");
+    snprintf(keys->toggle_pet_visibility,
+        sizeof(keys->toggle_pet_visibility), "Control+B");
     snprintf(keys->visible_preferences, sizeof(keys->visible_preferences), "Control+Comma");
     snprintf(keys->mirror, sizeof(keys->mirror), "Control+M");
     snprintf(keys->pass_through, sizeof(keys->pass_through), "Control+P");

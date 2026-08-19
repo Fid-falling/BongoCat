@@ -47,7 +47,7 @@ A diagnostic drawing never counts as a Live2D visual pass.
 | Global Windows mouse input | PASS | Injected down/up events reach the native input queue. |
 | Global Windows pointer movement | PASS | Low-level hook coordinates, smoothing and parameter mapping are covered. |
 | Pointer-driven Live2D tracking | PASS | Frames differ by 8.74%/9.18%; seven parameters and mirrored X/Z directions pass. |
-| Windows automatic key release | PASS | Core input tests cover scheduled releases. |
+| Windows lost key-release recovery | PASS | Core input tests cover physical-state reconciliation. |
 | Gamepad hot plug | PENDING | SDL implementation exists; physical-device testing remains. |
 | Behavior shortcuts | PENDING | Parsing and dispatch exist; a configured global shortcut smoke remains. |
 | macOS input permission | PENDING | Native implementation exists; macOS manual verification remains. |
