@@ -112,6 +112,8 @@ void bongo_cat_platform_set_tray_callbacks(void *tray,
     BongoCatTrayRestore restore, void *userdata);
 bool bongo_cat_platform_single_instance_begin(void);
 bool bongo_cat_platform_single_instance_take_wake(void);
+bool bongo_cat_platform_update_shutdown_argument(int argc, char **argv);
+bool bongo_cat_platform_single_instance_take_update_shutdown(void);
 void bongo_cat_platform_single_instance_end(void);
 BongoCatResult bongo_cat_platform_set_autostart(bool enabled, BongoCatError *error);
 BongoCatMenuAction bongo_cat_platform_context_menu(BongoCatPlatform *platform,

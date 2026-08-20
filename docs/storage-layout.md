@@ -33,8 +33,11 @@ Every user-selected Tauri or Mver source is converted into an application-owned
 package v2 directory under `data/models/`.
 
 For portable Tauri and Mver distributions, the application also performs a
-bounded scan next to the executable. These nearby sources remain externally
-owned and are loaded in place; only their generated runtime adapters are stored under
+bounded scan at its launch location. Windows shortcuts created by the installer
+pass their own directory explicitly; other Windows launches use the process
+working directory, while other platforms retain the executable directory as the
+default. `--nearby-root=<directory>` overrides the location. These nearby
+sources remain externally owned and are loaded in place; only their generated runtime adapters are stored under
 `cache/model-adapters/`. The scan is limited to three directory levels, 256
 directories, and 500 ms of directory-discovery work. Unchanged sources reuse a
 metadata signature and cached content identity, so rescans do not rehash model

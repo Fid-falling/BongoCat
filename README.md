@@ -32,7 +32,8 @@ instead of a diagnostic build.
 - Import and removal of custom model packages. A package is checked for a valid
   manifest and safe file references before it is installed under the user data
   directory.
-- Bounded automatic discovery of Bongo-Cat-Mver packages beside the executable.
+- Bounded automatic discovery of Bongo-Cat-Mver packages beside the launch
+  location. On Windows, shortcuts use their own folder as that location.
   Nearby sources and installed packages share one model list; packages may use
   `config.json` + `img/` directly or an intact nested directory.
 - Mver 0.1.6 is the animation and input behavior baseline; standalone
@@ -230,8 +231,9 @@ state use separate schema-1 documents. Unsupported formats are rejected.
 Storage is separated into `config`, `data`, `cache`, `state`, and `logs`.
 Installed packages live under `data/models`; generated nearby-model adapters
 live under `cache/model-adapters`. A Tauri or Bongo-Cat-Mver package can be used
-without installing it by placing its model directory beside `BongoCat`. Startup discovery scans at most three directory
-levels and 256 directories, with a 500 ms directory-work budget. Unchanged
+without installing it by placing its model directory beside `BongoCat` or its
+Windows shortcut. Startup discovery scans at most three directory levels and
+256 directories, with a 500 ms directory-work budget. Unchanged
 sources reuse their cached identity and generated adapter.
 A collection such as `露西亚-誓焰版` may be selected as one folder; its full
 package and nested image patches are discovered together.
@@ -239,6 +241,7 @@ Tests and isolated launches may override the complete storage layout:
 
 ```text
 BongoCat --storage-root=C:\path\to\isolated-storage
+BongoCat --nearby-root=C:\path\to\model-collection
 ```
 
 Arguments beginning with `--ci-` are test instrumentation. They select a model,

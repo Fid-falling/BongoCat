@@ -165,7 +165,7 @@ void bongo_cat_model_catalog_scan(BongoCatApp *app, bool cleanup,
 void bongo_cat_app_rescan_models(BongoCatApp *app) {
     if (!app) return;
     bongo_cat_model_refresh_invalidate(app);
-    bongo_cat_model_catalog_scan(app, true, SDL_GetBasePath());
+    bongo_cat_model_catalog_scan(app, true, app->nearby_root);
     bongo_cat_model_catalog_finish(app);
 }
 
@@ -197,7 +197,7 @@ void bongo_cat_app_refresh_nearby_models(BongoCatApp *app) {
     snprintf(active_model_id, sizeof(active_model_id), "%s",
         app->session.active_model_id);
     scan_owned_models(app, false);
-    scan_nearby_root(app, SDL_GetBasePath());
+    scan_nearby_root(app, app->nearby_root);
     snprintf(app->session.active_model_id,
         sizeof(app->session.active_model_id), "%s", active_model_id);
     bongo_cat_model_catalog_finish(app);

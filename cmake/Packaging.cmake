@@ -116,8 +116,119 @@ if(WIN32)
   string(REPLACE [=[RequestExecutionLevel admin]=]
     [=[RequestExecutionLevel user]=] BONGO_CAT_NSIS_TEMPLATE
     "${BONGO_CAT_NSIS_TEMPLATE}")
+  string(REPLACE [=[  !include "MUI.nsh"]=]
+    [=[  !include "MUI.nsh"
+  !include "WordFunc.nsh"]=] BONGO_CAT_NSIS_TEMPLATE
+    "${BONGO_CAT_NSIS_TEMPLATE}")
+  string(REPLACE [=[  Var IS_DEFAULT_INSTALLDIR]=]
+    [=[  Var IS_DEFAULT_INSTALLDIR
+  Var BONGO_CAT_UPGRADE_DIR]=] BONGO_CAT_NSIS_TEMPLATE
+    "${BONGO_CAT_NSIS_TEMPLATE}")
+  string(REPLACE [=[@CPACK_NSIS_CREATE_ICONS_EXTRA@]=] [=[
+  SetOutPath "$SMPROGRAMS\$STARTMENU_FOLDER"
+  CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\BongoCat.lnk" \
+    "$INSTDIR\.\BongoCat.exe" \
+    "--nearby-root=$\"$SMPROGRAMS\$STARTMENU_FOLDER$\""
+  StrCmp "$INSTALL_DESKTOP" "1" bongo_cat_create_desktop_shortcut \
+    bongo_cat_shortcuts_done
+bongo_cat_create_desktop_shortcut:
+  SetOutPath "$DESKTOP"
+  CreateShortCut "$DESKTOP\BongoCat.lnk" "$INSTDIR\.\BongoCat.exe" \
+    "--nearby-root=$\"$DESKTOP$\""
+bongo_cat_shortcuts_done:
+  SetOutPath "$INSTDIR"
+]=] BONGO_CAT_NSIS_TEMPLATE "${BONGO_CAT_NSIS_TEMPLATE}")
+  string(REPLACE [=[@CPACK_NSIS_EXTRA_INSTALL_COMMANDS@]=] [=[
+  WriteRegStr SHCTX \
+    "Software\Microsoft\Windows\CurrentVersion\Uninstall\BongoCat" \
+    "InstallLocation" "$INSTDIR"
+]=] BONGO_CAT_NSIS_TEMPLATE "${BONGO_CAT_NSIS_TEMPLATE}")
+  string(REPLACE [=[@CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS@]=] [=[
+  StrCmp "$BONGO_CAT_UPGRADE_DIR" "" bongo_cat_upgrade_ready
+  ExecWait '"$BONGO_CAT_UPGRADE_DIR\BongoCat.exe" --shutdown-for-update'
+  FindWindow $4 "" "BongoCat"
+  StrCmp $4 0 bongo_cat_uninstall_old
+  SendMessage $4 0x0010 0 0 /TIMEOUT=5000
+  StrCpy $5 0
+bongo_cat_wait_for_shutdown:
+  Sleep 100
+  FindWindow $4 "" "BongoCat"
+  StrCmp $4 0 bongo_cat_uninstall_old
+  IntOp $5 $5 + 1
+  IntCmp $5 150 bongo_cat_upgrade_failed \
+    bongo_cat_wait_for_shutdown bongo_cat_upgrade_failed
+
+bongo_cat_uninstall_old:
+  IfFileExists "$BONGO_CAT_UPGRADE_DIR\Uninstall.exe" 0 \
+    bongo_cat_upgrade_ready
+  ClearErrors
+  ExecWait '"$BONGO_CAT_UPGRADE_DIR\Uninstall.exe" /S \
+    _?=$BONGO_CAT_UPGRADE_DIR' $3
+  IfErrors bongo_cat_upgrade_failed
+  StrCmp "$3" "0" bongo_cat_upgrade_ready bongo_cat_upgrade_failed
+
+bongo_cat_upgrade_failed:
+  MessageBox MB_OK|MB_ICONSTOP \
+    "BongoCat could not be updated. Close the running application and try again."
+  Abort
+
+bongo_cat_upgrade_ready:
+  SetOutPath "$INSTDIR"
+]=] BONGO_CAT_NSIS_TEMPLATE "${BONGO_CAT_NSIS_TEMPLATE}")
   bongo_cat_replace_nsis_function(BONGO_CAT_NSIS_TEMPLATE ".onInit"
     [=[Function .onInit
+  SetShellVarContext current
+
+  ReadRegStr $0 SHCTX \
+    "Software\Microsoft\Windows\CurrentVersion\Uninstall\BongoCat" \
+    "DisplayVersion"
+  StrCmp "$0" "" bongo_cat_check_legacy
+  ReadRegStr $1 SHCTX \
+    "Software\Microsoft\Windows\CurrentVersion\Uninstall\BongoCat" \
+    "InstallLocation"
+  StrCmp "$1" "" 0 bongo_cat_compare_versions
+  ReadRegStr $1 SHCTX "Software\BongoCat\BongoCat" ""
+bongo_cat_compare_versions:
+  StrCmp "$1" "" bongo_cat_install
+  IfFileExists "$1\BongoCat.exe" 0 bongo_cat_install
+  ${VersionCompare} "$0" "@CPACK_PACKAGE_VERSION@" $2
+  StrCmp "$2" "2" bongo_cat_upgrade
+  Goto bongo_cat_launch_installed
+
+bongo_cat_check_legacy:
+  GetFullPathName $1 "$LOCALAPPDATA\..\LocalPrograms\BongoCat"
+  IfFileExists "$1\BongoCat.exe" 0 bongo_cat_install
+  ClearErrors
+  GetDLLVersion "$1\BongoCat.exe" $6 $7
+  IfErrors bongo_cat_install
+  IntOp $0 $6 >> 16
+  IntOp $8 $6 & 0x0000FFFF
+  IntOp $9 $7 >> 16
+  StrCpy $0 "$0.$8.$9"
+  ${VersionCompare} "$0" "@CPACK_PACKAGE_VERSION@" $2
+  StrCmp "$2" "2" bongo_cat_upgrade_legacy
+
+bongo_cat_launch_installed:
+  ClearErrors
+  Exec '"$1\BongoCat.exe"'
+  IfErrors bongo_cat_launch_failed
+  Quit
+
+bongo_cat_launch_failed:
+  MessageBox MB_OK|MB_ICONSTOP \
+    "The installed BongoCat could not be started."
+  Quit
+
+bongo_cat_upgrade:
+  StrCpy $BONGO_CAT_UPGRADE_DIR "$1"
+  StrCpy $INSTDIR "$1"
+  Goto bongo_cat_install
+
+bongo_cat_upgrade_legacy:
+  StrCpy $BONGO_CAT_UPGRADE_DIR "$1"
+  Goto bongo_cat_install
+
+bongo_cat_install:
   SetShellVarContext current
 FunctionEnd]=]
     BONGO_CAT_NSIS_TEMPLATE)

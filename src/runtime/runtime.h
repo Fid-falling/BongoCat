@@ -21,6 +21,8 @@ void bongo_cat_import_nearby_shutdown(void);
 BongoCatResult bongo_cat_app_locate_assets(BongoCatApp *app, BongoCatError *error);
 bool bongo_cat_startup_prepare(BongoCatApp *app, int argc, char **argv,
     BongoCatError *error);
+bool bongo_cat_startup_arguments(BongoCatApp *app, int argc, char **argv,
+    BongoCatError *error);
 void bongo_cat_startup_stage(BongoCatApp *app, const char *stage);
 void bongo_cat_startup_ready(BongoCatApp *app);
 void bongo_cat_runtime_stage(BongoCatApp *app, const char *stage);

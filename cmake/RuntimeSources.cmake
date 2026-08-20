@@ -39,6 +39,7 @@ set(BONGO_CAT_RUNTIME_LIFECYCLE_SOURCES
   src/runtime/lifecycle/runtime_state.c
   src/runtime/lifecycle/shutdown.c
   src/runtime/lifecycle/startup.c
+  src/runtime/lifecycle/startup_arguments.c
   src/runtime/lifecycle/storage_paths.c)
 
 set(BONGO_CAT_RUNTIME_DIAGNOSTIC_SOURCES
@@ -177,6 +178,7 @@ set(BONGO_CAT_UI_PREFERENCES_SOURCES
 set(BONGO_CAT_RUNTIME_SOURCES
   src/core/app_state.c
   src/platform/common/memory.c
+  src/platform/common/update_shutdown.c
   ${BONGO_CAT_MEDIA_SOURCES}
   ${BONGO_CAT_RENDER_SOURCES}
   ${BONGO_CAT_RUNTIME_LIFECYCLE_SOURCES}

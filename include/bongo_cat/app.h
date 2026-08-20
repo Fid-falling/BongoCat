@@ -55,6 +55,7 @@ typedef struct BongoCatApp {
     char storage_root[BONGO_CAT_PATH_CAP];
     char asset_root[BONGO_CAT_PATH_CAP];
     char locale_root[BONGO_CAT_PATH_CAP];
+    char nearby_root[BONGO_CAT_PATH_CAP];
     char executable_path[BONGO_CAT_PATH_CAP];
     char primary_state_root[BONGO_CAT_PATH_CAP];
     char primary_log_root[BONGO_CAT_PATH_CAP];

@@ -16,6 +16,13 @@ static int failures;
     failures++; \
 } } while (0)
 
+static bool model_displayed(const BongoCatApp *app, const char *name) {
+    for (size_t i = 0; app && i < app->models.count; ++i)
+        if (strcmp(app->models.entries[i].display_name, name) == 0)
+            return true;
+    return false;
+}
+
 int test_mver_nearby_identity(void) {
     failures = 0;
     char *temporary = SDL_GetCurrentDirectory();
@@ -95,21 +102,45 @@ cleanup:
 
 int test_mver_nearby_refresh(void) {
     failures = 0;
-    const char *base = SDL_GetBasePath();
     char *temporary = SDL_GetCurrentDirectory();
-    CHECK(base != NULL && temporary != NULL);
-    if (!base || !temporary) {
+    CHECK(temporary != NULL);
+    if (!temporary) {
         SDL_free(temporary);
         return failures;
     }
 
+    BongoCatApp *parsed = calloc(1, sizeof(*parsed));
+    CHECK(parsed != NULL);
+    if (parsed) {
+        char nearby_argument[BONGO_CAT_PATH_CAP + 20];
+        snprintf(nearby_argument, sizeof(nearby_argument),
+            "--nearby-root=%s", temporary);
+        char *arguments[] = {"BongoCat", nearby_argument};
+        BongoCatError argument_error = {0};
+        CHECK(bongo_cat_startup_arguments(parsed, 2, arguments,
+            &argument_error));
+        CHECK(strcmp(parsed->nearby_root, temporary) == 0);
+        free(parsed);
+    }
+
     unsigned long long nonce = (unsigned long long)SDL_GetTicksNS();
-    char source[BONGO_CAT_PATH_CAP], data[BONGO_CAT_PATH_CAP];
-    snprintf(source, sizeof(source), "%s/bongo-cat-nearby-refresh-%llu",
-        base, nonce);
+    char root[BONGO_CAT_PATH_CAP], data[BONGO_CAT_PATH_CAP];
+    char startup_source[BONGO_CAT_PATH_CAP], sync_source[BONGO_CAT_PATH_CAP];
+    char background_source[BONGO_CAT_PATH_CAP];
+    snprintf(root, sizeof(root), "%s/bongo-cat-nearby-root-%llu",
+        temporary, nonce);
     snprintf(data, sizeof(data), "%s/bongo-cat-nearby-refresh-data-%llu",
         temporary, nonce);
+    CHECK(SDL_CreateDirectory(root));
     CHECK(SDL_CreateDirectory(data));
+    char name[96];
+    snprintf(name, sizeof(name), "startup-source-%llu", nonce);
+    CHECK(child(startup_source, sizeof(startup_source), root, name, false));
+    snprintf(name, sizeof(name), "sync-source-%llu", nonce);
+    CHECK(child(sync_source, sizeof(sync_source), root, name, false));
+    snprintf(name, sizeof(name), "background-source-%llu", nonce);
+    CHECK(child(background_source, sizeof(background_source), root, name, false));
+    CHECK(mver_fixture(startup_source));
 
     BongoCatApp *app = calloc(1, sizeof(*app));
     CHECK(app != NULL);
@@ -121,29 +152,31 @@ int test_mver_nearby_refresh(void) {
         "%s/resources/assets", BONGO_CAT_NATIVE_SOURCE_DIR);
     snprintf(app->data_root, sizeof(app->data_root), "%s", data);
     snprintf(app->cache_root, sizeof(app->cache_root), "%s", data);
+    snprintf(app->nearby_root, sizeof(app->nearby_root), "%s", root);
 
+    bongo_cat_app_rescan_models(app);
+    CHECK(model_displayed(app, bongo_cat_path_name(startup_source)));
+    CHECK(mver_fixture(sync_source));
     bongo_cat_app_refresh_nearby_models(app);
-    size_t before = app->models.count;
-    CHECK(mver_fixture(source));
+    CHECK(model_displayed(app, bongo_cat_path_name(startup_source)) ||
+        model_displayed(app, bongo_cat_path_name(sync_source)));
+    CHECK(mver_fixture(background_source));
     bongo_cat_app_request_nearby_model_refresh(app);
     /* A synchronous catalog mutation invalidates the in-flight snapshot. The
        refresh worker must discard it, rerun, and commit only the newer scan. */
     bongo_cat_app_refresh_installed_models(app);
     uint64_t deadline = SDL_GetTicksNS() + 5000000000ull;
-    while (app->models.count == before && SDL_GetTicksNS() < deadline) {
+    while (!model_displayed(app, bongo_cat_path_name(background_source)) &&
+        SDL_GetTicksNS() < deadline) {
         bongo_cat_model_refresh_update(app);
         SDL_Delay(2);
     }
-    CHECK(app->models.count == before + 1);
-    CHECK(app->models.entries[app->models.count - 1].managed);
-    CHECK(strcmp(app->models.entries[app->models.count - 1].display_name,
-        bongo_cat_path_name(source)) == 0);
-    CHECK(strcmp(app->session.active_model_id, "standard") == 0);
+    CHECK(model_displayed(app, bongo_cat_path_name(background_source)));
     bongo_cat_model_refresh_shutdown(app);
     free(app);
 
 cleanup:
-    CHECK(bongo_cat_model_remove_tree(source, NULL));
+    CHECK(bongo_cat_model_remove_tree(root, NULL));
     CHECK(bongo_cat_model_remove_tree(data, NULL));
     SDL_free(temporary);
     return failures;

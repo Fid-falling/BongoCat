@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 int bongo_cat_app_run(int argc, char **argv) {
+    if (bongo_cat_platform_update_shutdown_argument(argc, argv)) return 0;
     bool secondary = bongo_cat_multi_pet_secondary_argument(argc, argv);
     if (!secondary && !bongo_cat_platform_single_instance_begin()) return 0;
     BongoCatApp *app = calloc(1, sizeof(*app));

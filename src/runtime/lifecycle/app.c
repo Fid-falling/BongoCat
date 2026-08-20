@@ -250,6 +250,12 @@ static void take_instance_wake(BongoCatApp *app) {
     bongo_cat_platform_raise_window(app->window);
     SDL_Log("Existing instance requested window reveal");
 }
+static bool take_update_shutdown(BongoCatApp *app) {
+    if (!bongo_cat_platform_single_instance_take_update_shutdown()) return false;
+    app->running = false;
+    SDL_Log("Installed update requested application shutdown");
+    return true;
+}
 void bongo_cat_app_loop(BongoCatApp *app) {
     uint64_t iterations = 0, wakes = 0, zero_waits = 0;
     while (app->running) {
@@ -269,6 +275,7 @@ void bongo_cat_app_loop(BongoCatApp *app) {
         bongo_cat_preferences_input_end(app->preferences);
         bongo_cat_model_refresh_update(app);
         take_instance_wake(app);
+        if (take_update_shutdown(app)) continue;
         uint64_t now = SDL_GetTicksNS(); bongo_cat_window_update_wheel_animation(app, now);
         bongo_cat_multi_pet_update(app, now);
         bongo_cat_random_expression_update(app, now);

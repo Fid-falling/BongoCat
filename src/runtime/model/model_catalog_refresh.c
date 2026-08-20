@@ -83,9 +83,8 @@ static bool start_refresh(BongoCatApp *app) {
     snprintf(job->asset_root, sizeof(job->asset_root), "%s", app->asset_root);
     snprintf(job->data_root, sizeof(job->data_root), "%s", app->data_root);
     snprintf(job->cache_root, sizeof(job->cache_root), "%s", app->cache_root);
-    const char *base = SDL_GetBasePath();
     snprintf(job->nearby_root, sizeof(job->nearby_root), "%s",
-        base ? base : "");
+        app->nearby_root);
     snprintf(job->active_model_id, sizeof(job->active_model_id), "%s",
         app->session.active_model_id);
     refresh->busy = true;
