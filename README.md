@@ -164,15 +164,29 @@ ctest --test-dir build-cubism -C Release --output-on-failure
 
 The executable is `build-cubism/Release/BongoCat.exe`.
 
-Build the versioned release archive and SHA-256 file with:
+Build the versioned portable release archive and SHA-256 file with:
 
 ```powershell
 cmake --build build-cubism --config Release --target package
 ```
 
-Release archives use the conventional product-version-platform-architecture
-format. The executable inside keeps the stable `BongoCat.exe` name so upgrades
-do not break shortcuts.
+On Windows, build the graphical installer and its SHA-256 file with NSIS 3.03
+or newer available on `PATH`:
+
+```powershell
+cmake --build build-cubism --config Release --target package-installer
+```
+
+The installer is current-user-only: it requests no administrator elevation and
+defaults to `%LOCALAPPDATA%\Programs\BongoCat`. Its shortcuts and uninstall
+entry are also created for the current Windows user.
+
+Release files are written to `build-cubism/dist`. Portable archives use the
+conventional product-version-platform-architecture format, and installers add
+the `-setup` suffix. The installer registers BongoCat in Windows Apps &
+features, adds Start Menu entries, offers a desktop shortcut, and includes an
+uninstaller. The installed executable keeps the stable `BongoCat.exe` name so
+upgrades do not break shortcuts.
 
 ### Diagnostic or Unix build
 
@@ -205,9 +219,11 @@ cmake --install build --config Release --component Runtime --prefix out
 
 The install tree is portable. Windows embeds the resource archive; Unix builds
 place `assets/` beside the executable or application bundle. User-owned files
-follow [`docs/storage-layout.md`](docs/storage-layout.md). Settings and session
-state use separate schema-1 documents. Unsupported formats are rejected; the
-unreleased application has no configuration migration layer.
+follow [`docs/storage-layout.md`](docs/storage-layout.md). The portable
+executable and installed application use the same per-user storage layout on
+each platform; no files are written next to the executable. This pre-release
+build does not migrate settings from an older directory. Settings and session
+state use separate schema-1 documents. Unsupported formats are rejected.
 
 ## Runtime Data and Test Switches
 
@@ -249,8 +265,11 @@ is a review aid, not a claim that shorter files are automatically better.
 
 GitHub Actions runs Cppcheck, the source-size check, a warning-clean Linux build,
 CTest, and a Windows/Linux/macOS build matrix on pushes, pull requests, tags,
-and manual runs. CI artifacts use the diagnostic backend; a licensed Cubism SDK
-is not provisioned on the runners.
+and manual runs. Each matrix job uploads its diagnostic release package and
+SHA-256 file; Windows also uploads the current-user-only NSIS installer and its
+checksum. The packages are ZIP on Windows and macOS, and TGZ on Linux. A
+licensed Cubism SDK is not provisioned on the runners, so these CI packages use
+the diagnostic backend.
 
 ## Third-Party and Distribution Notes
 

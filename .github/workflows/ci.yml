@@ -152,6 +152,27 @@ jobs:
         if: runner.os != 'Windows'
         run: ctest --test-dir build --output-on-failure
 
+      - name: Install NSIS
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command makensis.exe -ErrorAction SilentlyContinue)) {
+            choco install nsis --no-progress --yes
+          }
+          $nsisCommand = Get-Command makensis.exe -ErrorAction SilentlyContinue
+          $nsisRoots = @(
+            (Join-Path ${env:ProgramFiles(x86)} 'NSIS'),
+            (Join-Path $env:ProgramFiles 'NSIS')
+          )
+          if ($nsisCommand) { $nsisRoots += Split-Path $nsisCommand.Source }
+          $nsisRoot = $nsisRoots | Where-Object {
+            Test-Path -LiteralPath (Join-Path $_ 'makensis.exe')
+          } | Select-Object -First 1
+          if (-not $nsisRoot) {
+            throw 'NSIS was not installed (makensis.exe was not found)'
+          }
+          $nsisRoot | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
       - name: Resolve release package name
         id: package
         shell: pwsh
@@ -185,10 +206,25 @@ jobs:
           startup and platform diagnostics, not end-user distribution.
           '@ | Set-Content build/dist/DIAGNOSTIC-NO-CUBISM.txt -Encoding ascii
 
-      - name: Upload diagnostic build
+      - name: Package Windows installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake --build build --config Release --target package-installer
+          $setup = @(Get-ChildItem build/dist -File | Where-Object {
+            $_.Name -eq '${{ steps.package.outputs.name }}-setup.exe'
+          })
+          if ($setup.Count -ne 1) {
+            throw "Expected one Windows installer, found $($setup.Count)"
+          }
+          if (-not (Test-Path -LiteralPath "$($setup[0].FullName).sha256")) {
+            throw 'Windows installer checksum is missing'
+          }
+
+      - name: Upload release packages
         uses: actions/upload-artifact@v7
         with:
-          name: diagnostic-no-cubism-${{ steps.package.outputs.name }}
+          name: release-${{ steps.package.outputs.name }}
           path: build/dist/*
           if-no-files-found: error
           retention-days: 30

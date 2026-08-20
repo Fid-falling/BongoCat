@@ -126,17 +126,22 @@ that could not be preserved from being overwritten.
 
 | Platform | Config and data | State, cache, and logs |
 | --- | --- | --- |
-| Windows | `%APPDATA%\BongoCat\config`; `%LOCALAPPDATA%\BongoCat\data` | `%LOCALAPPDATA%\BongoCat\state`, `cache`, `logs` |
+| Windows | `%LOCALAPPDATA%\BongoCat\config`, `data` | `%LOCALAPPDATA%\BongoCat\state`, `cache`, `logs` |
 | macOS | `~/Library/Application Support/BongoCat/config`, `data` | Application Support `state`; `~/Library/Caches/BongoCat`; `~/Library/Logs/BongoCat` |
 | Linux | `$XDG_CONFIG_HOME/bongocat`, `$XDG_DATA_HOME/bongocat` | `$XDG_STATE_HOME/bongocat`, `$XDG_CACHE_HOME/bongocat`; logs under state |
 
+The settings file is therefore `%LOCALAPPDATA%\BongoCat\config\settings.json`
+on Windows, `~/Library/Application Support/BongoCat/config/settings.json` on
+macOS, and `$XDG_CONFIG_HOME/bongocat/settings.json` on Linux.
+
 Linux falls back to the corresponding `~/.config`, `~/.local/share`,
 `~/.local/state`, and `~/.cache` roots when an XDG variable is unset.
-Windows keeps only small preferences in the roaming profile; installed models
-stay local so large packages are not copied by profile synchronization.
-Application data is file-backed on every platform. Windows does not use the
-registry for settings or autostart; enabling autostart creates a shortcut in
-the current user's Startup folder.
+Windows keeps all application data in the current user's local profile so the
+portable executable and the per-user installer share one layout. Application
+data is file-backed on every platform. Windows does not use the registry for
+settings or autostart; enabling autostart creates a shortcut in the current
+user's Startup folder. The project is pre-release, so no settings are migrated
+from an older directory; a fresh launch uses the paths listed above directly.
 
 `--storage-root=<path>` is the only path override. It creates `config`, `data`,
 `cache`, `state`, and `logs` beneath the supplied root for isolated development

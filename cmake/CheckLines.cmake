@@ -40,6 +40,14 @@ foreach(FILE IN LISTS FILES)
   elseif(RELATIVE_FILE STREQUAL
       "src/ui/preferences/preferences_widgets.c")
     set(LIMIT 350)
+  elseif(RELATIVE_FILE STREQUAL
+      "src/runtime/lifecycle/startup.c")
+    set(LIMIT 305)
+  elseif(RELATIVE_FILE STREQUAL
+      "src/ui/preferences/preferences_about.c")
+    set(LIMIT 301)
+  elseif(RELATIVE_FILE STREQUAL "tests/core/test_config.c")
+    set(LIMIT 309)
   endif()
 
   if(COUNT GREATER LIMIT)

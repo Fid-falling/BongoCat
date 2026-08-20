@@ -41,13 +41,11 @@ static bool isolated_roots(BongoCatApp *app) {
 
 #ifdef _WIN32
 static bool platform_roots(BongoCatApp *app) {
-    const char *roaming = SDL_getenv("APPDATA");
     const char *local = SDL_getenv("LOCALAPPDATA");
-    char roaming_app[BONGO_CAT_PATH_CAP], local_app[BONGO_CAT_PATH_CAP];
-    return child_path(roaming_app, sizeof(roaming_app), roaming, BONGO_CAT_NAME) &&
-        child_path(local_app, sizeof(local_app), local, BONGO_CAT_NAME) &&
+    char local_app[BONGO_CAT_PATH_CAP];
+    return child_path(local_app, sizeof(local_app), local, BONGO_CAT_NAME) &&
         child_path(app->config_root, sizeof(app->config_root),
-            roaming_app, "config") &&
+            local_app, "config") &&
         child_path(app->data_root, sizeof(app->data_root),
             local_app, "data") &&
         child_path(app->cache_root, sizeof(app->cache_root),
