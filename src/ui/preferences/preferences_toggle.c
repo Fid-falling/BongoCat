@@ -69,25 +69,25 @@ static bool draw_swatches(struct nk_context *context, const char *id,
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     bool changed = false;
     for (int i = 0; i < BONGO_CAT_OBS_BACKGROUND_COLOR_COUNT; ++i) {
+        BongoCatObsBackgroundColor color = (BongoCatObsBackgroundColor)i;
         struct nk_rect hit = nk_rect(left + i * slot,
             cell.y + (cell.h - 24.0f) * .5f, 24.0f, 24.0f);
         bool hover = nk_input_is_mouse_hovering_rect(&context->input, hit);
         if (nk_input_is_mouse_click_in_rect(&context->input,
             NK_BUTTON_LEFT, hit)) {
-            *selected = (BongoCatObsBackgroundColor)i;
+            *selected = color;
             changed = true;
         }
         char animation_id[96];
         snprintf(animation_id, sizeof(animation_id),
             "obs-background-%s-%d", id, i);
         float amount = bongo_cat_ui_animate_eased(context, animation_id,
-            *selected == i ? 1.0f : 0.0f, 180.0f,
+            *selected == color ? 1.0f : 0.0f, 180.0f,
             BONGO_CAT_UI_EASE_STANDARD);
         float size = 14.0f + 6.0f * amount;
         struct nk_rect circle = nk_rect(hit.x + (hit.w - size) * .5f,
             hit.y + (hit.h - size) * .5f, size, size);
-        uint32_t rgb = bongo_cat_obs_background_color_rgb(
-            (BongoCatObsBackgroundColor)i);
+        uint32_t rgb = bongo_cat_obs_background_color_rgb(color);
         if (amount > 0.0f && p.effects)
             bongo_cat_ui_paint_shadow(context, circle, size * .5f,
                 0, 1, 4, 0, nk_rgba(0, 0, 0, 51));
