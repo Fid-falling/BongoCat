@@ -160,8 +160,9 @@ static void footer(BongoCatPreferences *value, struct nk_context *context,
     char version[32]; snprintf(version, sizeof(version), "v%s", BONGO_CAT_VERSION);
     float label_width = width(value->ui.caption_font, version_label) + 2;
     float version_width = width(value->ui.label_font, version) + 2;
-    float update_width = NK_MAX(110.0f,
-        width(value->ui.caption_font, update) + 28.0f);
+    float update_text_width = width(value->ui.caption_font, update);
+    float update_content_width = 16.0f + 8.0f + update_text_width;
+    float update_width = NK_MAX(110.0f, update_content_width + 28.0f);
     float feedback_width = NK_MAX(56.0f,
         width(value->ui.caption_font, feedback) + 4.0f);
     float total = label_width + version_width + update_width +
@@ -182,12 +183,14 @@ static void footer(BongoCatPreferences *value, struct nk_context *context,
     if (p.effects) bongo_cat_ui_paint_shadow(context, update_button, 10,
         0, 4, 14, 0, nk_rgba(p.accent.r, p.accent.g, p.accent.b, 89));
     nk_fill_rect(canvas, update_button, 10, p.accent);
+    float update_content_x = update_button.x +
+        (update_button.w - update_content_width) * .5f;
     bongo_cat_preferences_icon_draw(value, canvas,
-        BONGO_CAT_UI_ICON_SYNC, nk_rect(update_button.x + 14,
+        BONGO_CAT_UI_ICON_SYNC, nk_rect(update_content_x,
         update_button.y + 10, 16, 16), nk_rgb(255, 255, 255));
-    centered(canvas, nk_rect(update_button.x + 28, update_button.y,
-        update_button.w - 32, update_button.h), update, value->ui.caption_font,
-        nk_rgb(255, 255, 255));
+    centered(canvas, nk_rect(update_content_x + 24, update_button.y,
+        update_text_width + 1, update_button.h), update,
+        value->ui.caption_font, nk_rgb(255, 255, 255));
     link_cursor(context, update_button);
     if (hit(context, update_button)) {
         char message[160];

@@ -123,9 +123,10 @@ void bongo_cat_preferences_about_projects_heading(
         value->ui.heading_font, p.text);
     const char *caption = tr(value, "native.support.worksText",
         "More software from vladelaina");
-    const char *developer = strstr(caption, "vladelaina");
+    static const char developer_name[] = "vladelaina";
+    const char *developer = strstr(caption, developer_name);
     int prefix = developer ? (int)(developer - caption) : nk_strlen(caption);
-    int name_length = developer ? 11 : 0;
+    int name_length = developer ? (int)(sizeof(developer_name) - 1) : 0;
     const char *suffix = developer ? developer + name_length : caption + prefix;
     int suffix_length = nk_strlen(suffix);
     float prefix_width = span_width(value->ui.caption_font, caption, prefix);
