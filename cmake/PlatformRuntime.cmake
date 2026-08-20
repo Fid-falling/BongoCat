@@ -8,6 +8,7 @@ if(WIN32)
     src/platform/windows/windows_borderless.c
     src/platform/windows/windows_capture.c
     src/platform/windows/windows_pointer.c
+    src/platform/windows/windows_dialog.c
     src/platform/windows/windows_direct_input.c
     src/platform/windows/windows_input.c
     src/platform/windows/windows_popup.c

@@ -2,6 +2,10 @@
 #include "preferences_state.h"
 #include "model_import.h"
 
+#ifdef _WIN32
+#include "windows_dialog.h"
+#endif
+
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -205,7 +209,12 @@ bool bongo_cat_preferences_import_open(BongoCatImportDialog *dialog,
     dialog->window_id = SDL_GetWindowID(window);
     ++dialog->references;
     SDL_UnlockMutex(dialog->mutex);
+#ifdef _WIN32
+    bongo_cat_windows_show_open_folder_dialog(import_callback, dialog, window,
+        NULL, true);
+#else
     SDL_ShowOpenFolderDialog(import_callback, dialog, window, NULL, true);
+#endif
     return true;
 }
 
