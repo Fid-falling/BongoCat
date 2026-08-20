@@ -123,7 +123,21 @@ if(WIN32)
     "${BONGO_CAT_NSIS_TEMPLATE}")
   string(REPLACE [=[  Var IS_DEFAULT_INSTALLDIR]=]
     [=[  Var IS_DEFAULT_INSTALLDIR
-  Var BONGO_CAT_UPGRADE_DIR]=] BONGO_CAT_NSIS_TEMPLATE
+  Var BONGO_CAT_UPGRADE_DIR
+  Var BONGO_CAT_UPDATE_SHUTDOWN]=] BONGO_CAT_NSIS_TEMPLATE
+    "${BONGO_CAT_NSIS_TEMPLATE}")
+  string(REPLACE [=[  !insertmacro MUI_PAGE_DIRECTORY]=]
+    [=[  !define MUI_PAGE_CUSTOMFUNCTION_PRE bongo_cat_directory_page_pre
+  !insertmacro MUI_PAGE_DIRECTORY]=] BONGO_CAT_NSIS_TEMPLATE
+    "${BONGO_CAT_NSIS_TEMPLATE}")
+  string(REPLACE [=[Function InstallOptionsPage]=]
+    [=[Function bongo_cat_directory_page_pre
+  StrCmp "$BONGO_CAT_UPGRADE_DIR" "" bongo_cat_directory_page_show
+  Abort
+bongo_cat_directory_page_show:
+FunctionEnd
+
+Function InstallOptionsPage]=] BONGO_CAT_NSIS_TEMPLATE
     "${BONGO_CAT_NSIS_TEMPLATE}")
   string(REPLACE [=[@CPACK_NSIS_CREATE_ICONS_EXTRA@]=] [=[
   SetOutPath "$SMPROGRAMS\$STARTMENU_FOLDER"
@@ -146,12 +160,21 @@ bongo_cat_shortcuts_done:
 ]=] BONGO_CAT_NSIS_TEMPLATE "${BONGO_CAT_NSIS_TEMPLATE}")
   string(REPLACE [=[@CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS@]=] [=[
   StrCmp "$BONGO_CAT_UPGRADE_DIR" "" bongo_cat_upgrade_ready
-  ExecWait '"$BONGO_CAT_UPGRADE_DIR\BongoCat.exe" --shutdown-for-update'
+  StrCmp "$BONGO_CAT_UPDATE_SHUTDOWN" "1" \
+    bongo_cat_signal_update_shutdown bongo_cat_find_legacy_tray
+
+bongo_cat_signal_update_shutdown:
+  ClearErrors
+  ExecWait '"$BONGO_CAT_UPGRADE_DIR\BongoCat.exe" --shutdown-for-update' $3
+  IfErrors bongo_cat_restart_manager_shutdown
+  StrCmp "$3" "0" bongo_cat_uninstall_old \
+    bongo_cat_restart_manager_shutdown
+
   ; Versions before update shutdown support interpret WM_CLOSE as "hide to
   ; tray". Find a legacy SDL tray window owned by the exact installed
   ; executable and trigger its Exit entry so state is flushed normally.
-  StrCpy $0 0
 bongo_cat_find_legacy_tray:
+  StrCpy $0 0
   System::Call 'user32::FindWindowExW(p -3, p r0, w "Message", p 0) p .r0'
   StrCmp "$0" "0" bongo_cat_restart_manager_shutdown
   System::Call 'user32::GetWindowThreadProcessId(p r0, *i .r6)'
@@ -209,6 +232,8 @@ bongo_cat_upgrade_ready:
   bongo_cat_replace_nsis_function(BONGO_CAT_NSIS_TEMPLATE ".onInit"
     [=[Function .onInit
   SetShellVarContext current
+  StrCpy $BONGO_CAT_UPGRADE_DIR ""
+  StrCpy $BONGO_CAT_UPDATE_SHUTDOWN ""
 
   ReadRegStr $0 SHCTX \
     "Software\Microsoft\Windows\CurrentVersion\Uninstall\BongoCat" \
@@ -251,12 +276,19 @@ bongo_cat_launch_failed:
   Quit
 
 bongo_cat_upgrade:
+  ; 0.1.0 treats an unknown update argument as a normal launch. Waiting for
+  ; that process would block forever when the application was not running.
+  ${VersionCompare} "$0" "0.1.1" $2
+  StrCmp "$2" "2" bongo_cat_upgrade_paths
+  StrCpy $BONGO_CAT_UPDATE_SHUTDOWN "1"
+bongo_cat_upgrade_paths:
   StrCpy $BONGO_CAT_UPGRADE_DIR "$1"
   StrCpy $INSTDIR "$1"
   Goto bongo_cat_install
 
 bongo_cat_upgrade_legacy:
   StrCpy $BONGO_CAT_UPGRADE_DIR "$1"
+  StrCpy $INSTDIR "$1"
   Goto bongo_cat_install
 
 bongo_cat_install:
