@@ -11,6 +11,30 @@ void bongo_cat_ui_input_end(BongoCatUIBackend *ui) {
     if (ui) nk_input_end(&ui->context);
 }
 
+void bongo_cat_ui_input_reset(BongoCatUIBackend *ui) {
+    if (!ui) return;
+    struct nk_mouse *mouse = &ui->context.input.mouse;
+    mouse->pos = nk_vec2(-1.0f, -1.0f);
+    mouse->prev = mouse->pos;
+    mouse->delta = nk_vec2(0.0f, 0.0f);
+    mouse->scroll_delta = nk_vec2(0.0f, 0.0f);
+    mouse->grab = 0;
+    mouse->grabbed = 0;
+    mouse->ungrab = 0;
+    for (int i = 0; i < NK_BUTTON_MAX; ++i) {
+        mouse->buttons[i].down = nk_false;
+        mouse->buttons[i].clicked = 0;
+        mouse->buttons[i].clicked_pos = mouse->pos;
+    }
+    for (int i = 0; i < NK_KEY_MAX; ++i) {
+        ui->context.input.keyboard.keys[i].down = nk_false;
+        ui->context.input.keyboard.keys[i].clicked = 0;
+    }
+    ui->context.input.keyboard.text_len = 0;
+    ui->last_left_click_ns = 0;
+    ui->double_click_down = false;
+}
+
 static void key_event(BongoCatUIBackend *ui, const SDL_KeyboardEvent *event) {
     bool down = event->down;
     bool control = (event->mod & SDL_KMOD_CTRL) != 0;

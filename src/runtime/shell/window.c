@@ -104,10 +104,31 @@ void bongo_cat_window_apply(BongoCatApp *app) {
         preferences->always_on_top);
 }
 
+static bool event_targets_main_window(BongoCatApp *app,
+    const SDL_Event *event) {
+    SDL_WindowID id = SDL_GetWindowID(app->window);
+    if (event->type >= SDL_EVENT_WINDOW_FIRST &&
+        event->type <= SDL_EVENT_WINDOW_LAST)
+        return event->window.windowID == id;
+    switch (event->type) {
+    case SDL_EVENT_MOUSE_MOTION:
+        return event->motion.windowID == id || app->window_drag_active ||
+            app->drag_candidate || app->resize_gesture;
+    case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        return event->button.windowID == id;
+    case SDL_EVENT_MOUSE_BUTTON_UP:
+        return event->button.windowID == id || app->window_drag_active ||
+            app->drag_candidate || app->resize_gesture;
+    case SDL_EVENT_MOUSE_WHEEL:
+        return event->wheel.windowID == id;
+    default:
+        return true;
+    }
+}
+
 bool bongo_cat_window_event(BongoCatApp *app, const SDL_Event *event) {
     bongo_cat_window_display_event(app, event);
-    if (event->type >= SDL_EVENT_WINDOW_FIRST && event->type <= SDL_EVENT_WINDOW_LAST &&
-        event->window.windowID != SDL_GetWindowID(app->window)) return true;
+    if (!event_targets_main_window(app, event)) return true;
     if (event->type == SDL_EVENT_QUIT) return false;
     if (event->type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
         bongo_cat_window_set_visible(app, false);

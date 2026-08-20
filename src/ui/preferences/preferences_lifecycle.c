@@ -46,12 +46,19 @@ static void release_window(BongoCatPreferences *value) {
     value->pending_raster_scale = 0.0f;
     value->raster_retry_ns = 0;
     value->render_retry_ns = 0;
+    value->shown_ns = 0;
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
     SDL_GL_SetSwapInterval(1);
 }
 
 void bongo_cat_preferences_show(BongoCatPreferences *value) {
     if (!value) return;
+    if (value->visible) {
+        bongo_cat_platform_raise_window(value->window);
+        bongo_cat_app_request_nearby_model_refresh(value->app);
+        return;
+    }
+    uint64_t requested_ns = SDL_GetTicksNS();
     bool opening = !value->window;
     if (opening && !bongo_cat_preferences_open_window(value)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
@@ -59,6 +66,8 @@ void bongo_cat_preferences_show(BongoCatPreferences *value) {
         release_window(value);
         return;
     }
+    if (value->ui_initialized) bongo_cat_ui_input_reset(&value->ui);
+    value->shown_ns = requested_ns;
     value->visible = true;
     if (!opening) {
         SDL_StartTextInput(value->window);
@@ -80,6 +89,7 @@ void bongo_cat_preferences_close(BongoCatPreferences *value) {
     if (value->gl_context) SDL_GL_MakeCurrent(value->window, value->gl_context);
     if (value->ui_initialized && value->input_active)
         bongo_cat_preferences_input_end(value);
+    if (value->ui_initialized) bongo_cat_ui_input_reset(&value->ui);
     SDL_StopTextInput(value->window);
     bongo_cat_preferences_remove_dialog_clear(value->app);
     if (value->ui_initialized) {
@@ -94,6 +104,7 @@ void bongo_cat_preferences_close(BongoCatPreferences *value) {
     value->smoke_behavior_open_pending = false;
     value->native_drag = false;
     value->chrome_dragging = false;
+    value->shown_ns = 0;
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
     SDL_GL_SetSwapInterval(1);
     bongo_cat_config_store_flush(value->app);

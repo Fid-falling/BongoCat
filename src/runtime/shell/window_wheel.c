@@ -17,6 +17,32 @@ static float wheel_delta(const SDL_MouseWheelEvent *event) {
     return event && event->direction == SDL_MOUSEWHEEL_FLIPPED ? -value : value;
 }
 
+static bool wheel_targets_window(BongoCatApp *app,
+    const SDL_MouseWheelEvent *event) {
+    int width = 0, height = 0;
+    if (!app->session.window.visible ||
+        event->windowID != SDL_GetWindowID(app->window) ||
+        !SDL_GetWindowSize(app->window, &width, &height)) return false;
+    if (event->mouse_x < 0.0f || event->mouse_x >= width ||
+        event->mouse_y < 0.0f || event->mouse_y >= height) return false;
+    /* A transparent/click-through window can occasionally retain mouse focus
+       while a wheel message is generated elsewhere. SDL then reuses the last
+       local wheel coordinates, so also verify the current desktop cursor for
+       real events. Timestamp-zero events are synthetic self-test fixtures. */
+    if (event->timestamp) {
+        float screen_x = 0.0f, screen_y = 0.0f;
+        float local_x = 0.0f, local_y = 0.0f;
+        SDL_GetGlobalMouseState(&screen_x, &screen_y);
+        if (!bongo_cat_platform_pointer_local(&app->platform, screen_x,
+            screen_y, &local_x, &local_y) || local_x < 0.0f ||
+            local_x >= width || local_y < 0.0f || local_y >= height)
+            return false;
+        if (!bongo_cat_window_visible_at_pointer(app, local_x, local_y))
+            return false;
+    }
+    return true;
+}
+
 static bool initialize_targets(BongoCatApp *app, bool reset) {
     if (!reset) return true;
     int x = 0, y = 0, width = 0, height = 0;
@@ -52,7 +78,8 @@ static void clamp_position(BongoCatApp *app, int width, int height, int *x, int 
 }
 
 void bongo_cat_window_wheel(BongoCatApp *app, const SDL_MouseWheelEvent *event) {
-    if (!app || !app->window || !event) return;
+    if (!app || !app->window || !event ||
+        !wheel_targets_window(app, event)) return;
     float delta = wheel_delta(event);
     if (SDL_fabsf(delta) < 0.001f) return;
     delta = SDL_clamp(delta, -1.0f, 1.0f);
@@ -173,7 +200,17 @@ bool bongo_cat_window_wheel_self_test(BongoCatApp *app) {
     app->session.window.opacity_percent = 80.0f;
     app->session.window.scale_percent = 100.0f;
     bongo_cat_window_cancel_wheel_animation(app);
-    SDL_MouseWheelEvent wheel = {.y = -1.0f};
+    SDL_MouseWheelEvent wheel = {.y = -1.0f,
+        .windowID = SDL_GetWindowID(app->window),
+        .mouse_x = original_width * 0.5f,
+        .mouse_y = original_height * 0.5f};
+    float untouched_scale = app->session.window.scale_percent;
+    SDL_WindowID own_window = wheel.windowID;
+    wheel.windowID = 0;
+    bongo_cat_window_wheel(app, &wheel);
+    bool foreign = !app->wheel_animation_active &&
+        app->session.window.scale_percent == untouched_scale;
+    wheel.windowID = own_window;
     bongo_cat_window_wheel(app, &wheel);
     uint64_t started = app->wheel_animation_ns;
     for (int i = 1; i <= 30; ++i)
@@ -250,11 +287,12 @@ bool bongo_cat_window_wheel_self_test(BongoCatApp *app) {
         backup.opacity_percent / 100.0f);
     bongo_cat_platform_set_geometry(&app->platform, original_x, original_y,
         original_width, original_height);
-    bool passed = opacity && scale && burst && aggregated && reversal && flipped &&
+    bool passed = foreign && opacity && scale && burst && aggregated && reversal && flipped &&
         maximum && minimum && opacity_maximum && opacity_minimum && rounding;
-    if (!passed) fprintf(stderr, "wheel self-test: opacity=%d scale=%d burst=%d "
+    if (!passed) fprintf(stderr, "wheel self-test: foreign=%d opacity=%d scale=%d burst=%d "
         "aggregated=%d reversal=%d flipped=%d maximum=%d minimum=%d opacity_max=%d "
-        "opacity_min=%d rounding=%d\n", opacity, scale, burst, aggregated, reversal,
-        flipped, maximum, minimum, opacity_maximum, opacity_minimum, rounding);
+        "opacity_min=%d rounding=%d\n", foreign, opacity, scale, burst, aggregated,
+        reversal, flipped, maximum, minimum, opacity_maximum, opacity_minimum,
+        rounding);
     return passed;
 }

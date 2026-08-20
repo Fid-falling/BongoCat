@@ -85,6 +85,7 @@ bool bongo_cat_ui_init(BongoCatUIBackend *ui, SDL_Window *window,
 void bongo_cat_ui_destroy(BongoCatUIBackend *ui);
 void bongo_cat_ui_input_begin(BongoCatUIBackend *ui);
 void bongo_cat_ui_input_end(BongoCatUIBackend *ui);
+void bongo_cat_ui_input_reset(BongoCatUIBackend *ui);
 bool bongo_cat_ui_event(BongoCatUIBackend *ui, const SDL_Event *event);
 void bongo_cat_ui_render(BongoCatUIBackend *ui);
 void bongo_cat_ui_trim_idle(BongoCatUIBackend *ui);

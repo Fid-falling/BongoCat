@@ -162,6 +162,7 @@ bool bongo_cat_window_geometry_self_test(BongoCatApp *app) {
         app->session.window.scale_percent == 120.0f &&
         width == 384 && height == 288;
     SDL_Event released = {.type = SDL_EVENT_MOUSE_BUTTON_UP};
+    released.button.windowID = SDL_GetWindowID(app->window);
     released.button.button = SDL_BUTTON_RIGHT;
     bongo_cat_window_event(app, &released);
     gesture = gesture && !app->resize_gesture;

@@ -68,6 +68,7 @@ struct BongoCatPreferences {
     char loading_model_id[BONGO_CAT_ID_CAP];
     char model_load_visual_id[BONGO_CAT_ID_CAP];
     uint64_t last_render_ns;
+    uint64_t shown_ns;
     float pending_raster_scale;
     uint64_t raster_retry_ns;
     uint64_t render_retry_ns;

@@ -10,6 +10,7 @@
 
 static bool overlay_input_self_test(void);
 static bool overlay_chrome_self_test(void);
+static bool ui_input_reset_self_test(void);
 
 const char *test_mver_pointer_config(bool live2d) {
     const char *prefix = "{\"decoration\":{\"l2d_correct\":1.987,"
@@ -43,7 +44,8 @@ bool test_mver_pointer_fixture_assets(const char *standard,
 }
 
 bool test_mver_pointer_adapter(const char *adapter, bool expected_enabled) {
-    if (!overlay_input_self_test() || !overlay_chrome_self_test()) return false;
+    if (!overlay_input_self_test() || !overlay_chrome_self_test() ||
+        !ui_input_reset_self_test()) return false;
     char path[BONGO_CAT_PATH_CAP];
     bool files = bongo_cat_path_join(path, sizeof(path), adapter,
         "resources/mver-pointer/arm.png") && bongo_cat_path_is_file(path) &&
@@ -99,4 +101,25 @@ static bool overlay_chrome_self_test(void) {
     SDL_free(preferences);
     SDL_free(app);
     return passed;
+}
+
+static bool ui_input_reset_self_test(void) {
+    BongoCatUIBackend ui = {0};
+    struct nk_mouse *mouse = &ui.context.input.mouse;
+    mouse->pos = nk_vec2(42.0f, 24.0f);
+    mouse->scroll_delta = nk_vec2(1.0f, -2.0f);
+    mouse->buttons[NK_BUTTON_LEFT].down = nk_true;
+    mouse->buttons[NK_BUTTON_LEFT].clicked = 2;
+    mouse->buttons[NK_BUTTON_RIGHT].down = nk_true;
+    mouse->buttons[NK_BUTTON_RIGHT].clicked = 1;
+    ui.last_left_click_ns = 99;
+    ui.double_click_down = true;
+    bongo_cat_ui_input_reset(&ui);
+    return mouse->pos.x == -1.0f && mouse->pos.y == -1.0f &&
+        mouse->scroll_delta.x == 0.0f && mouse->scroll_delta.y == 0.0f &&
+        !mouse->buttons[NK_BUTTON_LEFT].down &&
+        !mouse->buttons[NK_BUTTON_LEFT].clicked &&
+        !mouse->buttons[NK_BUTTON_RIGHT].down &&
+        !mouse->buttons[NK_BUTTON_RIGHT].clicked &&
+        !ui.last_left_click_ns && !ui.double_click_down;
 }
