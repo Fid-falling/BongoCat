@@ -265,11 +265,13 @@ is a review aid, not a claim that shorter files are automatically better.
 
 GitHub Actions runs Cppcheck, the source-size check, a warning-clean Linux build,
 CTest, and a Windows/Linux/macOS build matrix on pushes, pull requests, tags,
-and manual runs. Each matrix job uploads its diagnostic release package and
-SHA-256 file; Windows also uploads the current-user-only NSIS installer and its
-checksum. The packages are ZIP on Windows and macOS, and TGZ on Linux. A
-licensed Cubism SDK is not provisioned on the runners, so these CI packages use
-the diagnostic backend.
+and manual runs. Each matrix job uploads its diagnostic portable release and
+SHA-256 file as a separate artifact; Windows uploads the current-user-only NSIS
+installer and its checksum as a second artifact. This keeps the portable package
+and installer independently downloadable from the workflow run. The packages
+are ZIP on Windows and macOS, and TGZ on Linux. A licensed Cubism SDK is not
+provisioned on the runners, so these CI packages use the diagnostic backend.
+Artifacts are named `portable-*` and, on Windows, `installer-*`.
 
 ## Third-Party and Distribution Notes
 

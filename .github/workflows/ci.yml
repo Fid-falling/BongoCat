@@ -221,11 +221,25 @@ jobs:
             throw 'Windows installer checksum is missing'
           }
 
-      - name: Upload release packages
+      - name: Upload portable release
         uses: actions/upload-artifact@v7
         with:
-          name: release-${{ steps.package.outputs.name }}
-          path: build/dist/*
+          name: portable-${{ steps.package.outputs.name }}
+          path: |
+            build/dist/${{ steps.package.outputs.name }}.*
+            build/dist/DIAGNOSTIC-NO-CUBISM.txt
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+      - name: Upload Windows installer
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: installer-${{ steps.package.outputs.name }}
+          path: |
+            build/dist/${{ steps.package.outputs.name }}-setup.exe
+            build/dist/${{ steps.package.outputs.name }}-setup.exe.sha256
           if-no-files-found: error
           retention-days: 30
           compression-level: 0
