@@ -68,9 +68,12 @@ void bongo_cat_preferences_smoke_frame(BongoCatPreferences *value) {
     write_window_handle(value);
     if (!value->app->smoke) return;
     bool valid = bongo_cat_ui_frame_valid(&value->ui);
+    bool assets_valid = value->logo_texture && value->icon_texture &&
+        (value->page != 4 ||
+            (value->catime_texture && value->vlaina_texture));
     if (!value->frame_checked) {
         value->frame_checked = true;
-        if (!valid) value->app->exit_code = 1;
+        if (!valid || !assets_valid) value->app->exit_code = 1;
     }
     int window_width = 0, window_height = 0;
     int pixel_width = 0, pixel_height = 0;
@@ -103,7 +106,8 @@ void bongo_cat_preferences_smoke_frame(BongoCatPreferences *value) {
         "logical=%.2fx%.2f atlas=%dx%d transparent=%d corner_alpha=%u "
         "resize_cached=%u resize_failures=%u resize_layout=%u "
         "fonts=%.1f,%.1f,%.1f,%.1f,%.1f "
-        "paint_textures=%zu paint_bytes=%zu\n",
+        "paint_textures=%zu paint_bytes=%zu "
+        "assets=%u,%u,%u,%u,%u valid_assets=%d\n",
         valid, value->page, value->ui.last_convert_result,
         value->ui.last_vertex_bytes, value->ui.last_element_bytes,
         value->ui.last_draw_commands, value->ui.last_draw_elements,
@@ -119,6 +123,9 @@ void bongo_cat_preferences_smoke_frame(BongoCatPreferences *value) {
         value->live_resize_layout_frames,
         font_height(value->ui.caption_font), font_height(value->ui.body_font),
         font_height(value->ui.label_font), font_height(value->ui.heading_font),
-        font_height(value->ui.hero_font), paint_count, paint_bytes);
+        font_height(value->ui.hero_font), paint_count, paint_bytes,
+        value->logo_texture, value->icon_texture,
+        value->icon_texture_hidpi, value->catime_texture,
+        value->vlaina_texture, assets_valid);
     fclose(file);
 }

@@ -6,13 +6,17 @@
 
 static bool required_assets(const char *root) {
     if (!root || !root[0]) return false;
-    const char *files[] = {"locales/en-US.json", "models/standard/cat.model3.json",
+    const char *files[] = {
+        "logo.png", "ui-symbols.png", "ui-symbols@4x.png",
+        "catime.png", "vlaina.jpg", "tray.png", "locales/en-US.json",
+        "models/standard/cat.model3.json",
         "models/standard/demomodel.moc3",
         "models/standard/demomodel.1024/texture_00.png"};
     for (size_t i = 0; i < sizeof(files) / sizeof(files[0]); ++i) {
         char path[BONGO_CAT_PATH_CAP];
+        uint64_t size = 0;
         if (!bongo_cat_path_join(path, sizeof(path), root, files[i]) ||
-            !bongo_cat_path_is_file(path)) return false;
+            !bongo_cat_path_file_size(path, &size) || !size) return false;
     }
     return true;
 }
