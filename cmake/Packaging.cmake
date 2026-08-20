@@ -118,7 +118,8 @@ if(WIN32)
     "${BONGO_CAT_NSIS_TEMPLATE}")
   string(REPLACE [=[  !include "MUI.nsh"]=]
     [=[  !include "MUI.nsh"
-  !include "WordFunc.nsh"]=] BONGO_CAT_NSIS_TEMPLATE
+  !include "WordFunc.nsh"
+  !include "Win\RestartManager.nsh"]=] BONGO_CAT_NSIS_TEMPLATE
     "${BONGO_CAT_NSIS_TEMPLATE}")
   string(REPLACE [=[  Var IS_DEFAULT_INSTALLDIR]=]
     [=[  Var IS_DEFAULT_INSTALLDIR
@@ -146,17 +147,47 @@ bongo_cat_shortcuts_done:
   string(REPLACE [=[@CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS@]=] [=[
   StrCmp "$BONGO_CAT_UPGRADE_DIR" "" bongo_cat_upgrade_ready
   ExecWait '"$BONGO_CAT_UPGRADE_DIR\BongoCat.exe" --shutdown-for-update'
-  FindWindow $4 "" "BongoCat"
-  StrCmp $4 0 bongo_cat_uninstall_old
-  SendMessage $4 0x0010 0 0 /TIMEOUT=5000
-  StrCpy $5 0
-bongo_cat_wait_for_shutdown:
-  Sleep 100
-  FindWindow $4 "" "BongoCat"
-  StrCmp $4 0 bongo_cat_uninstall_old
-  IntOp $5 $5 + 1
-  IntCmp $5 150 bongo_cat_upgrade_failed \
-    bongo_cat_wait_for_shutdown bongo_cat_upgrade_failed
+  ; Versions before update shutdown support interpret WM_CLOSE as "hide to
+  ; tray". Find a legacy SDL tray window owned by the exact installed
+  ; executable and trigger its Exit entry so state is flushed normally.
+  StrCpy $0 0
+bongo_cat_find_legacy_tray:
+  System::Call 'user32::FindWindowExW(p -3, p r0, w "Message", p 0) p .r0'
+  StrCmp "$0" "0" bongo_cat_restart_manager_shutdown
+  System::Call 'user32::GetWindowThreadProcessId(p r0, *i .r6)'
+  System::Call 'kernel32::OpenProcess(i 0x00101000, i 0, i r6) p .r8'
+  StrCmp "$8" "0" bongo_cat_find_legacy_tray
+  StrCpy $5 1024
+  System::Call 'kernel32::QueryFullProcessImageNameW(p r8, i 0, \
+    w .r7, *i r5) i .r9'
+  StrCmp "$9" "0" bongo_cat_close_unmatched_process
+  StrCmp "$7" "$BONGO_CAT_UPGRADE_DIR\BongoCat.exe" 0 \
+    bongo_cat_close_unmatched_process
+  ; Each legacy tray creation consumes eight SDL command identifiers. Try
+  ; the Exit slot for several shell-restoration generations.
+  StrCpy $3 8
+bongo_cat_signal_legacy_tray_exit:
+  System::Call 'user32::PostMessageW(p r0, i 0x0111, p r3, p 0)'
+  IntOp $3 $3 + 8
+  IntCmp $3 136 bongo_cat_wait_for_legacy_shutdown \
+    bongo_cat_signal_legacy_tray_exit bongo_cat_wait_for_legacy_shutdown
+
+bongo_cat_wait_for_legacy_shutdown:
+  System::Call 'kernel32::WaitForSingleObject(p r8, i 10000) i .r9'
+  System::Call 'kernel32::CloseHandle(p r8)'
+  StrCmp "$9" "0" bongo_cat_uninstall_old \
+    bongo_cat_restart_manager_shutdown
+
+bongo_cat_close_unmatched_process:
+  System::Call 'kernel32::CloseHandle(p r8)'
+  Goto bongo_cat_find_legacy_tray
+
+bongo_cat_restart_manager_shutdown:
+  ; Tray-disabled legacy versions have no graceful remote-exit API. Windows
+  ; Restart Manager shuts down only processes using this exact executable.
+  !insertmacro RestartManager_ShutdownFile \
+    "$BONGO_CAT_UPGRADE_DIR\BongoCat.exe" $9
+  StrCmp "$9" "0" bongo_cat_uninstall_old bongo_cat_upgrade_failed
 
 bongo_cat_uninstall_old:
   IfFileExists "$BONGO_CAT_UPGRADE_DIR\Uninstall.exe" 0 \
