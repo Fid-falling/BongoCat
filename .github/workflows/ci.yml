@@ -15,6 +15,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  publishing-policy:
+    name: security / publishing-policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Validate publishing guards
+        shell: pwsh
+        run: ./.github/scripts/check-publish-guards.ps1 -SelfTest
+
   quality:
     name: quality / syntax-tests
     runs-on: ubuntu-latest
@@ -243,3 +254,78 @@ jobs:
           if-no-files-found: error
           retention-days: 30
           compression-level: 0
+
+  store-package:
+    name: package / microsoft-store
+    if: >-
+      github.repository == 'bongocat-pet/BongoCat' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main'
+    needs: [publishing-policy, quality]
+    runs-on: windows-latest
+    env:
+      CUBISM_SDK_ARCHIVE_URL: ${{ secrets.CUBISM_SDK_ARCHIVE_URL }}
+      CUBISM_SDK_ARCHIVE_SHA256: ${{ secrets.CUBISM_SDK_ARCHIVE_SHA256 }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Restore licensed Cubism SDK
+        shell: pwsh
+        run: ./.github/scripts/restore-cubism-sdk.ps1
+
+      - name: Configure Store release
+        shell: pwsh
+        run: |
+          cmake -S . -B build-store -A x64 `
+            -DBONGO_CAT_REQUIRE_CUBISM=ON `
+            -DBONGO_CAT_WARNINGS_AS_ERRORS=ON
+
+      - name: Build Store release
+        shell: pwsh
+        run: >-
+          & ./.github/scripts/build-windows.ps1
+          cmake --build build-store --config Release --parallel 2
+
+      - name: Run Store release tests
+        shell: pwsh
+        run: >-
+          & ./.github/scripts/test-windows.ps1
+          ctest --test-dir build-store -C Release --output-on-failure
+
+      - name: Read app version
+        id: version
+        shell: pwsh
+        run: |
+          $header = Get-Content build-store/generated/bongo_cat/version.h -Raw
+          if ($header -notmatch '#define\s+BONGO_CAT_VERSION\s+"([^"]+)"') {
+            throw 'Unable to read BongoCat version from generated header'
+          }
+          "version=$($Matches[1])" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Build Microsoft Store MSIX
+        shell: pwsh
+        run: |
+          ./packaging/microsoft-store/build-store-package.ps1 `
+            -ExecutablePath "./build-store/Release/BongoCat.exe" `
+            -Version "${{ steps.version.outputs.version }}" `
+            -OutputDirectory "./store-output"
+          $msix = Get-Item "store-output/bongocat_${{ steps.version.outputs.version }}_x64.msix"
+          Write-Host ("Microsoft Store MSIX size: {0} KB" -f [math]::Round($msix.Length / 1KB, 2))
+
+      - name: Validate Microsoft Store MSIX
+        shell: pwsh
+        run: |
+          ./packaging/microsoft-store/validate-store-package.ps1 `
+            -PackagePath "./store-output/bongocat_${{ steps.version.outputs.version }}_x64.msix" `
+            -ExpectedAppVersion "${{ steps.version.outputs.version }}"
+
+      - name: Upload Microsoft Store MSIX
+        uses: actions/upload-artifact@v7
+        with:
+          name: bongocat-store-msix-${{ steps.version.outputs.version }}-${{ github.run_number }}-${{ github.run_attempt }}
+          path: store-output/bongocat_${{ steps.version.outputs.version }}_x64.msix
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+          archive: false
