@@ -189,7 +189,7 @@
     "removeDesktopPet": "\uc774 \ub370\uc2a4\ud06c\ud1b1 \ud3ab \ub2eb\uae30",
     "modelLoadFailed": "이 모델을 표시할 수 없습니다",
     "noBehaviors": "항목 없음",
-    "preferencesWindowTitle": "BongoCat - 설정",
+    "preferencesWindowTitle": "BongoCat - Preferences",
     "startup": {
       "failed": "BongoCat을 시작할 수 없습니다.",
       "detail": "기술적인 세부 정보는 진단 로그를 확인하세요.",
@@ -208,7 +208,7 @@
       "community": "커뮤니티",
       "qqGroup": "QQ 그룹",
       "coffee": "개발팀에 커피 한 잔을 선물할까요?",
-      "starOnGitHub": "GitHub 스타",
+      "starOnGitHub": "GitHub 스타!",
       "by": "제작: "
     },
     "shortcut": {

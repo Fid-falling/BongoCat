@@ -189,7 +189,7 @@
     "removeDesktopPet": "Fermer cette mascotte de bureau",
     "modelLoadFailed": "Impossible d'afficher ce modèle",
     "noBehaviors": "Aucun élément",
-    "preferencesWindowTitle": "BongoCat - Préférences",
+    "preferencesWindowTitle": "BongoCat - Preferences",
     "startup": {
       "failed": "Impossible de démarrer BongoCat.",
       "detail": "Consultez le journal de diagnostic pour les détails techniques.",
@@ -208,7 +208,7 @@
       "community": "Communauté",
       "qqGroup": "Groupe QQ",
       "coffee": "Offrir un café à l'équipe de développement ?",
-      "starOnGitHub": "Étoile GitHub",
+      "starOnGitHub": "Étoile GitHub!",
       "by": "par "
     },
     "shortcut": {

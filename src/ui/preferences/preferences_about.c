@@ -120,7 +120,7 @@ static void star_button(BongoCatPreferences *value,
     text(canvas, nk_rect(bounds.x + 50, bounds.y +
         (bounds.h - value->ui.label_font->height) * .5f,
         bounds.w - 62, value->ui.label_font->height), tr(value,
-        "native.support.starOnGitHub", "Star on GitHub"),
+        "native.support.starOnGitHub", "Star on GitHub!"),
         value->ui.label_font, nk_rgb(255, 255, 255));
     link_cursor(context, bounds);
     if (hit(context, bounds))

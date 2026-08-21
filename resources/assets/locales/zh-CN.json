@@ -189,7 +189,7 @@
     "removeDesktopPet": "\u5173\u95ed\u6b64\u684c\u5ba0",
     "modelLoadFailed": "\u6a21\u578b\u65e0\u6cd5\u663e\u793a",
     "noBehaviors": "暂无可用项目",
-    "preferencesWindowTitle": "BongoCat - 设置",
+    "preferencesWindowTitle": "BongoCat - Preferences",
     "startup": {
       "failed": "BongoCat 无法启动。",
       "detail": "请查看诊断日志了解技术详情。",
@@ -208,7 +208,7 @@
       "community": "社区",
       "qqGroup": "QQ 群",
       "coffee": "请开发团队喝杯咖啡？",
-      "starOnGitHub": "喜欢就点颗星吧",
+      "starOnGitHub": "喜欢就点颗星吧!",
       "by": "by "
     },
     "shortcut": {
