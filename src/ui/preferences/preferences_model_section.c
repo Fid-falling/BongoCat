@@ -1,0 +1,57 @@
+#include "preferences_model_card.h"
+#include "preferences_state.h"
+#include "ui_backend.h"
+#include "ui_catime.h"
+#include "bongo_cat/i18n.h"
+
+static const char *tr(BongoCatPreferences *value, const char *key,
+    const char *fallback) {
+    return bongo_cat_i18n_get(value->app->i18n, key, fallback);
+}
+
+bool bongo_cat_preferences_model_section(BongoCatPreferences *value,
+    struct nk_context *context) {
+    struct nk_rect bounds;
+    nk_layout_row_dynamic(context, 22, 1);
+    if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return false;
+    BongoCatUIPalette p = bongo_cat_ui_palette(bongo_cat_ui_dark(context));
+    struct nk_command_buffer *canvas = nk_window_get_canvas(context);
+    const struct nk_user_font *title_font = bongo_cat_ui_label_font(context);
+    const struct nk_user_font *action_font = bongo_cat_ui_caption_font(context);
+    const char *title = tr(value,
+        "pages.preference.model.title", "Installed models");
+    float title_x = bounds.x + 14;
+    nk_fill_rect(canvas, nk_rect(bounds.x, bounds.y + 2, 4, 18), 2, p.pink);
+    float title_width = title_font->width(title_font->userdata,
+        title_font->height, title, nk_strlen(title));
+    nk_draw_text(canvas, nk_rect(title_x,
+        bounds.y + (bounds.h - title_font->height) * .5f,
+        title_width + 1, title_font->height), title, nk_strlen(title),
+        title_font, nk_rgba(0, 0, 0, 0), p.text);
+
+    const char *label = tr(value,
+        "pages.preference.model.tooltips.moreModels", "More Models");
+    float label_width = action_font->width(action_font->userdata,
+        action_font->height, label, nk_strlen(label));
+    float action_width = label_width + 15;
+    float action_x = bounds.x + bounds.w - action_width;
+    if (action_x < title_x + title_width + 12) return false;
+    struct nk_rect action = nk_rect(action_x,
+        bounds.y, action_width, bounds.h);
+    bool action_hover = nk_input_is_mouse_hovering_rect(&context->input, action);
+    struct nk_color action_color = action_hover ? p.pink : p.accent;
+    nk_draw_text(canvas, nk_rect(action.x, action.y +
+        (action.h - action_font->height) * .5f, label_width + 1,
+        action_font->height), label, nk_strlen(label), action_font,
+        nk_rgba(0, 0, 0, 0), action_color);
+    float arrow_x = action.x + action.w - 5;
+    float arrow_y = action.y + action.h * .5f;
+    nk_stroke_line(canvas, arrow_x - 4, arrow_y - 4,
+        arrow_x, arrow_y, 1.5f, action_color);
+    nk_stroke_line(canvas, arrow_x, arrow_y,
+        arrow_x - 4, arrow_y + 4, 1.5f, action_color);
+    if (action_hover) bongo_cat_ui_cursor_hover_rect(context, action,
+        BONGO_CAT_UI_CURSOR_POINTER);
+    return action_hover && nk_input_is_mouse_click_in_rect(&context->input,
+        NK_BUTTON_LEFT, action);
+}

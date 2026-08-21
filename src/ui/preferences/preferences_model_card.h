@@ -8,6 +8,8 @@ struct nk_context;
 
 bool bongo_cat_preferences_model_import_card(BongoCatPreferences *value,
     struct nk_context *context);
+bool bongo_cat_preferences_model_section(BongoCatPreferences *value,
+    struct nk_context *context);
 void bongo_cat_preferences_model_card(BongoCatPreferences *value,
     struct nk_context *context, const BongoCatModelEntry *entry);
 void bongo_cat_preferences_model_select(BongoCatPreferences *value,

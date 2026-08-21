@@ -157,6 +157,7 @@ set(BONGO_CAT_UI_PREFERENCES_SOURCES
   src/ui/preferences/preferences_model_card.c
   src/ui/preferences/preferences_model_card_paint.c
   src/ui/preferences/preferences_model_cover.c
+  src/ui/preferences/preferences_model_section.c
   src/ui/preferences/preferences_model_glyphs.c
   src/ui/preferences/preferences_model_rename.c
   src/ui/preferences/preferences_notice.c

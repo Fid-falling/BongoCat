@@ -246,8 +246,10 @@ void bongo_cat_preferences_page_model(BongoCatPreferences *value,
             "native.multiplePets",
             "Display multiple"), "", &multiple))
         bongo_cat_app_set_multiple_pets(app, multiple);
-    bongo_cat_pref_section(context,
-        tr(app, "pages.preference.model.title", "Installed models"));
+    if (bongo_cat_preferences_model_section(value, context) &&
+        !SDL_OpenURL("https://bongocat.pet/models"))
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+            "Cannot open model library: %s", SDL_GetError());
     float width = nk_window_get_content_region(context).w;
     int columns = width >= 780 ? 4 : width >= 620 ? 3 : width >= 400 ? 2 : 1;
     struct nk_vec2 old_spacing = context->style.window.spacing;
