@@ -1,7 +1,9 @@
 #include "preferences_model_card.h"
 #include "preferences_state.h"
+#include "ui_animation.h"
 #include "ui_backend.h"
 #include "ui_catime.h"
+#include "ui_paint.h"
 #include "bongo_cat/i18n.h"
 
 static const char *tr(BongoCatPreferences *value, const char *key,
@@ -39,18 +41,25 @@ bool bongo_cat_preferences_model_section(BongoCatPreferences *value,
     struct nk_rect action = nk_rect(action_x,
         bounds.y, action_width, bounds.h);
     bool action_hover = nk_input_is_mouse_hovering_rect(&context->input, action);
-    struct nk_color action_color = action_hover ? p.pink : p.accent;
+    float hover_amount = bongo_cat_ui_animate_eased(context,
+        "model-more-link-hover", action_hover ? 1.0f : 0.0f, 180.0f,
+        BONGO_CAT_UI_EASE_STANDARD);
+    struct nk_color action_color = bongo_cat_ui_color_mix(
+        p.accent, p.pink, hover_amount);
     nk_draw_text(canvas, nk_rect(action.x, action.y +
         (action.h - action_font->height) * .5f, label_width + 1,
         action_font->height), label, nk_strlen(label), action_font,
         nk_rgba(0, 0, 0, 0), action_color);
     float arrow_y = action.y + action.h * .5f;
-    float first_arrow_x = action.x + label_width + 11;
-    float second_arrow_x = action.x + label_width + 17;
+    float arrow_offset = 2.0f * hover_amount;
+    float first_arrow_x = action.x + label_width + 11 + arrow_offset;
+    float second_arrow_x = action.x + label_width + 17 + arrow_offset;
+    struct nk_color first_arrow_color = bongo_cat_ui_color_alpha(
+        action_color, 0.5f);
     nk_stroke_line(canvas, first_arrow_x - 4, arrow_y - 4,
-        first_arrow_x, arrow_y, 1.5f, action_color);
+        first_arrow_x, arrow_y, 1.5f, first_arrow_color);
     nk_stroke_line(canvas, first_arrow_x, arrow_y,
-        first_arrow_x - 4, arrow_y + 4, 1.5f, action_color);
+        first_arrow_x - 4, arrow_y + 4, 1.5f, first_arrow_color);
     nk_stroke_line(canvas, second_arrow_x - 4, arrow_y - 4,
         second_arrow_x, arrow_y, 1.5f, action_color);
     nk_stroke_line(canvas, second_arrow_x, arrow_y,
