@@ -11,7 +11,25 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <limits>
 namespace bongo_cat {
+
+bool NativeModel::canvas_size(int *width, int *height) const {
+    if (!_model || !width || !height) return false;
+    const float canvas_width = _model->GetCanvasWidthPixel();
+    const float canvas_height = _model->GetCanvasHeightPixel();
+    const float maximum = (float)std::numeric_limits<int>::max();
+    if (!std::isfinite(canvas_width) || !std::isfinite(canvas_height) ||
+        canvas_width <= 0.0f || canvas_height <= 0.0f ||
+        canvas_width > maximum || canvas_height > maximum)
+        return false;
+    const int rounded_width = (int)std::lround(canvas_width);
+    const int rounded_height = (int)std::lround(canvas_height);
+    if (rounded_width <= 0 || rounded_height <= 0) return false;
+    *width = rounded_width;
+    *height = rounded_height;
+    return true;
+}
 
 void NativeModel::resize(int width, int height) {
     if (width <= 0 || height <= 0) return;
@@ -49,22 +67,18 @@ static bool changed(std::vector<float> &snapshot, int count, Getter value) {
 bool NativeModel::update(float delta_seconds) {
     if (!_model || delta_seconds <= 0.0f) return false;
     if (delta_seconds > 0.25f) delta_seconds = 0.25f;
-    external_parameters_dirty_ = false;
     motion_updated_ = suppress_eye_blink_;
     _model->LoadParameters();
-    for (int i = 0; i < _model->GetParameterCount(); ++i) {
-        if (!pending_parameters_[(size_t)i]) continue;
-        _model->SetParameterValue(i, pending_parameter_values_[(size_t)i]);
-        pending_parameters_[(size_t)i] = 0;
-    }
+    parameter_overrides_applied_ = false;
     if (automatic_idle_ && _motionManager->IsFinished())
         start_idle_motion();
     else if (!_motionManager->IsFinished())
         motion_updated_ = _motionManager->UpdateMotion(_model, delta_seconds);
     expire_motion_runs();
-    _model->SaveParameters();
+    save_parameters();
     _updateScheduler.OnLateUpdate(_model, delta_seconds);
     expire_expression_fade();
+    apply_parameter_overrides();
     _opacity = _model->GetModelOpacity();
     _model->Update();
     bool result = changed(parameter_snapshot_, _model->GetParameterCount(),
@@ -128,19 +142,22 @@ void NativeModel::set_dragging(float x, float y, bool angle_z) {
     x = std::max(-1.0f, std::min(1.0f, x));
     y = std::max(-1.0f, std::min(1.0f, y));
     viewer_look_->set_target(x, y, angle_z);
-    external_parameters_dirty_ = true;
 }
 
 void NativeModel::prepare_viewer_audit() {
+    if (!_model) return;
     automatic_idle_ = false;
     suppress_eye_blink_ = true;
     _motionManager->StopAllMotions();
     clear_motion_runs();
+    std::fill(parameter_overrides_.begin(), parameter_overrides_.end(), 0);
+    std::fill(parameter_override_values_.begin(),
+        parameter_override_values_.end(), 0.0f);
+    parameter_overrides_applied_ = false;
     for (int i = 0; i < _model->GetParameterCount(); ++i) {
         _model->SetParameterValue(i, _model->GetParameterDefaultValue(i));
-        pending_parameters_[(size_t)i] = 0;
     }
-    _model->SaveParameters();
+    save_parameters();
 }
 
 bool NativeModel::set_parameter(const char *id, float value) {
@@ -148,10 +165,11 @@ bool NativeModel::set_parameter(const char *id, float value) {
     Csm::CubismIdHandle handle = Csm::CubismFramework::GetIdManager()->GetId(id);
     int index = _model->GetParameterIndex(handle);
     if (index < 0 || index >= _model->GetParameterCount()) return false;
-    _model->SetParameterValue(index, value);
-    pending_parameter_values_[(size_t)index] = value;
-    pending_parameters_[(size_t)index] = 1;
-    external_parameters_dirty_ = true;
+    parameter_override_values_[(size_t)index] = value;
+    parameter_overrides_[(size_t)index] = 1;
+    if (parameter_overrides_applied_)
+        _model->SetParameterValue(index, value);
+    else apply_parameter_overrides();
     return true;
 }
 
@@ -182,15 +200,19 @@ void NativeModel::start_idle_motion() {
 void NativeModel::capture_motion_preview() {
     if (!_model || motion_preview_active_) return;
     const int parameter_count = _model->GetParameterCount();
+    const bool overrides_were_applied = parameter_overrides_applied_;
     std::vector<float> current_parameters((size_t)parameter_count);
     for (int i = 0; i < parameter_count; ++i)
         current_parameters[(size_t)i] = _model->GetParameterValue(i);
     _model->LoadParameters();
+    parameter_overrides_applied_ = false;
+    capture_parameter_baseline();
     motion_preview_parameters_.resize((size_t)parameter_count);
     for (int i = 0; i < parameter_count; ++i) {
         motion_preview_parameters_[(size_t)i] = _model->GetParameterValue(i);
         _model->SetParameterValue(i, current_parameters[(size_t)i]);
     }
+    if (overrides_were_applied) apply_parameter_overrides();
     const int part_count = _model->GetPartCount();
     motion_preview_parts_.resize((size_t)part_count);
     for (int i = 0; i < part_count; ++i)
@@ -203,20 +225,20 @@ void NativeModel::restore_motion_preview_state() {
     if (!_model || !motion_preview_active_) return;
     _motionManager->StopAllMotions();
     clear_motion_runs();
+    parameter_overrides_applied_ = false;
     const int parameter_count = _model->GetParameterCount();
     for (int i = 0; i < parameter_count &&
         (size_t)i < motion_preview_parameters_.size(); ++i) {
         _model->SetParameterValue(i, motion_preview_parameters_[(size_t)i]);
-        pending_parameters_[(size_t)i] = 0;
     }
-    _model->SaveParameters();
+    save_parameters();
     const int part_count = _model->GetPartCount();
     for (int i = 0; i < part_count &&
         (size_t)i < motion_preview_parts_.size(); ++i)
         _model->SetPartOpacity(i, motion_preview_parts_[(size_t)i]);
     _model->SetModelOpacity(motion_preview_opacity_);
     _opacity = motion_preview_opacity_;
-    external_parameters_dirty_ = true;
+    apply_parameter_overrides();
 }
 
 bool NativeModel::preview_motion(const char *group, int index) {

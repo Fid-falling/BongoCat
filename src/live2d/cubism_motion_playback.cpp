@@ -99,8 +99,7 @@ void NativeModel::expire_motion_runs() {
             replacement_running)) select_motion(run.key, false);
     }
     if (restored_persistent_state) {
-        _model->SaveParameters();
-        external_parameters_dirty_ = true;
+        save_parameters();
     }
     size_t output = 0;
     for (size_t i = 0; i < motion_runs_.size(); ++i)

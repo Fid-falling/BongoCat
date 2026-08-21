@@ -57,16 +57,36 @@ float bongo_cat_mouse_centered_ratio(double position, double center,
     return 0.5f;
 }
 
+static float clamp_pointer_ratio(float value) {
+    if (!isfinite(value)) return 0.5f;
+    if (value < 0.0f) return 0.0f;
+    if (value > 1.0f) return 1.0f;
+    return value;
+}
+
+void bongo_cat_mouse_drag_coordinates(float x_ratio, float y_ratio,
+    bool horizontal_mirror, float *x, float *y) {
+    float horizontal = clamp_pointer_ratio(x_ratio);
+    float vertical = clamp_pointer_ratio(y_ratio);
+    if (horizontal_mirror) horizontal = 1.0f - horizontal;
+    if (x) *x = 2.0f * horizontal - 1.0f;
+    if (y) *y = 1.0f - 2.0f * vertical;
+}
+
+static float parameter_from_normalized(float minimum, float maximum,
+    float normalized) {
+    if (!isfinite(minimum) || !isfinite(maximum) || maximum < minimum)
+        return 0.0f;
+    if (minimum <= 0.0f && maximum >= 0.0f)
+        return normalized >= 0.0f ? normalized * maximum :
+            -normalized * minimum;
+    return minimum + (normalized + 1.0f) * 0.5f * (maximum - minimum);
+}
+
 float bongo_cat_mouse_parameter_value(float minimum, float maximum,
     float x_ratio, float y_ratio, char axis, bool mirror) {
-    float value;
-    if (axis == 'Z') {
-        float x = 1.0f - 2.0f * x_ratio;
-        float y = 1.0f - 2.0f * y_ratio;
-        value = x * y * minimum;
-    } else {
-        float ratio = axis == 'Y' ? y_ratio : x_ratio;
-        value = maximum - ratio * (maximum - minimum);
-    }
-    return axis != 'Y' && mirror ? -value : value;
+    float x = 0.0f, y = 0.0f;
+    bongo_cat_mouse_drag_coordinates(x_ratio, y_ratio, mirror, &x, &y);
+    float normalized = axis == 'Y' ? y : axis == 'Z' ? -x * y : x;
+    return parameter_from_normalized(minimum, maximum, normalized);
 }

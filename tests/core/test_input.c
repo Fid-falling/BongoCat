@@ -118,16 +118,25 @@ void test_input(void) {
         CHECK(bongo_cat_mouse_step(&tracking, 1.0f / 60.0f, &x, &y));
     CHECK(tracking.settled && x == 100.0 && y == 40.0);
     CHECK(!bongo_cat_mouse_step(&tracking, 1.0f / 60.0f, &x, &y));
+    float drag_x = 0.0f, drag_y = 0.0f;
+    bongo_cat_mouse_drag_coordinates(0.0f, 0.0f, false, &drag_x, &drag_y);
+    CHECK(drag_x == -1.0f && drag_y == 1.0f);
+    bongo_cat_mouse_drag_coordinates(1.0f, 1.0f, false, &drag_x, &drag_y);
+    CHECK(drag_x == 1.0f && drag_y == -1.0f);
+    bongo_cat_mouse_drag_coordinates(1.0f, 0.0f, true, &drag_x, &drag_y);
+    CHECK(drag_x == -1.0f && drag_y == 1.0f);
     CHECK(bongo_cat_mouse_parameter_value(-30.0f, 30.0f,
-        0.0f, 0.5f, 'X', false) == 30.0f);
+        0.0f, 0.5f, 'X', false) == -30.0f);
     CHECK(bongo_cat_mouse_parameter_value(-30.0f, 30.0f,
-        1.0f, 0.5f, 'X', false) == -30.0f);
+        1.0f, 0.5f, 'X', false) == 30.0f);
     CHECK(bongo_cat_mouse_parameter_value(-30.0f, 30.0f,
-        0.0f, 0.5f, 'X', true) == -30.0f);
+        0.0f, 0.5f, 'X', true) == 30.0f);
     CHECK(bongo_cat_mouse_parameter_value(-30.0f, 30.0f,
         0.5f, 0.0f, 'Y', true) == 30.0f);
     CHECK(bongo_cat_mouse_parameter_value(-30.0f, 30.0f,
-        0.0f, 0.0f, 'Z', false) == -30.0f);
+        0.0f, 0.0f, 'Z', false) == 30.0f);
+    CHECK(bongo_cat_mouse_parameter_value(-10.0f, 30.0f,
+        0.5f, 0.5f, 'X', false) == 0.0f);
     CHECK(bongo_cat_mouse_centered_ratio(80.0, 80.0, 0.0, 100.0) == 0.5f);
     CHECK(bongo_cat_mouse_centered_ratio(0.0, 80.0, 0.0, 100.0) == 0.0f);
     CHECK(bongo_cat_mouse_centered_ratio(100.0, 80.0, 0.0, 100.0) == 1.0f);

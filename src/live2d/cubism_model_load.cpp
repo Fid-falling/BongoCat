@@ -3,9 +3,11 @@
 #include "bongo_cat/file.h"
 #include "bongo_cat/image.h"
 
+#include <Effect/CubismBreath.hpp>
 #include <Effect/CubismEyeBlink.hpp>
 #include <Id/CubismIdManager.hpp>
 #include <Motion/CubismExpressionUpdater.hpp>
+#include <Motion/CubismBreathUpdater.hpp>
 #include <Motion/CubismExpressionMotionManager.hpp>
 #include <Motion/CubismEyeBlinkUpdater.hpp>
 #include <Motion/CubismMotion.hpp>
@@ -104,7 +106,7 @@ bool NativeModel::load(const char *directory, const char *setting_file,
     Csm::csmMap<Csm::csmString, Csm::csmFloat32> layout;
     setting_->GetLayoutMap(layout);
     _modelMatrix->SetupFromLayout(layout);
-    _model->SaveParameters();
+    save_parameters();
     if (progress) progress(userdata, .49f);
     return true;
 }
@@ -120,8 +122,13 @@ bool NativeModel::load_model(BongoCatError *error) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_CUBISM, "Cubism rejected moc3: %s", name);
         return false;
     }
-    pending_parameter_values_.resize((size_t)_model->GetParameterCount());
-    pending_parameters_.resize((size_t)_model->GetParameterCount());
+    const size_t parameter_count = (size_t)_model->GetParameterCount();
+    parameter_override_values_.assign(parameter_count, 0.0f);
+    parameter_baseline_values_.resize(parameter_count);
+    parameter_overrides_.assign(parameter_count, 0);
+    for (size_t i = 0; i < parameter_count; ++i)
+        parameter_baseline_values_[i] = _model->GetParameterValue((int)i);
+    parameter_overrides_applied_ = false;
     return true;
 }
 void NativeModel::load_expressions() {
@@ -158,6 +165,25 @@ void NativeModel::load_effects() {
     }
     viewer_look_ = CSM_NEW ViewerLookUpdater(*_model);
     _updateScheduler.AddUpdatableList(viewer_look_);
+    _breath = Csm::CubismBreath::Create();
+    if (_breath) {
+        Csm::csmVector<Csm::CubismBreath::BreathParameterData> parameters;
+        Csm::CubismIdManager *ids = Csm::CubismFramework::GetIdManager();
+        parameters.PushBack(Csm::CubismBreath::BreathParameterData(
+            ids->GetId("ParamAngleX"), 0.0f, 15.0f, 6.5345f, 0.5f));
+        parameters.PushBack(Csm::CubismBreath::BreathParameterData(
+            ids->GetId("ParamAngleY"), 0.0f, 8.0f, 3.5345f, 0.5f));
+        parameters.PushBack(Csm::CubismBreath::BreathParameterData(
+            ids->GetId("ParamAngleZ"), 0.0f, 10.0f, 5.5345f, 0.5f));
+        parameters.PushBack(Csm::CubismBreath::BreathParameterData(
+            ids->GetId("ParamBodyAngleX"), 0.0f, 4.0f, 15.5345f, 0.5f));
+        parameters.PushBack(Csm::CubismBreath::BreathParameterData(
+            ids->GetId("ParamBreath"), 0.5f, 0.5f, 3.2345f, 0.5f));
+        _breath->SetParameters(parameters);
+        _updateScheduler.AddUpdatableList(
+            CSM_NEW Csm::CubismBreathUpdater(*_breath));
+    }
+    add_parameter_override_updater();
     for (int i = 0; i < setting_->GetEyeBlinkParameterCount(); ++i)
         eye_blink_ids_.PushBack(setting_->GetEyeBlinkParameterId(i));
     for (int i = 0; i < setting_->GetLipSyncParameterCount(); ++i)

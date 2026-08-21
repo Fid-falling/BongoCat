@@ -8,7 +8,6 @@
 
 typedef struct PointerAudit {
     bool ran;
-    bool mver;
     bool has_mouse;
     float angle_x[4];
     float angle_y[4];
@@ -77,8 +76,7 @@ static bool reverse_pointer(BongoCatApp *app) {
     SDL_Rect bounds;
     double center_x, center_y;
     if (!pointer_test_center(app, &bounds, &center_x, &center_y)) return false;
-    pointer_audit = (PointerAudit){.ran = true,
-        .mver = app->model_render_options.mver_projection};
+    pointer_audit = (PointerAudit){.ran = true};
     app->settings.model.mouse_mirror = false;
     app->left_mouse_down = false;
     const float ratios[4][2] = {
@@ -184,6 +182,19 @@ static bool active(BongoCatApp *app, const char *id) {
     return value(app, id, &current) && current > 0.5f;
 }
 
+static bool inactive(BongoCatApp *app, const char *id) {
+    float current = 0.0f;
+    return value(app, id, &current) && current <= 0.5f;
+}
+
+static bool parameter_override_scenario(const char *scenario) {
+    return strncmp(scenario, "key-", 4) == 0 ||
+        strncmp(scenario, "keys-", 5) == 0 ||
+        strncmp(scenario, "gamepad-", 8) == 0 ||
+        strcmp(scenario, "mouse-left") == 0 ||
+        strcmp(scenario, "mouse-right") == 0;
+}
+
 static bool signed_value(BongoCatApp *app, const char *id, bool positive) {
     float current = 0.0f;
     return value(app, id, &current) && (positive ? current > 0.05f : current < -0.05f);
@@ -196,9 +207,6 @@ static bool assertions(BongoCatApp *app, const char *scenario, bool operation) {
     if (strcmp(scenario, "idle") == 0 || strcmp(scenario, "mouse-screen") == 0 || strcmp(scenario, "mouse-hand-screen") == 0 || strcmp(scenario, "mirror") == 0 ||
         strcmp(scenario, "visual-consistency") == 0 ||
         strcmp(scenario, "viewer-sequence") == 0 ||
-        strcmp(scenario, "key-left-release") == 0 ||
-        strcmp(scenario, "keys-both-release") == 0 ||
-        strcmp(scenario, "key-stress") == 0 ||
         strncmp(scenario, "motion-", 7) == 0) return true;
     if (strncmp(scenario, "expression-", 11) == 0)
         return bongo_cat_live2d_expression(app->live2d) == atoi(scenario + 11);
@@ -210,6 +218,12 @@ static bool assertions(BongoCatApp *app, const char *scenario, bool operation) {
         strcmp(scenario, "gamepad-buttons") == 0)
         return active(app, "CatParamLeftHandDown") &&
             active(app, "CatParamRightHandDown");
+    if (strcmp(scenario, "key-left-release") == 0)
+        return inactive(app, "CatParamLeftHandDown");
+    if (strcmp(scenario, "keys-both-release") == 0 ||
+        strcmp(scenario, "key-stress") == 0)
+        return inactive(app, "CatParamLeftHandDown") &&
+            inactive(app, "CatParamRightHandDown");
     if (strcmp(scenario, "mouse-left") == 0)
         return active(app, "ParamMouseLeftDown");
     if (strcmp(scenario, "mouse-right") == 0)
@@ -217,25 +231,19 @@ static bool assertions(BongoCatApp *app, const char *scenario, bool operation) {
     if (strcmp(scenario, "mouse-move") == 0) {
         float angle_z = 0.0f;
         bool z_valid = !value(app, "ParamAngleZ", &angle_z) ||
-            (app->model_render_options.mver_projection ? angle_z < -0.05f :
-                angle_z > 0.05f);
-        return signed_value(app, "ParamAngleX",
-                app->model_render_options.mver_projection) &&
+            angle_z < -0.05f;
+        return signed_value(app, "ParamAngleX", true) &&
             signed_value(app, "ParamAngleY", true) && z_valid;
     }
     if (strcmp(scenario, "mouse-move-mirror") == 0)
-        return signed_value(app, "ParamAngleX", true) &&
+        return signed_value(app, "ParamAngleX", false) &&
             signed_value(app, "ParamAngleY", true);
     if (strcmp(scenario, "mouse-reverse") == 0) {
-        bool horizontal = pointer_audit.mver ?
+        bool horizontal =
             pointer_audit.angle_x[0] < -5.0f &&
             pointer_audit.angle_x[1] > 5.0f &&
             pointer_audit.angle_x[2] < -5.0f &&
-            pointer_audit.angle_x[3] > 5.0f :
-            pointer_audit.angle_x[0] > 5.0f &&
-            pointer_audit.angle_x[1] < -5.0f &&
-            pointer_audit.angle_x[2] > 5.0f &&
-            pointer_audit.angle_x[3] < -5.0f;
+            pointer_audit.angle_x[3] > 5.0f;
         bool direction = pointer_audit.ran && horizontal &&
             pointer_audit.angle_y[0] > 5.0f &&
             pointer_audit.angle_y[1] > 5.0f &&
@@ -258,6 +266,9 @@ void bongo_cat_live2d_audit_run(BongoCatApp *app) {
     if (!app || !app->smoke_live2d_scenario[0]) return;
     uint64_t started = SDL_GetTicksNS();
     bool result = apply(app, app->smoke_live2d_scenario);
+    if (result && parameter_override_scenario(app->smoke_live2d_scenario))
+        for (int frame = 0; frame < 4; ++frame)
+            bongo_cat_app_step_live2d(app, 1.0f / 60.0f);
     double duration_ms = (SDL_GetTicksNS() - started) / 1000000.0;
     char path[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_join(path, sizeof(path), app->state_root,

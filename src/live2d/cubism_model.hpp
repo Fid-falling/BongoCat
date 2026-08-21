@@ -20,6 +20,7 @@ namespace bongo_cat {
 bool validate_model_setting_json(const std::vector<unsigned char> &json,
     const char *setting_file, BongoCatError *error);
 class ViewerLookUpdater;
+class ParameterOverrideUpdater;
 
 class NativeModel final : public Csm::CubismUserModel {
 public:
@@ -31,6 +32,7 @@ public:
     bool load_textures(BongoCatError *error,
         BongoCatLive2DLoadProgress progress, void *userdata);
     void release_render_resources();
+    bool canvas_size(int *width, int *height) const;
     void resize(int width, int height);
     void reshape(int width, int height);
     bool update(float delta_seconds);
@@ -73,6 +75,7 @@ public:
         bool self_contained = false;
     };
 private:
+    friend class ParameterOverrideUpdater;
     struct MotionRun {
         Csm::CubismMotionQueueEntryHandle handle =
             Csm::InvalidMotionQueueEntryHandleValue;
@@ -108,6 +111,10 @@ private:
     void expire_motion_runs();
     void clear_motion_runs();
     void expire_expression_fade();
+    void capture_parameter_baseline();
+    void save_parameters();
+    void add_parameter_override_updater();
+    void apply_parameter_overrides();
     bool apply_motion_curve(const MotionStateCurve &curve, float value);
     bool restore_motion_defaults(const std::string &key);
     void select_motion(const std::string &key, bool selected);
@@ -131,8 +138,9 @@ private:
     std::vector<BongoCatImageAlphaMask> texture_alpha_;
     std::vector<float> parameter_snapshot_;
     std::vector<float> part_snapshot_;
-    std::vector<float> pending_parameter_values_;
-    std::vector<unsigned char> pending_parameters_;
+    std::vector<float> parameter_override_values_;
+    std::vector<float> parameter_baseline_values_;
+    std::vector<unsigned char> parameter_overrides_;
     std::vector<float> motion_preview_parameters_;
     std::vector<float> motion_preview_parts_;
     Csm::csmVector<Csm::CubismIdHandle> eye_blink_ids_;
@@ -152,7 +160,7 @@ private:
     bool mirror_ = false;
     BongoCatLive2DRenderOptions render_options_{};
     bool direct_textures_ = false;
-    bool external_parameters_dirty_ = false;
+    bool parameter_overrides_applied_ = false;
     std::vector<std::string> idle_motion_keys_;
     std::vector<MotionRun> motion_runs_;
     ViewerLookUpdater *viewer_look_ = nullptr;

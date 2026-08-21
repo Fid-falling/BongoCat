@@ -234,8 +234,7 @@ bool NativeModel::restore_motion_defaults(const std::string &key) {
         restored = apply_motion_curve(curve, curve.normal) || restored;
     }
     if (!restored) return had_run;
-    _model->SaveParameters();
-    external_parameters_dirty_ = true;
+    save_parameters();
     return true;
 }
 
@@ -244,8 +243,11 @@ bool NativeModel::apply_motion_curve(const MotionStateCurve &curve,
     if (!_model) return false;
     if (curve.parameter >= 0 &&
         curve.parameter < _model->GetParameterCount()) {
-        _model->SetParameterValue(curve.parameter, value);
-        pending_parameters_[(size_t)curve.parameter] = 0;
+        const size_t index = (size_t)curve.parameter;
+        parameter_baseline_values_[index] = value;
+        float displayed = parameter_overrides_applied_ &&
+            parameter_overrides_[index] ? parameter_override_values_[index] : value;
+        _model->SetParameterValue(curve.parameter, displayed);
         return true;
     }
     if (curve.part >= 0 && curve.part < _model->GetPartCount()) {
@@ -275,8 +277,7 @@ bool NativeModel::restore_motion_state(const char *group, int index) {
         restored = apply_motion_curve(curve, curve.end) || restored;
     if (!restored) return false;
     select_motion(canonical, true);
-    _model->SaveParameters();
-    external_parameters_dirty_ = true;
+    save_parameters();
     return true;
 }
 

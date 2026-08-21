@@ -128,6 +128,9 @@ BongoCatResult bongo_cat_live2d_load(BongoCatLive2D *live2d, const char *model_d
     BongoCatLive2DLoadProgress progress, void *userdata,
     BongoCatError *error);
 bool bongo_cat_live2d_ready(const BongoCatLive2D *live2d);
+/* Returns the authored pixel canvas size of the loaded model. */
+bool bongo_cat_live2d_canvas_size(const BongoCatLive2D *live2d,
+    int *width, int *height);
 void bongo_cat_live2d_resize(BongoCatLive2D *live2d, int width, int height);
 void bongo_cat_live2d_reshape(BongoCatLive2D *live2d, int width, int height);
 bool bongo_cat_live2d_update(BongoCatLive2D *live2d, float delta_seconds);

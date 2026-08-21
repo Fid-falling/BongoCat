@@ -33,6 +33,11 @@ bool bongo_cat_live2d_ready(const BongoCatLive2D *live2d) {
     return live2d && live2d->loaded;
 }
 
+bool bongo_cat_live2d_canvas_size(const BongoCatLive2D *live2d,
+    int *width, int *height) {
+    (void)live2d; (void)width; (void)height; return false;
+}
+
 void bongo_cat_live2d_resize(BongoCatLive2D *live2d, int width, int height) {
     if (!live2d) return;
     live2d->width = width;

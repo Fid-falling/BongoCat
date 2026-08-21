@@ -67,12 +67,21 @@ the `physics3` authored FPS. That variant uses a `7.2727275 / 30` maximum target
 speed, a 0.15 second acceleration time, a pixel-scale desktop dead zone, and
 the Viewer's additional 1.2 input gain. Parameter scaling selects the authored
 positive or negative extent from the parameter's value immediately before the
-additive update; all five default mappings use weight 1.0. Tracking follows
-pointer movement continuously and keeps the Viewer's TargetPoint response
+additive update; all five default mappings use weight 1.0. Screen coordinates
+are normalized once for every source format: right is positive X, up is
+positive Y, and the optional tilt channel is `-X * Y`. Tracking follows pointer
+movement continuously and keeps the Viewer's TargetPoint response
 curve without requiring a mouse button. Primary and secondary button state
 remains independent for model-authored hand parameters. Viewer-default
 automatic Idle playback is enabled and avoids immediately repeating the same
 Idle motion when alternatives exist.
+Application-owned keyboard, mouse-button, gamepad, and direct pointer
+parameters are persistent high-priority overrides. They are applied after eye
+blink, expression, look, and breath but immediately before physics, so authored
+physics can consume the current input values. They are applied again after
+physics and pose, immediately before the Cubism model update, so those stages
+cannot erase application-owned state. Motion and preview baselines are saved
+without the overrides, so input state cannot be absorbed by a later frame.
 Desktop tracking is model-centered by default, so look direction changes only
 when the pointer crosses the pet's visible center. Users can disable the
 setting to retain the legacy screen/work-area-centered coordinate mapping.
@@ -84,8 +93,8 @@ Legacy mode retains Mver relative input.
 The display is selected from the pet's visible center. Negative-coordinate,
 stacked, and mixed-DPI layouts retain desktop coordinates, and display mode,
 topology, or scale changes invalidate and immediately resample the mapping.
-In model-centered mode, `ParamAngleZ` receives the Mver-compatible `-X * Y`
-pointer tilt when present, scaled to its authored positive or negative extent.
+In model-centered mode, `ParamAngleZ` receives the shared `-X * Y` pointer tilt
+when present, scaled to its authored positive or negative extent.
 Legacy mode does not synthesize Z. Models that author `ParamMouseX` or
 `ParamMouseY` receive the normalized pointer domain in addition to Cubism
 dragging; missing parameters remain a no-op.
@@ -93,7 +102,15 @@ dragging; missing parameters remain a no-op.
 Mver 0.1.6 remains the compatibility baseline for package discovery, imported
 files, configuration, shortcuts, window composition, and projection only. A
 Tauri or standalone Live2D model is imported through the same adapter and then
-runs through the Viewer-equivalent Cubism animation path.
+runs through the Viewer-equivalent Cubism animation path and the same pointer
+axis convention as an Mver package.
+
+Tauri-style `left-keys` and `right-keys` files are full-canvas raster overlays.
+Their standard model handshake only exposes the authored hand-visibility
+parameters; the package contains no bone, deformer, attachment point, or
+per-key joint mapping. Limb continuity must therefore be authored into the
+overlay artwork or the Live2D model itself. The runtime does not guess
+model-specific joint parameters from a PNG position.
 
 Mver imports retain the source package's `l2d_correct`, `window_size`,
 `l2d_offset`, and horizontal-follow values in `.bongo-cat-adapter.json`. The native
@@ -107,9 +124,12 @@ ratio. Pointer-driven head, body, eye, and physics parameters use Mver's
 configured `workarea`, or its DPI-virtualized primary-screen coordinate domain
 when no custom work area is enabled.
 
-The Mver adapter translates the horizontal target sign and work-area mapping
-before the values reach the shared Viewer-equivalent look stage. It does not
-alter Cubism motion curves, expression blending, physics, or look timing.
+The Mver adapter retains its work-area and left-handed mapping before values
+reach the shared Viewer-equivalent look stage. Source left-handed mapping and
+the user's mouse-mirror preference are composed exactly once for head, eye,
+body, direct `ParamMouseX`, and the exact pointer overlay. Source format no
+longer selects an implicit horizontal sign. The adapter does not alter Cubism
+motion curves, expression blending, physics, or look timing.
 
 ## Cubism Viewer blind test
 

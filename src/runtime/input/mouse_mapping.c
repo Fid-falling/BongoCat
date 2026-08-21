@@ -10,13 +10,13 @@
 #endif
 
 static void set_parameter(BongoCatApp *app, const char *id,
-    float x_ratio, float y_ratio) {
+    float x_ratio, float y_ratio, bool horizontal_mirror) {
     BongoCatParameterRange range;
     if (!bongo_cat_live2d_parameter(app->live2d, id, &range)) return;
     size_t length = strlen(id);
     char axis = length ? id[length - 1] : 'X';
     float value = bongo_cat_mouse_parameter_value(range.minimum, range.maximum,
-        x_ratio, y_ratio, axis, app->settings.model.mouse_mirror);
+        x_ratio, y_ratio, axis, horizontal_mirror);
     bongo_cat_live2d_set_parameter(app->live2d, id, value);
 }
 
@@ -147,19 +147,24 @@ void bongo_cat_app_apply_mouse_coordinates(BongoCatApp *app, double hand_x,
             bounds.y, bounds.y + bounds.h);
     }
     bool exact_pointer = bongo_cat_overlay_mver_pointer_enabled(app->overlay);
-    bool mver = app->model_render_options.mver_projection;
+    bool overlay_left_handed = exact_pointer &&
+        bongo_cat_overlay_mver_pointer_left_handed(app->overlay);
     bool left_handed = app->model_render_options.pointer_left_handed ||
-        (exact_pointer && bongo_cat_overlay_mver_pointer_left_handed(app->overlay));
-    float mver_x = left_handed ? 1.0f - gaze_x_ratio : gaze_x_ratio;
-    float drag_x = mver ? 2.0f * mver_x - 1.0f :
-        1.0f - 2.0f * gaze_x_ratio;
-    float drag_y = 1.0f - 2.0f * gaze_y_ratio;
-    if (!mver && app->settings.model.mouse_mirror) drag_x = -drag_x;
-    bongo_cat_overlay_set_mver_pointer(app->overlay, hand_x_ratio, hand_y_ratio,
+        overlay_left_handed;
+    bool horizontal_mirror = left_handed != app->settings.model.mouse_mirror;
+    float drag_x = 0.0f, drag_y = 0.0f;
+    bongo_cat_mouse_drag_coordinates(gaze_x_ratio, gaze_y_ratio,
+        horizontal_mirror, &drag_x, &drag_y);
+    bool overlay_mirror = horizontal_mirror != overlay_left_handed;
+    float overlay_x_ratio = overlay_mirror
+        ? 1.0f - hand_x_ratio : hand_x_ratio;
+    bongo_cat_overlay_set_mver_pointer(app->overlay, overlay_x_ratio, hand_y_ratio,
         app->left_mouse_down, app->right_mouse_down, app->side_mouse_down);
     if (!exact_pointer) {
-        set_parameter(app, "ParamMouseX", 1.0f - hand_x_ratio, hand_y_ratio);
-        set_parameter(app, "ParamMouseY", hand_x_ratio, hand_y_ratio);
+        set_parameter(app, "ParamMouseX", hand_x_ratio, hand_y_ratio,
+            horizontal_mirror);
+        set_parameter(app, "ParamMouseY", hand_x_ratio, hand_y_ratio,
+            horizontal_mirror);
     }
     /* Pointer and window messages are not atomic during a native window move. */
     if (!app->settings.model.mouse_centered || !app->window_drag_active) {

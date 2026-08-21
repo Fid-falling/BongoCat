@@ -190,6 +190,12 @@ extern "C" bool bongo_cat_live2d_ready(const BongoCatLive2D *runtime) {
     return runtime && runtime->model;
 }
 
+extern "C" bool bongo_cat_live2d_canvas_size(const BongoCatLive2D *runtime,
+    int *width, int *height) {
+    return runtime && runtime->model &&
+        runtime->model->canvas_size(width, height);
+}
+
 extern "C" void bongo_cat_live2d_resize(BongoCatLive2D *runtime, int width, int height) {
     if (!runtime) return;
     if (width > 0 && height > 0) {

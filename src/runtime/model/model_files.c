@@ -118,10 +118,19 @@ static void model_load_progress(void *userdata, float progress) {
 static bool apply_model_aspect(BongoCatApp *app,
     const BongoCatLive2DRenderOptions *options) {
     if (!app || !app->window) return false;
-    int reference_width = options && options->mver_projection
-        ? options->reference_width : 612;
-    int reference_height = options && options->mver_projection
-        ? options->reference_height : 354;
+    int reference_width = 612;
+    int reference_height = 354;
+    if (options && options->mver_projection) {
+        reference_width = options->reference_width;
+        reference_height = options->reference_height;
+    } else {
+        int canvas_width = 0, canvas_height = 0;
+        if (bongo_cat_live2d_canvas_size(app->live2d,
+            &canvas_width, &canvas_height)) {
+            reference_width = canvas_width;
+            reference_height = canvas_height;
+        }
+    }
     int x, y, width, height;
     if (reference_width <= 0 || reference_height <= 0 ||
         !SDL_GetWindowPosition(app->window, &x, &y) ||
