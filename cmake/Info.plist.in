@@ -16,8 +16,6 @@
   <key>CFBundleVersion</key><string>@PROJECT_VERSION@</string>
   <key>LSMinimumSystemVersion</key><string>11.0</string>
   <key>LSUIElement</key><true/>
-  <key>NSAccessibilityUsageDescription</key>
-  <string>BongoCat needs accessibility access to react to global keyboard and mouse input.</string>
   <key>NSInputMonitoringUsageDescription</key>
   <string>BongoCat needs input monitoring access to animate from global keyboard and mouse input.</string>
   <key>NSHighResolutionCapable</key><true/>

@@ -129,5 +129,9 @@ add_custom_target(check-lines ALL
   COMMAND ${CMAKE_COMMAND} -DROOT=${CMAKE_CURRENT_SOURCE_DIR}
     -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CheckLines.cmake
   VERBATIM)
+add_custom_target(check-platform-runtime-safety ALL
+  COMMAND ${CMAKE_COMMAND} -DROOT=${CMAKE_CURRENT_SOURCE_DIR}
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CheckPlatformRuntimeSafety.cmake
+  VERBATIM)
 include(cmake/Tests.cmake)
 include(cmake/Packaging.cmake)

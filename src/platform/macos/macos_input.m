@@ -97,7 +97,7 @@ static int SDLCALL input_thread(void *userdata) {
             CGEventMaskBit(kCGEventOtherMouseDown) | CGEventMaskBit(kCGEventOtherMouseUp) |
             CGEventMaskBit(kCGEventMouseMoved) | CGEventMaskBit(kCGEventLeftMouseDragged) |
             CGEventMaskBit(kCGEventRightMouseDragged) | CGEventMaskBit(kCGEventOtherMouseDragged);
-        state->tap = CGEventTapCreate(kCGSessionEventTap, kCGHeadInsertEventTap,
+        state->tap = CGEventTapCreate(kCGSessionEventTap, kCGTailAppendEventTap,
             kCGEventTapOptionListenOnly, mask, event_tap, state);
         if (state->tap) {
             state->source = CFMachPortCreateRunLoopSource(NULL, state->tap, 0);

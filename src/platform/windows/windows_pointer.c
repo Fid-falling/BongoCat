@@ -39,17 +39,12 @@ void bongo_cat_platform_raise_window(SDL_Window *window) {
     SDL_ShowWindow(window);
     HWND handle = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window),
         SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
-    if (!handle) { SDL_RaiseWindow(window); return; }
+    if (!handle) return;
     HWND proxy = bongo_cat_windows_layered_proxy(handle);
     if (IsIconic(handle)) ShowWindow(handle, SW_RESTORE);
-    HWND foreground = GetForegroundWindow();
-    DWORD foreground_thread = foreground ? GetWindowThreadProcessId(foreground, NULL) : 0;
-    DWORD current_thread = GetCurrentThreadId();
-    bool attached = foreground_thread && foreground_thread != current_thread &&
-        AttachThreadInput(current_thread, foreground_thread, TRUE);
-    BringWindowToTop(handle); SetForegroundWindow(handle); SetActiveWindow(handle);
+    BringWindowToTop(handle);
+    SetForegroundWindow(handle);
     if (proxy) BringWindowToTop(proxy);
-    if (attached) AttachThreadInput(current_thread, foreground_thread, FALSE);
     bongo_cat_windows_capture_configure(handle);
 }
 
