@@ -11,25 +11,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
-#include <limits>
 namespace bongo_cat {
-
-bool NativeModel::canvas_size(int *width, int *height) const {
-    if (!_model || !width || !height) return false;
-    const float canvas_width = _model->GetCanvasWidthPixel();
-    const float canvas_height = _model->GetCanvasHeightPixel();
-    const float maximum = (float)std::numeric_limits<int>::max();
-    if (!std::isfinite(canvas_width) || !std::isfinite(canvas_height) ||
-        canvas_width <= 0.0f || canvas_height <= 0.0f ||
-        canvas_width > maximum || canvas_height > maximum)
-        return false;
-    const int rounded_width = (int)std::lround(canvas_width);
-    const int rounded_height = (int)std::lround(canvas_height);
-    if (rounded_width <= 0 || rounded_height <= 0) return false;
-    *width = rounded_width;
-    *height = rounded_height;
-    return true;
-}
 
 void NativeModel::resize(int width, int height) {
     if (width <= 0 || height <= 0) return;
