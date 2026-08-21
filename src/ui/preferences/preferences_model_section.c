@@ -33,7 +33,7 @@ bool bongo_cat_preferences_model_section(BongoCatPreferences *value,
         "pages.preference.model.tooltips.moreModels", "More Models");
     float label_width = action_font->width(action_font->userdata,
         action_font->height, label, nk_strlen(label));
-    float action_width = label_width + 15;
+    float action_width = label_width + 22;
     float action_x = bounds.x + bounds.w - action_width;
     if (action_x < title_x + title_width + 12) return false;
     struct nk_rect action = nk_rect(action_x,
@@ -44,12 +44,17 @@ bool bongo_cat_preferences_model_section(BongoCatPreferences *value,
         (action.h - action_font->height) * .5f, label_width + 1,
         action_font->height), label, nk_strlen(label), action_font,
         nk_rgba(0, 0, 0, 0), action_color);
-    float arrow_x = action.x + action.w - 5;
     float arrow_y = action.y + action.h * .5f;
-    nk_stroke_line(canvas, arrow_x - 4, arrow_y - 4,
-        arrow_x, arrow_y, 1.5f, action_color);
-    nk_stroke_line(canvas, arrow_x, arrow_y,
-        arrow_x - 4, arrow_y + 4, 1.5f, action_color);
+    float first_arrow_x = action.x + label_width + 11;
+    float second_arrow_x = action.x + label_width + 17;
+    nk_stroke_line(canvas, first_arrow_x - 4, arrow_y - 4,
+        first_arrow_x, arrow_y, 1.5f, action_color);
+    nk_stroke_line(canvas, first_arrow_x, arrow_y,
+        first_arrow_x - 4, arrow_y + 4, 1.5f, action_color);
+    nk_stroke_line(canvas, second_arrow_x - 4, arrow_y - 4,
+        second_arrow_x, arrow_y, 1.5f, action_color);
+    nk_stroke_line(canvas, second_arrow_x, arrow_y,
+        second_arrow_x - 4, arrow_y + 4, 1.5f, action_color);
     if (action_hover) bongo_cat_ui_cursor_hover_rect(context, action,
         BONGO_CAT_UI_CURSOR_POINTER);
     return action_hover && nk_input_is_mouse_click_in_rect(&context->input,
