@@ -124,7 +124,7 @@ static void star_button(BongoCatPreferences *value,
         value->ui.label_font, nk_rgb(255, 255, 255));
     link_cursor(context, bounds);
     if (hit(context, bounds))
-        open_url("https://github.com/bongocat-pet/BongoCat");
+        open_url("https://github.com/BongoCatPet/BongoCat");
 }
 static void hero_title(BongoCatPreferences *value, struct nk_context *context,
     struct nk_command_buffer *canvas, struct nk_rect bounds,

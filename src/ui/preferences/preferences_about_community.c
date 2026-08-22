@@ -21,13 +21,20 @@ static void text(struct nk_command_buffer *canvas, struct nk_rect bounds,
         nk_rgba(0, 0, 0, 0), color);
 }
 
+static void centered_span(struct nk_command_buffer *canvas,
+    struct nk_rect bounds, const char *value, int length,
+    const struct nk_user_font *font, struct nk_color color) {
+    float width = font->width(font->userdata, font->height,
+        value, length);
+    nk_draw_text(canvas, nk_rect(bounds.x + (bounds.w - width) * .5f,
+        bounds.y + (bounds.h - font->height) * .5f,
+        NK_MIN(width + 1, bounds.w), font->height), value, length, font,
+        nk_rgba(0, 0, 0, 0), color);
+}
+
 static void centered(struct nk_command_buffer *canvas, struct nk_rect bounds,
     const char *value, const struct nk_user_font *font, struct nk_color color) {
-    float width = font->width(font->userdata, font->height,
-        value, nk_strlen(value));
-    text(canvas, nk_rect(bounds.x + (bounds.w - width) * .5f,
-        bounds.y + (bounds.h - font->height) * .5f,
-        NK_MIN(width + 1, bounds.w), font->height), value, font, color);
+    centered_span(canvas, bounds, value, nk_strlen(value), font, color);
 }
 
 static float span_width(const struct nk_user_font *font,
@@ -40,6 +47,63 @@ static void span(struct nk_command_buffer *canvas, struct nk_rect bounds,
     struct nk_color color) {
     if (length > 0) nk_draw_text(canvas, bounds, value, length, font,
         nk_rgba(0, 0, 0, 0), color);
+}
+
+static int next_utf8_boundary(const char *value, int length, int offset) {
+    int next = offset + 1;
+    while (next < length &&
+        (((unsigned char)value[next] & 0xc0u) == 0x80u)) ++next;
+    return next;
+}
+
+static int balanced_split(const char *value, int length,
+    const struct nk_user_font *font, float maximum_width,
+    bool spaces_only, float *widest_line) {
+    int best = -1;
+    float best_width = 1.0e30f;
+    for (int split = next_utf8_boundary(value, length, 0);
+        split < length; split = next_utf8_boundary(value, length, split)) {
+        if (spaces_only && value[split] != ' ') continue;
+        int left = split, right = split;
+        while (left > 0 && value[left - 1] == ' ') --left;
+        while (right < length && value[right] == ' ') ++right;
+        if (!left || right >= length) continue;
+        float left_width = font->width(font->userdata, font->height,
+            value, left);
+        float right_width = font->width(font->userdata, font->height,
+            value + right, length - right);
+        float width = NK_MAX(left_width, right_width);
+        if (width < best_width) { best = split; best_width = width; }
+    }
+    if (widest_line) *widest_line = best_width;
+    return best_width <= maximum_width ? best : -1;
+}
+
+static void centered_wrapped(struct nk_command_buffer *canvas,
+    struct nk_rect bounds, const char *value,
+    const struct nk_user_font *font, struct nk_color color) {
+    int length = nk_strlen(value);
+    if (font->width(font->userdata, font->height, value, length) <= bounds.w) {
+        centered_span(canvas, bounds, value, length, font, color);
+        return;
+    }
+    float widest = 0.0f;
+    int split = balanced_split(value, length, font, bounds.w, true, &widest);
+    if (split < 0)
+        split = balanced_split(value, length, font, bounds.w, false, &widest);
+    if (split < 0) {
+        centered_span(canvas, bounds, value, length, font, color);
+        return;
+    }
+    int left = split, right = split;
+    while (left > 0 && value[left - 1] == ' ') --left;
+    while (right < length && value[right] == ' ') ++right;
+    struct nk_rect line = nk_rect(bounds.x,
+        bounds.y + (bounds.h - font->height * 2.0f) * .5f,
+        bounds.w, font->height);
+    centered_span(canvas, line, value, left, font, color);
+    line.y += font->height;
+    centered_span(canvas, line, value + right, length - right, font, color);
 }
 
 static bool hit(struct nk_context *context, struct nk_rect bounds) {
@@ -57,9 +121,9 @@ static void community_link(BongoCatPreferences *value,
     struct nk_rect bounds, int index, BongoCatUIPalette p) {
     const char *labels[] = {"Discord", tr(value,
         "native.support.qqGroup", "QQ Group")};
-    const char *details[] = {"https://discord.gg/vf8jqnattk", "1016541762"};
+    const char *details[] = {"https://discord.gg/vf8jqnattk", "473033518"};
     const char *urls[] = {"https://discord.gg/vf8jqnattk",
-        "https://qm.qq.com/q/jmr39ESZIk"};
+        "https://qm.qq.com/q/sccLv3USXg"};
     struct nk_color brand = index ? p.accent : nk_rgb(88, 101, 242);
     bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
     char id[32]; snprintf(id, sizeof(id), "community-hover-%d", index);
@@ -150,9 +214,9 @@ void bongo_cat_preferences_about_projects_heading(
         BONGO_CAT_UI_CURSOR_POINTER);
     if (developer && hit(context, link))
         open_url("https://vlaina.com/r/bongocat");
-    centered(canvas, nk_rect(bounds.x, bounds.y + 72, bounds.w, 22),
+    centered_wrapped(canvas, nk_rect(bounds.x, bounds.y + 66, bounds.w, 42),
         tr(value, "native.support.refactorDeveloper",
-        "BongoCat C rewrite developer & current maintainer"),
+        "Developer who rewrote BongoCat in C and is also its current maintainer"),
         value->ui.caption_font, p.muted);
 }
 
