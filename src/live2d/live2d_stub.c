@@ -38,6 +38,23 @@ bool bongo_cat_live2d_canvas_size(const BongoCatLive2D *live2d,
     (void)live2d; (void)width; (void)height; return false;
 }
 
+bool bongo_cat_live2d_frame(const BongoCatLive2D *live2d,
+    BongoCatLive2DFrame *frame) {
+    if (!live2d || !frame) return false;
+    *frame = (BongoCatLive2DFrame){0};
+    return true;
+}
+
+bool bongo_cat_live2d_viewport(const BongoCatLive2D *live2d,
+    int *x, int *y, int *width, int *height) {
+    if (!live2d || !x || !y || !width || !height) return false;
+    *x = 0;
+    *y = 0;
+    *width = live2d->width;
+    *height = live2d->height;
+    return true;
+}
+
 void bongo_cat_live2d_resize(BongoCatLive2D *live2d, int width, int height) {
     if (!live2d) return;
     live2d->width = width;

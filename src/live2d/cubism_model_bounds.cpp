@@ -1,5 +1,6 @@
 #include "cubism_model.hpp"
 
+#include <Motion/CubismExpressionMotion.hpp>
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
@@ -96,6 +97,166 @@ NativeModel::ModelBounds NativeModel::capture_visible_bounds() const {
         bounds.max_y = std::max(bounds.max_y, drawable.bounds.max_y);
     }
     return bounds;
+}
+
+static float frame_margin(float overflow, float padding) {
+    /* Tiny mathematical overhangs are common at transparent mesh edges and
+       do not produce visible clipping. */
+    return overflow > 0.03f ? (overflow + padding) * 0.5f : 0.0f;
+}
+
+void NativeModel::prepare_expression_frame() {
+    frame_ = BongoCatLive2DFrame{};
+    /* Mver models have authored background/input layers in the same canvas;
+       changing their viewport would break that compatibility contract. */
+    if (!_model || render_options_.mver_projection) {
+        update_viewport();
+        return;
+    }
+    const int parameter_count = _model->GetParameterCount();
+    std::vector<float> base((size_t)parameter_count);
+    for (int i = 0; i < parameter_count; ++i)
+        base[(size_t)i] = _model->GetParameterValue(i);
+
+    _model->Update();
+    ModelBounds envelope = capture_visible_bounds();
+    auto include = [&envelope](const ModelBounds &source) {
+        if (!source.valid) return;
+        if (!envelope.valid) {
+            envelope = source;
+            return;
+        }
+        envelope.min_x = std::min(envelope.min_x, source.min_x);
+        envelope.min_y = std::min(envelope.min_y, source.min_y);
+        envelope.max_x = std::max(envelope.max_x, source.max_x);
+        envelope.max_y = std::max(envelope.max_y, source.max_y);
+    };
+    for (size_t i = 0; i < expression_names_.size(); ++i) {
+        auto found = expressions_.find(expression_names_[i]);
+        if (found == expressions_.end()) continue;
+        for (int parameter = 0; parameter < parameter_count; ++parameter)
+            _model->SetParameterValue(parameter, base[(size_t)parameter]);
+        auto *expression = static_cast<Csm::CubismExpressionMotion *>(
+            found->second);
+        const auto parameters = expression->GetExpressionParameters();
+        for (Csm::csmUint32 parameter = 0;
+            parameter < parameters.GetSize(); ++parameter) {
+            const auto &value = parameters[parameter];
+            int index = _model->GetParameterIndex(value.ParameterId);
+            if (index < 0 || index >= parameter_count) continue;
+            switch (value.BlendType) {
+            case Csm::CubismExpressionMotion::Additive:
+                _model->AddParameterValue(index, value.Value);
+                break;
+            case Csm::CubismExpressionMotion::Multiply:
+                _model->MultiplyParameterValue(index, value.Value);
+                break;
+            case Csm::CubismExpressionMotion::Overwrite:
+                _model->SetParameterValue(index, value.Value);
+                break;
+            }
+        }
+        _model->Update();
+        include(capture_visible_bounds());
+    }
+    for (int parameter = 0; parameter < parameter_count; ++parameter)
+        _model->SetParameterValue(parameter, base[(size_t)parameter]);
+    _model->Update();
+
+    int reference_width = 0, reference_height = 0;
+    if (render_options_.mver_projection) {
+        reference_width = render_options_.reference_width;
+        reference_height = render_options_.reference_height;
+    }
+    if ((reference_width <= 0 || reference_height <= 0) &&
+        !canvas_size(&reference_width, &reference_height)) {
+        update_viewport();
+        return;
+    }
+    if (!envelope.valid) {
+        update_viewport();
+        return;
+    }
+    Csm::CubismMatrix44 projection;
+    build_projection(projection, reference_width, reference_height);
+    float x0 = projection.TransformX(envelope.min_x);
+    float x1 = projection.TransformX(envelope.max_x);
+    float y0 = projection.TransformY(envelope.min_y);
+    float y1 = projection.TransformY(envelope.max_y);
+    float min_x = std::min(x0, x1), max_x = std::max(x0, x1);
+    float min_y = std::min(y0, y1), max_y = std::max(y0, y1);
+    if (!std::isfinite(min_x) || !std::isfinite(max_x) ||
+        !std::isfinite(min_y) || !std::isfinite(max_y)) {
+        update_viewport();
+        return;
+    }
+    float span = std::max(max_x - min_x, max_y - min_y);
+    float padding = std::max(0.04f, std::min(0.16f, span * 0.05f));
+    float horizontal = std::max(
+        frame_margin(-1.0f - min_x, padding),
+        frame_margin(max_x - 1.0f, padding));
+    /* Mirroring can move either horizontal overhang to the opposite side. */
+    frame_.left = horizontal;
+    frame_.right = horizontal;
+    frame_.bottom = frame_margin(-1.0f - min_y, padding);
+    frame_.top = frame_margin(max_y - 1.0f, padding);
+    update_viewport();
+}
+
+void NativeModel::update_viewport() {
+    float horizontal = 1.0f + frame_.left + frame_.right;
+    float vertical = 1.0f + frame_.top + frame_.bottom;
+    if (!std::isfinite(horizontal) || !std::isfinite(vertical) ||
+        horizontal <= 0.0f || vertical <= 0.0f || width_ <= 0 || height_ <= 0) {
+        viewport_x_ = viewport_y_ = 0;
+        viewport_width_ = std::max(1, width_);
+        viewport_height_ = std::max(1, height_);
+        return;
+    }
+    float content_width = width_ / horizontal;
+    float content_height = height_ / vertical;
+    int left = (int)std::lround(frame_.left * content_width);
+    int right = (int)std::lround(frame_.right * content_width);
+    int bottom = (int)std::lround(frame_.bottom * content_height);
+    int top = (int)std::lround(frame_.top * content_height);
+    viewport_x_ = std::max(0, std::min(width_ - 1, left));
+    viewport_y_ = std::max(0, std::min(height_ - 1, bottom));
+    viewport_width_ = std::max(1, width_ - viewport_x_ - std::max(0, right));
+    viewport_height_ = std::max(1, height_ - viewport_y_ - std::max(0, top));
+}
+
+bool NativeModel::frame(BongoCatLive2DFrame *frame) const {
+    if (!_model || !frame) return false;
+    *frame = frame_;
+    return true;
+}
+
+bool NativeModel::viewport(int *x, int *y, int *width, int *height) const {
+    if (!_model || !x || !y || !width || !height) return false;
+    *x = viewport_x_;
+    *y = viewport_y_;
+    *width = viewport_width_;
+    *height = viewport_height_;
+    return true;
+}
+
+void NativeModel::apply_viewport_projection(
+    Csm::CubismMatrix44 &projection) const {
+    if (width_ <= 0 || height_ <= 0 || viewport_width_ <= 0 ||
+        viewport_height_ <= 0) return;
+    float scale_x = (float)viewport_width_ / (float)width_;
+    float scale_y = (float)viewport_height_ / (float)height_;
+    float translate_x = (2.0f * viewport_x_ + viewport_width_) /
+        (float)width_ - 1.0f;
+    float translate_y = (2.0f * viewport_y_ + viewport_height_) /
+        (float)height_ - 1.0f;
+    float *matrix = projection.GetArray();
+    matrix[0] *= scale_x;
+    matrix[4] *= scale_x;
+    matrix[12] = matrix[12] * scale_x + translate_x;
+    matrix[1] *= scale_y;
+    matrix[5] *= scale_y;
+    matrix[13] = matrix[13] * scale_y + translate_y;
 }
 
 void NativeModel::record_visible_state(Csm::CubismMatrix44 &projection) {

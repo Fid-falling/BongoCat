@@ -211,14 +211,25 @@ static bool render(BongoCatApp *app, bool present) {
     glDisable(GL_SCISSOR_TEST);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     bongo_cat_window_clear_background(app);
+    int content_x = 0, content_y = 0, content_width = width,
+        content_height = height;
+    bool content_viewport = bongo_cat_live2d_viewport(app->live2d,
+        &content_x, &content_y, &content_width, &content_height) &&
+        content_width > 0 && content_height > 0;
+    if (content_viewport)
+        glViewport(content_x, content_y, content_width, content_height);
     bongo_cat_overlay_draw_background(app->overlay, app->settings.model.mirror);
+    glViewport(0, 0, width, height);
     bongo_cat_live2d_set_mirror(app->live2d, app->settings.model.mirror);
     bongo_cat_live2d_draw(app->live2d);
+    if (content_viewport)
+        glViewport(content_x, content_y, content_width, content_height);
     bongo_cat_overlay_draw_pointer_before_keys(app->overlay);
     if (app->settings.model.mouse_centered && app->pointer_known && !app->model_pointer_anchor_ready) bongo_cat_app_apply_mouse_position(app, app->pointer_x, app->pointer_y, 0.0f);
     bongo_cat_overlay_draw_keys(app->overlay, app->settings.model.mirror);
     bongo_cat_overlay_draw_effect(app->overlay, app->settings.model.mirror);
     bongo_cat_overlay_draw_pointer_after_keys(app->overlay);
+    glViewport(0, 0, width, height);
     bongo_cat_frame_capture_pending(app, width, height);
     if (!present) {
         app->dirty = true;

@@ -130,10 +130,20 @@ BongoCatResult bongo_cat_session_load(const char *path,
                 read_int(position, "y", &loaded.window.y, true, error);
             if (valid) loaded.window.position_known = true;
         }
-        if (valid && size)
+        if (valid && size) {
+            int content_width = 0, content_height = 0;
             valid = read_int(size, "width", &loaded.window.width, true,
                     error) &&
-                read_int(size, "height", &loaded.window.height, true, error);
+                read_int(size, "height", &loaded.window.height, true, error) &&
+                read_int(size, "contentWidth", &content_width, false, error) &&
+                read_int(size, "contentHeight", &content_height, false, error);
+            if (valid) {
+                loaded.window.content_width = content_width > 0
+                    ? content_width : loaded.window.width;
+                loaded.window.content_height = content_height > 0
+                    ? content_height : loaded.window.height;
+            }
+        }
     }
     if (valid) valid = read_active_model(root, &loaded, error) &&
         read_additional_models(additional_models, &loaded, error) &&
@@ -218,6 +228,10 @@ BongoCatResult bongo_cat_session_save(const char *path,
     built = built && size &&
         yyjson_mut_obj_add_int(doc, size, "width", canonical.window.width) &&
         yyjson_mut_obj_add_int(doc, size, "height", canonical.window.height) &&
+        yyjson_mut_obj_add_int(doc, size, "contentWidth",
+            canonical.window.content_width) &&
+        yyjson_mut_obj_add_int(doc, size, "contentHeight",
+            canonical.window.content_height) &&
         yyjson_mut_obj_add_strcpy(doc, root, "activeModelId",
             canonical.active_model_id) &&
         write_additional_models(doc, root, &canonical) &&

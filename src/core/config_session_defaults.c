@@ -30,6 +30,8 @@ void bongo_cat_session_defaults(BongoCatSessionState *session) {
         BONGO_CAT_DEFAULT_WINDOW_OPACITY_PERCENT;
     session->window.width = 612;
     session->window.height = 354;
+    session->window.content_width = 612;
+    session->window.content_height = 354;
     memcpy(session->active_model_id, "standard", sizeof("standard"));
 }
 
@@ -101,6 +103,14 @@ void bongo_cat_session_validate(BongoCatSessionState *session) {
     if (session->window.height < 64) session->window.height = 64;
     if (session->window.width > 8192) session->window.width = 8192;
     if (session->window.height > 8192) session->window.height = 8192;
+    if (session->window.content_width < 64)
+        session->window.content_width = session->window.width;
+    if (session->window.content_height < 64)
+        session->window.content_height = session->window.height;
+    if (session->window.content_width > 8192)
+        session->window.content_width = 8192;
+    if (session->window.content_height > 8192)
+        session->window.content_height = 8192;
     if (!normalize_text(session->active_model_id,
             sizeof(session->active_model_id)) ||
         !session->active_model_id[0])

@@ -253,6 +253,7 @@ bool NativeModel::load_textures(BongoCatError *error,
         if (progress) progress(userdata, .50f + .45f * (float)(i + 1) /
             (float)(count > 0 ? count : 1));
     }
+    prepare_expression_frame();
     release_renderer();
     CreateRenderer((Csm::csmUint32)width_, (Csm::csmUint32)height_);
     renderer_width_ = width_;

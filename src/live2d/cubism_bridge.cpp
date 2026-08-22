@@ -196,6 +196,17 @@ extern "C" bool bongo_cat_live2d_canvas_size(const BongoCatLive2D *runtime,
         runtime->model->canvas_size(width, height);
 }
 
+extern "C" bool bongo_cat_live2d_frame(const BongoCatLive2D *runtime,
+    BongoCatLive2DFrame *frame) {
+    return runtime && runtime->model && runtime->model->frame(frame);
+}
+
+extern "C" bool bongo_cat_live2d_viewport(const BongoCatLive2D *runtime,
+    int *x, int *y, int *width, int *height) {
+    return runtime && runtime->model &&
+        runtime->model->viewport(x, y, width, height);
+}
+
 extern "C" void bongo_cat_live2d_resize(BongoCatLive2D *runtime, int width, int height) {
     if (!runtime) return;
     if (width > 0 && height > 0) {

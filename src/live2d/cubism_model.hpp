@@ -33,6 +33,8 @@ public:
         BongoCatLive2DLoadProgress progress, void *userdata);
     void release_render_resources();
     bool canvas_size(int *width, int *height) const;
+    bool frame(BongoCatLive2DFrame *frame) const;
+    bool viewport(int *x, int *y, int *width, int *height) const;
     void resize(int width, int height);
     void reshape(int width, int height);
     bool update(float delta_seconds);
@@ -97,6 +99,11 @@ private:
     void load_motions(BongoCatLive2DLoadProgress progress, void *userdata);
     void start_idle_motion();
     ModelBounds capture_visible_bounds() const;
+    void prepare_expression_frame();
+    void build_projection(Csm::CubismMatrix44 &projection,
+        int width, int height);
+    void apply_viewport_projection(Csm::CubismMatrix44 &projection) const;
+    void update_viewport();
     void record_visible_state(Csm::CubismMatrix44 &projection);
     void capture_motion_preview();
     void restore_motion_preview_state();
@@ -150,8 +157,13 @@ private:
     int height_ = 354;
     int renderer_width_ = 0;
     int renderer_height_ = 0;
+    int viewport_x_ = 0;
+    int viewport_y_ = 0;
+    int viewport_width_ = 612;
+    int viewport_height_ = 354;
     int expression_index_ = -1;
     bool expression_clearing_ = false;
+    BongoCatLive2DFrame frame_{};
     BongoCatLive2DVisualState visual_state_{};
     bool visual_state_ready_ = false;
     bool motion_updated_ = false;

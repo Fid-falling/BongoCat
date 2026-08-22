@@ -17,6 +17,7 @@ void NativeModel::resize(int width, int height) {
     if (width <= 0 || height <= 0) return;
     width_ = width;
     height_ = height;
+    update_viewport();
     if (!_model || (width == renderer_width_ && height == renderer_height_)) return;
     if (!_model->IsBlendModeEnabled()) {
         renderer_width_ = width_;
@@ -31,7 +32,11 @@ void NativeModel::resize(int width, int height) {
 }
 
 void NativeModel::reshape(int width, int height) {
-    if (width > 0 && height > 0) { width_ = width; height_ = height; }
+    if (width > 0 && height > 0) {
+        width_ = width;
+        height_ = height;
+        update_viewport();
+    }
 }
 
 template<typename Getter>
@@ -72,11 +77,9 @@ bool NativeModel::update(float delta_seconds) {
     return result;
 }
 
-void NativeModel::draw() {
-    if (!_model || width_ <= 0 || height_ <= 0) return;
-    auto *manager = Csm::Rendering::CubismOffscreenManager_OpenGLES2::GetInstance();
-    manager->BeginFrameProcess();
-    Csm::CubismMatrix44 projection;
+void NativeModel::build_projection(Csm::CubismMatrix44 &projection,
+    int width, int height) {
+    if (!_model || width <= 0 || height <= 0) return;
     if (render_options_.mver_projection) {
         float aspect = (float)render_options_.reference_width /
             (float)render_options_.reference_height;
@@ -84,12 +87,13 @@ void NativeModel::draw() {
             render_options_.projection_scale,
             render_options_.projection_scale * aspect);
         projection.Translate(render_options_.offset_x, render_options_.offset_y);
-    } else if (_model->GetCanvasWidth() > 1.0f && width_ < height_) {
+    } else if (_model->GetCanvasWidth() > 1.0f && width < height) {
         _modelMatrix->SetWidth(2.0f);
         projection.Scale(mirror_ ? -1.0f : 1.0f,
-            (float)width_ / (float)height_);
+            (float)width / (float)height);
     } else {
-        projection.Scale((mirror_ ? -1.0f : 1.0f) * (float)height_ / (float)width_, 1.0f);
+        projection.Scale((mirror_ ? -1.0f : 1.0f) *
+            (float)height / (float)width, 1.0f);
     }
     projection.MultiplyByMatrix(_modelMatrix);
     if (render_options_.mver_projection) {
@@ -102,6 +106,15 @@ void NativeModel::draw() {
         matrix[4] *= mver_core_canvas_scale;
         matrix[5] *= mver_core_canvas_scale;
     }
+}
+
+void NativeModel::draw() {
+    if (!_model || width_ <= 0 || height_ <= 0) return;
+    auto *manager = Csm::Rendering::CubismOffscreenManager_OpenGLES2::GetInstance();
+    manager->BeginFrameProcess();
+    Csm::CubismMatrix44 projection;
+    build_projection(projection, viewport_width_, viewport_height_);
+    apply_viewport_projection(projection);
     visual_state_ = BongoCatLive2DVisualState{};
     visual_state_.fit_scale = 1.0f;
     visual_state_.mver_projection = render_options_.mver_projection;

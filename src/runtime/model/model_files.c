@@ -115,8 +115,32 @@ static void model_load_progress(void *userdata, float progress) {
     bongo_cat_app_render_now(app);
 }
 
+typedef struct ModelContentAnchor {
+    int x, y;
+    bool valid;
+} ModelContentAnchor;
+
+static ModelContentAnchor capture_model_content_anchor(BongoCatApp *app) {
+    ModelContentAnchor anchor = {0};
+    int window_x = 0, window_y = 0;
+    if (!app || !app->window ||
+        !SDL_GetWindowPosition(app->window, &window_x, &window_y)) return anchor;
+    int left = 0, top = 0, ignored_width = 0, ignored_height = 0;
+    int content_width = app->session.window.content_width > 0
+        ? app->session.window.content_width : app->session.window.width;
+    int content_height = app->session.window.content_height > 0
+        ? app->session.window.content_height : app->session.window.height;
+    if (!bongo_cat_window_frame_size(app, content_width, content_height,
+            &ignored_width, &ignored_height, &left, &top)) return anchor;
+    anchor.x = window_x + left + content_width / 2;
+    anchor.y = window_y + top + content_height / 2;
+    anchor.valid = true;
+    return anchor;
+}
+
 static bool apply_model_aspect(BongoCatApp *app,
-    const BongoCatLive2DRenderOptions *options) {
+    const BongoCatLive2DRenderOptions *options,
+    const ModelContentAnchor *anchor, bool replacing_model) {
     if (!app || !app->window) return false;
     int reference_width = 612;
     int reference_height = 354;
@@ -134,15 +158,37 @@ static bool apply_model_aspect(BongoCatApp *app,
     int x, y, width, height;
     if (reference_width <= 0 || reference_height <= 0 ||
         !SDL_GetWindowPosition(app->window, &x, &y) ||
-        !SDL_GetWindowSize(app->window, &width, &height) || height <= 0)
+        !SDL_GetWindowSize(app->window, &width, &height))
         return false;
-    int next_width = (int)((double)height * reference_width /
+    int content_height = app->session.window.content_height > 0
+        ? app->session.window.content_height : height;
+    int content_width = (int)((double)content_height * reference_width /
         reference_height + 0.5);
-    if (next_width < 64) next_width = 64;
-    if (next_width > 8192) next_width = 8192;
-    if (next_width == width) return false;
-    return bongo_cat_window_apply_geometry(app, x, y,
-        app->session.window.scale_percent, next_width, height);
+    if (content_width < 64) content_width = 64;
+    if (content_width > 8192) content_width = 8192;
+    if (content_height < 64) content_height = 64;
+    if (content_height > 8192) content_height = 8192;
+    int next_width = 0, next_height = 0, left = 0, top = 0;
+    if (!bongo_cat_window_frame_size(app, content_width, content_height,
+            &next_width, &next_height, &left, &top)) return false;
+    bool restored_frame = !replacing_model &&
+        SDL_abs(width - next_width) <= 1 && SDL_abs(height - next_height) <= 1;
+    int next_x = x, next_y = y;
+    if (anchor && anchor->valid && !restored_frame) {
+        next_x = anchor->x - left - content_width / 2;
+        next_y = anchor->y - top - content_height / 2;
+    }
+    app->session.window.content_width = content_width;
+    app->session.window.content_height = content_height;
+    if (next_x == x && next_y == y && next_width == width &&
+        next_height == height) return false;
+    bool changed = bongo_cat_window_apply_geometry(app, next_x, next_y,
+        app->session.window.scale_percent, next_width, next_height);
+    if (changed) {
+        app->session.window.content_width = content_width;
+        app->session.window.content_height = content_height;
+    }
+    return changed;
 }
 
 static void commit_model(BongoCatApp *app,
@@ -200,6 +246,7 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
         "force_mouse=%d left_handed=%d pointer_bounds=%d",
         render_options.projection_scale, render_options.mouse_force_move,
         render_options.pointer_left_handed, render_options.custom_pointer_bounds);
+    ModelContentAnchor content_anchor = capture_model_content_anchor(app);
     int pixel_width = app->session.window.width, pixel_height = app->session.window.height;
     if (app->window) SDL_GetWindowSizeInPixels(app->window, &pixel_width, &pixel_height);
     SDL_Window *previous_window = SDL_GL_GetCurrentWindow();
@@ -269,7 +316,8 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     bongo_cat_app_restore_behavior_state(app, entry->id);
     bongo_cat_random_expression_reset(app);
     app->pointer_known = false;
-    bool geometry_changed = apply_model_aspect(app, &render_options);
+    bool geometry_changed = apply_model_aspect(app, &render_options,
+        &content_anchor, replacing_model);
     if (app->window) {
         if (geometry_changed) SDL_SyncWindow(app->window);
         SDL_GetWindowSizeInPixels(app->window, &pixel_width, &pixel_height);

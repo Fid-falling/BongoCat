@@ -65,6 +65,10 @@ typedef struct BongoCatWindowState {
     int y;
     int width;
     int height;
+    /* The authored composition size inside width/height.  The outer window
+       may be larger to hold expression geometry outside the base canvas. */
+    int content_width;
+    int content_height;
 } BongoCatWindowState;
 
 typedef struct BongoCatApplicationPreferences {

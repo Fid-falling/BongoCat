@@ -56,6 +56,11 @@ void bongo_cat_window_cancel_wheel_animation(BongoCatApp *app);
 bool bongo_cat_window_wheel_self_test(BongoCatApp *app);
 bool bongo_cat_window_scaled_size(int base_width, int base_height, float base_scale,
     float requested_scale, float *actual_scale, int *width, int *height);
+bool bongo_cat_window_frame_size(BongoCatApp *app,
+    int content_width, int content_height, int *width, int *height,
+    int *left, int *top);
+bool bongo_cat_window_content_size(BongoCatApp *app,
+    int width, int height, int *content_width, int *content_height);
 bool bongo_cat_window_apply_geometry(BongoCatApp *app, int x, int y,
     float scale, int width, int height);
 bool bongo_cat_window_set_scale(BongoCatApp *app, float scale);

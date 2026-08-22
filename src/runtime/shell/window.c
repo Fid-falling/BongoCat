@@ -144,6 +144,9 @@ bool bongo_cat_window_event(BongoCatApp *app, const SDL_Event *event) {
     if (event->type == SDL_EVENT_WINDOW_RESIZED) {
         app->session.window.width = event->window.data1;
         app->session.window.height = event->window.data2;
+        bongo_cat_window_content_size(app, event->window.data1,
+            event->window.data2, &app->session.window.content_width,
+            &app->session.window.content_height);
         bongo_cat_window_clamp_to_display(app);
         app->dirty = true;
     }

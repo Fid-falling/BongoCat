@@ -102,6 +102,13 @@ typedef struct BongoCatLive2DVisualState {
     bool fitted, visible, mver_projection;
 } BongoCatLive2DVisualState;
 
+/* Extra transparent space around the authored model canvas, expressed as a
+   fraction of that canvas dimension.  For example, top=0.5 reserves half a
+   canvas height above the normal composition. */
+typedef struct BongoCatLive2DFrame {
+    float left, top, right, bottom;
+} BongoCatLive2DFrame;
+
 typedef struct BongoCatLive2DRenderOptions {
     bool mver_projection;
     bool source_mirror;
@@ -131,6 +138,10 @@ bool bongo_cat_live2d_ready(const BongoCatLive2D *live2d);
 /* Returns the authored pixel canvas size of the loaded model. */
 bool bongo_cat_live2d_canvas_size(const BongoCatLive2D *live2d,
     int *width, int *height);
+bool bongo_cat_live2d_frame(const BongoCatLive2D *live2d,
+    BongoCatLive2DFrame *frame);
+bool bongo_cat_live2d_viewport(const BongoCatLive2D *live2d,
+    int *x, int *y, int *width, int *height);
 void bongo_cat_live2d_resize(BongoCatLive2D *live2d, int width, int height);
 void bongo_cat_live2d_reshape(BongoCatLive2D *live2d, int width, int height);
 bool bongo_cat_live2d_update(BongoCatLive2D *live2d, float delta_seconds);

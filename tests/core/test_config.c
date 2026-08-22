@@ -39,7 +39,8 @@ static void check_defaults_and_validation(void) {
     CHECK(settings.window.obs_background_color ==
         BONGO_CAT_OBS_BACKGROUND_GREEN);
     CHECK(session.window.visible && session.window.width == 612 &&
-        session.window.height == 354);
+        session.window.height == 354 && session.window.content_width == 612 &&
+        session.window.content_height == 354);
     CHECK(strcmp(session.active_model_id, "standard") == 0);
     CHECK(session.additional_model_count == 0);
     CHECK(bongo_cat_session_add_model(&session, "keyboard"));
@@ -180,6 +181,10 @@ void test_config(void) {
     session.window.x = -321;
     session.window.position_known = true;
     session.window.opacity_percent = 75.0f;
+    session.window.width = 700;
+    session.window.height = 500;
+    session.window.content_width = 612;
+    session.window.content_height = 354;
     memcpy(session.active_model_id, "model", sizeof("model"));
     CHECK(bongo_cat_session_add_model(&session, "keyboard"));
     CHECK(bongo_cat_session_add_model(&session, "gamepad"));
@@ -209,6 +214,8 @@ void test_config(void) {
     CHECK(contains_text(settings_path, "\"example\""));
     CHECK(!contains_text(settings_path, "activeModelId"));
     CHECK(contains_text(session_path, "\"format\": \"bongocat/session\""));
+    CHECK(contains_text(session_path, "\"contentWidth\": 612") &&
+        contains_text(session_path, "\"contentHeight\": 354"));
     CHECK(contains_text(session_path, "\"activeModelId\": \"model\""));
     CHECK(contains_text(session_path, "\"additionalModelIds\""));
     CHECK(contains_text(session_path, "\"activeBehaviors\""));
@@ -237,7 +244,11 @@ void test_config(void) {
         &(BongoCatModelEntry){.id = "model", .display_name = "Imported"}),
         "Display") == 0);
     CHECK(loaded_session.window.x == -321 &&
-        loaded_session.window.opacity_percent == 75.0f);
+        loaded_session.window.opacity_percent == 75.0f &&
+        loaded_session.window.width == 700 &&
+        loaded_session.window.height == 500 &&
+        loaded_session.window.content_width == 612 &&
+        loaded_session.window.content_height == 354);
     CHECK(strcmp(loaded_session.active_model_id, "model") == 0);
     CHECK(loaded_session.additional_model_count == 2 &&
         bongo_cat_session_model_active(&loaded_session, "keyboard") &&
@@ -283,6 +294,13 @@ void test_config(void) {
         "\"window\":{\"visible\":123}}");
     CHECK(bongo_cat_session_load(unsupported, &loaded_session, &error) ==
         BONGO_CAT_ERROR_FORMAT);
+    write_text(unsupported,
+        "{\"format\":\"bongocat/session\",\"schemaVersion\":1,"
+        "\"window\":{\"size\":{\"width\":700,\"height\":500}}}");
+    bongo_cat_session_defaults(&loaded_session);
+    CHECK(bongo_cat_session_load(unsupported, &loaded_session, &error) ==
+        BONGO_CAT_OK && loaded_session.window.content_width == 700 &&
+        loaded_session.window.content_height == 500);
 
     static BongoCatSettings canonical_settings;
     static BongoCatSessionState canonical_session;

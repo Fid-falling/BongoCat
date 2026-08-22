@@ -1,5 +1,6 @@
 #include "runtime.h"
 
+#include <math.h>
 #include <stdio.h>
 
 #define WINDOW_MIN_DIMENSION 64
@@ -9,6 +10,51 @@
 
 static int round_dimension(double value) {
     return (int)(value + 0.5);
+}
+
+static BongoCatLive2DFrame model_frame(BongoCatApp *app) {
+    BongoCatLive2DFrame frame = {0};
+    if (app && app->live2d) bongo_cat_live2d_frame(app->live2d, &frame);
+    if (!isfinite(frame.left) || frame.left < 0.0f) frame.left = 0.0f;
+    if (!isfinite(frame.top) || frame.top < 0.0f) frame.top = 0.0f;
+    if (!isfinite(frame.right) || frame.right < 0.0f) frame.right = 0.0f;
+    if (!isfinite(frame.bottom) || frame.bottom < 0.0f) frame.bottom = 0.0f;
+    return frame;
+}
+
+bool bongo_cat_window_frame_size(BongoCatApp *app,
+    int content_width, int content_height, int *width, int *height,
+    int *left, int *top) {
+    if (content_width <= 0 || content_height <= 0 || !width || !height)
+        return false;
+    BongoCatLive2DFrame frame = model_frame(app);
+    double frame_width = content_width *
+        (1.0 + frame.left + frame.right);
+    double frame_height = content_height *
+        (1.0 + frame.top + frame.bottom);
+    if (!isfinite(frame_width) || !isfinite(frame_height) ||
+        frame_width < 1.0 || frame_height < 1.0 ||
+        frame_width > WINDOW_MAX_DIMENSION ||
+        frame_height > WINDOW_MAX_DIMENSION) return false;
+    *width = round_dimension(frame_width);
+    *height = round_dimension(frame_height);
+    if (left) *left = round_dimension(content_width * frame.left);
+    if (top) *top = round_dimension(content_height * frame.top);
+    return true;
+}
+
+bool bongo_cat_window_content_size(BongoCatApp *app,
+    int width, int height, int *content_width, int *content_height) {
+    if (width <= 0 || height <= 0 || !content_width || !content_height)
+        return false;
+    BongoCatLive2DFrame frame = model_frame(app);
+    double horizontal = 1.0 + frame.left + frame.right;
+    double vertical = 1.0 + frame.top + frame.bottom;
+    if (!isfinite(horizontal) || !isfinite(vertical) ||
+        horizontal <= 0.0 || vertical <= 0.0) return false;
+    *content_width = SDL_max(1, round_dimension(width / horizontal));
+    *content_height = SDL_max(1, round_dimension(height / vertical));
+    return true;
 }
 
 bool bongo_cat_window_scaled_size(int base_width, int base_height, float base_scale,
@@ -44,6 +90,9 @@ bool bongo_cat_window_apply_geometry(BongoCatApp *app, int x, int y,
     app->session.window.position_known = true;
     app->session.window.width = width;
     app->session.window.height = height;
+    bongo_cat_window_content_size(app, width, height,
+        &app->session.window.content_width,
+        &app->session.window.content_height);
     if (SDL_GetWindowSizeInPixels(app->window,
         &app->resize_pixel_width, &app->resize_pixel_height))
         app->resize_pending = true;
