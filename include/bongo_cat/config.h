@@ -153,6 +153,8 @@ BongoCatResult bongo_cat_session_save(const char *path,
 const char *bongo_cat_theme_name(BongoCatTheme value);
 const char *bongo_cat_language_name(BongoCatLanguage value);
 bool bongo_cat_language_parse(const char *name, BongoCatLanguage *value);
+bool bongo_cat_language_from_locale(const char *language,
+    const char *country, BongoCatLanguage *value);
 const char *bongo_cat_mode_name(BongoCatModelMode value);
 const char *bongo_cat_obs_background_color_name(
     BongoCatObsBackgroundColor value);

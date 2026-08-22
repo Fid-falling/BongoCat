@@ -108,6 +108,17 @@ void bongo_cat_config_store_load(BongoCatApp *app) {
         app->settings_path, &app->settings, &error);
     app->settings_store_valid = loaded == BONGO_CAT_OK &&
         bongo_cat_path_is_file(app->settings_path);
+    bool language_detected = false;
+    if (!app->settings_store_valid) {
+        /* System locale is only a first-run/recovery fallback; a valid
+           settings file always wins so an explicit user choice persists. */
+        BongoCatLanguage detected_language = app->settings.app.language;
+        language_detected = bongo_cat_system_language(&detected_language);
+        if (language_detected) app->settings.app.language = detected_language;
+    }
+    if (language_detected)
+        SDL_Log("[runtime] Initial language selected from system locale: %s",
+            bongo_cat_language_name(app->settings.app.language));
     if (loaded != BONGO_CAT_OK) {
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Settings ignored: %s",
             error.message);

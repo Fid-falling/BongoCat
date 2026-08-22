@@ -2,6 +2,7 @@ if(BUILD_TESTING)
   add_executable(bongo_cat_core_tests
     tests/core/test_main.c
     tests/core/test_config.c
+    tests/core/test_language.c
     tests/core/test_input.c
     tests/core/test_models.c
     tests/core/test_mver_pointer.c

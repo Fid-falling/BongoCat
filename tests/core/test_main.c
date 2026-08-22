@@ -4,6 +4,7 @@ int bongo_cat_test_failures;
 
 int main(void) {
     test_config();
+    test_language();
     test_input();
     test_models();
     test_mver_pointer();

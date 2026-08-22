@@ -40,6 +40,7 @@ set(BONGO_CAT_RUNTIME_LIFECYCLE_SOURCES
   src/runtime/lifecycle/shutdown.c
   src/runtime/lifecycle/startup.c
   src/runtime/lifecycle/startup_arguments.c
+  src/runtime/lifecycle/system_language.c
   src/runtime/lifecycle/storage_paths.c)
 
 set(BONGO_CAT_RUNTIME_DIAGNOSTIC_SOURCES

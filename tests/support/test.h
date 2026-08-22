@@ -10,6 +10,7 @@ extern int bongo_cat_test_failures;
 } } while (0)
 
 void test_config(void);
+void test_language(void);
 void test_input(void);
 void test_models(void);
 void test_mver_pointer(void);
