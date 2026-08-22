@@ -209,7 +209,7 @@ static void footer(BongoCatPreferences *value, struct nk_context *context,
         bongo_cat_ui_color_mix(p.accent, p.pink, feedback_amount));
     link_cursor(context, feedback_link);
     if (hit(context, feedback_link))
-        open_url("https://github.com/bongocat-pet/BongoCat/issues");
+        open_url("https://github.com/BongoCatPet/BongoCat/issues");
 }
 
 static void hero(BongoCatPreferences *value, struct nk_context *context) {
