@@ -1,6 +1,8 @@
 install(TARGETS bongo_cat
   RUNTIME DESTINATION . COMPONENT Runtime
   BUNDLE DESTINATION . COMPONENT Runtime)
+install(FILES LICENSE DESTINATION . COMPONENT Runtime)
+install(FILES resources/assets/models/LICENSE DESTINATION assets/models COMPONENT Runtime)
 if(UNIX AND NOT APPLE)
   install(DIRECTORY resources/assets DESTINATION . COMPONENT Runtime
     PATTERN "logo-mac.png" EXCLUDE PATTERN "ui-icons.png" EXCLUDE

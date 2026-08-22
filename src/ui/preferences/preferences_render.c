@@ -66,7 +66,7 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
         tr(value, "pages.preference.general.title", "General"),
         tr(value, "pages.preference.model.title", "Model"),
         tr(value, "pages.preference.shortcut.title", "Shortcuts"),
-        tr(value, "native.support.title", "Support the Dev Team")};
+        tr(value, "native.support.title", "Support the Developer")};
     bool modal = bongo_cat_preferences_remove_dialog_active(value->app) ||
         bongo_cat_preferences_behavior_dialog_active(value);
     BongoCatUIPalette p = bongo_cat_ui_palette(dark);

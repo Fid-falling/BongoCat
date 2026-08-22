@@ -121,9 +121,9 @@ static void community_link(BongoCatPreferences *value,
     struct nk_rect bounds, int index, BongoCatUIPalette p) {
     const char *labels[] = {"Discord", tr(value,
         "native.support.qqGroup", "QQ Group")};
-    const char *details[] = {"https://discord.gg/vf8jqnattk", "473033518"};
+    const char *details[] = {"https://discord.gg/vf8jqnattk", "422616922"};
     const char *urls[] = {"https://discord.gg/vf8jqnattk",
-        "https://qm.qq.com/q/sccLv3USXg"};
+        "https://qm.qq.com/q/6ksRMCZIuA"};
     struct nk_color brand = index ? p.accent : nk_rgb(88, 101, 242);
     bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
     char id[32]; snprintf(id, sizeof(id), "community-hover-%d", index);

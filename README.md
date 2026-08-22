@@ -276,6 +276,11 @@ Artifacts are named `portable-*` and, on Windows, `installer-*`.
 
 ## Third-Party and Distribution Notes
 
+The BongoCat application source code is licensed under the GNU General Public
+License v3.0. The three bundled model packages under
+`resources/assets/models/standard`, `keyboard`, and `gamepad` are separately
+licensed under the MIT License; see `resources/assets/models/LICENSE`.
+
 Third-party components retain their upstream licenses. Cubism SDK files must be
 obtained from Live2D and are not redistributed here. Before distributing a
 binary, review the licenses for SDL3, yyjson, stb, miniaudio, Nuklear, OpenGL,
