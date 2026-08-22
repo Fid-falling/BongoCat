@@ -53,6 +53,8 @@ Desktop.ini
 # Local reference files
 /.reference/
 
+/docs/
+
 # Local Windows audit tools
 /cmake/*.ps1
 !/cmake/RunCubismViewerBlindTest.ps1

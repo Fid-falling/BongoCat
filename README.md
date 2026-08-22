@@ -12,10 +12,9 @@ SDK is licensed and is not checked into this repository.
 ## Current State
 
 The native application, bundled model packages, preferences, import path, and
-platform integrations are in this tree. The evidence ledger in
-[`docs/feature-audit.md`](docs/feature-audit.md) records what has been exercised
-on a real Windows Cubism build and what still needs a manual check on a
-particular operating system or device.
+platform integrations are in this tree. Validation is performed against real
+Windows Cubism builds, with platform- and device-specific checks called out
+when they still need a manual pass.
 
 Without Cubism, CMake selects a diagnostic backend. The application still
 starts, opens its preferences, processes input, and runs the native tests, but
@@ -89,7 +88,7 @@ possible.
 ```text
 include/bongo_cat/       public C interfaces and data structures
 src/core/                 config, paths, input state, catalogs, hashes
-src/runtime/              runtime orchestration (see docs/code-organization.md)
+src/runtime/              runtime orchestration
   lifecycle/              startup, frame timing, storage, and app state
   input/                  runtime input mapping and shortcuts
   model/                  catalog, storage, and import pipelines
@@ -109,7 +108,6 @@ src/ui/                   UI implementation grouped by responsibility
 resources/assets/         bundled models, textures, locales, and tray assets
 tests/                    native tests grouped by subsystem, plus fixtures
 cmake/                    dependency, platform, target, and source-policy modules
-docs/                     audit evidence, parity notes, and organization rules
 ```
 
 Internal headers remain private to `src`; only `include/bongo_cat` is a public
@@ -220,7 +218,7 @@ cmake --install build --config Release --component Runtime --prefix out
 
 The install tree is portable. Windows embeds the resource archive; Unix builds
 place `assets/` beside the executable or application bundle. User-owned files
-follow [`docs/storage-layout.md`](docs/storage-layout.md). The portable
+follow the per-user storage layout managed by the application. The portable
 executable and installed application use the same per-user storage layout on
 each platform; no files are written next to the executable. This pre-release
 build does not migrate settings from an older directory. Settings and session
