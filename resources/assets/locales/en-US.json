@@ -189,7 +189,7 @@
     "removeDesktopPet": "Close this desktop pet",
     "modelLoadFailed": "Unable to display this model",
     "noBehaviors": "No items",
-    "preferencesWindowTitle": "BongoCat - Preferences",
+    "preferencesWindowTitle": "BongoCat - Settings",
     "startup": {
       "failed": "BongoCat could not start.",
       "detail": "See the diagnostic log for technical details.",

@@ -189,7 +189,7 @@
     "removeDesktopPet": "\uc774 \ub370\uc2a4\ud06c\ud1b1 \ud3ab \ub2eb\uae30",
     "modelLoadFailed": "이 모델을 표시할 수 없습니다",
     "noBehaviors": "항목 없음",
-    "preferencesWindowTitle": "BongoCat - Preferences",
+    "preferencesWindowTitle": "BongoCat - Settings",
     "startup": {
       "failed": "BongoCat을 시작할 수 없습니다.",
       "detail": "기술적인 세부 정보는 진단 로그를 확인하세요.",

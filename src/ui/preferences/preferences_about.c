@@ -233,15 +233,16 @@ static void hero(BongoCatPreferences *value, struct nk_context *context) {
         bounds.y + 18, 144, 144), p);
     hero_title(value, context, canvas, nk_rect(bounds.x + 3, bounds.y + 178,
         bounds.w, 36), p);
-    centered_wrapped(canvas, nk_rect(bounds.x + 36, bounds.y + 215,
+    bongo_cat_preferences_about_website(value, context, canvas,
+        nk_rect(bounds.x, bounds.y + 214, bounds.w, 24), p);
+    centered_wrapped(canvas, nk_rect(bounds.x + 36, bounds.y + 242,
         bounds.w - 72, 40),
         tr(value, "native.support.heroText",
         "Thank you for your support. Every use and share helps BongoCat grow."),
         value->ui.caption_font, p.muted);
     footer(value, context, canvas,
-        nk_rect(bounds.x, bounds.y + 260, bounds.w, 40), p);
+        nk_rect(bounds.x, bounds.y + 286, bounds.w, 34), p);
 }
-
 static void project(BongoCatPreferences *value, struct nk_context *context,
     struct nk_command_buffer *canvas, struct nk_rect bounds, unsigned int texture,
     int image_width, int image_height, const char *name, const char *url,
@@ -291,7 +292,6 @@ static void projects(BongoCatPreferences *value, struct nk_context *context) {
         value->vlaina_height, "vlaina", "https://vlaina.com",
         true, p);
 }
-
 void bongo_cat_preferences_page_about(BongoCatPreferences *value,
     struct nk_context *context) {
     bongo_cat_preferences_support_assets_load(value);

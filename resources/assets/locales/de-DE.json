@@ -189,7 +189,7 @@
     "removeDesktopPet": "Diesen Desktop-Begleiter schlie\u00dfen",
     "modelLoadFailed": "Dieses Modell kann nicht angezeigt werden",
     "noBehaviors": "Keine Einträge",
-    "preferencesWindowTitle": "BongoCat - Preferences",
+    "preferencesWindowTitle": "BongoCat - Settings",
     "startup": {
       "failed": "BongoCat konnte nicht gestartet werden.",
       "detail": "Technische Details finden Sie im Diagnoseprotokoll.",

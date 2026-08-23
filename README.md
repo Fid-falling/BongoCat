@@ -9,6 +9,17 @@
 ## Project Status
 
 
+## License
+
+The BongoCat source code and native runtime are licensed under
+[AGPL-3.0-only](LICENSE).
+
+The default built-in model mode (`standard`) remains MIT-licensed. The
+bundled model assets in `resources/assets/models/standard`, `keyboard`, and
+`gamepad` are covered by the separate [MIT license notice](LICENSE-MIT).
+That MIT license applies to the model assets and their accompanying artwork
+only; it does not relicense the BongoCat source code or native runtime.
+
 
 ## Technical Architecture
 

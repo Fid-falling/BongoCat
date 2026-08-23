@@ -109,7 +109,7 @@ static void discard_window(BongoCatPreferences *value) {
 static bool create_window(BongoCatPreferences *value, int width, int height,
     SDL_WindowFlags flags, bool transparent) {
     const char *title = bongo_cat_i18n_get(value->app->i18n,
-        "native.preferencesWindowTitle", "BongoCat - Preferences");
+        "native.preferencesWindowTitle", "BongoCat - Settings");
     value->window = SDL_CreateWindow(title,
         width, height,
         flags | (transparent ? SDL_WINDOW_TRANSPARENT : 0));

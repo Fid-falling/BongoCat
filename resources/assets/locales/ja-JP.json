@@ -189,7 +189,7 @@
     "removeDesktopPet": "\u3053\u306e\u30c7\u30b9\u30af\u30c8\u30c3\u30d7\u30da\u30c3\u30c8\u3092\u9589\u3058\u308b",
     "modelLoadFailed": "このモデルを表示できません",
     "noBehaviors": "項目がありません",
-    "preferencesWindowTitle": "BongoCat - Preferences",
+    "preferencesWindowTitle": "BongoCat - Settings",
     "startup": {
       "failed": "BongoCat を起動できませんでした。",
       "detail": "技術的な詳細は診断ログを確認してください。",

@@ -189,7 +189,7 @@
     "removeDesktopPet": "Fermer cette mascotte de bureau",
     "modelLoadFailed": "Impossible d'afficher ce modèle",
     "noBehaviors": "Aucun élément",
-    "preferencesWindowTitle": "BongoCat - Preferences",
+    "preferencesWindowTitle": "BongoCat - Settings",
     "startup": {
       "failed": "Impossible de démarrer BongoCat.",
       "detail": "Consultez le journal de diagnostic pour les détails techniques.",

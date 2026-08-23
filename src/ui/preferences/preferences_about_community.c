@@ -59,6 +59,26 @@ static void open_url(const char *url) {
         "Cannot open URL: %s", SDL_GetError());
 }
 
+void bongo_cat_preferences_about_website(
+    BongoCatPreferences *value, struct nk_context *context,
+    struct nk_command_buffer *canvas, struct nk_rect bounds,
+    BongoCatUIPalette palette) {
+    static const char website[] = "\xE5\xAE\x98\xE7\xBD\x91: bongocat.pet";
+    const struct nk_user_font *font = value->ui.caption_font;
+    float text_width = font->width(font->userdata, font->height,
+        website, nk_strlen(website));
+    struct nk_rect link = nk_rect(bounds.x + (bounds.w - text_width) * .5f,
+        bounds.y, text_width + 2, bounds.h);
+    bool hover = nk_input_is_mouse_hovering_rect(&context->input, link);
+    float amount = bongo_cat_ui_animate_eased(context, "support-website-hover",
+        hover ? 1.0f : 0.0f, 200, BONGO_CAT_UI_EASE_STANDARD);
+    centered(canvas, link, website, font,
+        bongo_cat_ui_color_mix(palette.accent, palette.pink, amount));
+    if (hover) bongo_cat_ui_cursor_hover_rect(context, link,
+        BONGO_CAT_UI_CURSOR_POINTER);
+    if (hit(context, link)) open_url("https://bongocat.pet");
+}
+
 static void community_link(BongoCatPreferences *value,
     struct nk_context *context, struct nk_command_buffer *canvas,
     struct nk_rect bounds, int index, BongoCatUIPalette p) {

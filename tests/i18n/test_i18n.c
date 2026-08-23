@@ -1,8 +1,40 @@
 #include "bongo_cat/i18n.h"
+#include "bongo_cat/utf8.h"
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <yyjson.h>
+
+static bool locale_encoding_valid(const char *root, const char *name) {
+    char path[BONGO_CAT_PATH_CAP];
+    snprintf(path, sizeof(path), "%s/%s.json", root, name);
+    FILE *file = fopen(path, "rb");
+    if (!file || fseek(file, 0, SEEK_END) != 0) {
+        if (file) fclose(file);
+        return false;
+    }
+    long end = ftell(file);
+    if (end < 0 || fseek(file, 0, SEEK_SET) != 0) {
+        fclose(file); return false;
+    }
+    size_t length = (size_t)end;
+    char *contents = malloc(length + 1);
+    bool valid = contents && fread(contents, 1, length, file) == length;
+    fclose(file);
+    if (!valid) { free(contents); return false; }
+    contents[length] = '\0';
+    if (length >= 3 && (unsigned char)contents[0] == 0xef &&
+        (unsigned char)contents[1] == 0xbb &&
+        (unsigned char)contents[2] == 0xbf) valid = false;
+    for (size_t i = 0; valid && i + 2 < length; ++i)
+        if ((unsigned char)contents[i] == 0xef &&
+            (unsigned char)contents[i + 1] == 0xbf &&
+            (unsigned char)contents[i + 2] == 0xbd) valid = false;
+    valid = valid && bongo_cat_utf8_valid(contents);
+    free(contents);
+    return valid;
+}
 
 static yyjson_doc *load(const char *root, const char *name) {
     char path[BONGO_CAT_PATH_CAP];
@@ -75,6 +107,22 @@ static bool covers_value(const uint32_t *ranges, yyjson_val *value) {
     return true;
 }
 
+static bool contains_replacement(yyjson_val *value) {
+    if (yyjson_is_str(value)) {
+        const unsigned char *text = (const unsigned char *)yyjson_get_str(value);
+        while (*text) if (next_utf8(&text) == 0xfffd) return true;
+    } else if (yyjson_is_arr(value)) {
+        size_t index, count; yyjson_val *item;
+        yyjson_arr_foreach(value, index, count, item)
+            if (contains_replacement(item)) return true;
+    } else if (yyjson_is_obj(value)) {
+        size_t index, count; yyjson_val *key, *item;
+        yyjson_obj_foreach(value, index, count, key, item)
+            if (contains_replacement(item)) return true;
+    }
+    return false;
+}
+
 int main(void) {
     char root[BONGO_CAT_PATH_CAP];
     snprintf(root, sizeof(root), "%s/resources/assets/locales", BONGO_CAT_NATIVE_SOURCE_DIR);
@@ -94,9 +142,17 @@ int main(void) {
         0x65e5, 0xd55c, 0x00ea, 0x0420, 0x00f1};
     for (int language = 0; language < BONGO_CAT_LANG_COUNT; ++language) {
         const char *name = bongo_cat_language_name((BongoCatLanguage)language);
+        if (!locale_encoding_valid(root, name)) {
+            fprintf(stderr, "Invalid UTF-8 locale encoding: %s\n", name);
+            return 8;
+        }
         yyjson_doc *document = load(root, name);
         if (!document || !same_shape(yyjson_doc_get_root(reference),
-            yyjson_doc_get_root(document), "")) return 2;
+            yyjson_doc_get_root(document), "") ||
+            contains_replacement(yyjson_doc_get_root(document))) {
+            fprintf(stderr, "Invalid replacement character in locale: %s\n", name);
+            return 2;
+        }
         BongoCatError error = {0};
         BongoCatI18n *i18n = bongo_cat_i18n_create(root, (BongoCatLanguage)language, &error);
         uint32_t ranges[2048];

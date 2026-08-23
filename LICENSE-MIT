@@ -4,12 +4,12 @@ SPDX-License-Identifier: MIT
 
 Copyright (c) 2026 vladelaina
 
-The bundled model assets in the `standard`, `keyboard`, and `gamepad`
-directories are provided under the MIT License. This applies to those model
-assets and their accompanying textures, motions, expressions, and input
-artwork only; it does not change the AGPL-3.0-only license of the BongoCat
-source. The canonical copy of this notice is also available at
-`../../LICENSE-MIT`.
+The default built-in model mode (`standard`) and the bundled model assets in
+`resources/assets/models/standard`, `resources/assets/models/keyboard`, and
+`resources/assets/models/gamepad` are provided under the MIT License. This
+license applies to those model assets and their accompanying textures,
+motions, expressions, and input artwork only. It does not relicense the
+BongoCat source code or native runtime, which are covered by AGPL-3.0-only.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of these model assets and associated documentation files (the "Software"), to

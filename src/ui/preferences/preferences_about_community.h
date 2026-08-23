@@ -8,5 +8,9 @@ void bongo_cat_preferences_about_community(
 void bongo_cat_preferences_about_projects_heading(
     BongoCatPreferences *value, struct nk_context *context,
     struct nk_rect bounds);
+void bongo_cat_preferences_about_website(
+    BongoCatPreferences *value, struct nk_context *context,
+    struct nk_command_buffer *canvas, struct nk_rect bounds,
+    BongoCatUIPalette palette);
 
 #endif
