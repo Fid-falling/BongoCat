@@ -1,7 +1,8 @@
 
 <img width="1306" height="950" alt="tip" src="https://github.com/user-attachments/assets/6dc541f1-75f8-41b3-bd71-ff96806de380" />
 
-
+> [!TIP]
+> The model featured in this demonstration is from [宇痕冫](https://www.bilibili.com/video/BV1ZVK56HECF).
 
 
 
