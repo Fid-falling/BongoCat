@@ -213,7 +213,7 @@ void bongo_cat_preferences_about_projects_heading(
     if (hover) bongo_cat_ui_cursor_hover_rect(context, link,
         BONGO_CAT_UI_CURSOR_POINTER);
     if (developer && hit(context, link))
-        open_url("https://vlaina.com/r/bongocat");
+        open_url("https://vladelaina.com");
     centered_wrapped(canvas, nk_rect(bounds.x, bounds.y + 66, bounds.w, 42),
         tr(value, "native.support.refactorDeveloper",
         "Developer who rewrote BongoCat in C and is also its current maintainer"),
