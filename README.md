@@ -3,16 +3,6 @@
 
 
 
-## Bongo Cat History
-
-The original Bongo Cat GIF originated on May 7, 2018, when an animated cat GIF made by Twitter user @StrayRogue was edited by @DitzyFlama, with the edit including bongos which were hit by the cat to the tune of "Athletic" from the Super Mario World soundtrack. The original artist clarified that Bongo Cat was a cat-like blob rather than an actual cat, showing a drawing of the character's full body in another tweet.
-
-It has later been edited to many other songs and many different instruments in fan-made videos, appearing on social media such as YouTube and Twitter. The meme has covered many songs from video game soundtracks, such as music from Persona 5 and Super Mario, as well as mainstream songs such as Toto's "Africa" and Darude's "Sandstorm". After an increase in popularity, Stray Rogue began making and selling Bongo Cat merchandise. Bongo Cat also has been made into an interactive website.
-
-The meme was also developed into key-mapping software in 2018. The program originated from open-source code written by Hamish Duncanson on GitHub, and was later modified by contributors such as MMmmmoko, ayangweb, and kuroni.
-
-In 2023, Bongo Cat's cover of "What Was I Made For?" by Billie Eilish was shared online. The cover went viral on TikTok and fans sang this version during Eilish's concerts in 2024. By 2025, Filipino congressman Francisco "Kiko" Barzaga, representative of Dasmariñas City, made the Bongo Cat cover a part of his public persona, branding himself "Congressmeow" and singing the lyrics "meow meow meow meow" on social media.
-
 
 
 ## Project Status
