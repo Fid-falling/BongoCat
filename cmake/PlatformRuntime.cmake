@@ -25,6 +25,7 @@ elseif(APPLE)
   enable_language(OBJC)
   target_sources(bongo_cat_runtime PRIVATE
     src/platform/macos/macos.m
+    src/platform/macos/macos_preferences.m
     src/platform/macos/macos_input.m
     src/platform/macos/macos_keys.m
     src/platform/macos/macos_menu.m)

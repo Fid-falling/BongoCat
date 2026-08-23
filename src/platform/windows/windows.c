@@ -16,6 +16,10 @@ static HWND native_window(BongoCatPlatform *platform) {
         SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
 }
 
+void bongo_cat_platform_configure_preferences_window(SDL_Window *window) {
+    (void)window;
+}
+
 BongoCatResult bongo_cat_platform_init(BongoCatPlatform *platform, SDL_Window *window,
     BongoCatInputState *input, BongoCatError *error) {
     if (!platform || !window || !input) return BONGO_CAT_ERROR_ARGUMENT;

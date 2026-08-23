@@ -43,6 +43,14 @@ float bongo_cat_ui_sidebar_width(float window_width) {
         BONGO_CAT_UI_SIDEBAR_WIDTH;
 }
 
+bool bongo_cat_ui_native_chrome(void) {
+#ifdef __APPLE__
+    return true;
+#else
+    return false;
+#endif
+}
+
 void bongo_cat_ui_shell_draw(struct nk_context *context, float width,
     float height, bool dark, bool native_frame) {
     BongoCatUIPalette p = bongo_cat_ui_palette(dark);
@@ -101,9 +109,11 @@ static void signature(struct nk_command_buffer *canvas, struct nk_rect bounds,
 
 bool bongo_cat_ui_header(struct nk_context *context, const char *title,
     const struct nk_user_font *font, unsigned int logo_texture,
-    bool *title_clicked, bool interactive, bool dark) {
+    bool *title_clicked, bool interactive, bool dark, bool native_chrome) {
     struct nk_rect bounds;
-    float height = nk_window_get_content_region(context).w < 100 ? 118.0f : 148.0f;
+    bool narrow = nk_window_get_content_region(context).w < 100;
+    float height = narrow ? (native_chrome ? 148.0f : 118.0f) :
+        (native_chrome ? 176.0f : 148.0f);
     nk_layout_row_dynamic(context, height, 1);
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return false;
     BongoCatUIPalette p = bongo_cat_ui_palette(dark);
@@ -115,8 +125,9 @@ bool bongo_cat_ui_header(struct nk_context *context, const char *title,
         "brand-logo-hover", hover ? 1.0f : 0.0f, 250.0f,
         BONGO_CAT_UI_EASE_SPRING);
     size *= 1.0f + .08f * hover_amount;
+    float top = native_chrome ? 41.0f : (narrow ? 10.0f : 13.0f);
     struct nk_rect frame = nk_rect(bounds.x + (bounds.w - size) * .5f,
-        bounds.y + (bounds.w < 100 ? 10.0f : 13.0f) -
+        bounds.y + top -
         (size - (bounds.w < 100 ? 54.0f : 72.0f)) * .5f, size, size);
     float rounding = bounds.w < 100 ? 14.0f : 18.0f;
     if (p.effects) bongo_cat_ui_paint_shadow(context, frame, rounding,
@@ -137,9 +148,14 @@ bool bongo_cat_ui_header(struct nk_context *context, const char *title,
     }
     if (bounds.w >= 100) {
         if (!font) font = bongo_cat_ui_caption_font(context);
-        centered(canvas, nk_rect(bounds.x, bounds.y + 88, bounds.w, 28), title,
+        float title_y = native_chrome ? 116.0f : 88.0f;
+        centered(canvas, nk_rect(bounds.x, bounds.y + title_y, bounds.w, 28), title,
             font, p.pink);
-        signature(canvas, bounds, p);
+        if (native_chrome) {
+            struct nk_rect signature_bounds = nk_rect(bounds.x, bounds.y + 28,
+                bounds.w, bounds.h - 28);
+            signature(canvas, signature_bounds, p);
+        } else signature(canvas, bounds, p);
     }
     if (hover) bongo_cat_ui_cursor_hover_rect(context, bounds,
         BONGO_CAT_UI_CURSOR_POINTER);
@@ -148,7 +164,8 @@ bool bongo_cat_ui_header(struct nk_context *context, const char *title,
     return false;
 }
 bool bongo_cat_ui_content_header(struct nk_context *context,
-    const char *title, int icon, bool interactive, bool dark) {
+    const char *title, int icon, bool interactive, bool dark,
+    bool native_chrome) {
     struct nk_rect bounds;
     nk_layout_row_dynamic(context, BONGO_CAT_UI_HEADER_HEIGHT, 1);
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return false;
@@ -165,6 +182,7 @@ bool bongo_cat_ui_content_header(struct nk_context *context,
         bounds.y + (bounds.h - font->height) * .5f, bounds.w - 110, font->height);
     nk_draw_text(canvas, text, title, nk_strlen(title), font,
         nk_rgba(0, 0, 0, 0), p.accent);
+    if (native_chrome) return false;
     struct nk_rect close = nk_rect(bounds.x + bounds.w - 48, bounds.y + 11, 34, 34);
     return bongo_cat_ui_close_button(context, canvas, close, p.muted,
         p.accent, interactive);

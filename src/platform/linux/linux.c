@@ -24,6 +24,10 @@
 static int instance_lock = -1;
 static BongoCatPlatform *active_platform;
 
+void bongo_cat_platform_configure_preferences_window(SDL_Window *window) {
+    (void)window;
+}
+
 static void publish_instance_window(SDL_Window *window) {
     if (instance_lock < 0 || !window) return;
     Window id = (Window)SDL_GetNumberProperty(SDL_GetWindowProperties(window),

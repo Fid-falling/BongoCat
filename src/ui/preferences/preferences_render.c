@@ -69,7 +69,7 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
         tr(value, "native.support.title", "Support the Developer")};
     bool modal = bongo_cat_preferences_remove_dialog_active(value->app) ||
         bongo_cat_preferences_behavior_dialog_active(value);
-    BongoCatUIPalette p = bongo_cat_ui_palette(dark);
+    const bool native_chrome = bongo_cat_ui_native_chrome(); BongoCatUIPalette p = bongo_cat_ui_palette(dark);
     bongo_cat_ui_shell_draw(context, width, height, dark,
         !value->transparent_window);
     float sidebar = bongo_cat_ui_sidebar_width(width);
@@ -83,7 +83,7 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
     bool title_clicked = false;
     if (nk_group_begin(context, "preferences-sidebar", NK_WINDOW_NO_SCROLLBAR)) {
     bongo_cat_ui_header(context, "BongoCat",
-        value->ui.caption_font, value->logo_texture, &title_clicked, !modal, dark);
+        value->ui.caption_font, value->logo_texture, &title_clicked, !modal, dark, native_chrome);
     if (title_clicked && !SDL_OpenURL("https://bongocat.pet"))
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Cannot open website: %s", SDL_GetError());
     bongo_cat_ui_set_icons(draw_icon, value);
@@ -110,7 +110,7 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
     bool close_requested = false;
     if (nk_group_begin(context, "preferences-content", NK_WINDOW_NO_SCROLLBAR)) {
     close_requested = bongo_cat_ui_content_header(context,
-        menus[value->page], value->page, !modal, dark);
+        menus[value->page], value->page, !modal, dark, native_chrome);
     float body_height = interior_height - BONGO_CAT_UI_HEADER_HEIGHT;
     nk_layout_row_dynamic(context, NK_MAX(120.0f, body_height), 1);
     struct nk_rect body_bounds = nk_widget_bounds(context);

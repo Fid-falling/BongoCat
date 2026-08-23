@@ -101,6 +101,8 @@ bool bongo_cat_platform_relative_pointer(BongoCatPlatform *platform,
 void bongo_cat_platform_relative_pointer_reset(BongoCatPlatform *platform);
 void bongo_cat_platform_set_always_on_top(BongoCatPlatform *platform, bool enabled);
 void bongo_cat_platform_raise_window(SDL_Window *window);
+/* Configure platform-native chrome for the preferences window when available. */
+void bongo_cat_platform_configure_preferences_window(SDL_Window *window);
 bool bongo_cat_platform_open_directory(const char *path);
 bool bongo_cat_platform_set_geometry(BongoCatPlatform *platform,
     int x, int y, int width, int height);

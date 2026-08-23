@@ -41,9 +41,10 @@ typedef void (*BongoCatUIIconDraw)(void *userdata,
     struct nk_color color);
 bool bongo_cat_ui_header(struct nk_context *context, const char *title,
     const struct nk_user_font *font, unsigned int logo_texture,
-    bool *title_clicked, bool interactive, bool dark);
+    bool *title_clicked, bool interactive, bool dark, bool native_chrome);
 bool bongo_cat_ui_content_header(struct nk_context *context,
-    const char *title, int icon, bool interactive, bool dark);
+    const char *title, int icon, bool interactive, bool dark,
+    bool native_chrome);
 bool bongo_cat_ui_close_button(struct nk_context *context,
     struct nk_command_buffer *canvas, struct nk_rect bounds,
     struct nk_color normal, struct nk_color hover, bool interactive);
@@ -58,6 +59,7 @@ bool bongo_cat_ui_draw_icon(struct nk_command_buffer *canvas, int icon,
 void bongo_cat_ui_fallback_icon(struct nk_command_buffer *canvas,
     int icon, struct nk_rect bounds, struct nk_color color);
 float bongo_cat_ui_sidebar_width(float window_width);
+bool bongo_cat_ui_native_chrome(void);
 bool bongo_cat_ui_close_hit(float x, float y, float width);
 bool bongo_cat_ui_title_link_hit(float x, float y, float width);
 bool bongo_cat_ui_title_drag_hit(float x, float y, float width);

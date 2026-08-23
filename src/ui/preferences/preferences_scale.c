@@ -61,6 +61,13 @@ static SDL_HitTestResult SDLCALL preference_hit_test(SDL_Window *window,
     int width = 0, height = 0;
     SDL_GetWindowSize(window, &width, &height);
     int edge = scaled(7.0f, scale);
+#ifdef __APPLE__
+    /* AppKit owns the traffic-light controls in the native titlebar. Do not
+       classify their hit area as a resize corner from SDL's borderless hit
+       test callback. */
+    if (point->x < scaled(100.0f, scale) && point->y < scaled(40.0f, scale))
+        return SDL_HITTEST_NORMAL;
+#endif
     bool left = point->x < edge, right = point->x >= width - edge;
     bool top = point->y < edge, bottom = point->y >= height - edge;
     if (top && left) return SDL_HITTEST_RESIZE_TOPLEFT;
@@ -127,6 +134,7 @@ bool bongo_cat_preferences_open_window(BongoCatPreferences *value) {
             "Transparent preferences window unavailable: %s", SDL_GetError());
         if (!create_window(value, width, height, flags, false)) return false;
     }
+    bongo_cat_platform_configure_preferences_window(value->window);
     SDL_SetWindowPosition(value->window, SDL_WINDOWPOS_CENTERED_DISPLAY(display),
         SDL_WINDOWPOS_CENTERED_DISPLAY(display));
     SDL_SyncWindow(value->window);
