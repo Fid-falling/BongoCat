@@ -136,6 +136,7 @@ int main(void) {
         "native.startup.failed",
         "native.startup.detail",
         "native.startup.diagnosticLog",
+        "native.support.website",
         "native.support.starOnGitHub",
         "native.support.by"};
     const uint32_t expected[] = {'A', 0x4e2d, 0x8a2d, 0x00e7, 0x00fc,

@@ -197,6 +197,7 @@
     },
     "support": {
       "title": "Soutenir l'équipe de développement",
+      "website": "Site web: bongocat.pet",
       "heroText": "Merci pour votre soutien. Chaque utilisation et chaque partage aide BongoCat à continuer de grandir.",
       "version": "Version de l'application",
       "checkUpdate": "Rechercher des mises à jour",

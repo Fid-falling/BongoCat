@@ -233,8 +233,10 @@ static void hero(BongoCatPreferences *value, struct nk_context *context) {
         bounds.y + 18, 144, 144), p);
     hero_title(value, context, canvas, nk_rect(bounds.x + 3, bounds.y + 178,
         bounds.w, 36), p);
-    bongo_cat_preferences_about_website(value, context, canvas,
-        nk_rect(bounds.x, bounds.y + 214, bounds.w, 24), p);
+    bongo_cat_preferences_about_localized_link(value, context, canvas,
+        nk_rect(bounds.x, bounds.y + 214, bounds.w, 24),
+        "native.support.website", "Website: bongocat.pet",
+        "https://bongocat.pet", "support-website-hover", p);
     centered_wrapped(canvas, nk_rect(bounds.x + 36, bounds.y + 242,
         bounds.w - 72, 40),
         tr(value, "native.support.heroText",
