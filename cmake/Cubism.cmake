@@ -47,11 +47,14 @@ include(cmake/CubismShaderOptimize.cmake)
 bongo_cat_optimize_cubism_shaders(Framework)
 
 if(WIN32)
-  target_compile_definitions(Framework PUBLIC CSM_TARGET_WIN_GL)
+  target_compile_definitions(Framework PUBLIC CSM_TARGET_WIN_GL GLEW_NO_GLU)
 elseif(APPLE)
-  target_compile_definitions(Framework PUBLIC CSM_TARGET_MAC_GL)
+  target_compile_definitions(Framework PUBLIC CSM_TARGET_MAC_GL GLEW_NO_GLU)
 else()
-  target_compile_definitions(Framework PUBLIC CSM_TARGET_LINUX_GL)
+  target_compile_definitions(Framework PUBLIC CSM_TARGET_LINUX_GL GLEW_NO_GLU)
 endif()
-target_include_directories(Framework PUBLIC "${CUBISM_GLEW_PATH}/include")
+target_include_directories(Framework SYSTEM PUBLIC
+  "${CUBISM_FRAMEWORK_PATH}/src"
+  "${CUBISM_CORE_PATH}/include"
+  "${CUBISM_GLEW_PATH}/include")
 target_link_libraries(Framework PUBLIC Live2DCubismCore glew_s)
