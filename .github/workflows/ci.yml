@@ -255,7 +255,7 @@ jobs:
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main'
     needs: [publishing-policy, quality]
-    runs-on: windows-latest
+    runs-on: windows-2022
     env:
       CUBISM_SDK_ARCHIVE_URL: ${{ secrets.CUBISM_SDK_ARCHIVE_URL }}
       CUBISM_SDK_ARCHIVE_SHA256: ${{ secrets.CUBISM_SDK_ARCHIVE_SHA256 }}
@@ -272,7 +272,8 @@ jobs:
       - name: Configure Store release
         shell: pwsh
         run: |
-          cmake -S . -B build-store -A x64 `
+          cmake -S . -B build-store -G "Visual Studio 17 2022" `
+            -A x64 -T v143 `
             -DBONGO_CAT_REQUIRE_CUBISM=ON `
             -DBONGO_CAT_WARNINGS_AS_ERRORS=ON
 
