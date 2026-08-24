@@ -39,6 +39,7 @@ body:
         - "Linux - Cinnamon"
         - "Linux - MATE"
         - "Linux - LXQt"
+        - "Linux - Niri"
         - "Linux - Other desktop environment"
     validations:
       required: true
