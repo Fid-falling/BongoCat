@@ -2,8 +2,9 @@
 
 The protected `store-package` job in `.github/workflows/ci.yml` creates a raw
 `bongocat_<app-version>_x64.msix` artifact on pushes to the upstream `main`
-branch. The artifact is intentionally unsigned: Partner Center signs accepted
-MSIX packages with the Microsoft Store certificate during submission.
+branch of `vladelaina/BongoCat`. The artifact is intentionally unsigned:
+Partner Center signs accepted MSIX packages with the Microsoft Store
+certificate during submission.
 
 ## Store identity
 

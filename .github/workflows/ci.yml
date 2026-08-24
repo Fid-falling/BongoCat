@@ -258,7 +258,7 @@ jobs:
   store-package:
     name: package / microsoft-store
     if: >-
-      github.repository == 'bongocat-pet/BongoCat' &&
+      github.repository == 'vladelaina/BongoCat' &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main'
     needs: [publishing-policy, quality]
