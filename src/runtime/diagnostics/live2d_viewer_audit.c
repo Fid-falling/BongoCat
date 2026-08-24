@@ -6,6 +6,7 @@
 #include <SDL3/SDL_opengl.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static const char *metric_parameters[] = {
