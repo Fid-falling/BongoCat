@@ -106,16 +106,11 @@ bool bongo_cat_storage_paths_prepare(BongoCatApp *app,
     if (resolved) {
         snprintf(app->primary_state_root, sizeof(app->primary_state_root),
             "%s", app->state_root);
-        snprintf(app->primary_log_root, sizeof(app->primary_log_root),
-            "%s", app->log_root);
     }
     if (resolved && app->secondary_pet) {
         resolved = bongo_cat_multi_pet_state_directory(app->state_root,
             sizeof(app->state_root), app->primary_state_root,
-            app->secondary_model_id) &&
-            bongo_cat_multi_pet_state_directory(app->log_root,
-                sizeof(app->log_root), app->primary_log_root,
-                app->secondary_model_id);
+            app->secondary_model_id);
     }
     const char *roots[] = {app->config_root, app->data_root, app->cache_root,
         app->state_root, app->log_root};

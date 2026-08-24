@@ -1,6 +1,6 @@
 #include "preferences_state.h"
 #include "preferences_about_community.h"
-#include "preferences_notice.h"
+#include "preferences_about_footer.h"
 #include "ui_backend.h"
 #include "ui_catime.h"
 #include "ui_animation.h"
@@ -151,67 +151,6 @@ static void hero_title(BongoCatPreferences *value, struct nk_context *context,
     link_cursor(context, link); if (hit(context, link))
         open_url("https://github.com/vladelaina/BongoCat");
 }
-static void footer(BongoCatPreferences *value, struct nk_context *context,
-    struct nk_command_buffer *canvas, struct nk_rect bounds,
-    BongoCatUIPalette p) {
-    const char *version_label = tr(value, "native.support.version", "App version");
-    const char *update = tr(value, "native.support.checkUpdate", "Check for updates");
-    const char *feedback = tr(value, "native.support.feedback", "Feedback");
-    char version[32]; snprintf(version, sizeof(version), "v%s", BONGO_CAT_VERSION);
-    float label_width = width(value->ui.caption_font, version_label) + 2;
-    float version_width = width(value->ui.label_font, version) + 2;
-    float update_text_width = width(value->ui.caption_font, update);
-    float update_content_width = 16.0f + 8.0f + update_text_width;
-    float update_width = NK_MAX(110.0f, update_content_width + 28.0f);
-    float feedback_width = NK_MAX(56.0f,
-        width(value->ui.caption_font, feedback) + 4.0f);
-    float total = label_width + version_width + update_width +
-        feedback_width + 36.0f;
-    bool stacked = total > bounds.w;
-    float info_width = label_width + version_width + 8.0f;
-    float x = bounds.x + (bounds.w - (stacked ? info_width : total)) * .5f;
-    float info_y = bounds.y + (stacked ? -8.0f : 0.0f);
-    centered(canvas, nk_rect(x, info_y, label_width, 36), version_label,
-        value->ui.caption_font, p.muted);
-    centered(canvas, nk_rect(x + label_width + 8, info_y,
-        version_width, 36), version, value->ui.label_font, p.text);
-    float actions_width = update_width + feedback_width + 14.0f;
-    float actions_x = stacked ? bounds.x + (bounds.w - actions_width) * .5f :
-        x + info_width + 14.0f;
-    float actions_y = bounds.y + (stacked ? 22.0f : 0.0f);
-    struct nk_rect update_button = nk_rect(actions_x, actions_y, update_width, 36);
-    if (p.effects) bongo_cat_ui_paint_shadow(context, update_button, 10,
-        0, 4, 14, 0, nk_rgba(p.accent.r, p.accent.g, p.accent.b, 89));
-    nk_fill_rect(canvas, update_button, 10, p.accent);
-    float update_content_x = update_button.x +
-        (update_button.w - update_content_width) * .5f;
-    bongo_cat_preferences_icon_draw(value, canvas,
-        BONGO_CAT_UI_ICON_SYNC, nk_rect(update_content_x,
-        update_button.y + 10, 16, 16), nk_rgb(255, 255, 255));
-    centered(canvas, nk_rect(update_content_x + 24, update_button.y,
-        update_text_width + 1, update_button.h), update,
-        value->ui.caption_font, nk_rgb(255, 255, 255));
-    link_cursor(context, update_button);
-    if (hit(context, update_button)) {
-        char message[160];
-        snprintf(message, sizeof(message), "%s v%s", tr(value,
-            "native.support.latest", "Already up to date"),
-            BONGO_CAT_VERSION);
-        bongo_cat_preferences_notice_show(value->app, message, false);
-    }
-    struct nk_rect feedback_link = nk_rect(actions_x + update_width + 14,
-        actions_y, feedback_width, 36);
-    bool feedback_hover = nk_input_is_mouse_hovering_rect(&context->input, feedback_link);
-    float feedback_amount = bongo_cat_ui_animate_eased(context,
-        "support-feedback-hover", feedback_hover ? 1.0f : 0.0f, 200,
-        BONGO_CAT_UI_EASE_STANDARD);
-    centered(canvas, feedback_link, feedback, value->ui.caption_font,
-        bongo_cat_ui_color_mix(p.accent, p.pink, feedback_amount));
-    link_cursor(context, feedback_link);
-    if (hit(context, feedback_link))
-        open_url("https://github.com/vladelaina/BongoCat/issues");
-}
-
 void bongo_cat_preferences_about_hero(BongoCatPreferences *value,
     struct nk_context *context) {
     struct nk_rect bounds;
@@ -243,7 +182,7 @@ void bongo_cat_preferences_about_hero(BongoCatPreferences *value,
         tr(value, "native.support.heroText",
         "Thank you for your support. Every use and share helps BongoCat grow."),
         value->ui.caption_font, p.muted);
-    footer(value, context, canvas,
+    bongo_cat_preferences_about_footer(value, context, canvas,
         nk_rect(bounds.x, bounds.y + 286, bounds.w, 34), p);
 }
 static void project(BongoCatPreferences *value, struct nk_context *context,

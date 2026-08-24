@@ -147,6 +147,7 @@ set(BONGO_CAT_UI_PREFERENCES_SOURCES
   src/ui/preferences/preferences.c
   src/ui/preferences/preferences_about.c
   src/ui/preferences/preferences_about_community.c
+  src/ui/preferences/preferences_about_footer.c
   src/ui/preferences/preferences_about_page.c
   src/ui/preferences/preferences_assets.c
   src/ui/preferences/preferences_behavior_dialog.c

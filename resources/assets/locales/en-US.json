@@ -202,6 +202,8 @@
       "version": "App version",
       "checkUpdate": "Check for updates",
       "feedback": "Feedback",
+      "openLogs": "Open logs",
+      "openLogsFailed": "Unable to open logs folder",
       "latest": "Already up to date",
       "works": "More apps",
       "worksText": "More software from vladelaina",

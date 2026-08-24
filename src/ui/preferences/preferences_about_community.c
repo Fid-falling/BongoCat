@@ -74,7 +74,7 @@ void bongo_cat_preferences_about_localized_link(BongoCatPreferences *value,
     float amount = bongo_cat_ui_animate_eased(context, animation_id,
         hover ? 1.0f : 0.0f, 200, BONGO_CAT_UI_EASE_STANDARD);
     centered(canvas, link, label, font,
-        bongo_cat_ui_color_mix(palette.accent, palette.pink, amount));
+        bongo_cat_ui_color_mix(palette.pink, palette.accent, amount));
     if (hover) bongo_cat_ui_cursor_hover_rect(context, link,
         BONGO_CAT_UI_CURSOR_POINTER);
     if (hit(context, link)) open_url(url);

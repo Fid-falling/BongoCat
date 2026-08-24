@@ -202,6 +202,8 @@
       "version": "應用程式版本",
       "checkUpdate": "檢查更新",
       "feedback": "意見回饋",
+      "openLogs": "開啟日誌",
+      "openLogsFailed": "無法開啟日誌資料夾",
       "latest": "已是最新版本",
       "works": "更多作品",
       "worksText": "來自 vladelaina 的其他軟體",

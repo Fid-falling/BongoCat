@@ -58,7 +58,6 @@ typedef struct BongoCatApp {
     char nearby_root[BONGO_CAT_PATH_CAP];
     char executable_path[BONGO_CAT_PATH_CAP];
     char primary_state_root[BONGO_CAT_PATH_CAP];
-    char primary_log_root[BONGO_CAT_PATH_CAP];
     char secondary_model_id[BONGO_CAT_ID_CAP];
     char smoke_import_path[BONGO_CAT_PATH_CAP];
     char smoke_model[BONGO_CAT_ID_CAP];

@@ -202,6 +202,8 @@
       "version": "应用版本",
       "checkUpdate": "检查更新",
       "feedback": "反馈建议",
+      "openLogs": "打开日志",
+      "openLogsFailed": "无法打开日志文件夹",
       "latest": "已是最新版本",
       "works": "更多作品",
       "worksText": "来自 vladelaina 的其他软件",

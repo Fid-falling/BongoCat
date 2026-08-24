@@ -202,6 +202,8 @@
       "version": "Versión de la aplicación",
       "checkUpdate": "Buscar actualizaciones",
       "feedback": "Comentarios",
+      "openLogs": "Abrir registros",
+      "openLogsFailed": "No se pudo abrir la carpeta de registros",
       "latest": "Ya está actualizado",
       "works": "Más aplicaciones",
       "worksText": "Más software de vladelaina",

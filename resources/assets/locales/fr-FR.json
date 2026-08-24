@@ -202,6 +202,8 @@
       "version": "Version de l'application",
       "checkUpdate": "Rechercher des mises à jour",
       "feedback": "Commentaires",
+      "openLogs": "Ouvrir les journaux",
+      "openLogsFailed": "Impossible d'ouvrir le dossier des journaux",
       "latest": "Déjà à jour",
       "works": "Plus d'applications",
       "worksText": "Plus de logiciels de vladelaina",

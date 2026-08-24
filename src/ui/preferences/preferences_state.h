@@ -41,6 +41,7 @@ struct BongoCatPreferences {
     int catime_width, catime_height;
     int vlaina_width, vlaina_height;
     bool support_assets_loaded;
+    struct nk_user_font support_logs_font;
     int page;
     int style_theme;
     BongoCatLanguage font_language;

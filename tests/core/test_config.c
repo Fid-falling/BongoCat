@@ -205,7 +205,15 @@ void test_config(void) {
     CHECK(loaded_settings.model.max_fps == 240);
     CHECK(loaded_session.window.scale_percent == 10.0f);
 
+    const char *append_path = "bongocat-append.log";
+    if (bongo_cat_path_is_file(append_path))
+        CHECK(bongo_cat_file_remove(append_path));
+    CHECK(bongo_cat_file_append(append_path, "first\n", 6));
+    CHECK(bongo_cat_file_append(append_path, "second\n", 7));
+    CHECK(contains_text(append_path, "first\nsecond\n"));
+
     CHECK(bongo_cat_file_remove(settings_path));
     CHECK(bongo_cat_file_remove(session_path));
     CHECK(bongo_cat_file_remove(unsupported));
+    CHECK(bongo_cat_file_remove(append_path));
 }

@@ -146,9 +146,13 @@ void bongo_cat_model_refresh_update(BongoCatApp *app) {
         SDL_Log("Background model refresh completed: models=%llu changed=%d "
             "elapsed_ms=%.1f", (unsigned long long)job->models.count,
             changed, (SDL_GetTicksNS() - job->started_ns) / 1000000.0);
-    }
+    } else if (!job->success)
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+            "Background model refresh failed: not enough memory");
     free(job);
-    if (refresh->rerun) start_refresh(app);
+    if (refresh->rerun && !start_refresh(app))
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+            "Cannot restart background model refresh: %s", SDL_GetError());
 }
 
 bool bongo_cat_model_refresh_event(BongoCatApp *app,
