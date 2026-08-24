@@ -26,9 +26,9 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+$repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 if (-not $Destination) {
-    $Destination = Join-Path $repositoryRoot 'vendor\CubismSdkForNative'
+    $Destination = Join-Path $repositoryRoot 'vendor/CubismSdkForNative'
 }
 
 if ([string]::IsNullOrWhiteSpace($ArchiveUrl) -or
@@ -72,9 +72,9 @@ try {
 
     Expand-Archive -LiteralPath $archivePath -DestinationPath $extractPath -Force
     $rootCandidate = Get-Item -LiteralPath $extractPath
-    if (-not (Test-Path (Join-Path $rootCandidate.FullName "Core\include\Live2DCubismCore.h"))) {
+    if (-not (Test-Path (Join-Path $rootCandidate.FullName "Core/include/Live2DCubismCore.h"))) {
         $rootCandidate = Get-ChildItem -LiteralPath $extractPath -Directory -Recurse |
-            Where-Object { Test-Path (Join-Path $_.FullName "Core\include\Live2DCubismCore.h") } |
+            Where-Object { Test-Path (Join-Path $_.FullName "Core/include/Live2DCubismCore.h") } |
             Select-Object -First 1
     }
     if (-not $rootCandidate) {
@@ -82,9 +82,12 @@ try {
     }
 
     $required = @(
-        (Join-Path $rootCandidate.FullName "Core\include\Live2DCubismCore.h"),
-        (Join-Path $rootCandidate.FullName "Core\lib\windows\x86_64\143\Live2DCubismCore_MT.lib"),
-        (Join-Path $rootCandidate.FullName "Framework\CMakeLists.txt")
+        (Join-Path $rootCandidate.FullName "Core/include/Live2DCubismCore.h"),
+        (Join-Path $rootCandidate.FullName "Core/lib/windows/x86_64/143/Live2DCubismCore_MT.lib"),
+        (Join-Path $rootCandidate.FullName "Core/lib/linux/x86_64/libLive2DCubismCore.a"),
+        (Join-Path $rootCandidate.FullName "Core/lib/macos/x86_64/libLive2DCubismCore.a"),
+        (Join-Path $rootCandidate.FullName "Core/lib/macos/arm64/libLive2DCubismCore.a"),
+        (Join-Path $rootCandidate.FullName "Framework/CMakeLists.txt")
     )
     foreach ($path in $required) {
         if (-not (Test-Path -LiteralPath $path)) {
@@ -101,9 +104,9 @@ try {
     Expand-Archive -LiteralPath $glewArchivePath -DestinationPath $extractPath -Force
     $glewRoot = Get-ChildItem -LiteralPath $extractPath -Directory -Recurse |
         Where-Object {
-            (Test-Path (Join-Path $_.FullName 'build\cmake\CMakeLists.txt')) -and
-            (Test-Path (Join-Path $_.FullName 'include\GL\glew.h')) -and
-            (Test-Path (Join-Path $_.FullName 'src\glew.c'))
+            (Test-Path (Join-Path $_.FullName 'build/cmake/CMakeLists.txt')) -and
+            (Test-Path (Join-Path $_.FullName 'include/GL/glew.h')) -and
+            (Test-Path (Join-Path $_.FullName 'src/glew.c'))
         } |
         Select-Object -First 1
     if (-not $glewRoot) {
@@ -113,14 +116,14 @@ try {
     Remove-Item -LiteralPath $Destination -Recurse -Force -ErrorAction SilentlyContinue
     New-Item -ItemType Directory -Force -Path $Destination | Out-Null
     Get-ChildItem -LiteralPath $rootCandidate.FullName -Force | Copy-Item -Destination $Destination -Recurse -Force
-    $glewDestination = Join-Path $Destination 'Samples\OpenGL\thirdParty\glew'
+    $glewDestination = Join-Path $Destination 'Samples/OpenGL/thirdParty/glew'
     New-Item -ItemType Directory -Force -Path $glewDestination | Out-Null
     Get-ChildItem -LiteralPath $glewRoot.FullName -Force |
         Copy-Item -Destination $glewDestination -Recurse -Force
     $requiredGlew = @(
-        (Join-Path $glewDestination 'build\cmake\CMakeLists.txt'),
-        (Join-Path $glewDestination 'include\GL\glew.h'),
-        (Join-Path $glewDestination 'src\glew.c')
+        (Join-Path $glewDestination 'build/cmake/CMakeLists.txt'),
+        (Join-Path $glewDestination 'include/GL/glew.h'),
+        (Join-Path $glewDestination 'src/glew.c')
     )
     foreach ($path in $requiredGlew) {
         if (-not (Test-Path -LiteralPath $path)) {

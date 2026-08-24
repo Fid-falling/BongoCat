@@ -163,8 +163,94 @@ jobs:
         if: runner.os != 'Windows'
         run: ctest --test-dir build --output-on-failure
 
+  desktop-package:
+    name: package / ${{ matrix.platform }}
+    if: >-
+      github.repository == 'vladelaina/BongoCat' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main'
+    needs: [publishing-policy, quality]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x64
+          - os: macos-latest
+            platform: macos
+    runs-on: ${{ matrix.os }}
+    env:
+      CUBISM_SDK_ARCHIVE_URL: ${{ secrets.CUBISM_SDK_ARCHIVE_URL }}
+      CUBISM_SDK_ARCHIVE_SHA256: ${{ secrets.CUBISM_SDK_ARCHIVE_SHA256 }}
+      CUBISM_GLEW_ARCHIVE_URL: ${{ secrets.CUBISM_GLEW_ARCHIVE_URL }}
+      CUBISM_GLEW_ARCHIVE_SHA256: ${{ secrets.CUBISM_GLEW_ARCHIVE_SHA256 }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Restore licensed Cubism SDK
+        shell: pwsh
+        run: ./.github/scripts/restore-cubism-sdk.ps1
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build libgl1-mesa-dev libx11-dev libxi-dev \
+            libxfixes-dev
+
+      - name: Configure release
+        run: |
+          cmake -S . -B build-package -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBONGO_CAT_REQUIRE_CUBISM=ON \
+            -DBONGO_CAT_WARNINGS_AS_ERRORS=ON
+
+      - name: Build release
+        run: bash .github/scripts/build-unix.sh cmake --build build-package --parallel 2
+
+      - name: Test release
+        run: ctest --test-dir build-package --output-on-failure
+
+      - name: Package desktop release
+        id: package
+        shell: pwsh
+        run: |
+          $header = Get-Content build-package/generated/bongo_cat/version.h -Raw
+          if ($header -notmatch '#define\s+BONGO_CAT_VERSION\s+"([^"]+)"') {
+            throw 'Unable to read the BongoCat version'
+          }
+          $version = $Matches[1]
+          $name = (Get-Content build-package/bongo-cat-package-name.txt -Raw).Trim()
+          $platform = if ($IsLinux) { 'linux-x64' } else { 'macos-(x64|arm64)' }
+          if ($name -notmatch "^BongoCat-$([regex]::Escape($version))-$platform$") {
+            throw "Cubism desktop package is not production-ready: $name"
+          }
+
+          cmake --build build-package --target package
+          $archives = @(Get-ChildItem build-package/dist -File | Where-Object {
+            $_.Name -match '\.(zip|tar\.gz)$'
+          })
+          if ($archives.Count -ne 1) {
+            throw "Expected one desktop archive, found $($archives.Count)"
+          }
+          if (-not (Test-Path -LiteralPath "$($archives[0].FullName).sha256")) {
+            throw 'Desktop archive checksum is missing'
+          }
+          "name=$name" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Upload desktop release
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.package.outputs.name }}-${{ github.run_number }}-${{ github.run_attempt }}
+          path: build-package/dist/${{ steps.package.outputs.name }}.*
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
   store-package:
-    name: package / windows-production
+    name: package / windows-x64
     if: >-
       github.repository == 'vladelaina/BongoCat' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
@@ -289,7 +375,7 @@ jobs:
       - name: Upload Windows desktop release
         uses: actions/upload-artifact@v7
         with:
-          name: production-${{ steps.desktop-package.outputs.name }}-${{ github.run_number }}-${{ github.run_attempt }}
+          name: ${{ steps.desktop-package.outputs.name }}-${{ github.run_number }}-${{ github.run_attempt }}
           path: |
             build-store/dist/${{ steps.desktop-package.outputs.name }}.zip
             build-store/dist/${{ steps.desktop-package.outputs.name }}.zip.sha256
