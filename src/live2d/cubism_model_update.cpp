@@ -10,7 +10,6 @@
 #include <Rendering/OpenGL/CubismOffscreenManager_OpenGLES2.hpp>
 #include <algorithm>
 #include <cmath>
-#include <cstdlib>
 namespace bongo_cat {
 
 void NativeModel::resize(int width, int height) {
@@ -177,19 +176,6 @@ bool NativeModel::parameter(const char *id, float *minimum, float *maximum, floa
     if (maximum) *maximum = _model->GetParameterMaximumValue(index);
     if (value) *value = _model->GetParameterValue(index);
     return true;
-}
-
-void NativeModel::start_idle_motion() {
-    if (idle_motion_keys_.empty()) return;
-    constexpr int priority = 1;
-    if (!_motionManager->ReserveMotion(priority)) return;
-    int next = std::rand() % (int)idle_motion_keys_.size();
-    if (next == last_idle_motion_) next = (next + 1) % (int)idle_motion_keys_.size();
-    last_idle_motion_ = next;
-    const std::string &key = idle_motion_keys_[(size_t)next];
-    auto found = motions_.find(key);
-    if (found != motions_.end())
-        _motionManager->StartMotionPriority(found->second, false, priority);
 }
 
 void NativeModel::capture_motion_preview() {

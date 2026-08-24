@@ -5,7 +5,8 @@ if(WIN32)
   target_link_libraries(bongo_cat_tool_support PUBLIC bongo_cat_warnings)
 
   add_executable(cubism_viewer_desktop_capture EXCLUDE_FROM_ALL
-    src/tools/cubism_viewer_desktop_capture.c)
+    src/tools/cubism_viewer_desktop_capture.c
+    src/tools/cubism_viewer_desktop_capture_dxgi.c)
   target_compile_definitions(cubism_viewer_desktop_capture PRIVATE
     _CRT_SECURE_NO_WARNINGS)
   target_link_libraries(cubism_viewer_desktop_capture PRIVATE
@@ -26,7 +27,8 @@ if(WIN32)
     user32 gdi32 ole32)
 
   add_executable(cubism_viewer_blind_test EXCLUDE_FROM_ALL
-    src/tools/cubism_viewer_blind_test.c)
+    src/tools/cubism_viewer_blind_test.c
+    src/tools/cubism_viewer_blind_frames.c)
   target_compile_definitions(cubism_viewer_blind_test PRIVATE
     _CRT_SECURE_NO_WARNINGS)
   target_link_libraries(cubism_viewer_blind_test PRIVATE
@@ -40,7 +42,8 @@ if(WIN32)
     bongo_cat_validation_image bongo_cat_warnings ole32)
 
   add_executable(mver_phase_metrics EXCLUDE_FROM_ALL
-    src/tools/mver_phase_metrics.c)
+    src/tools/mver_phase_metrics.c
+    src/tools/mver_phase_frames.c)
   target_compile_definitions(mver_phase_metrics PRIVATE
     _CRT_SECURE_NO_WARNINGS)
   target_link_libraries(mver_phase_metrics PRIVATE

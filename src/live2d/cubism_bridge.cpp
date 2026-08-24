@@ -3,7 +3,7 @@
 #if defined(CSM_TARGET_WIN_GL) || defined(CSM_TARGET_LINUX_GL)
 #include <GL/glew.h>
 #endif
-#include "cubism_model.hpp"
+#include "cubism_runtime.hpp"
 
 #include <CubismFramework.hpp>
 #include <SDL3/SDL_filesystem.h>
@@ -115,13 +115,6 @@ void stop_framework() {
 }
 
 } // namespace
-
-struct BongoCatLive2D {
-    bongo_cat::NativeModel *model;
-    int width = 612;
-    int height = 354;
-    bool cover_runtime = false;
-};
 
 static BongoCatLive2D *create_runtime(const char *asset_root,
     bool cover_runtime, BongoCatError *error) {
@@ -295,6 +288,3 @@ extern "C" bool bongo_cat_live2d_prepare_cover(BongoCatLive2D *runtime) {
     try { return runtime && runtime->cover_runtime && runtime->model &&
         runtime->model->prepare_cover(); } catch (...) { return false; }
 }
-extern "C" bool bongo_cat_live2d_visual_state(const BongoCatLive2D *runtime,
-    BongoCatLive2DVisualState *state) {
-    return runtime && runtime->model && runtime->model->visual_state(state); }

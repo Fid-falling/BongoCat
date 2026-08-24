@@ -18,5 +18,11 @@ bool bongo_cat_pref_form_begin(struct nk_context *context, const char *id,
 void bongo_cat_pref_form_end(struct nk_context *context,
     const FormStyle *saved);
 void bongo_cat_pref_form_label(struct nk_context *context, const char *title);
+int bongo_cat_pref_detail_lines(const struct nk_context *context,
+    const char *text);
+void bongo_cat_pref_form_title_sized(struct nk_context *context,
+    const char *title, float control_width);
+void bongo_cat_pref_description(struct nk_context *context,
+    const char *text, int lines);
 
 #endif

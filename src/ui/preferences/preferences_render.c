@@ -1,4 +1,5 @@
 #include "preferences_state.h"
+#include "preferences_page_dispatch.h"
 #include "preferences_controls.h"
 #include "preferences_notice.h"
 #include "ui_catime.h"
@@ -17,15 +18,6 @@ static const char *tr(const BongoCatPreferences *value, const char *key, const c
 static void draw_icon(void *userdata, struct nk_command_buffer *canvas, int icon,
     struct nk_rect bounds, struct nk_color color) {
     bongo_cat_preferences_icon_draw(userdata, canvas, icon, bounds, color); }
-static void draw_page(BongoCatPreferences *value, struct nk_context *context) {
-    switch (value->page) {
-    case 0: bongo_cat_preferences_page_cat(value->app, context); break;
-    case 1: bongo_cat_preferences_page_general(value->app, context); break;
-    case 2: bongo_cat_preferences_page_model(value, context); break;
-    case 3: bongo_cat_preferences_page_shortcuts(value, context); break;
-    default: bongo_cat_preferences_page_about(value, context); break;
-    }
-}
 static RootStyle root_style_save(struct nk_context *context) {
     RootStyle saved;
     saved.padding = context->style.window.padding;
@@ -149,7 +141,7 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
         context->input.mouse.scroll_delta = nk_vec2(0, 0);
     }
     if (nk_group_begin(context, page_ids[value->page], 0)) {
-        draw_page(value, context);
+        bongo_cat_preferences_draw_page(value, context);
         float wheel = context->input.mouse.scroll_delta.y;
         struct nk_panel *layout = context->current->layout;
         float maximum = layout ? NK_MAX(0.0f, layout->at_y + layout->row.height - layout->bounds.y - layout->bounds.h) : 0.0f;

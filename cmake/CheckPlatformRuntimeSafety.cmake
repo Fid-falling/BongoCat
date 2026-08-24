@@ -108,6 +108,8 @@ if(MANIFEST_POSITION EQUAL -1)
 endif()
 
 file(READ "${ROOT}/cmake/Packaging.cmake" WINDOWS_PACKAGING)
+file(READ "${ROOT}/cmake/PackagingPlatform.cmake" WINDOWS_PACKAGE_PLATFORM)
+string(APPEND WINDOWS_PACKAGING "\n${WINDOWS_PACKAGE_PLATFORM}")
 string(FIND "${WINDOWS_PACKAGING}" "RequestExecutionLevel user"
   INSTALLER_LEVEL_POSITION)
 string(FIND "${WINDOWS_PACKAGING}"

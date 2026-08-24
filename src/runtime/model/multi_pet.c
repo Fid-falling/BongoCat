@@ -222,18 +222,6 @@ void bongo_cat_multi_pet_update(BongoCatApp *app, uint64_t now) {
     else bongo_cat_multi_pet_primary_update(app, now);
 }
 
-bool bongo_cat_app_model_active(const BongoCatApp *app, const char *id) {
-    if (!app || !id) return false;
-    if (!strcmp(app->session.active_model_id, id)) return true;
-    return app->settings.model.multiple_pets &&
-        bongo_cat_session_model_active(&app->session, id);
-}
-
-size_t bongo_cat_app_active_model_count(const BongoCatApp *app) {
-    return app && app->settings.model.multiple_pets
-        ? 1 + app->session.additional_model_count : app ? 1 : 0;
-}
-
 static bool load_pet_window(const BongoCatApp *app, const char *model_id,
     BongoCatWindowState *window) {
     char directory[BONGO_CAT_PATH_CAP], path[BONGO_CAT_PATH_CAP];

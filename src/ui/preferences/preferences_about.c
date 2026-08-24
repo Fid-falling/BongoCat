@@ -212,7 +212,8 @@ static void footer(BongoCatPreferences *value, struct nk_context *context,
         open_url("https://github.com/vladelaina/BongoCat/issues");
 }
 
-static void hero(BongoCatPreferences *value, struct nk_context *context) {
+void bongo_cat_preferences_about_hero(BongoCatPreferences *value,
+    struct nk_context *context) {
     struct nk_rect bounds;
     nk_layout_row_dynamic(context, 320, 1);
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return;
@@ -276,7 +277,8 @@ static void project(BongoCatPreferences *value, struct nk_context *context,
     if (hit(context, bounds)) open_url(url);
 }
 
-static void projects(BongoCatPreferences *value, struct nk_context *context) {
+void bongo_cat_preferences_about_projects(BongoCatPreferences *value,
+    struct nk_context *context) {
     struct nk_rect bounds;
     nk_layout_row_dynamic(context, 330, 1);
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return;
@@ -293,11 +295,4 @@ static void projects(BongoCatPreferences *value, struct nk_context *context) {
         card_width, 200), value->vlaina_texture, value->vlaina_width,
         value->vlaina_height, "vlaina", "https://vlaina.com",
         true, p);
-}
-void bongo_cat_preferences_page_about(BongoCatPreferences *value,
-    struct nk_context *context) {
-    bongo_cat_preferences_support_assets_load(value);
-    hero(value, context);
-    projects(value, context);
-    bongo_cat_preferences_about_community(value, context);
 }

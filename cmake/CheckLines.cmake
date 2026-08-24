@@ -22,33 +22,7 @@ foreach(FILE IN LISTS FILES)
   file(RELATIVE_PATH RELATIVE_FILE "${ROOT}" "${FILE}")
   string(REPLACE "\\" "/" RELATIVE_FILE "${RELATIVE_FILE}")
 
-  set(LIMIT 300)
-  if(RELATIVE_FILE STREQUAL "src/media/image.c")
-    set(LIMIT 332)
-  elseif(RELATIVE_FILE STREQUAL "src/tools/cubism_viewer_blind_test.c")
-    set(LIMIT 376)
-  elseif(RELATIVE_FILE STREQUAL "src/tools/cubism_viewer_desktop_capture.c")
-    set(LIMIT 396)
-  elseif(RELATIVE_FILE STREQUAL "src/tools/mver_phase_metrics.c")
-    set(LIMIT 321)
-  elseif(RELATIVE_FILE STREQUAL
-      "src/runtime/diagnostics/live2d_audit.c")
-    set(LIMIT 320)
-  elseif(RELATIVE_FILE STREQUAL
-      "src/ui/preferences/preferences_import.c")
-    set(LIMIT 320)
-  elseif(RELATIVE_FILE STREQUAL
-      "src/ui/preferences/preferences_widgets.c")
-    set(LIMIT 350)
-  elseif(RELATIVE_FILE STREQUAL
-      "src/runtime/lifecycle/startup.c")
-    set(LIMIT 305)
-  elseif(RELATIVE_FILE STREQUAL
-      "src/ui/preferences/preferences_about.c")
-    set(LIMIT 301)
-  elseif(RELATIVE_FILE STREQUAL "tests/core/test_config.c")
-    set(LIMIT 309)
-  endif()
+  set(LIMIT 299)
 
   if(COUNT GREATER LIMIT)
     list(APPEND FAILED "${RELATIVE_FILE}: ${COUNT} (limit ${LIMIT})")

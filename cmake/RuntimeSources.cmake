@@ -31,6 +31,7 @@ set(BONGO_CAT_RENDER_SOURCES
 set(BONGO_CAT_RUNTIME_LIFECYCLE_SOURCES
   src/runtime/lifecycle/app.c
   src/runtime/lifecycle/app_entry.c
+  src/runtime/lifecycle/app_input.c
   src/runtime/lifecycle/assets.c
   src/runtime/lifecycle/config_store.c
   src/runtime/lifecycle/frame_clock.c
@@ -47,7 +48,9 @@ set(BONGO_CAT_RUNTIME_DIAGNOSTIC_SOURCES
   src/runtime/diagnostics/frame_audit.c
   src/runtime/diagnostics/frame_presentation_audit.c
   src/runtime/diagnostics/live2d_audit.c
+  src/runtime/diagnostics/live2d_audit_scenario.c
   src/runtime/diagnostics/live2d_viewer_audit.c
+  src/runtime/diagnostics/live2d_viewer_timing.c
   src/runtime/diagnostics/live2d_visual_audit.c)
 
 set(BONGO_CAT_RUNTIME_INPUT_SOURCES
@@ -61,7 +64,9 @@ set(BONGO_CAT_RUNTIME_MODEL_SOURCES
   src/runtime/model/model_catalog_runtime.c
   src/runtime/model/model_catalog_refresh.c
   src/runtime/model/model_files.c
+  src/runtime/model/model_geometry.c
   src/runtime/model/multi_pet.c
+  src/runtime/model/multi_pet_selection.c
   src/runtime/model/multi_pet_process.c
   src/runtime/model/multi_pet_settings.c
   src/runtime/model/model_storage.c
@@ -71,6 +76,7 @@ set(BONGO_CAT_RUNTIME_IMPORT_SOURCES
   src/runtime/model/import/model_import.c
   src/runtime/model/import/model_import_adapter.c
   src/runtime/model/import/model_import_digest.c
+  src/runtime/model/import/model_import_digest_api.c
   src/runtime/model/import/model_import_digest_cache.c
   src/runtime/model/import/model_import_discovery.c
   src/runtime/model/import/model_import_format.c
@@ -141,6 +147,7 @@ set(BONGO_CAT_UI_PREFERENCES_SOURCES
   src/ui/preferences/preferences.c
   src/ui/preferences/preferences_about.c
   src/ui/preferences/preferences_about_community.c
+  src/ui/preferences/preferences_about_page.c
   src/ui/preferences/preferences_assets.c
   src/ui/preferences/preferences_behavior_dialog.c
   src/ui/preferences/preferences_behavior_rename.c
@@ -163,6 +170,7 @@ set(BONGO_CAT_UI_PREFERENCES_SOURCES
   src/ui/preferences/preferences_model_rename.c
   src/ui/preferences/preferences_notice.c
   src/ui/preferences/preferences_overlay.c
+  src/ui/preferences/preferences_page_dispatch.c
   src/ui/preferences/preferences_pages.c
   src/ui/preferences/preferences_render.c
   src/ui/preferences/preferences_scale.c
@@ -174,6 +182,7 @@ set(BONGO_CAT_UI_PREFERENCES_SOURCES
   src/ui/preferences/preferences_text_session.c
   src/ui/preferences/preferences_theme.c
   src/ui/preferences/preferences_toggle.c
+  src/ui/preferences/preferences_widget_shortcut.c
   src/ui/preferences/preferences_widgets.c
   src/ui/preferences/preferences_widgets_compound.c)
 

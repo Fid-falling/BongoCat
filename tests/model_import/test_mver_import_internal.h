@@ -1,0 +1,16 @@
+#ifndef BONGO_CAT_TEST_MVER_IMPORT_INTERNAL_H
+#define BONGO_CAT_TEST_MVER_IMPORT_INTERNAL_H
+
+#include <stdio.h>
+
+extern int failures;
+
+#define CHECK(value) do { if (!(value)) { \
+    fprintf(stderr, "%s:%d: check failed: %s\n", \
+        __FILE__, __LINE__, #value); \
+    failures++; \
+} } while (0)
+
+void test_mver_container_discovery(void);
+
+#endif

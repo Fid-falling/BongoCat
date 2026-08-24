@@ -2,7 +2,7 @@
 #include <windows.h>
 #include <objbase.h>
 
-#include "validation_image.h"
+#include "mver_phase_frames.h"
 
 #include <locale.h>
 #include <math.h>
@@ -11,18 +11,7 @@
 #include <string.h>
 #include <wchar.h>
 
-enum { PIXEL_STEP = 4, REGION_COUNT = 4 };
-
-typedef struct PathList {
-    wchar_t **items;
-    size_t count;
-    size_t capacity;
-} PathList;
-
-typedef struct Frame {
-    int width, height, grid_width, grid_height;
-    unsigned char *bgr;
-} Frame;
+enum { REGION_COUNT = 4 };
 
 typedef struct Score {
     long long absolute[REGION_COUNT];
@@ -42,102 +31,6 @@ typedef struct Candidate {
     double similarity[REGION_COUNT];
     double motion[REGION_COUNT];
 } Candidate;
-
-static wchar_t *join_path(const wchar_t *directory, const wchar_t *name) {
-    size_t a = wcslen(directory), b = wcslen(name);
-    wchar_t *result = (wchar_t *)malloc((a + b + 2) * sizeof(*result));
-    if (result) swprintf(result, a + b + 2, L"%ls\\%ls", directory, name);
-    return result;
-}
-
-static int reserve_paths(PathList *list) {
-    size_t capacity = list->capacity ? list->capacity * 2 : 32;
-    wchar_t **items;
-    if (capacity < list->capacity || capacity > SIZE_MAX / sizeof(*items)) return 0;
-    items = (wchar_t **)realloc(list->items, capacity * sizeof(*items));
-    if (!items) return 0;
-    list->items = items; list->capacity = capacity;
-    return 1;
-}
-
-static void free_paths(PathList *list) {
-    size_t index;
-    for (index = 0; index < list->count; ++index) free(list->items[index]);
-    free(list->items); memset(list, 0, sizeof(*list));
-}
-
-static int compare_paths(const void *left, const void *right) {
-    return wcscmp(*(const wchar_t *const *)left, *(const wchar_t *const *)right);
-}
-
-static int collect_paths(const wchar_t *directory, PathList *list) {
-    static const wchar_t *patterns[] = {L"*.png", L"*.bmp"};
-    size_t pattern_index;
-    for (pattern_index = 0; pattern_index < sizeof(patterns) / sizeof(patterns[0]);
-        ++pattern_index) {
-        WIN32_FIND_DATAW entry;
-        wchar_t *pattern = join_path(directory, patterns[pattern_index]);
-        HANDLE find;
-        if (!pattern) return 0;
-        find = FindFirstFileW(pattern, &entry); free(pattern);
-        if (find == INVALID_HANDLE_VALUE) continue;
-        do {
-            wchar_t *path;
-            if (entry.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
-            path = join_path(directory, entry.cFileName);
-            if (!path || (list->count == list->capacity && !reserve_paths(list))) {
-                free(path); FindClose(find); return 0;
-            }
-            list->items[list->count++] = path;
-        } while (FindNextFileW(find, &entry));
-        FindClose(find);
-    }
-    qsort(list->items, list->count, sizeof(*list->items), compare_paths);
-    return list->count != 0;
-}
-
-static int load_frame(const wchar_t *path, Frame *frame) {
-    BongoCatValidationImage image = {0};
-    int gx, gy;
-    if (!bongo_cat_validation_image_load(path, &image)) return 0;
-    frame->width = image.width; frame->height = image.height;
-    frame->grid_width = (image.width + PIXEL_STEP - 1) / PIXEL_STEP;
-    frame->grid_height = (image.height + PIXEL_STEP - 1) / PIXEL_STEP;
-    frame->bgr = (unsigned char *)malloc((size_t)frame->grid_width *
-        frame->grid_height * 3);
-    if (!frame->bgr) { bongo_cat_validation_image_free(&image); return 0; }
-    for (gy = 0; gy < frame->grid_height; ++gy)
-    for (gx = 0; gx < frame->grid_width; ++gx) {
-        int sx = min(image.width - 1, gx * PIXEL_STEP);
-        int sy = min(image.height - 1, gy * PIXEL_STEP);
-        const unsigned char *source = image.bgra + ((size_t)sy * image.width + sx) * 4;
-        unsigned char *output = frame->bgr +
-            ((size_t)gy * frame->grid_width + gx) * 3;
-        memcpy(output, source, 3);
-    }
-    bongo_cat_validation_image_free(&image);
-    return 1;
-}
-
-static void free_frames(Frame *frames, size_t count) {
-    size_t index;
-    for (index = 0; index < count; ++index) free(frames[index].bgr);
-    free(frames);
-}
-
-static Frame *load_all(const PathList *paths) {
-    Frame *frames = (Frame *)calloc(paths->count, sizeof(*frames));
-    size_t index;
-    if (!frames) return NULL;
-    for (index = 0; index < paths->count; ++index) {
-        if (!load_frame(paths->items[index], &frames[index]) || (index &&
-            (frames[index].width != frames[0].width ||
-                frames[index].height != frames[0].height))) {
-            free_frames(frames, paths->count); return NULL;
-        }
-    }
-    return frames;
-}
 
 static int in_region(int region, int x, int y, int width, int height) {
     double nx = x / (double)width, ny = y / (double)height;
@@ -277,10 +170,12 @@ int wmain(int argc, wchar_t **argv) {
     interval_ms = argc > 5 ? _wtoi(argv[5]) : 17;
     if (max_lag < 0 || minimum_overlap < 2) return 2;
     if (FAILED(CoInitializeEx(NULL, COINIT_MULTITHREADED))) return 1;
-    if (!collect_paths(argv[1], &mver_paths) || !collect_paths(argv[2], &native_paths) ||
+    if (!phase_collect_paths(argv[1], &mver_paths) ||
+        !phase_collect_paths(argv[2], &native_paths) ||
         mver_paths.count < (size_t)minimum_overlap ||
         native_paths.count < (size_t)minimum_overlap) goto done;
-    mver = load_all(&mver_paths); native = load_all(&native_paths);
+    mver = phase_load_frames(&mver_paths);
+    native = phase_load_frames(&native_paths);
     if (!mver || !native) goto done;
     coarse = (Candidate *)malloc((size_t)(max_lag * 2 + 1) * sizeof(*coarse));
     fine = (Candidate *)malloc(8 * sizeof(*fine));
@@ -313,8 +208,9 @@ int wmain(int argc, wchar_t **argv) {
     result = 0;
 done:
     free(coarse); free(fine);
-    free_frames(mver, mver_paths.count); free_frames(native, native_paths.count);
-    free_paths(&mver_paths); free_paths(&native_paths);
+    phase_free_frames(mver, mver_paths.count);
+    phase_free_frames(native, native_paths.count);
+    phase_free_paths(&mver_paths); phase_free_paths(&native_paths);
     CoUninitialize();
     if (result) fwprintf(stderr, L"phase analysis failed\n");
     return result;

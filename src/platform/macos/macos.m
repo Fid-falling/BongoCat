@@ -281,32 +281,6 @@ void bongo_cat_platform_single_instance_end(void) {
         [instance_observer release]; instance_observer = nil;
     }
 }
-BongoCatResult bongo_cat_platform_set_autostart(bool enabled, BongoCatError *error) {
-    @autoreleasepool {
-        NSString *directory = [NSHomeDirectory()
-            stringByAppendingPathComponent:@"Library/LaunchAgents"];
-        NSString *path = [directory
-            stringByAppendingPathComponent:@"com.bongocat.desktop.plist"];
-        NSFileManager *files = [NSFileManager defaultManager];
-        if (!enabled) {
-            if (![files fileExistsAtPath:path] || [files removeItemAtPath:path error:nil])
-                return BONGO_CAT_OK;
-            bongo_cat_error_set(error, BONGO_CAT_ERROR_IO, "Cannot remove macOS launch agent");
-            return BONGO_CAT_ERROR_IO;
-        }
-        NSString *executable = [[NSBundle mainBundle] executablePath];
-        if (!executable || ![files createDirectoryAtPath:directory
-            withIntermediateDirectories:YES attributes:nil error:nil]) {
-            bongo_cat_error_set(error, BONGO_CAT_ERROR_IO, "Cannot create macOS launch agent directory");
-            return BONGO_CAT_ERROR_IO;
-        }
-        NSDictionary *plist = @{ @"Label": @"com.bongocat.desktop",
-            @"ProgramArguments": @[executable, @"--autostart"], @"RunAtLoad": @YES };
-        if ([plist writeToFile:path atomically:YES]) return BONGO_CAT_OK;
-        bongo_cat_error_set(error, BONGO_CAT_ERROR_IO, "Cannot write macOS launch agent");
-        return BONGO_CAT_ERROR_IO;
-    }
-}
 BongoCatMenuAction bongo_cat_platform_context_menu(BongoCatPlatform *platform,
     const BongoCatMenuLabels *labels) {
     return bongo_cat_macos_context_menu(platform, labels);

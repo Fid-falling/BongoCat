@@ -193,9 +193,6 @@ bool bongo_cat_platform_set_opacity(BongoCatPlatform *platform, float opacity) {
     return SDL_SetWindowOpacity(platform->window, platform->window_opacity);
 }
 
-float bongo_cat_platform_get_opacity(const BongoCatPlatform *platform) {
-    return platform ? platform->window_opacity : 1.0f;
-}
 
 bool bongo_cat_platform_frame_alpha(const BongoCatPlatform *platform,
     int width, int height, int x, int y, uint8_t *alpha) {

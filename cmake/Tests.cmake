@@ -2,6 +2,7 @@ if(BUILD_TESTING)
   add_executable(bongo_cat_core_tests
     tests/core/test_main.c
     tests/core/test_config.c
+    tests/core/test_config_validation.c
     tests/core/test_language.c
     tests/core/test_input.c
     tests/core/test_models.c
@@ -45,6 +46,7 @@ if(BUILD_TESTING)
 
   set(BONGO_CAT_MVER_IMPORT_TEST_SOURCES
     tests/model_import/test_mver_import.c
+    tests/model_import/test_mver_container.c
     tests/model_import/test_mver_missing_motion.c
     tests/model_import/test_mver_pointer_import.c
     tests/ui/test_preferences_text.c

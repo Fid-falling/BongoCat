@@ -1,10 +1,15 @@
 #include "runtime.h"
+#include "live2d_audit_scenario.h"
 #include "bongo_cat/file.h"
 #include "bongo_cat/path.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define input bongo_cat_live2d_audit_input
+#define motion bongo_cat_live2d_audit_motion
+#define parameter_override_scenario bongo_cat_live2d_audit_parameter_override
 
 typedef struct PointerAudit {
     bool ran;
@@ -28,13 +33,6 @@ static bool value(BongoCatApp *app, const char *id, float *output) {
     return true;
 }
 
-static void input(BongoCatApp *app, BongoCatInputKind kind, const char *name, float value) {
-    BongoCatInputEvent event = {.kind = kind, .value = value};
-    snprintf(event.name, sizeof(event.name), "%s", name);
-    bongo_cat_app_shortcuts(app, &event);
-    bongo_cat_app_apply_input(app, &event);
-}
-
 static bool pointer_test_center(BongoCatApp *app, SDL_Rect *bounds,
     double *center_x, double *center_y) {
     int window_x, window_y, width, height;
@@ -47,16 +45,6 @@ static bool pointer_test_center(BongoCatApp *app, SDL_Rect *bounds,
     SDL_DisplayID display = SDL_GetDisplayForPoint(&point);
     return display && SDL_GetDisplayBounds(display, bounds) &&
         bounds->w > 0 && bounds->h > 0;
-}
-
-static bool motion(BongoCatApp *app, const char *scenario) {
-    if (strcmp(scenario, "motion-0") == 0)
-        return bongo_cat_live2d_start_motion(app->live2d, "CAT_motion", 0);
-    if (strcmp(scenario, "motion-1") == 0)
-        return bongo_cat_live2d_start_motion(app->live2d, "CAT_motion", 1);
-    if (strncmp(scenario, "expression-", 11) == 0)
-        return bongo_cat_live2d_set_expression(app->live2d, atoi(scenario + 11));
-    return true;
 }
 
 static bool pointer(BongoCatApp *app, bool mirror) {
@@ -185,14 +173,6 @@ static bool active(BongoCatApp *app, const char *id) {
 static bool inactive(BongoCatApp *app, const char *id) {
     float current = 0.0f;
     return value(app, id, &current) && current <= 0.5f;
-}
-
-static bool parameter_override_scenario(const char *scenario) {
-    return strncmp(scenario, "key-", 4) == 0 ||
-        strncmp(scenario, "keys-", 5) == 0 ||
-        strncmp(scenario, "gamepad-", 8) == 0 ||
-        strcmp(scenario, "mouse-left") == 0 ||
-        strcmp(scenario, "mouse-right") == 0;
 }
 
 static bool signed_value(BongoCatApp *app, const char *id, bool positive) {
