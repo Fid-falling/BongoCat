@@ -1,3 +1,5 @@
+cmake_minimum_required(VERSION 3.24)
+
 if(NOT DEFINED ROOT)
   message(FATAL_ERROR "ROOT is required")
 endif()
