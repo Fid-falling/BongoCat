@@ -6,6 +6,9 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$ExpectedAppVersion,
 
+    [ValidateSet('x86', 'x64')]
+    [string]$ExpectedArchitecture = 'x64',
+
     [string]$ExpectedPackageVersion
 )
 
@@ -94,7 +97,7 @@ try {
         Name = 'vladelaina.bongocat'
         Publisher = 'CN=5503A135-7FA4-466B-815C-DBE627F4065F'
         Version = $ExpectedPackageVersion
-        ProcessorArchitecture = 'x64'
+        ProcessorArchitecture = $ExpectedArchitecture
     }
     foreach ($field in $expectedIdentity.Keys) {
         if ($identity.$field -ne $expectedIdentity[$field]) {
@@ -125,8 +128,10 @@ try {
     }
 
     $machine = Get-PeMachine (Join-Path $temporaryRoot 'BongoCat.exe')
-    if ($machine -ne 0x8664) {
-        throw ('Packaged executable machine is 0x{0:X4}; expected x64 0x8664.' -f $machine)
+    $expectedMachine = if ($ExpectedArchitecture -eq 'x64') { 0x8664 } else { 0x014C }
+    if ($machine -ne $expectedMachine) {
+        throw ('Packaged executable machine is 0x{0:X4}; expected {1}.' -f
+            $machine, $ExpectedArchitecture)
     }
 
     $publisherLength = 0

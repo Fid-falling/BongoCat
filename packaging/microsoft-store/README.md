@@ -1,8 +1,9 @@
 # Microsoft Store packaging
 
-The protected `store-package` job in `.github/workflows/ci.yml` creates a raw
-`bongocat_<app-version>_x64.msix` artifact on pushes to the upstream `main`
-branch of `vladelaina/BongoCat`. The artifact is intentionally unsigned:
+The protected `store-package` job in `.github/workflows/ci.yml` creates raw
+`bongocat_<app-version>_<architecture>.msix` artifacts for Windows x64 and x86
+on pushes to the upstream `main` branch of `vladelaina/BongoCat`. The artifacts
+are intentionally unsigned:
 Partner Center signs accepted MSIX packages with the Microsoft Store
 certificate during submission.
 
@@ -16,8 +17,8 @@ certificate during submission.
 
 The package name and publisher are stored in `AppxManifest.xml.in`. The PFN
 and package SID are derived by Windows and must not be used as signing
-secrets. The package uses `x64`, matching the current Cubism Core library and
-the Windows build job.
+secrets. The package architecture matches the Windows build job; both x64 and
+x86 Cubism Core libraries are validated before a package can be published.
 
 MSIX versions must have a non-zero major component and a zero revision. The
 script maps app version `0.1.1` to package version `1.1.1.0` by default; pass
@@ -39,9 +40,7 @@ Running the protected workflow is subject to the Live2D Cubism SDK licenses;
 the repository owner is responsible for satisfying their release terms.
 
 The job verifies the digests and required files before configuring CMake with
-`BONGO_CAT_REQUIRE_CUBISM=ON`; it never uploads the diagnostic backend used by
-the public cross-platform build. The ordinary CI Windows artifacts are named
-`diagnostic-*` for this reason and are not suitable for Store submission.
+`BONGO_CAT_REQUIRE_CUBISM=ON`; it never uploads the diagnostic backend.
 
 ## Local build and install check
 

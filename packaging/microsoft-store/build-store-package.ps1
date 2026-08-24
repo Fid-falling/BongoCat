@@ -9,6 +9,8 @@ param(
     [string]$PackageVersion,
     [string]$OutputDirectory,
     [string]$CertificateOutputPath,
+    [ValidateSet('x86', 'x64')]
+    [string]$Architecture = 'x64',
     [switch]$SignForLocalTesting
 )
 
@@ -62,10 +64,10 @@ if ($packageParts[3] -ne 0) {
 }
 
 $packageBaseName = if ($SignForLocalTesting) {
-    "bongocat_${Version}_x64-local-test"
+    "bongocat_${Version}_${Architecture}-local-test"
 }
 else {
-    "bongocat_${Version}_x64"
+    "bongocat_${Version}_${Architecture}"
 }
 $msixPath = Join-Path $OutputDirectory "$packageBaseName.msix"
 $temporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("BongoCatStorePackage_" + [guid]::NewGuid())
@@ -154,6 +156,7 @@ try {
 
     $manifestTemplate = Get-Content (Join-Path $scriptDirectory "AppxManifest.xml.in") -Raw
     $manifest = $manifestTemplate.Replace("@PACKAGE_VERSION@", $PackageVersion)
+    $manifest = $manifest.Replace("@PROCESSOR_ARCHITECTURE@", $Architecture)
     [System.IO.File]::WriteAllText(
         (Join-Path $stagingDirectory "AppxManifest.xml"),
         $manifest,

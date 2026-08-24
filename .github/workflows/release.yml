@@ -14,9 +14,18 @@ concurrency:
 
 jobs:
   release:
-    name: release / windows-x64
+    name: release / ${{ matrix.platform }}
     if: github.repository == 'vladelaina/BongoCat'
     runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - platform: windows-x64
+            cmake_arch: x64
+          - platform: windows-x86
+            cmake_arch: Win32
     env:
       CUBISM_SDK_ARCHIVE_URL: ${{ secrets.CUBISM_SDK_ARCHIVE_URL }}
       CUBISM_SDK_ARCHIVE_SHA256: ${{ secrets.CUBISM_SDK_ARCHIVE_SHA256 }}
@@ -51,7 +60,7 @@ jobs:
         shell: pwsh
         run: |
           cmake -S . -B build-release -G "Visual Studio 17 2022" `
-            -A x64 -T v143 `
+            -A ${{ matrix.cmake_arch }} -T v143 `
             -DBONGO_CAT_REQUIRE_CUBISM=ON `
             -DBONGO_CAT_WARNINGS_AS_ERRORS=ON
 
@@ -93,7 +102,7 @@ jobs:
         shell: pwsh
         run: |
           $name = (Get-Content build-release/bongo-cat-package-name.txt -Raw).Trim()
-          $expected = "BongoCat-${{ steps.version.outputs.version }}-windows-x64"
+          $expected = "BongoCat-${{ steps.version.outputs.version }}-${{ matrix.platform }}"
           if ($name -ne $expected) {
             throw "Unexpected release package name: $name"
           }
@@ -101,9 +110,13 @@ jobs:
           cmake --build build-release --config Release --target package
           cmake --build build-release --config Release --target package-installer
 
+          $portableSource = "build-release/dist/$name.zip"
+          $portable = "build-release/dist/$name-portable.zip"
+          $portableChecksumSource = "$portableSource.sha256"
+          $portableChecksum = "$portable.sha256"
           $files = @(
-            "build-release/dist/$name.zip",
-            "build-release/dist/$name.zip.sha256",
+            $portableSource,
+            $portableChecksumSource,
             "build-release/dist/$name-setup.exe",
             "build-release/dist/$name-setup.exe.sha256"
           )
@@ -112,6 +125,8 @@ jobs:
               throw "Release file is missing: $file"
             }
           }
+          Move-Item -LiteralPath $portableSource -Destination $portable -Force
+          Move-Item -LiteralPath $portableChecksumSource -Destination $portableChecksum -Force
           "name=$name" | Out-File -FilePath $env:GITHUB_OUTPUT `
             -Append -Encoding utf8
 
@@ -122,7 +137,7 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
-            build-release/dist/${{ steps.package.outputs.name }}.zip
-            build-release/dist/${{ steps.package.outputs.name }}.zip.sha256
+            build-release/dist/${{ steps.package.outputs.name }}-portable.zip
+            build-release/dist/${{ steps.package.outputs.name }}-portable.zip.sha256
             build-release/dist/${{ steps.package.outputs.name }}-setup.exe
             build-release/dist/${{ steps.package.outputs.name }}-setup.exe.sha256

@@ -9,7 +9,7 @@
     Name="vladelaina.bongocat"
     Publisher="CN=5503A135-7FA4-466B-815C-DBE627F4065F"
     Version="@PACKAGE_VERSION@"
-    ProcessorArchitecture="x64" />
+    ProcessorArchitecture="@PROCESSOR_ARCHITECTURE@" />
 
   <Properties>
     <DisplayName>BongoCat</DisplayName>

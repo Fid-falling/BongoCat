@@ -83,6 +83,7 @@ try {
 
     $required = @(
         (Join-Path $rootCandidate.FullName "Core/include/Live2DCubismCore.h"),
+        (Join-Path $rootCandidate.FullName "Core/lib/windows/x86/143/Live2DCubismCore_MT.lib"),
         (Join-Path $rootCandidate.FullName "Core/lib/windows/x86_64/143/Live2DCubismCore_MT.lib"),
         (Join-Path $rootCandidate.FullName "Core/lib/linux/x86_64/libLive2DCubismCore.a"),
         (Join-Path $rootCandidate.FullName "Core/lib/macos/x86_64/libLive2DCubismCore.a"),
