@@ -1,4 +1,5 @@
 #include "bongo_cat/i18n.h"
+#include "bongo_cat/path.h"
 #include "bongo_cat/utf8.h"
 
 #include <stdlib.h>
@@ -6,9 +7,19 @@
 #include <string.h>
 #include <yyjson.h>
 
+static bool locale_path(char *output, size_t capacity, const char *root,
+    const char *name) {
+    char filename[32];
+    size_t length = strlen(name);
+    if (length > sizeof(filename) - sizeof(".json")) return false;
+    memcpy(filename, name, length);
+    memcpy(filename + length, ".json", sizeof(".json"));
+    return bongo_cat_path_join(output, capacity, root, filename);
+}
+
 static bool locale_encoding_valid(const char *root, const char *name) {
     char path[BONGO_CAT_PATH_CAP];
-    snprintf(path, sizeof(path), "%s/%s.json", root, name);
+    if (!locale_path(path, sizeof(path), root, name)) return false;
     FILE *file = fopen(path, "rb");
     if (!file || fseek(file, 0, SEEK_END) != 0) {
         if (file) fclose(file);
@@ -38,7 +49,7 @@ static bool locale_encoding_valid(const char *root, const char *name) {
 
 static yyjson_doc *load(const char *root, const char *name) {
     char path[BONGO_CAT_PATH_CAP];
-    snprintf(path, sizeof(path), "%s/%s.json", root, name);
+    if (!locale_path(path, sizeof(path), root, name)) return NULL;
     return yyjson_read_file(path, 0, NULL, NULL);
 }
 
@@ -59,7 +70,17 @@ static bool same_shape(yyjson_val *reference, yyjson_val *candidate,
         const char *name = yyjson_get_str(key);
         yyjson_val *next = yyjson_obj_get(candidate, name);
         char child[BONGO_CAT_PATH_CAP];
-        snprintf(child, sizeof(child), "%s%s%s", path, path[0] ? "." : "", name);
+        size_t path_length = strlen(path), name_length = strlen(name);
+        size_t separator = path_length ? 1 : 0;
+        size_t available = path_length < sizeof(child)
+            ? sizeof(child) - path_length : 0;
+        if (separator >= available || name_length >= available - separator) {
+            fprintf(stderr, "Locale key path is too long\n");
+            return false;
+        }
+        memcpy(child, path, path_length);
+        if (separator) child[path_length] = '.';
+        memcpy(child + path_length + separator, name, name_length + 1);
         if (!same_shape(value, next, child)) return false;
     }
     return true;
@@ -125,7 +146,8 @@ static bool contains_replacement(yyjson_val *value) {
 
 int main(void) {
     char root[BONGO_CAT_PATH_CAP];
-    snprintf(root, sizeof(root), "%s/resources/assets/locales", BONGO_CAT_NATIVE_SOURCE_DIR);
+    if (!bongo_cat_path_join(root, sizeof(root), BONGO_CAT_NATIVE_SOURCE_DIR,
+        "resources/assets/locales")) return 1;
     yyjson_doc *reference = load(root, "zh-CN");
     if (!reference) return 1;
     const char *required_ui_keys[] = {
