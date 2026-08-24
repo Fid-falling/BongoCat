@@ -27,17 +27,21 @@ version remains in the filename so GitHub artifacts are easy to identify.
 ## Actions SDK setup
 
 Live2D's licensed Cubism SDK is ignored by Git and cannot be checked into this
-public repository. Before enabling the protected job, add these repository
-secrets:
+public repository. The protected job downloads the pinned Cubism 5-r.5 archive
+and GLEW 2.2.0 archive from their official upstream URLs and verifies both
+SHA-256 hashes before building. A repository owner may override either URL and
+hash with these secrets when an approved mirror is required:
 
-- `CUBISM_SDK_ARCHIVE_URL`: private HTTPS URL for a CubismSdkForNative 5 r.5
-  ZIP archive. The archive must contain `Core`, `Framework`, and the OpenGL
-  sample's GLEW CMake tree.
-- `CUBISM_SDK_ARCHIVE_SHA256`: SHA-256 digest of that ZIP.
+- `CUBISM_SDK_ARCHIVE_URL` and `CUBISM_SDK_ARCHIVE_SHA256`
+- `CUBISM_GLEW_ARCHIVE_URL` and `CUBISM_GLEW_ARCHIVE_SHA256`
 
-The job verifies the digest and required files before configuring CMake with
+Running the protected workflow is subject to the Live2D Cubism SDK licenses;
+the repository owner is responsible for satisfying their release terms.
+
+The job verifies the digests and required files before configuring CMake with
 `BONGO_CAT_REQUIRE_CUBISM=ON`; it never uploads the diagnostic backend used by
-the public cross-platform build.
+the public cross-platform build. The ordinary CI Windows artifacts are named
+`diagnostic-*` for this reason and are not suitable for Store submission.
 
 ## Local build and install check
 

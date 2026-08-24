@@ -189,7 +189,7 @@ jobs:
         shell: pwsh
         run: |
           $name = (Get-Content build/bongo-cat-package-name.txt -Raw).Trim()
-          if ($name -notmatch '^BongoCat-\d+\.\d+\.\d+-(windows|linux|macos)-(x64|x86|arm64|universal)$') {
+          if ($name -notmatch '^BongoCat-Diagnostic-\d+\.\d+\.\d+-(windows|linux|macos)-(x64|x86|arm64|universal)$') {
             throw "Unexpected release package name: $name"
           }
           "name=$name" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
@@ -211,11 +211,6 @@ jobs:
           if (-not (Test-Path -LiteralPath "$($archives[0].FullName).sha256")) {
             throw "Release archive checksum is missing"
           }
-          @'
-          This CI artifact uses the diagnostic renderer because the licensed
-          Cubism SDK is not present in the public source checkout. It is for
-          startup and platform diagnostics, not end-user distribution.
-          '@ | Set-Content build/dist/DIAGNOSTIC-NO-CUBISM.txt -Encoding ascii
 
       - name: Package Windows installer
         if: runner.os == 'Windows'
@@ -235,10 +230,8 @@ jobs:
       - name: Upload portable release
         uses: actions/upload-artifact@v7
         with:
-          name: portable-${{ steps.package.outputs.name }}
-          path: |
-            build/dist/${{ steps.package.outputs.name }}.*
-            build/dist/DIAGNOSTIC-NO-CUBISM.txt
+          name: diagnostic-portable-${{ steps.package.outputs.name }}
+          path: build/dist/${{ steps.package.outputs.name }}.*
           if-no-files-found: error
           retention-days: 30
           compression-level: 0
@@ -247,7 +240,7 @@ jobs:
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v7
         with:
-          name: installer-${{ steps.package.outputs.name }}
+          name: diagnostic-installer-${{ steps.package.outputs.name }}
           path: |
             build/dist/${{ steps.package.outputs.name }}-setup.exe
             build/dist/${{ steps.package.outputs.name }}-setup.exe.sha256
@@ -266,6 +259,8 @@ jobs:
     env:
       CUBISM_SDK_ARCHIVE_URL: ${{ secrets.CUBISM_SDK_ARCHIVE_URL }}
       CUBISM_SDK_ARCHIVE_SHA256: ${{ secrets.CUBISM_SDK_ARCHIVE_SHA256 }}
+      CUBISM_GLEW_ARCHIVE_URL: ${{ secrets.CUBISM_GLEW_ARCHIVE_URL }}
+      CUBISM_GLEW_ARCHIVE_SHA256: ${{ secrets.CUBISM_GLEW_ARCHIVE_SHA256 }}
     steps:
       - name: Checkout source
         uses: actions/checkout@v5

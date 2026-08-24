@@ -1,6 +1,7 @@
 #include "bongo_cat/model.h"
 #include "model_import.h"
 
+#include <SDL3/SDL_log.h>
 #include <stdlib.h>
 
 struct BongoCatLive2D {
@@ -12,7 +13,15 @@ struct BongoCatLive2D {
 
 static BongoCatLive2D *create_runtime(const char *asset_root,
     bool cover_runtime, BongoCatError *error) {
+    static bool warning_logged;
     (void)asset_root;
+    if (!cover_runtime && !warning_logged) {
+        warning_logged = true;
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+            "Cubism SDK unavailable: diagnostic backend active; Live2D "
+            "rendering, animation, pointer tracking, and cover generation "
+            "are disabled");
+    }
     BongoCatLive2D *value = calloc(1, sizeof(*value));
     if (!value) bongo_cat_error_set(error, BONGO_CAT_ERROR_MEMORY, "Cannot allocate Live2D runtime");
     else value->cover_runtime = cover_runtime;
