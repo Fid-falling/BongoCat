@@ -11,6 +11,11 @@ $workflowDirectory = Join-Path (Split-Path $PSScriptRoot -Parent) 'workflows'
 $sensitiveMarkers = @(
     'build-store-package.ps1',
     'CUBISM_SDK_ARCHIVE_URL',
+    'actions/upload-artifact',
+    'softprops/action-gh-release'
+)
+$artifactMarkers = @(
+    'actions/upload-artifact',
     'softprops/action-gh-release'
 )
 
@@ -38,6 +43,14 @@ function Get-PublishingGuardFailures {
         if (-not $guarded) {
             $failures += "$Label`: job '$jobName' lacks upstream guard; " +
                 "matched $($matched -join ', ')"
+        }
+        $publishesArtifacts = @($artifactMarkers | Where-Object {
+            $jobText.Contains($_)
+        }).Count -gt 0
+        if ($publishesArtifacts -and
+            -not $jobText.Contains('-DBONGO_CAT_REQUIRE_CUBISM=ON')) {
+            $failures += "$Label`: job '$jobName' publishes artifacts without " +
+                'requiring the Cubism SDK'
         }
     }
     return $failures
@@ -87,6 +100,14 @@ if ($SelfTest) {
         if ($caught.Count -eq 0) {
             $failures += 'Self-test did not reject a removed upstream guard.'
         }
+        $withoutCubism = $selfTestText.Replace(
+            '-DBONGO_CAT_REQUIRE_CUBISM=ON',
+            '-DBONGO_CAT_REQUIRE_CUBISM=OFF')
+        $cubismFailures = @(Get-PublishingGuardFailures `
+            -Text $withoutCubism -Label 'self-test')
+        if (-not ($cubismFailures -match 'requiring the Cubism SDK')) {
+            $failures += 'Self-test did not reject an SDK-free artifact job.'
+        }
     }
 }
 
@@ -97,4 +118,4 @@ if ($failures.Count -gt 0) {
 }
 
 Write-Host "Publishing guard policy passed for $checkedJobs sensitive job(s)."
-if ($SelfTest) { Write-Host 'Publishing guard negative self-test passed.' }
+if ($SelfTest) { Write-Host 'Publishing guard negative self-tests passed.' }

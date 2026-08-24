@@ -163,43 +163,6 @@ jobs:
         if: runner.os != 'Windows'
         run: ctest --test-dir build --output-on-failure
 
-      - name: Resolve release package name
-        id: package
-        shell: pwsh
-        run: |
-          $name = (Get-Content build/bongo-cat-package-name.txt -Raw).Trim()
-          if ($name -notmatch '^BongoCat-Diagnostic-\d+\.\d+\.\d+-(windows|linux|macos)-(x64|x86|arm64|universal)$') {
-            throw "Unexpected release package name: $name"
-          }
-          "name=$name" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-
-      - name: Package release
-        shell: pwsh
-        run: |
-          cmake --build build --config Release --target package
-          $archives = @(Get-ChildItem build/dist -File | Where-Object {
-            $_.Name -match '\.(zip|tar\.gz)$'
-          })
-          if ($archives.Count -ne 1) {
-            throw "Expected one release archive, found $($archives.Count)"
-          }
-          $expected = '${{ steps.package.outputs.name }}'
-          if (-not $archives[0].Name.StartsWith("$expected.")) {
-            throw "Unexpected release archive: $($archives[0].Name)"
-          }
-          if (-not (Test-Path -LiteralPath "$($archives[0].FullName).sha256")) {
-            throw "Release archive checksum is missing"
-          }
-
-      - name: Upload portable release
-        uses: actions/upload-artifact@v7
-        with:
-          name: diagnostic-portable-${{ steps.package.outputs.name }}
-          path: build/dist/${{ steps.package.outputs.name }}.*
-          if-no-files-found: error
-          retention-days: 30
-          compression-level: 0
-
   store-package:
     name: package / windows-production
     if: >-
