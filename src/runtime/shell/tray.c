@@ -108,7 +108,7 @@ static void destroy_native_tray(BongoCatTray *tray) {
 }
 
 static bool create_native_tray(BongoCatTray *tray, BongoCatError *error) {
-    tray->handle = SDL_CreateTray(tray->icon.surface, BONGO_CAT_NAME);
+    tray->handle = SDL_CreateTray(tray->icon.surface, BONGO_CAT_TRAY_TITLE);
     if (!tray->handle) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM,
             "Tray creation failed: %s", SDL_GetError());
