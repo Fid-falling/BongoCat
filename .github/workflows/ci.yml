@@ -235,19 +235,17 @@ jobs:
           if ($archives.Count -ne 1) {
             throw "Expected one desktop archive, found $($archives.Count)"
           }
-          if (-not (Test-Path -LiteralPath "$($archives[0].FullName).sha256")) {
-            throw 'Desktop archive checksum is missing'
-          }
           "name=$name" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "file=$($archives[0].FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Upload desktop release
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ steps.package.outputs.name }}-${{ github.run_number }}-${{ github.run_attempt }}
-          path: build-package/dist/${{ steps.package.outputs.name }}.*
+          path: ${{ steps.package.outputs.file }}
           if-no-files-found: error
           retention-days: 30
           compression-level: 0
+          archive: false
 
   store-package:
     name: package / windows-x64
@@ -332,18 +330,18 @@ jobs:
 
           cmake --build build-store --config Release --target package
           cmake --build build-store --config Release --target package-installer
-          $files = @(
-            "build-store/dist/$name.zip",
-            "build-store/dist/$name.zip.sha256",
-            "build-store/dist/$name-setup.exe",
-            "build-store/dist/$name-setup.exe.sha256"
-          )
-          foreach ($file in $files) {
-            if (-not (Test-Path -LiteralPath $file)) {
-              throw "Production desktop file is missing: $file"
-            }
+          $portableSource = "build-store/dist/$name.zip"
+          $portable = "build-store/dist/$name-portable.zip"
+          $setup = "build-store/dist/$name-setup.exe"
+          if (-not (Test-Path -LiteralPath $portableSource)) {
+            throw "Production portable package is missing: $portableSource"
           }
-          "name=$name" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          if (-not (Test-Path -LiteralPath $setup)) {
+            throw "Production desktop installer is missing: $setup"
+          }
+          Move-Item -LiteralPath $portableSource -Destination $portable -Force
+          "portable=$portable" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "file=$setup" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Build Microsoft Store MSIX
         shell: pwsh
@@ -375,12 +373,17 @@ jobs:
       - name: Upload Windows desktop release
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ steps.desktop-package.outputs.name }}-${{ github.run_number }}-${{ github.run_attempt }}
-          path: |
-            build-store/dist/${{ steps.desktop-package.outputs.name }}.zip
-            build-store/dist/${{ steps.desktop-package.outputs.name }}.zip.sha256
-            build-store/dist/${{ steps.desktop-package.outputs.name }}-setup.exe
-            build-store/dist/${{ steps.desktop-package.outputs.name }}-setup.exe.sha256
+          path: ${{ steps.desktop-package.outputs.file }}
           if-no-files-found: error
           retention-days: 30
           compression-level: 0
+          archive: false
+
+      - name: Upload Windows portable release
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{ steps.desktop-package.outputs.portable }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          archive: false

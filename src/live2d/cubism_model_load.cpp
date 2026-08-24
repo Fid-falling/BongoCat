@@ -139,7 +139,8 @@ void NativeModel::load_expressions() {
         if (bytes.empty()) continue;
         Csm::ACubismMotion *motion = LoadExpression(bytes.data(),
             (Csm::csmSizeInt)bytes.size(), name);
-        if (!motion) continue; expressions_[name] = motion;
+        if (!motion) continue;
+        expressions_[name] = motion;
         expression_names_[(size_t)i] = name;
     }
     if (!expressions_.empty())
