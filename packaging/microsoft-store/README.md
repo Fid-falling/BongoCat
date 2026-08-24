@@ -1,9 +1,8 @@
 # Microsoft Store packaging
 
-The protected `store-package` job in `.github/workflows/ci.yml` creates raw
-`bongocat_<app-version>_<architecture>.msix` artifacts for Windows x64 and x86
-on pushes to the upstream `main` branch of `vladelaina/BongoCat`. The artifacts
-are intentionally unsigned:
+The protected `store-package` job in `.github/workflows/ci.yml` creates a raw
+`bongocat_<app-version>_x64.msix` artifact on pushes to the upstream `main`
+branch of `vladelaina/BongoCat`. The artifact is intentionally unsigned:
 Partner Center signs accepted MSIX packages with the Microsoft Store
 certificate during submission.
 
@@ -17,8 +16,8 @@ certificate during submission.
 
 The package name and publisher are stored in `AppxManifest.xml.in`. The PFN
 and package SID are derived by Windows and must not be used as signing
-secrets. The package architecture matches the Windows build job; both x64 and
-x86 Cubism Core libraries are validated before a package can be published.
+secrets. The Store package is x64; the separate Windows x86 workflow target
+only publishes its desktop installer and portable archive.
 
 MSIX versions must have a non-zero major component and a zero revision. The
 script maps app version `0.1.1` to package version `1.1.1.0` by default; pass

@@ -279,7 +279,7 @@ jobs:
             store_arch: x64
           - platform: windows-x86
             cmake_arch: Win32
-            store_arch: x86
+            store_arch: ''
     runs-on: windows-2022
     env:
       CUBISM_SDK_ARCHIVE_URL: ${{ secrets.CUBISM_SDK_ARCHIVE_URL }}
@@ -370,6 +370,7 @@ jobs:
           "file=$setup" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Build Microsoft Store MSIX
+        if: matrix.store_arch == 'x64'
         shell: pwsh
         run: |
           ./packaging/microsoft-store/build-store-package.ps1 `
@@ -381,6 +382,7 @@ jobs:
           Write-Host ("Microsoft Store MSIX size: {0} KB" -f [math]::Round($msix.Length / 1KB, 2))
 
       - name: Validate Microsoft Store MSIX
+        if: matrix.store_arch == 'x64'
         shell: pwsh
         run: |
           ./packaging/microsoft-store/validate-store-package.ps1 `
@@ -389,6 +391,7 @@ jobs:
             -ExpectedArchitecture "${{ matrix.store_arch }}"
 
       - name: Upload Microsoft Store MSIX
+        if: matrix.store_arch == 'x64'
         uses: actions/upload-artifact@v7
         with:
           path: store-output/bongocat_${{ steps.version.outputs.version }}_${{ matrix.store_arch }}.msix
