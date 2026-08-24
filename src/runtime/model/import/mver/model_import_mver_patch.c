@@ -60,9 +60,9 @@ static bool parent_path(const char *path, char *parent, size_t capacity) {
 
 static bool full_package(const char *path) {
     char config[BONGO_CAT_PATH_CAP], image[BONGO_CAT_PATH_CAP];
-    return bongo_cat_path_join(config, sizeof(config), path, "config.json") &&
+    return bongo_cat_import_mver_config_path(path, config, sizeof(config)) &&
         bongo_cat_path_join(image, sizeof(image), path, "img") &&
-        bongo_cat_path_is_file(config) && bongo_cat_path_is_dir(image) &&
+        bongo_cat_path_is_dir(image) &&
         patch_shape(image);
 }
 

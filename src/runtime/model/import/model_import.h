@@ -5,6 +5,7 @@
 #include "bongo_cat/model.h"
 
 #define BONGO_CAT_IMPORT_CANDIDATE_CAP 16
+#define BONGO_CAT_SKIN_CONFIG_FILE "bongocat.skin.json"
 
 typedef enum BongoCatImportFormat {
     BONGO_CAT_IMPORT_TAURI,
@@ -58,6 +59,8 @@ typedef struct BongoCatApp BongoCatApp;
 
 bool bongo_cat_import_discover(const char *source, BongoCatImportDiscovery *discovery,
     BongoCatError *error);
+bool bongo_cat_import_mver_config_path(const char *root,
+    char *path, size_t capacity);
 int bongo_cat_import_mver_discover(const char *source,
     BongoCatImportDiscovery *discovery, BongoCatError *error);
 int bongo_cat_import_mver_discover_exact(const char *source,

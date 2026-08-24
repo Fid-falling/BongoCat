@@ -36,7 +36,8 @@ bool bongo_cat_preferences_model_import_card(BongoCatPreferences *value,
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return false;
     bounds.y += 5.0f; bounds.h += 1.0f;
     BongoCatUIPalette p = bongo_cat_ui_palette(bongo_cat_ui_dark(context));
-    bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
+    bool pointer_hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
+    bool hover = pointer_hover || value->import_drop_active;
     float lift = bongo_cat_ui_animate_eased(context, "model-import-hover",
         hover ? 1.0f : 0.0f, 250.0f, BONGO_CAT_UI_EASE_STANDARD);
     bounds.y -= 2.0f * lift;
@@ -69,9 +70,9 @@ bool bongo_cat_preferences_model_import_card(BongoCatPreferences *value,
     text(context, canvas, nk_rect(cx - width * .5f, cy + 30,
         NK_MIN(width + 1, bounds.w - 20), 24), label, p.accent,
         value->ui.caption_font);
-    if (hover) bongo_cat_ui_cursor_hover_rect(context, bounds,
+    if (pointer_hover) bongo_cat_ui_cursor_hover_rect(context, bounds,
         BONGO_CAT_UI_CURSOR_POINTER);
-    return hover && nk_input_is_mouse_click_in_rect(&context->input,
+    return pointer_hover && nk_input_is_mouse_click_in_rect(&context->input,
         NK_BUTTON_LEFT, bounds);
 }
 

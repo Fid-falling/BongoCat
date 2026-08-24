@@ -63,9 +63,11 @@ BongoCatResult bongo_cat_import_source_directory(const char *source,
     if (name && suffix_matches(name, ".png") &&
         image_package_root(source, directory, capacity)) return BONGO_CAT_OK;
     if (!name || (SDL_strcasecmp(name, "config.json") != 0 &&
+        SDL_strcasecmp(name, BONGO_CAT_SKIN_CONFIG_FILE) != 0 &&
         !suffix_matches(name, ".model3.json"))) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
-            "Select an Mver config.json, image-patch PNG, or Live2D .model3.json file");
+            "Select a BongoCat skin file, Mver config.json, image-patch PNG, "
+            "or Live2D .model3.json file");
         return BONGO_CAT_ERROR_FORMAT;
     }
     if (parent_path(source, directory, capacity)) return BONGO_CAT_OK;

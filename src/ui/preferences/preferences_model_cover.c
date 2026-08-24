@@ -129,10 +129,50 @@ static bool capture_model_cover(BongoCatApp *app,
     if (!bongo_cat_path_join(temporary, sizeof(temporary), resources,
         ".bongo-cat-runtime-cover.png")) return false;
     bongo_cat_file_remove(temporary);
-    snprintf(app->pending_model_cover_path,
-        sizeof(app->pending_model_cover_path), "%s", temporary);
-    bongo_cat_app_capture_pending_frame(app);
+    int width = 0, height = 0;
+    SDL_GetWindowSizeInPixels(app->window, &width, &height);
+    BongoCatLive2D *cover = NULL;
+    BongoCatError ignored = {0};
+    if (width > 1 && height > 1 &&
+        SDL_GL_MakeCurrent(app->window, app->gl_context)) {
+        /* Generated-cover state is destructive, so it requires its own model. */
+        cover = bongo_cat_live2d_create_cover_runtime(
+            app->asset_root, &ignored);
+        if (cover) {
+            bongo_cat_live2d_reshape(cover, width, height);
+            if (bongo_cat_live2d_load(cover, entry->directory,
+                entry->setting_file, entry->preset,
+                &app->model_render_options, NULL, NULL,
+                &ignored) != BONGO_CAT_OK) {
+                bongo_cat_live2d_destroy(cover);
+                cover = NULL;
+            }
+        }
+    }
+    if (cover && cover != app->live2d &&
+        bongo_cat_live2d_prepare_cover(cover)) {
+        bongo_cat_live2d_resize(cover, width, height);
+        glViewport(0, 0, width, height);
+        glEnable(GL_MULTISAMPLE);
+        glDisable(GL_SCISSOR_TEST);
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        int x = 0, y = 0, content_width = width, content_height = height;
+        if (bongo_cat_live2d_viewport(cover, &x, &y,
+            &content_width, &content_height) &&
+            content_width > 0 && content_height > 0)
+            glViewport(x, y, content_width, content_height);
+        bongo_cat_live2d_set_mirror(cover, app->settings.model.mirror);
+        bongo_cat_live2d_draw(cover);
+        glViewport(0, 0, width, height);
+        snprintf(app->pending_model_cover_path,
+            sizeof(app->pending_model_cover_path), "%s", temporary);
+        bongo_cat_frame_capture_pending(app, width, height);
+        app->dirty = true;
+    }
     app->pending_model_cover_path[0] = '\0';
+    if (cover) bongo_cat_live2d_destroy(cover);
     if (previous_window && previous_context &&
         (previous_window != SDL_GL_GetCurrentWindow() ||
             previous_context != SDL_GL_GetCurrentContext()))

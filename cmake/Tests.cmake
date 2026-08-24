@@ -50,6 +50,7 @@ if(BUILD_TESTING)
     tests/ui/test_preferences_text.c
     tests/model_import/test_mver_nearby_identity.c
     tests/model_import/test_model_import_identity.c
+    tests/model_import/test_slim_package.c
     tests/model_import/test_mver_support.c)
   add_executable(bongo_cat_mver_import_tests
     ${BONGO_CAT_MVER_IMPORT_TEST_SOURCES})

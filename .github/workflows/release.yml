@@ -1,0 +1,125 @@
+name: Release BongoCat
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bongo-cat-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: release / windows-x64
+    if: github.repository == 'vladelaina/BongoCat'
+    runs-on: windows-latest
+    env:
+      CUBISM_SDK_ARCHIVE_URL: ${{ secrets.CUBISM_SDK_ARCHIVE_URL }}
+      CUBISM_SDK_ARCHIVE_SHA256: ${{ secrets.CUBISM_SDK_ARCHIVE_SHA256 }}
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Validate tag version
+        id: version
+        shell: pwsh
+        run: |
+          $cmake = Get-Content CMakeLists.txt -Raw
+          if ($cmake -notmatch '(?m)^project\(BongoCat VERSION ([0-9]+\.[0-9]+\.[0-9]+)\b') {
+            throw 'Unable to read the BongoCat version from CMakeLists.txt'
+          }
+          $version = $Matches[1]
+          $expectedTag = "v$version"
+          if ($env:GITHUB_REF_NAME -ne $expectedTag) {
+            throw "Tag $env:GITHUB_REF_NAME does not match project version $version"
+          }
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT `
+            -Append -Encoding utf8
+
+      - name: Restore licensed Cubism SDK
+        shell: pwsh
+        run: ./.github/scripts/restore-cubism-sdk.ps1
+
+      - name: Configure release
+        shell: pwsh
+        run: |
+          cmake -S . -B build-release -A x64 `
+            -DBONGO_CAT_REQUIRE_CUBISM=ON `
+            -DBONGO_CAT_WARNINGS_AS_ERRORS=ON
+
+      - name: Build release
+        shell: pwsh
+        run: >-
+          & ./.github/scripts/build-windows.ps1
+          cmake --build build-release --config Release --parallel 2
+
+      - name: Test release
+        shell: pwsh
+        run: >-
+          & ./.github/scripts/test-windows.ps1
+          ctest --test-dir build-release -C Release --output-on-failure
+
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          if (-not (Get-Command makensis.exe -ErrorAction SilentlyContinue)) {
+            choco install nsis --no-progress --yes
+          }
+          $nsisCommand = Get-Command makensis.exe -ErrorAction SilentlyContinue
+          $nsisRoots = @(
+            (Join-Path ${env:ProgramFiles(x86)} 'NSIS'),
+            (Join-Path $env:ProgramFiles 'NSIS')
+          )
+          if ($nsisCommand) { $nsisRoots += Split-Path $nsisCommand.Source }
+          $nsisRoot = $nsisRoots | Where-Object {
+            Test-Path -LiteralPath (Join-Path $_ 'makensis.exe')
+          } | Select-Object -First 1
+          if (-not $nsisRoot) {
+            throw 'NSIS was not installed (makensis.exe was not found)'
+          }
+          $nsisRoot | Out-File -FilePath $env:GITHUB_PATH `
+            -Append -Encoding utf8
+
+      - name: Package release
+        id: package
+        shell: pwsh
+        run: |
+          $name = (Get-Content build-release/bongo-cat-package-name.txt -Raw).Trim()
+          $expected = "BongoCat-${{ steps.version.outputs.version }}-windows-x64"
+          if ($name -ne $expected) {
+            throw "Unexpected release package name: $name"
+          }
+
+          cmake --build build-release --config Release --target package
+          cmake --build build-release --config Release --target package-installer
+
+          $files = @(
+            "build-release/dist/$name.zip",
+            "build-release/dist/$name.zip.sha256",
+            "build-release/dist/$name-setup.exe",
+            "build-release/dist/$name-setup.exe.sha256"
+          )
+          foreach ($file in $files) {
+            if (-not (Test-Path -LiteralPath $file)) {
+              throw "Release file is missing: $file"
+            }
+          }
+          "name=$name" | Out-File -FilePath $env:GITHUB_OUTPUT `
+            -Append -Encoding utf8
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: BongoCat v${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            build-release/dist/${{ steps.package.outputs.name }}.zip
+            build-release/dist/${{ steps.package.outputs.name }}.zip.sha256
+            build-release/dist/${{ steps.package.outputs.name }}-setup.exe
+            build-release/dist/${{ steps.package.outputs.name }}-setup.exe.sha256

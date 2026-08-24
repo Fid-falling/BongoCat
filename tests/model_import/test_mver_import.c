@@ -20,6 +20,7 @@ int test_preferences_text(void); int test_mver_nearby_identity(void);
 int test_mver_nearby_refresh(void);
 int test_mver_missing_motion_groups(void);
 int test_model_import_identity(void);
+int test_slim_package(void);
 static bool chord(const char *json, bool gamepad, const char *expected) {
     yyjson_doc *document = yyjson_read(json, strlen(json), 0);
     BongoCatImportCandidate candidate = {0};
@@ -207,6 +208,12 @@ static void container_discovery(void) {
     CHECK(child(bundle, sizeof(bundle), root, "bundle", true));
     CHECK(child(nested_package, sizeof(nested_package), bundle, "model", true));
     CHECK(mver_fixture(nested_package));
+    char nested_config[BONGO_CAT_PATH_CAP], slim_config[BONGO_CAT_PATH_CAP];
+    CHECK(child(nested_config, sizeof(nested_config), nested_package,
+        "config.json", false));
+    CHECK(child(slim_config, sizeof(slim_config), nested_package,
+        BONGO_CAT_SKIN_CONFIG_FILE, false));
+    CHECK(SDL_RenamePath(nested_config, slim_config));
     CHECK(child(variant, sizeof(variant), bundle, "variant", true));
     CHECK(child(variant_model, sizeof(variant_model), variant, "model", true));
     CHECK(child(variant_img, sizeof(variant_img), variant_model, "img", true));
@@ -296,5 +303,6 @@ int main(void) {
     failures += test_model_import_identity();
     container_discovery();
     tauri_exact_discovery();
+    failures += test_slim_package();
     return failures ? 1 : 0;
 }

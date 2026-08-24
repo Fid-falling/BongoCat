@@ -4,11 +4,15 @@ param([switch]$SelfTest)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$upstreamGuard = "github.repository == 'bongocat-pet/BongoCat'"
+$upstreamGuards = @(
+    "github.repository == 'bongocat-pet/BongoCat'",
+    "github.repository == 'vladelaina/BongoCat'"
+)
 $workflowDirectory = Join-Path (Split-Path $PSScriptRoot -Parent) 'workflows'
 $sensitiveMarkers = @(
     'build-store-package.ps1',
-    'CUBISM_SDK_ARCHIVE_URL'
+    'CUBISM_SDK_ARCHIVE_URL',
+    'softprops/action-gh-release'
 )
 
 function Get-PublishingGuardFailures {
@@ -29,7 +33,10 @@ function Get-PublishingGuardFailures {
         $jobText = $job.Value
         $matched = @($sensitiveMarkers | Where-Object { $jobText.Contains($_) })
         if ($matched.Count -eq 0) { continue }
-        if (-not $jobText.Contains($upstreamGuard)) {
+        $guarded = @($upstreamGuards | Where-Object {
+            $jobText.Contains($_)
+        }).Count -gt 0
+        if (-not $guarded) {
             $failures += "$Label`: job '$jobName' lacks upstream guard; " +
                 "matched $($matched -join ', ')"
         }
@@ -73,7 +80,10 @@ if ($SelfTest) {
         $failures += 'Self-test could not find a sensitive workflow.'
     }
     else {
-        $mutated = $selfTestText.Replace($upstreamGuard, 'true')
+        $mutated = $selfTestText
+        foreach ($guard in $upstreamGuards) {
+            $mutated = $mutated.Replace($guard, 'true')
+        }
         $caught = @(Get-PublishingGuardFailures -Text $mutated -Label 'self-test')
         if ($caught.Count -eq 0) {
             $failures += 'Self-test did not reject a removed upstream guard.'

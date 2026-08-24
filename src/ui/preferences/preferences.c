@@ -96,9 +96,17 @@ static Uint32 event_window(const SDL_Event *event) {
     case SDL_EVENT_MOUSE_BUTTON_DOWN: case SDL_EVENT_MOUSE_BUTTON_UP:
         return event->button.windowID;
     case SDL_EVENT_MOUSE_WHEEL: return event->wheel.windowID;
-    case SDL_EVENT_DROP_FILE: return event->drop.windowID;
+    case SDL_EVENT_DROP_BEGIN: case SDL_EVENT_DROP_FILE:
+    case SDL_EVENT_DROP_COMPLETE: case SDL_EVENT_DROP_POSITION:
+        return event->drop.windowID;
     default: return 0;
     }
+}
+
+static void enter_model_drop(BongoCatPreferences *value) {
+    value->page = 2;
+    value->import_drop_active = true;
+    value->render_dirty = true;
 }
 
 bool bongo_cat_preferences_chrome_drag_allowed(
@@ -195,10 +203,24 @@ bool bongo_cat_preferences_event(BongoCatPreferences *value, const SDL_Event *ev
     if (event_window(event) != SDL_GetWindowID(value->window)) return false;
     if (value->shown_ns && event->common.timestamp &&
         event->common.timestamp < value->shown_ns) return true;
+    if (event->type == SDL_EVENT_DROP_BEGIN) {
+        enter_model_drop(value);
+        return true;
+    }
+    if (event->type == SDL_EVENT_DROP_POSITION) {
+        enter_model_drop(value);
+        return true;
+    }
+    if (event->type == SDL_EVENT_DROP_COMPLETE) {
+        value->import_drop_active = false;
+        value->render_dirty = true;
+        return true;
+    }
     if (bongo_cat_preferences_scale_event(value, event)) return true;
     if (event->type == SDL_EVENT_WINDOW_FOCUS_LOST) {
         if (value->chrome_dragging) SDL_CaptureMouse(false);
         value->chrome_dragging = false;
+        value->import_drop_active = false;
         bongo_cat_pref_controls_reset(&value->ui.context);
     }
     if (value->app->smoke_input_audit && (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
@@ -212,6 +234,7 @@ bool bongo_cat_preferences_event(BongoCatPreferences *value, const SDL_Event *ev
         return true;
     }
     if (event->type == SDL_EVENT_DROP_FILE) {
+        value->import_drop_active = false;
         bongo_cat_preferences_import_path(value->app, value->window, event->drop.data);
         return true;
     }

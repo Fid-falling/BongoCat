@@ -57,6 +57,7 @@ public:
         const char *right_group, int right_index) const;
     bool set_expression(int index);
     int expression() const { return expression_index_; }
+    bool prepare_cover();
     bool visual_state(BongoCatLive2DVisualState *state) const;
 
 public:

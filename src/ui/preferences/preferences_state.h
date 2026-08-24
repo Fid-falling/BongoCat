@@ -47,6 +47,7 @@ struct BongoCatPreferences {
     nk_rune glyph_ranges[2048];
     bool input_active;
     bool import_requested;
+    bool import_drop_active;
     BongoCatImportDialog *import_dialog;
     bool frame_checked;
     bool render_dirty;

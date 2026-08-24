@@ -120,19 +120,29 @@ struct BongoCatLive2D {
     bongo_cat::NativeModel *model;
     int width = 612;
     int height = 354;
+    bool cover_runtime = false;
 };
 
-extern "C" BongoCatLive2D *bongo_cat_live2d_create(const char *asset_root,
-    BongoCatError *error) {
+static BongoCatLive2D *create_runtime(const char *asset_root,
+    bool cover_runtime, BongoCatError *error) {
     resource_root = asset_root ? asset_root : "";
     if (!start_framework(error)) return nullptr;
     BongoCatLive2D *runtime = new(std::nothrow) BongoCatLive2D{};
     if (!runtime) {
         stop_framework();
         bongo_cat_error_set(error, BONGO_CAT_ERROR_MEMORY, "Cannot allocate Cubism runtime");
-    }
+    } else runtime->cover_runtime = cover_runtime;
     return runtime;
 }
+
+extern "C" BongoCatLive2D *bongo_cat_live2d_create(const char *asset_root,
+    BongoCatError *error) {
+    return create_runtime(asset_root, false, error);
+}
+
+extern "C" BongoCatLive2D *bongo_cat_live2d_create_cover_runtime(
+    const char *asset_root, BongoCatError *error) {
+    return create_runtime(asset_root, true, error); }
 
 extern "C" void bongo_cat_live2d_destroy(BongoCatLive2D *runtime) {
     if (!runtime) return;
@@ -281,6 +291,10 @@ extern "C" bool bongo_cat_live2d_set_expression(BongoCatLive2D *runtime, int ind
     return runtime && runtime->model && runtime->model->set_expression(index); }
 extern "C" int bongo_cat_live2d_expression(const BongoCatLive2D *runtime) {
     return runtime && runtime->model ? runtime->model->expression() : -1; }
+extern "C" bool bongo_cat_live2d_prepare_cover(BongoCatLive2D *runtime) {
+    try { return runtime && runtime->cover_runtime && runtime->model &&
+        runtime->model->prepare_cover(); } catch (...) { return false; }
+}
 extern "C" bool bongo_cat_live2d_visual_state(const BongoCatLive2D *runtime,
     BongoCatLive2DVisualState *state) {
     return runtime && runtime->model && runtime->model->visual_state(state); }

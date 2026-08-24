@@ -41,12 +41,20 @@ static bool parent_path(const char *path, char *parent, size_t capacity) {
     return true;
 }
 
+bool bongo_cat_import_mver_config_path(const char *root,
+    char *path, size_t capacity) {
+    static const char *names[] = {BONGO_CAT_SKIN_CONFIG_FILE, "config.json"};
+    for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
+        if (bongo_cat_path_join(path, capacity, root, names[i]) &&
+            bongo_cat_path_is_file(path)) return true;
+    return false;
+}
+
 static bool package_at(const char *source, char *config, char *image_root) {
-    return bongo_cat_path_join(config, BONGO_CAT_PATH_CAP, source,
-            "config.json") &&
+    return bongo_cat_import_mver_config_path(source, config,
+            BONGO_CAT_PATH_CAP) &&
         bongo_cat_path_join(image_root, BONGO_CAT_PATH_CAP, source, "img") &&
-        bongo_cat_path_is_file(config) && bongo_cat_path_is_dir(image_root) &&
-        mver_shape(image_root);
+        bongo_cat_path_is_dir(image_root) && mver_shape(image_root);
 }
 
 static bool find_package(const char *source, char *package, size_t capacity,

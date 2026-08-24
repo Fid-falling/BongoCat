@@ -185,6 +185,8 @@ void bongo_cat_app_set_multiple_pets(BongoCatApp *app, bool enabled);
 bool bongo_cat_app_run_behavior(BongoCatApp *app,
     const BongoCatBehaviorEntry *behavior);
 void bongo_cat_app_capture_behavior_state(BongoCatApp *app);
+void bongo_cat_app_forget_behavior_state(BongoCatApp *app,
+    const char *model_id);
 void bongo_cat_app_restore_behavior_state(BongoCatApp *app,
     const char *model_id);
 BongoCatResult bongo_cat_app_import_model(BongoCatApp *app, const char *source, BongoCatError *error);

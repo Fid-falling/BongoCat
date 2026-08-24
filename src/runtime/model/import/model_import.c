@@ -235,6 +235,9 @@ BongoCatResult bongo_cat_app_import_model(BongoCatApp *app, const char *source,
         if (receipt.installed[i]) { preferred = i; break; }
     const char *imported_id = receipt.count ? receipt.ids[preferred] : NULL;
     bongo_cat_app_refresh_installed_models(app);
+    for (size_t i = 0; i < receipt.count; ++i)
+        if (receipt.installed[i])
+            bongo_cat_app_forget_behavior_state(app, receipt.ids[i]);
     if (imported_id && bongo_cat_app_select_model(app, imported_id))
         return BONGO_CAT_OK;
 #ifndef BONGO_CAT_HAS_CUBISM

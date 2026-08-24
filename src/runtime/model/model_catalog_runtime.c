@@ -272,6 +272,7 @@ BongoCatResult bongo_cat_app_remove_model(BongoCatApp *app, const char *id,
             restore_model_selection(app, &previous_selection);
         return BONGO_CAT_ERROR_IO;
     }
+    bongo_cat_app_forget_behavior_state(app, id);
     bongo_cat_settings_set_model_label(&app->settings, id, "");
     bongo_cat_app_rescan_models(app);
     return BONGO_CAT_OK;

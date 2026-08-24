@@ -47,6 +47,7 @@ if(EXISTS "${CUBISM_CORE_HEADER}")
       src/live2d/cubism_model_load.cpp
       src/live2d/cubism_model_update.cpp
       src/live2d/cubism_parameter_overrides.cpp
+      src/live2d/cubism_cover_capture.cpp
       src/live2d/cubism_motion_playback.cpp
       src/live2d/cubism_motion_state.cpp src/live2d/cubism_viewer_look.cpp
       src/live2d/cubism_model_bounds.cpp

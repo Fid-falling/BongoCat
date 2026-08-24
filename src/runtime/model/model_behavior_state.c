@@ -31,6 +31,12 @@ static void remove_model_state(BongoCatSessionState *session,
     session->active_behavior_count = output;
 }
 
+void bongo_cat_app_forget_behavior_state(BongoCatApp *app,
+    const char *model_id) {
+    if (!app || !model_id || !model_id[0]) return;
+    remove_model_state(&app->session, model_id);
+}
+
 static void make_room(BongoCatSessionState *session, size_t required) {
     size_t count = session->active_behavior_count;
     if (required > BONGO_CAT_BEHAVIOR_BINDING_CAP)

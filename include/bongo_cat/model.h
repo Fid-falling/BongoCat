@@ -128,6 +128,8 @@ typedef struct BongoCatLive2DRenderOptions {
 } BongoCatLive2DRenderOptions;
 
 BongoCatLive2D *bongo_cat_live2d_create(const char *asset_root, BongoCatError *error);
+BongoCatLive2D *bongo_cat_live2d_create_cover_runtime(
+    const char *asset_root, BongoCatError *error);
 void bongo_cat_live2d_destroy(BongoCatLive2D *live2d);
 BongoCatResult bongo_cat_live2d_load(BongoCatLive2D *live2d, const char *model_dir,
     const char *setting_file, bool preset,
@@ -175,6 +177,8 @@ bool bongo_cat_live2d_motion_same_toggle(const BongoCatLive2D *live2d,
     const char *right_group, int right_index);
 bool bongo_cat_live2d_set_expression(BongoCatLive2D *live2d, int index);
 int bongo_cat_live2d_expression(const BongoCatLive2D *live2d);
+/* Accepts only a runtime created by bongo_cat_live2d_create_cover_runtime. */
+bool bongo_cat_live2d_prepare_cover(BongoCatLive2D *live2d);
 bool bongo_cat_live2d_visual_state(const BongoCatLive2D *live2d,
     BongoCatLive2DVisualState *state);
 
