@@ -91,17 +91,13 @@ static bool model_at(const char *directory, char *setting, size_t capacity) {
         bongo_cat_import_manifest_valid(directory, setting, NULL);
 }
 
-static bool find_mode_model(const char *package, const char *mode_root, char *directory,
+static bool find_mode_model(const char *mode_root, char *directory,
     size_t directory_capacity, char *setting, size_t setting_capacity) {
     if (bongo_cat_path_join(directory, directory_capacity, mode_root, "cat_model") &&
         bongo_cat_path_is_dir(directory) && model_at(directory, setting, setting_capacity))
         return true;
     snprintf(directory, directory_capacity, "%s", mode_root);
-    if (model_at(directory, setting, setting_capacity)) return true;
-    char resources[BONGO_CAT_PATH_CAP];
-    return bongo_cat_path_join(resources, sizeof(resources), package, "Resources") &&
-        bongo_cat_path_join(directory, directory_capacity, resources, "cat") &&
-        bongo_cat_path_is_dir(directory) && model_at(directory, setting, setting_capacity);
+    return model_at(directory, setting, setting_capacity);
 }
 
 static bool add_mode(BongoCatImportDiscovery *discovery, const char *source,
@@ -123,7 +119,7 @@ static bool add_mode(BongoCatImportDiscovery *discovery, const char *source,
     if (!mode_uses_live2d(mode_config)) return true;
     if (discovery->count >= BONGO_CAT_IMPORT_CANDIDATE_CAP) return false;
     BongoCatImportCandidate *candidate = &discovery->candidates[discovery->count];
-    if (!find_mode_model(source, mode_root, candidate->directory, sizeof(candidate->directory),
+    if (!find_mode_model(mode_root, candidate->directory, sizeof(candidate->directory),
         candidate->setting, sizeof(candidate->setting))) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
             "Mver mode contains no valid Live2D model: %s", mode_root);

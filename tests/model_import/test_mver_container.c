@@ -31,6 +31,14 @@ void test_mver_container_discovery(void) {
     CHECK(child(backup, sizeof(backup), package,
         "config.json.before_console_bak", false));
     CHECK(write_text(backup, "backup"));
+    char runtime_resources[BONGO_CAT_PATH_CAP];
+    CHECK(child(runtime_resources, sizeof(runtime_resources), root,
+        "Resources", true));
+    CHECK(child(backup, sizeof(backup), runtime_resources, "cat.ttf", false));
+    CHECK(write_text(backup, "runtime font"));
+    CHECK(child(backup, sizeof(backup), runtime_resources,
+        "l2dlogo.png", false));
+    CHECK(write_text(backup, "runtime logo"));
     CHECK(child(bundle, sizeof(bundle), root, "bundle", true));
     CHECK(child(nested_package, sizeof(nested_package), bundle, "model", true));
     CHECK(mver_fixture(nested_package));
@@ -133,6 +141,8 @@ void test_mver_container_discovery(void) {
     CHECK(child(backup, sizeof(backup), stored,
         BONGO_CAT_MODEL_ADAPTER_FILE, false) &&
         !bongo_cat_path_is_file(backup));
+    CHECK(child(backup, sizeof(backup), stored, "Resources", false) &&
+        !bongo_cat_path_is_dir(backup));
     BongoCatApp *app = calloc(1, sizeof(*app));
     CHECK(app != NULL);
     if (app) {

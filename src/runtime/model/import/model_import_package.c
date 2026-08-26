@@ -85,6 +85,9 @@ static bool copy_mver_tree(const char *source, const char *target,
 static BongoCatPathVisit copy_mver_child(void *userdata,
     const char *dirname, const char *name) {
     MverDirectoryCopy *context = userdata;
+    if (context->depth == 0 && name &&
+        SDL_strcasecmp(name, "Resources") == 0)
+        return BONGO_CAT_PATH_CONTINUE;
     char source[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_join(source, sizeof(source), dirname, name))
         return BONGO_CAT_PATH_FAILURE;
