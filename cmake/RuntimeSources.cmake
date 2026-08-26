@@ -62,6 +62,7 @@ set(BONGO_CAT_RUNTIME_INPUT_SOURCES
 set(BONGO_CAT_RUNTIME_MODEL_SOURCES
   src/runtime/model/model_behavior_state.c
   src/runtime/model/model_catalog_runtime.c
+  src/runtime/model/model_catalog_builtins.c
   src/runtime/model/model_catalog_refresh.c
   src/runtime/model/model_files.c
   src/runtime/model/model_geometry.c
@@ -74,6 +75,7 @@ set(BONGO_CAT_RUNTIME_MODEL_SOURCES
 
 set(BONGO_CAT_RUNTIME_IMPORT_SOURCES
   src/runtime/model/import/model_import.c
+  src/runtime/model/import/model_import_app.c
   src/runtime/model/import/model_import_adapter.c
   src/runtime/model/import/model_import_digest.c
   src/runtime/model/import/model_import_digest_api.c

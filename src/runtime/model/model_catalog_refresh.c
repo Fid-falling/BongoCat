@@ -10,7 +10,7 @@ typedef struct BongoCatModelRefreshJob {
     struct BongoCatModelRefresh *owner;
     BongoCatModelCatalog models;
     char asset_root[BONGO_CAT_PATH_CAP];
-    char data_root[BONGO_CAT_PATH_CAP];
+    char models_root[BONGO_CAT_PATH_CAP];
     char cache_root[BONGO_CAT_PATH_CAP];
     char nearby_root[BONGO_CAT_PATH_CAP];
     char active_model_id[BONGO_CAT_ID_CAP];
@@ -48,8 +48,8 @@ static int SDLCALL refresh_worker(void *userdata) {
     if (scan) {
         snprintf(scan->asset_root, sizeof(scan->asset_root), "%s",
             job->asset_root);
-        snprintf(scan->data_root, sizeof(scan->data_root), "%s",
-            job->data_root);
+        snprintf(scan->models_root, sizeof(scan->models_root), "%s",
+            job->models_root);
         snprintf(scan->cache_root, sizeof(scan->cache_root), "%s",
             job->cache_root);
         snprintf(scan->session.active_model_id,
@@ -81,7 +81,7 @@ static bool start_refresh(BongoCatApp *app) {
     job->started_ns = SDL_GetTicksNS();
     job->revision = refresh->revision;
     snprintf(job->asset_root, sizeof(job->asset_root), "%s", app->asset_root);
-    snprintf(job->data_root, sizeof(job->data_root), "%s", app->data_root);
+    snprintf(job->models_root, sizeof(job->models_root), "%s", app->models_root);
     snprintf(job->cache_root, sizeof(job->cache_root), "%s", app->cache_root);
     snprintf(job->nearby_root, sizeof(job->nearby_root), "%s",
         app->nearby_root);

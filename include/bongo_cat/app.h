@@ -49,6 +49,7 @@ typedef struct BongoCatApp {
     char session_path[BONGO_CAT_PATH_CAP];
     char config_root[BONGO_CAT_PATH_CAP];
     char data_root[BONGO_CAT_PATH_CAP];
+    char models_root[BONGO_CAT_PATH_CAP];
     char cache_root[BONGO_CAT_PATH_CAP];
     char state_root[BONGO_CAT_PATH_CAP];
     char log_root[BONGO_CAT_PATH_CAP];

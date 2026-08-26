@@ -131,9 +131,9 @@ BongoCatResult bongo_cat_import_nearby_scan(BongoCatApp *app,
 BongoCatResult bongo_cat_import_nearby(BongoCatApp *app,
     const char *root, BongoCatError *error);
 BongoCatResult bongo_cat_import_install(const char *source,
-    const char *data_root, BongoCatImportReceipt *receipt,
+    const char *models_root, BongoCatImportReceipt *receipt,
     BongoCatError *error);
-BongoCatImportSession *bongo_cat_import_session_create(const char *data_root,
+BongoCatImportSession *bongo_cat_import_session_create(const char *models_root,
     BongoCatError *error);
 void bongo_cat_import_session_destroy(BongoCatImportSession *session);
 BongoCatResult bongo_cat_import_session_install(

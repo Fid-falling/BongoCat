@@ -87,7 +87,7 @@ static int SDLCALL import_worker(void *userdata) {
     }
     job->result = BONGO_CAT_ERROR_FORMAT;
     BongoCatImportSession *session = bongo_cat_import_session_create(
-        job->data_root, &job->error);
+        job->models_root, &job->error);
     if (!session) job->result = job->error.code ? job->error.code :
         BONGO_CAT_ERROR_IO;
     for (size_t i = 0; session && i < job->count; ++i) {
@@ -150,8 +150,8 @@ static int SDLCALL import_worker(void *userdata) {
 
 static bool start_job(BongoCatImportDialog *dialog, BongoCatApp *app,
     SDL_WindowID window_id, BongoCatImportJob *job) {
-    if (!dialog || !app || !job || !app->data_root[0]) return false;
-    snprintf(job->data_root, sizeof(job->data_root), "%s", app->data_root);
+    if (!dialog || !app || !job || !app->models_root[0]) return false;
+    snprintf(job->models_root, sizeof(job->models_root), "%s", app->models_root);
     job->dialog = dialog;
     SDL_LockMutex(dialog->mutex);
     if (!dialog->active || dialog->busy) {

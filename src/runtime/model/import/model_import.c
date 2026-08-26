@@ -21,19 +21,12 @@ struct BongoCatImportSession {
     BongoCatImportDigestCache *digests;
 };
 
-static bool custom_root(const char *data_root, char *path, size_t capacity) {
-    return data_root && data_root[0] &&
-        bongo_cat_path_join(path, capacity, data_root, "models") &&
-        bongo_cat_path_create_directory(path);
-}
-
 static void cleanup(ImportInstall *installs, size_t count, bool committed) {
     for (size_t i = 0; i < count; ++i)
         if (!installs[i].existing)
             bongo_cat_model_remove_tree(committed && installs[i].committed
                 ? installs[i].target : installs[i].temporary, NULL);
 }
-
 static bool prepare_install(const BongoCatImportCandidate *candidate,
     const BongoCatPackageMetadata *metadata,
     const BongoCatModelCatalog *existing, ImportInstall *install,
@@ -93,9 +86,9 @@ static void remember_installs(BongoCatImportSession *session,
     }
 }
 
-BongoCatImportSession *bongo_cat_import_session_create(const char *data_root,
+BongoCatImportSession *bongo_cat_import_session_create(const char *models_root,
     BongoCatError *error) {
-    if (!data_root) return NULL;
+    if (!models_root) return NULL;
     BongoCatImportSession *session = calloc(1, sizeof(*session));
     if (session) session->existing = calloc(1, sizeof(*session->existing));
     if (!session || !session->existing) {
@@ -106,7 +99,10 @@ BongoCatImportSession *bongo_cat_import_session_create(const char *data_root,
         return NULL;
     }
     session->digests = bongo_cat_import_digest_cache_create();
-    if (!custom_root(data_root, session->root, sizeof(session->root)) ||
+    int root_length = snprintf(session->root, sizeof(session->root), "%s",
+        models_root);
+    if (root_length < 0 || (size_t)root_length >= sizeof(session->root) ||
+        !bongo_cat_path_create_directory(session->root) ||
         !bongo_cat_model_cleanup_imports(session->root, error)) {
         bongo_cat_import_session_destroy(session);
         return NULL;
@@ -191,70 +187,16 @@ BongoCatResult bongo_cat_import_session_install(
     return BONGO_CAT_OK;
 }
 
-BongoCatResult bongo_cat_import_install(const char *source, const char *data_root,
+BongoCatResult bongo_cat_import_install(const char *source, const char *models_root,
     BongoCatImportReceipt *receipt, BongoCatError *error) {
     if (receipt) memset(receipt, 0, sizeof(*receipt));
-    if (!source || !data_root) return BONGO_CAT_ERROR_ARGUMENT;
+    if (!source || !models_root) return BONGO_CAT_ERROR_ARGUMENT;
     BongoCatImportSession *session = bongo_cat_import_session_create(
-        data_root, error);
+        models_root, error);
     if (!session) return error && error->code ? error->code :
         BONGO_CAT_ERROR_IO;
     BongoCatResult result = bongo_cat_import_session_install(session,
         source, receipt, error);
     bongo_cat_import_session_destroy(session);
     return result;
-}
-
-#ifdef BONGO_CAT_HAS_CUBISM
-static void remove_receipt(const char *data_root,
-    const BongoCatImportReceipt *receipt) {
-    char root[BONGO_CAT_PATH_CAP], path[BONGO_CAT_PATH_CAP];
-    if (!receipt || !custom_root(data_root, root, sizeof(root))) return;
-    for (size_t i = 0; i < receipt->count; ++i)
-        if (receipt->installed[i] &&
-            bongo_cat_path_join(path, sizeof(path), root, receipt->ids[i]))
-            bongo_cat_model_remove_tree(path, NULL);
-}
-#endif
-
-BongoCatResult bongo_cat_app_import_model(BongoCatApp *app, const char *source,
-    BongoCatError *error) {
-    if (!app || !source) return BONGO_CAT_ERROR_ARGUMENT;
-    BongoCatImportReceipt receipt;
-    BongoCatResult result = bongo_cat_import_install(source, app->data_root,
-        &receipt, error);
-    if (result != BONGO_CAT_OK) {
-        if (error && !error->message[0]) bongo_cat_error_set(error, result,
-            "Model import failed while installing: %s", source);
-        return result;
-    }
-    char previous[BONGO_CAT_PATH_CAP];
-    snprintf(previous, sizeof(previous), "%s", app->session.active_model_id);
-    size_t preferred = 0;
-    for (size_t i = 0; i < receipt.count; ++i)
-        if (receipt.installed[i]) { preferred = i; break; }
-    const char *imported_id = receipt.count ? receipt.ids[preferred] : NULL;
-    bongo_cat_app_refresh_installed_models(app);
-    for (size_t i = 0; i < receipt.count; ++i)
-        if (receipt.installed[i])
-            bongo_cat_app_forget_behavior_state(app, receipt.ids[i]);
-    if (imported_id && bongo_cat_app_select_model(app, imported_id))
-        return BONGO_CAT_OK;
-#ifndef BONGO_CAT_HAS_CUBISM
-    const BongoCatModelEntry *entry = imported_id ?
-        bongo_cat_models_find(&app->models, imported_id) : NULL;
-    if (entry) {
-        snprintf(app->session.active_model_id, sizeof(app->session.active_model_id),
-            "%s", imported_id);
-        app->loaded_mode = entry->mode;
-    }
-    return BONGO_CAT_OK;
-#else
-    remove_receipt(app->data_root, &receipt);
-    bongo_cat_app_refresh_installed_models(app);
-    if (previous[0]) bongo_cat_app_select_model(app, previous);
-    bongo_cat_error_set(error, BONGO_CAT_ERROR_CUBISM,
-        "Model import was rolled back because the Live2D model could not be loaded");
-    return BONGO_CAT_ERROR_CUBISM;
-#endif
 }

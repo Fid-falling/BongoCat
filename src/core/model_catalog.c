@@ -40,13 +40,19 @@ static BongoCatModelMode infer_mode(const char *directory) {
     return bongo_cat_path_is_dir(path) ? BONGO_CAT_MODE_KEYBOARD : BONGO_CAT_MODE_STANDARD;
 }
 
+static bool builtin_marker(const char *directory) {
+    char marker[BONGO_CAT_PATH_CAP];
+    return bongo_cat_path_join(marker, sizeof(marker), directory,
+        BONGO_CAT_MODEL_BUILTIN_MARKER) && bongo_cat_path_is_file(marker);
+}
+
 static bool add_model(BongoCatModelCatalog *catalog, const char *directory, bool preset) {
     bool handled = false;
     bool package_ok = bongo_cat_model_package_add(catalog, directory,
         preset, &handled);
     if (handled) return package_ok;
     if (!package_ok) return false;
-    if (!preset) return true;
+    if (!preset && !builtin_marker(directory)) return true;
     if (catalog->count >= BONGO_CAT_MODEL_CAP) return false;
     char setting[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_find_suffix(directory, ".model3.json", setting, sizeof(setting))) return true;
@@ -62,7 +68,7 @@ static bool add_model(BongoCatModelCatalog *catalog, const char *directory, bool
     entry->source_format = BONGO_CAT_MODEL_SOURCE_BUILTIN;
     entry->capabilities = BONGO_CAT_MODEL_CAPABILITY_LIVE2D |
         BONGO_CAT_MODEL_CAPABILITY_PREVIEW;
-    entry->preset = preset;
+    entry->preset = preset || builtin_marker(directory);
     return true;
 }
 

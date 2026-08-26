@@ -49,7 +49,7 @@ int test_mver_nearby_identity(void) {
     bongo_cat_settings_defaults(&app->settings);
     bongo_cat_session_defaults(&app->session);
     bongo_cat_models_init(&app->models);
-    snprintf(app->data_root, sizeof(app->data_root), "%s", data);
+    snprintf(app->models_root, sizeof(app->models_root), "%s", data);
     snprintf(app->cache_root, sizeof(app->cache_root), "%s", data);
     BongoCatError error = {0};
     CHECK(bongo_cat_import_nearby_root(app, source, &error) ==
@@ -150,7 +150,7 @@ int test_mver_nearby_refresh(void) {
     bongo_cat_models_init(&app->models);
     snprintf(app->asset_root, sizeof(app->asset_root),
         "%s/resources/assets", BONGO_CAT_NATIVE_SOURCE_DIR);
-    snprintf(app->data_root, sizeof(app->data_root), "%s", data);
+    snprintf(app->models_root, sizeof(app->models_root), "%s", data);
     snprintf(app->cache_root, sizeof(app->cache_root), "%s", data);
     snprintf(app->nearby_root, sizeof(app->nearby_root), "%s", root);
 

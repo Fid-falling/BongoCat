@@ -62,7 +62,7 @@ static bool copy_preview(const BongoCatImportCandidate *candidate,
             "resources")) return false;
     bool target_exists = bongo_cat_path_is_dir(target_resources);
     if (bongo_cat_path_is_dir(source_resources) && !target_exists) {
-        if (bongo_cat_copy_directory(source_resources, target_resources,
+        if (bongo_cat_model_copy_directory(source_resources, target_resources,
                 error) != BONGO_CAT_OK) return false;
         target_exists = true;
     }

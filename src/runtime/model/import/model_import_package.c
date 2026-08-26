@@ -1,4 +1,5 @@
 #include "model_import.h"
+#include "model_storage.h"
 #include "runtime.h"
 #include "bongo_cat/json.h"
 #include "bongo_cat/path.h"
@@ -53,7 +54,7 @@ static bool copy_relative_directory(const char *source_root,
     if (!relative_path(source_root, source, relative, sizeof(relative)) ||
         !relative[0] || !bongo_cat_path_join(target, sizeof(target),
             target_root, relative)) return false;
-    return bongo_cat_copy_directory(source, target, error) == BONGO_CAT_OK;
+    return bongo_cat_model_copy_directory(source, target, error) == BONGO_CAT_OK;
 }
 
 static bool copy_relative_file(const char *source_root, const char *source,
@@ -99,7 +100,7 @@ static bool copy_tauri_payload(const BongoCatImportCandidate *candidate,
     if (!relative_path(candidate->package_root, candidate->directory,
         relative, sizeof(relative))) return false;
     if (!relative[0])
-        return bongo_cat_copy_directory(candidate->directory, target, error) ==
+        return bongo_cat_model_copy_directory(candidate->directory, target, error) ==
             BONGO_CAT_OK;
     return bongo_cat_path_create_directory(target) &&
         copy_relative_directory(candidate->package_root, candidate->directory,

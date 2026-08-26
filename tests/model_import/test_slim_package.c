@@ -39,12 +39,14 @@ int test_slim_package(void) {
 
     BongoCatImportReceipt receipt = {0};
     BongoCatError error = {0};
-    CHECK_SLIM(bongo_cat_import_install(source, data, &receipt, &error) ==
+    char models_root[BONGO_CAT_PATH_CAP];
+    CHECK_SLIM(child(models_root, sizeof(models_root), data, "models", true));
+    CHECK_SLIM(bongo_cat_import_install(source, models_root, &receipt, &error) ==
         BONGO_CAT_OK);
     CHECK_SLIM(receipt.count == 1 && receipt.installed_count == 1);
     char installed[BONGO_CAT_PATH_CAP], models[BONGO_CAT_PATH_CAP];
     char package[BONGO_CAT_PATH_CAP];
-    CHECK_SLIM(bongo_cat_path_join(models, sizeof(models), data, "models"));
+    snprintf(models, sizeof(models), "%s", models_root);
     CHECK_SLIM(bongo_cat_path_join(package, sizeof(package), models,
         receipt.ids[0]));
     CHECK_SLIM(child(installed, sizeof(installed), package,

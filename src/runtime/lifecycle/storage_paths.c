@@ -31,6 +31,8 @@ static bool isolated_roots(BongoCatApp *app) {
             app->storage_root, "config") &&
         child_path(app->data_root, sizeof(app->data_root),
             app->storage_root, "data") &&
+        child_path(app->models_root, sizeof(app->models_root),
+            app->storage_root, "models") &&
         child_path(app->cache_root, sizeof(app->cache_root),
             app->storage_root, "cache") &&
         child_path(app->state_root, sizeof(app->state_root),
@@ -48,6 +50,8 @@ static bool platform_roots(BongoCatApp *app) {
             local_app, "config") &&
         child_path(app->data_root, sizeof(app->data_root),
             local_app, "data") &&
+        child_path(app->models_root, sizeof(app->models_root),
+            local_app, "models") &&
         child_path(app->cache_root, sizeof(app->cache_root),
             local_app, "cache") &&
         child_path(app->state_root, sizeof(app->state_root),
@@ -66,6 +70,8 @@ static bool platform_roots(BongoCatApp *app) {
         child_path(app->config_root, sizeof(app->config_root),
             app_support, "config") &&
         child_path(app->data_root, sizeof(app->data_root), app_support, "data") &&
+        child_path(app->models_root, sizeof(app->models_root),
+            app_support, "models") &&
         child_path(app->state_root, sizeof(app->state_root), app_support, "state") &&
         child_path(app->cache_root, sizeof(app->cache_root),
             library, "Caches/BongoCat") &&
@@ -93,6 +99,8 @@ static bool platform_roots(BongoCatApp *app) {
             "XDG_STATE_HOME", ".local/state") ||
         !xdg_root(app->cache_root, sizeof(app->cache_root),
             "XDG_CACHE_HOME", ".cache")) return false;
+    if (!child_path(app->models_root, sizeof(app->models_root),
+        app->data_root, "models")) return false;
     return child_path(app->log_root, sizeof(app->log_root),
         app->state_root, "logs");
 }
@@ -112,8 +120,8 @@ bool bongo_cat_storage_paths_prepare(BongoCatApp *app,
             sizeof(app->state_root), app->primary_state_root,
             app->secondary_model_id);
     }
-    const char *roots[] = {app->config_root, app->data_root, app->cache_root,
-        app->state_root, app->log_root};
+    const char *roots[] = {app->config_root, app->data_root, app->models_root,
+        app->cache_root, app->state_root, app->log_root};
     for (size_t i = 0; resolved && i < sizeof(roots) / sizeof(roots[0]); ++i)
         resolved = writable_directory(roots[i]);
     resolved = resolved && child_path(app->settings_path,

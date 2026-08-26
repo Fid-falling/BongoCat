@@ -232,7 +232,10 @@ bool bongo_cat_model_package_add(BongoCatModelCatalog *catalog,
         entry->package_schema = schema;
         entry->adapter_schema = adapter_schema;
         entry->adapter_generator = adapter_generator;
-        entry->preset = preset;
+        char marker[BONGO_CAT_PATH_CAP];
+        entry->preset = preset || (bongo_cat_path_join(marker, sizeof(marker),
+            directory, BONGO_CAT_MODEL_BUILTIN_MARKER) &&
+            bongo_cat_path_is_file(marker));
         catalog->count++;
     }
     yyjson_doc_free(document);

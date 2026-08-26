@@ -32,7 +32,9 @@ int test_mver_missing_motion_groups(void) {
         "\"l2d_motion_lockhand\":[[68]]}}"));
     BongoCatImportReceipt receipt = {0};
     BongoCatError error = {0};
-    CHECK(bongo_cat_import_install(source, data, &receipt, &error) ==
+    char models_root[BONGO_CAT_PATH_CAP];
+    CHECK(child(models_root, sizeof(models_root), data, "models", true));
+    CHECK(bongo_cat_import_install(source, models_root, &receipt, &error) ==
         BONGO_CAT_OK);
     CHECK(receipt.count == 1 && receipt.installed_count == 1);
     CHECK(bongo_cat_model_remove_tree(source, NULL));
