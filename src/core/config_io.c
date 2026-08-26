@@ -179,6 +179,29 @@ static bool read_model_labels(yyjson_val *array, BongoCatSettings *settings,
     return true;
 }
 
+static bool read_removed_models(yyjson_val *array, BongoCatSettings *settings,
+    BongoCatError *error) {
+    if (!array) return true;
+    if (yyjson_arr_size(array) > BONGO_CAT_MODEL_CAP)
+        return type_error(error, "removedModels", "a smaller array");
+    settings->removed_model_count = 0;
+    size_t index, count;
+    yyjson_val *item;
+    yyjson_arr_foreach(array, index, count, item) {
+        const char *id = yyjson_get_str(item);
+        size_t length = yyjson_get_len(item);
+        if (!yyjson_is_str(item) || !id || !length || strlen(id) != length)
+            return type_error(error, "removedModels[]",
+                "a non-empty string without embedded nulls");
+        BongoCatRemovedModel *entry =
+            &settings->removed_models[settings->removed_model_count++];
+        memset(entry, 0, sizeof(*entry));
+        if (!copy_text(entry->id, sizeof(entry->id), id, length,
+                "removedModels[]", error)) return false;
+    }
+    return true;
+}
+
 static BongoCatResult read_extensions(yyjson_val *value,
     BongoCatSettings *settings, BongoCatError *error) {
     if (!value) return BONGO_CAT_OK;
@@ -222,6 +245,7 @@ BongoCatResult bongo_cat_settings_load(const char *path,
     yyjson_val *shortcuts = NULL;
     yyjson_val *behaviors = NULL;
     yyjson_val *models = NULL;
+    yyjson_val *removed_models = NULL;
     yyjson_val *extensions_value = NULL;
     bool valid = read_object(root, "rendering", &model, error) &&
         read_object(root, "window", &window, error) &&
@@ -229,13 +253,15 @@ BongoCatResult bongo_cat_settings_load(const char *path,
         read_object(root, "shortcuts", &shortcuts, error) &&
         read_array(root, "behaviorOverrides", &behaviors, error) &&
         read_array(root, "modelOverrides", &models, error) &&
+        read_array(root, "removedModels", &removed_models, error) &&
         read_value(root, "extensions", &extensions_value, error) &&
         (!model || read_model(model, &loaded.model, error)) &&
         (!window || read_window(window, &loaded.window, error)) &&
         (!application || read_app(application, &loaded.app, error)) &&
         (!shortcuts || read_shortcuts(shortcuts, &loaded.shortcuts, error)) &&
         read_behaviors(behaviors, &loaded, error) &&
-        read_model_labels(models, &loaded, error);
+        read_model_labels(models, &loaded, error) &&
+        read_removed_models(removed_models, &loaded, error);
     if (!valid) result = BONGO_CAT_ERROR_FORMAT;
     if (valid) result = read_extensions(extensions_value, &loaded, error);
     yyjson_doc_free(document);

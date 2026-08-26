@@ -78,6 +78,15 @@ static BongoCatImportJob *copy_path(const char *path) {
     return path && path[0] ? copy_job(files) : NULL;
 }
 
+static void remember_package(BongoCatImportJob *job, const char *id) {
+    if (!job || !id || !id[0]) return;
+    for (size_t i = 0; i < job->package_id_count; ++i)
+        if (!strcmp(job->package_ids[i], id)) return;
+    if (job->package_id_count >= BONGO_CAT_MODEL_CAP) return;
+    snprintf(job->package_ids[job->package_id_count++], BONGO_CAT_ID_CAP,
+        "%s", id);
+}
+
 static int SDLCALL import_worker(void *userdata) {
     BongoCatImportJob *job = userdata;
     if (!SDL_SetCurrentThreadPriority(SDL_THREAD_PRIORITY_LOW)) {
@@ -96,6 +105,7 @@ static int SDLCALL import_worker(void *userdata) {
         BongoCatResult result = bongo_cat_import_session_install(session,
             job->paths[i], &receipt, &error);
         if (result == BONGO_CAT_OK) {
+            if (receipt.count) remember_package(job, receipt.ids[0]);
             for (size_t j = 0; j < receipt.count; ++j) {
                 if (!job->first_id[0] ||
                     (receipt.installed[j] && !job->first_id_installed)) {
@@ -232,18 +242,31 @@ static void complete_job(BongoCatImportDialog *dialog, BongoCatApp *app,
     }
     SDL_UnlockMutex(dialog->mutex);
     if (worker) SDL_WaitThread(worker, NULL);
-    if (job->result == BONGO_CAT_OK && job->first_id[0] &&
-        job->first_id_installed) {
+    char restored_id[BONGO_CAT_ID_CAP] = {0};
+    size_t restored_count = 0;
+    if (job->result == BONGO_CAT_OK)
+        for (size_t i = 0; i < job->package_id_count; ++i)
+            if (bongo_cat_settings_restore_model_package(&app->settings,
+                    job->package_ids[i])) {
+                restored_count++;
+                if (!restored_id[0])
+                    snprintf(restored_id, sizeof(restored_id), "%s",
+                        job->package_ids[i]);
+            }
+    bool catalog_changed = job->installed_count > 0 || restored_count > 0;
+    if (job->result == BONGO_CAT_OK && job->first_id[0] && catalog_changed) {
         SDL_GL_MakeCurrent(app->window, app->gl_context);
         bongo_cat_app_refresh_installed_models(app);
-        if (!bongo_cat_app_select_model(app, job->first_id)) {
+        const char *selected = job->first_id_installed || !restored_id[0]
+            ? job->first_id : restored_id;
+        if (!bongo_cat_app_select_model(app, selected)) {
             job->result = BONGO_CAT_ERROR_CUBISM;
             bongo_cat_error_set(&job->error, job->result,
                 "Model imported but could not be loaded");
         }
     }
     bongo_cat_preferences_import_complete(app, job->result, &job->error,
-        job->resolved_count, job->installed_count);
+        job->resolved_count, job->installed_count + restored_count);
     free_job(job);
     release_dialog(dialog);
 }

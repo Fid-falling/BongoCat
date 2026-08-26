@@ -97,6 +97,10 @@ typedef struct BongoCatModelLabel {
     char label[BONGO_CAT_ID_CAP];
 } BongoCatModelLabel;
 
+typedef struct BongoCatRemovedModel {
+    char id[BONGO_CAT_ID_CAP];
+} BongoCatRemovedModel;
+
 typedef struct BongoCatActiveBehavior {
     char model_id[BONGO_CAT_ID_CAP];
     char behavior_id[BONGO_CAT_BEHAVIOR_ID_CAP];
@@ -113,6 +117,8 @@ typedef struct BongoCatSettings {
     size_t behavior_shortcut_count;
     BongoCatModelLabel model_labels[BONGO_CAT_MODEL_CAP];
     size_t model_label_count;
+    BongoCatRemovedModel removed_models[BONGO_CAT_MODEL_CAP];
+    size_t removed_model_count;
     char extensions_json[BONGO_CAT_SETTINGS_EXTENSIONS_CAP];
 } BongoCatSettings;
 
@@ -146,6 +152,12 @@ const char *bongo_cat_settings_model_label(const BongoCatSettings *settings,
     const char *id);
 bool bongo_cat_settings_set_model_label(BongoCatSettings *settings,
     const char *id, const char *label);
+bool bongo_cat_settings_model_removed(const BongoCatSettings *settings,
+    const char *id);
+bool bongo_cat_settings_set_model_removed(BongoCatSettings *settings,
+    const char *id, bool removed);
+bool bongo_cat_settings_restore_model_package(BongoCatSettings *settings,
+    const char *package_id);
 BongoCatResult bongo_cat_settings_load(const char *path,
     BongoCatSettings *settings, BongoCatError *error);
 BongoCatResult bongo_cat_settings_save(const char *path,

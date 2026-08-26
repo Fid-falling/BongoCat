@@ -28,6 +28,8 @@ static BongoCatPathVisit discover_item(void *userdata,
 int bongo_cat_import_tauri_discover_exact(const char *source,
     BongoCatImportDiscovery *discovery, BongoCatError *error) {
     if (!source || !discovery || !bongo_cat_path_is_dir(source)) return 0;
+    if (!discovery->source_name[0]) snprintf(discovery->source_name,
+        sizeof(discovery->source_name), "%s", bongo_cat_path_name(source));
     size_t before = discovery->count;
     if (!bongo_cat_path_enumerate(source, discover_item, discovery)) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,

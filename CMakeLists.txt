@@ -69,7 +69,7 @@ add_library(bongo_cat_core STATIC
   src/core/file.c src/core/i18n.c
   src/core/input_state.c src/core/mver_pointer.c
   src/core/mouse_tracking.c src/core/sha256.c src/core/utf8.c
-  src/core/model_catalog.c src/core/model_package.c
+  src/core/model_catalog.c
   src/core/model_behavior.c
   src/core/path.c src/core/path_io.c src/core/json.c src/core/shortcut.c)
 target_include_directories(bongo_cat_core PUBLIC "${BONGO_CAT_GENERATED_INCLUDE_DIR}" include)

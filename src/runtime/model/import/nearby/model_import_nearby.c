@@ -8,19 +8,28 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define NEARBY_ADAPTER_DIRECTORY "model-adapters"
 #define NEARBY_SCAN_BUDGET_NS 500000000ull
 
 static SDL_InitState nearby_scan_lock_init;
 static SDL_Mutex *nearby_scan_lock;
 
-static SDL_Mutex *scan_lock(void) {
+static SDL_Mutex *scan_mutex(void) {
     if (SDL_ShouldInit(&nearby_scan_lock_init)) {
         nearby_scan_lock = SDL_CreateMutex();
         SDL_SetInitialized(&nearby_scan_lock_init,
             nearby_scan_lock != NULL);
     }
     return nearby_scan_lock;
+}
+
+void bongo_cat_import_model_scan_lock(void) {
+    SDL_Mutex *mutex = scan_mutex();
+    if (mutex) SDL_LockMutex(mutex);
+}
+
+void bongo_cat_import_model_scan_unlock(void) {
+    SDL_Mutex *mutex = nearby_scan_lock;
+    if (mutex) SDL_UnlockMutex(mutex);
 }
 
 void bongo_cat_import_nearby_shutdown(void) {
@@ -188,7 +197,7 @@ static BongoCatResult import_root_unlocked(BongoCatApp *app, const char *root,
     char cache_root[BONGO_CAT_PATH_CAP];
     char first_created[BONGO_CAT_ID_CAP] = {0};
     if (!bongo_cat_path_join(cache_root, sizeof(cache_root), app->cache_root,
-            NEARBY_ADAPTER_DIRECTORY) ||
+            BONGO_CAT_ADAPTER_CACHE_DIRECTORY) ||
         !bongo_cat_path_create_directory(cache_root))
         return BONGO_CAT_ERROR_IO;
     BongoCatImportDiscovery *discovery = calloc(1, sizeof(*discovery));
@@ -215,10 +224,9 @@ static BongoCatResult import_root_unlocked(BongoCatApp *app, const char *root,
 
 static BongoCatResult import_root(BongoCatApp *app, const char *root,
     bool bounded, BongoCatError *error) {
-    SDL_Mutex *mutex = scan_lock();
-    if (mutex) SDL_LockMutex(mutex);
+    bongo_cat_import_model_scan_lock();
     BongoCatResult result = import_root_unlocked(app, root, bounded, error);
-    if (mutex) SDL_UnlockMutex(mutex);
+    bongo_cat_import_model_scan_unlock();
     return result;
 }
 

@@ -6,6 +6,7 @@
 #include "runtime.h"
 #include "test_mver_support.h"
 #include "test_mver_import_internal.h"
+#include "bongo_cat/json.h"
 #include "bongo_cat/path.h"
 #include <SDL3/SDL.h>
 #include <stdio.h>
@@ -193,22 +194,96 @@ static void tauri_exact_discovery(void) {
     snprintf(root, sizeof(root), "%s/bongo-cat-tauri-%llu", temporary,
         (unsigned long long)SDL_GetTicksNS());
     CHECK(SDL_CreateDirectory(root));
-    CHECK(child(model, sizeof(model), root, "model", true));
+    CHECK(child(model, sizeof(model), root, "keyboard", true));
     CHECK(child(path, sizeof(path), model, "cat.model3.json", false));
     CHECK(write_text(path, "{\"Version\":3,\"FileReferences\":{"
-        "\"Moc\":\"cat.moc3\",\"Textures\":[\"texture.png\"]}}"));
+        "\"Moc\":\"cat.moc3\",\"Textures\":["
+        "\"resources/model-texture.png\"]}}"));
     CHECK(child(path, sizeof(path), model, "cat.moc3", false));
     CHECK(write_text(path, "MOC3"));
-    CHECK(child(path, sizeof(path), model, "texture.png", false));
     char tray[BONGO_CAT_PATH_CAP];
     snprintf(tray, sizeof(tray), "%s/resources/assets/tray.png",
         BONGO_CAT_NATIVE_SOURCE_DIR);
-    CHECK(SDL_CopyFile(tray, path));
+    char resources[BONGO_CAT_PATH_CAP], right_keys[BONGO_CAT_PATH_CAP];
+    char east[BONGO_CAT_PATH_CAP], model_texture[BONGO_CAT_PATH_CAP];
+    CHECK(child(resources, sizeof(resources), model, "resources", true));
+    CHECK(child(model_texture, sizeof(model_texture), resources,
+        "model-texture.png", false));
+    CHECK(SDL_CopyFile(tray, model_texture));
+    CHECK(child(right_keys, sizeof(right_keys), resources, "right-keys", true));
+    CHECK(child(east, sizeof(east), right_keys, "East.png", false));
+    CHECK(SDL_CopyFile(tray, east));
+    char nested[BONGO_CAT_PATH_CAP], nested_resources[BONGO_CAT_PATH_CAP];
+    CHECK(child(nested, sizeof(nested), model, "nested", true));
+    CHECK(child(nested_resources, sizeof(nested_resources), nested,
+        "resources", true));
+    CHECK(child(path, sizeof(path), nested_resources, "keep.bin", false));
+    CHECK(write_text(path, "keep"));
     BongoCatImportDiscovery discovery = {0};
     BongoCatError error = {0};
     CHECK(bongo_cat_import_tauri_discover_exact(model, &discovery, &error) == 1);
     CHECK(discovery.count == 1 &&
-        discovery.candidates[0].format == BONGO_CAT_IMPORT_TAURI);
+        discovery.candidates[0].format == BONGO_CAT_IMPORT_TAURI &&
+        discovery.candidates[0].mode == BONGO_CAT_MODE_GAMEPAD &&
+        discovery.candidates[0].gamepad_buttons);
+    CHECK(bongo_cat_path_remove(east));
+    CHECK(child(path, sizeof(path), right_keys, "KeyA.png", false));
+    CHECK(SDL_CopyFile(tray, path));
+    BongoCatImportDiscovery keyboard = {0};
+    CHECK(bongo_cat_import_tauri_discover_exact(model, &keyboard, &error) == 1);
+    CHECK(keyboard.count == 1 &&
+        keyboard.candidates[0].mode == BONGO_CAT_MODE_KEYBOARD &&
+        !keyboard.candidates[0].gamepad_buttons);
+    char models_root[BONGO_CAT_PATH_CAP];
+    CHECK(child(models_root, sizeof(models_root), root, "models", true));
+    BongoCatImportReceipt receipt = {0};
+    CHECK(bongo_cat_import_install(model, models_root, &receipt, &error) ==
+        BONGO_CAT_OK);
+    CHECK(receipt.count == 1 && receipt.installed_count == 1 &&
+        strcmp(receipt.ids[0], "keyboard") == 0);
+    char package[BONGO_CAT_PATH_CAP];
+    CHECK(child(package, sizeof(package), models_root, receipt.ids[0], false));
+    CHECK(child(path, sizeof(path), package, "config.json", false) &&
+        bongo_cat_path_is_file(path));
+    yyjson_doc *normalized = bongo_cat_json_read_file(path, 0, NULL);
+    yyjson_val *normalized_root = normalized
+        ? yyjson_doc_get_root(normalized) : NULL;
+    yyjson_val *normalized_mode = yyjson_obj_get(normalized_root, "keyboard");
+    CHECK(yyjson_get_int(yyjson_obj_get(normalized_root, "mode")) == 2 &&
+        yyjson_is_arr(yyjson_obj_get(normalized_mode, "lefthand")) &&
+        yyjson_is_arr(yyjson_obj_get(normalized_mode, "righthand")));
+    yyjson_doc_free(normalized);
+    CHECK(child(path, sizeof(path), package,
+        "img/keyboard/cat_model/cat.model3.json", false) &&
+        bongo_cat_path_is_file(path));
+    CHECK(child(path, sizeof(path), package,
+        "img/keyboard/cat_model/resources/model-texture.png", false) &&
+        bongo_cat_path_is_file(path));
+    CHECK(child(path, sizeof(path), package,
+        "img/keyboard/cat_model/resources/right-keys", false) &&
+        !bongo_cat_path_is_dir(path));
+    CHECK(child(path, sizeof(path), package,
+        "img/keyboard/cat_model/nested/resources/keep.bin", false) &&
+        bongo_cat_path_is_file(path));
+    CHECK(child(path, sizeof(path), package, ".bongo-cat-adapter", false) &&
+        !bongo_cat_path_is_dir(path));
+    CHECK(child(path, sizeof(path), package, ".bongo-cat-package.json", false) &&
+        !bongo_cat_path_is_file(path));
+    BongoCatApp *app = calloc(1, sizeof(*app));
+    CHECK(app != NULL);
+    if (app) {
+        snprintf(app->models_root, sizeof(app->models_root), "%s", models_root);
+        CHECK(child(app->cache_root, sizeof(app->cache_root), root, "cache",
+            true));
+        bongo_cat_models_init(&app->models);
+        CHECK(bongo_cat_import_installed_models(app, models_root, &error) ==
+            BONGO_CAT_OK);
+        CHECK(app->models.count == 1 &&
+            app->models.entries[0].source_format == BONGO_CAT_MODEL_SOURCE_MVER &&
+            strcmp(app->models.entries[0].storage_directory, package) == 0 &&
+            strcmp(app->models.entries[0].adapter_directory, package) != 0);
+        free(app);
+    }
     CHECK(bongo_cat_model_remove_tree(root, NULL));
     SDL_free(temporary);
 }

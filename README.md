@@ -134,8 +134,8 @@ flowchart TB
       Discover["Source Discovery<br/>standalone model3 / Mver package / image patch"]
       Validate["Validation and Identity<br/>manifest references / bounded paths / SHA-256 digest / metadata"]
       Adapt["Runtime Adapter Generation<br/>preview assets / input overlays / projection and binding metadata"]
-      Installed[("Installed Packages<br/>models_root / preserved source payload / package descriptor")]
-      Nearby[("Nearby Models<br/>source tree stays authoritative / cache_root/model-adapters")]
+      Installed[("Installed Packages<br/>models_root / directly copyable Mver trees")]
+      Nearby[("Runtime Adapters<br/>generated outside models_root / cache_root/model-adapters")]
       Catalog["Model and Behavior Catalogs<br/>models / motions / expressions / sounds / effects"]
 
       Discover --> Validate --> Adapt

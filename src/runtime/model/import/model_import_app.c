@@ -34,6 +34,9 @@ BongoCatResult bongo_cat_app_import_model(BongoCatApp *app, const char *source,
     for (size_t i = 0; i < receipt.count; ++i)
         if (receipt.installed[i]) { preferred = i; break; }
     const char *imported_id = receipt.count ? receipt.ids[preferred] : NULL;
+    if (receipt.count)
+        bongo_cat_settings_restore_model_package(&app->settings,
+            receipt.ids[0]);
     bongo_cat_app_refresh_installed_models(app);
     for (size_t i = 0; i < receipt.count; ++i)
         if (receipt.installed[i])

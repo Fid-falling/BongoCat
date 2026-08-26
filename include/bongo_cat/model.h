@@ -39,7 +39,6 @@ typedef struct BongoCatModelEntry {
     BongoCatModelMode mode;
     BongoCatModelSourceFormat source_format;
     uint32_t capabilities;
-    int package_schema;
     int adapter_schema;
     int adapter_generator;
     bool preset;

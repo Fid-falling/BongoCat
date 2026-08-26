@@ -9,6 +9,8 @@ typedef struct BongoCatImportJob {
     char models_root[BONGO_CAT_PATH_CAP];
     char first_id[BONGO_CAT_ID_CAP];
     bool first_id_installed;
+    char package_ids[BONGO_CAT_MODEL_CAP][BONGO_CAT_ID_CAP];
+    size_t package_id_count;
     size_t resolved_count;
     size_t installed_count;
     BongoCatResult result;

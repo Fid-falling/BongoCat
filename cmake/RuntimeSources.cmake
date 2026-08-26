@@ -83,12 +83,14 @@ set(BONGO_CAT_RUNTIME_IMPORT_SOURCES
   src/runtime/model/import/model_import_discovery.c
   src/runtime/model/import/model_import_format.c
   src/runtime/model/import/model_import_identity.c
+  src/runtime/model/import/model_import_installed.c
   src/runtime/model/import/model_import_metadata.c
   src/runtime/model/import/model_import_package.c
   src/runtime/model/import/model_import_report.c
   src/runtime/model/import/model_import_scan.c
   src/runtime/model/import/model_import_source.c
   src/runtime/model/import/model_import_tauri.c
+  src/runtime/model/import/model_import_tauri_mver.c
   src/runtime/model/import/mver/model_import_mver.c
   src/runtime/model/import/mver/model_import_mver_effect.c
   src/runtime/model/import/mver/model_import_mver_image.c

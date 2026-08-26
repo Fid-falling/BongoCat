@@ -1,60 +1,48 @@
 #include "model_import.h"
-#include "model_storage.h"
-#include "runtime.h"
-#include "bongo_cat/json.h"
 #include "bongo_cat/path.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <string.h>
-#include <yyjson.h>
 
-static bool separator(char value) { return value == '/' || value == '\\'; }
+static bool separator(char value) {
+    return value == '/' || value == '\\';
+}
 
-static bool path_prefix(const char *root, const char *path, size_t length) {
+static bool character_equal(char left, char right) {
+    if (separator(left) && separator(right)) return true;
 #ifdef _WIN32
-    return SDL_strncasecmp(root, path, length) == 0;
-#else
-    return strncmp(root, path, length) == 0;
+    if (left >= 'A' && left <= 'Z') left = (char)(left - 'A' + 'a');
+    if (right >= 'A' && right <= 'Z') right = (char)(right - 'A' + 'a');
 #endif
+    return left == right;
 }
 
 static bool relative_path(const char *root, const char *path,
     char *relative, size_t capacity) {
-    if (!root || !path || !relative || !capacity) return false;
-    size_t root_length = strlen(root);
-    while (root_length && separator(root[root_length - 1])) root_length--;
-    if (!root_length || !path_prefix(root, path, root_length) ||
-        (path[root_length] && !separator(path[root_length]))) return false;
-    const char *cursor = path + root_length;
-    while (separator(*cursor)) cursor++;
-    size_t length = strlen(cursor);
-    while (length && separator(cursor[length - 1])) length--;
-    if (length >= capacity) return false;
-    memcpy(relative, cursor, length);
-    relative[length] = '\0';
-    return true;
+    size_t root_length = root ? strlen(root) : 0;
+    while (root_length > 1 && separator(root[root_length - 1])) root_length--;
+    size_t path_length = path ? strlen(path) : 0;
+    if (!root_length || path_length < root_length) return false;
+    for (size_t i = 0; i < root_length; ++i)
+        if (!character_equal(root[i], path[i])) return false;
+    if (path_length > root_length && !separator(path[root_length])) return false;
+    const char *value = path + root_length;
+    while (separator(*value)) value++;
+    int written = snprintf(relative, capacity, "%s", value);
+    return written >= 0 && (size_t)written < capacity;
 }
 
 static bool rebase(const char *source_root, const char *installed_root,
     const char *source, char *target, size_t capacity) {
-    if (!source[0]) { target[0] = '\0'; return true; }
     char relative[BONGO_CAT_PATH_CAP];
-    if (!relative_path(source_root, source, relative, sizeof(relative))) return false;
+    if (!relative_path(source_root, source, relative, sizeof(relative)))
+        return false;
     if (!relative[0]) {
-        snprintf(target, capacity, "%s", installed_root);
-        return true;
+        int written = snprintf(target, capacity, "%s", installed_root);
+        return written >= 0 && (size_t)written < capacity;
     }
     return bongo_cat_path_join(target, capacity, installed_root, relative);
-}
-
-static bool copy_relative_directory(const char *source_root,
-    const char *source, const char *target_root, BongoCatError *error) {
-    char relative[BONGO_CAT_PATH_CAP], target[BONGO_CAT_PATH_CAP];
-    if (!relative_path(source_root, source, relative, sizeof(relative)) ||
-        !relative[0] || !bongo_cat_path_join(target, sizeof(target),
-            target_root, relative)) return false;
-    return bongo_cat_model_copy_directory(source, target, error) == BONGO_CAT_OK;
 }
 
 static bool copy_relative_file(const char *source_root, const char *source,
@@ -64,195 +52,186 @@ static bool copy_relative_file(const char *source_root, const char *source,
         !relative[0] || !bongo_cat_path_join(target, sizeof(target),
             target_root, relative)) return false;
     if (bongo_cat_path_is_file(target)) return true;
-    size_t length = strlen(target);
-    while (length && target[length - 1] != '/' && target[length - 1] != '\\')
-        length--;
-    if (!length) return false;
-    char parent[BONGO_CAT_PATH_CAP];
-    memcpy(parent, target, length - 1);
-    parent[length - 1] = '\0';
-    if (!bongo_cat_path_create_directory(parent) ||
-        !bongo_cat_path_copy_file(source, target)) {
-        bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
-            "Cannot preserve imported model file: %s", source);
-        return false;
-    }
-    return true;
+    if (bongo_cat_path_copy_file(source, target)) return true;
+    bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
+        "Cannot copy imported model file: %s", source);
+    return false;
 }
 
-static bool copy_mver_payload(const BongoCatImportCandidate *candidate,
+typedef struct MverDirectoryCopy {
+    const char *target_root;
+    BongoCatError *error;
+    unsigned depth;
+} MverDirectoryCopy;
+
+static bool distribution_file(const char *name) {
+    if (!name || name[0] == '.') return true;
+    size_t length = strlen(name);
+    if (length >= 4 && SDL_strcasecmp(name + length - 4, "_bak") == 0)
+        return true;
+    const char *dot = strrchr(name, '.');
+    if (!dot) return false;
+    static const char *const extensions[] = {
+        ".exe", ".dll", ".pdf", ".bak", ".lock", ".pdb", ".zip"
+    };
+    for (size_t i = 0; i < sizeof(extensions) / sizeof(extensions[0]); ++i)
+        if (SDL_strcasecmp(dot, extensions[i]) == 0) return true;
+    return false;
+}
+
+static bool copy_mver_tree(const char *source, const char *target,
+    unsigned depth, BongoCatError *error);
+
+static BongoCatPathVisit copy_mver_child(void *userdata,
+    const char *dirname, const char *name) {
+    MverDirectoryCopy *context = userdata;
+    char source[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_path_join(source, sizeof(source), dirname, name))
+        return BONGO_CAT_PATH_FAILURE;
+    if (distribution_file(name)) return BONGO_CAT_PATH_CONTINUE;
+    char target[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_path_join(target, sizeof(target), context->target_root,
+            name)) return BONGO_CAT_PATH_FAILURE;
+    if (!bongo_cat_path_is_dir(source)) {
+        if (context->depth == 0) return BONGO_CAT_PATH_CONTINUE;
+        return bongo_cat_path_copy_file(source, target)
+            ? BONGO_CAT_PATH_CONTINUE : BONGO_CAT_PATH_FAILURE;
+    }
+    return copy_mver_tree(source, target, context->depth + 1, context->error)
+        ? BONGO_CAT_PATH_CONTINUE : BONGO_CAT_PATH_FAILURE;
+}
+
+static bool copy_mver_tree(const char *source, const char *target,
+    unsigned depth, BongoCatError *error) {
+    if (depth > 32 || !bongo_cat_path_create_directory(target)) {
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
+            "Cannot create imported model directory: %s", target);
+        return false;
+    }
+    MverDirectoryCopy context = {target, error, depth};
+    return bongo_cat_path_enumerate(source, copy_mver_child, &context);
+}
+
+static bool copy_mver_relative_directory(const char *source_root,
+    const char *source, const char *target_root, BongoCatError *error) {
+    char relative[BONGO_CAT_PATH_CAP], target[BONGO_CAT_PATH_CAP];
+    if (!relative_path(source_root, source, relative, sizeof(relative)) ||
+        !relative[0] || !bongo_cat_path_join(target, sizeof(target),
+            target_root, relative)) return false;
+    return copy_mver_tree(source, target, 1, error);
+}
+
+static bool copy_mver_package(const BongoCatImportCandidate *candidate,
     const char *target, BongoCatError *error) {
-    if (!bongo_cat_path_create_directory(target) ||
-        !copy_relative_directory(candidate->package_root, candidate->assets,
-            target, error)) return false;
-    char inside[BONGO_CAT_PATH_CAP];
-    if (!relative_path(candidate->assets, candidate->directory,
-        inside, sizeof(inside)) &&
-        !copy_relative_directory(candidate->package_root, candidate->directory,
-            target, error)) return false;
+    if (!bongo_cat_path_create_directory(target)) return false;
+    if (!copy_mver_tree(candidate->package_root, target, 0, error)) return false;
     return copy_relative_file(candidate->package_root, candidate->config,
         target, error);
 }
 
-static bool copy_tauri_payload(const BongoCatImportCandidate *candidate,
-    const char *target, BongoCatError *error) {
-    char relative[BONGO_CAT_PATH_CAP];
-    if (!relative_path(candidate->package_root, candidate->directory,
-        relative, sizeof(relative))) return false;
-    if (!relative[0])
-        return bongo_cat_model_copy_directory(candidate->directory, target, error) ==
-            BONGO_CAT_OK;
-    return bongo_cat_path_create_directory(target) &&
-        copy_relative_directory(candidate->package_root, candidate->directory,
-            target, error);
-}
-
-static bool copy_payload(const BongoCatImportCandidate *candidate,
+static bool copy_package_files(const BongoCatImportCandidate *candidate,
     const char *target, BongoCatImportCandidate *installed,
     BongoCatError *error) {
-    char payload[BONGO_CAT_PATH_CAP], base[BONGO_CAT_PATH_CAP];
-    if (!bongo_cat_path_join(payload, sizeof(payload), target, "payload")) return false;
+    char base[BONGO_CAT_PATH_CAP];
+    if (candidate->format == BONGO_CAT_IMPORT_TAURI)
+        return bongo_cat_import_tauri_convert_to_mver(candidate, target,
+            installed, error);
     bool patch = candidate->format == BONGO_CAT_IMPORT_MVER_PATCH;
     if (patch) {
-        char patch_path[BONGO_CAT_PATH_CAP];
-        if (!bongo_cat_path_create_directory(payload) ||
-            !bongo_cat_path_join(base, sizeof(base), payload, "base") ||
-            !bongo_cat_path_join(patch_path, sizeof(patch_path), payload, "patch") ||
-            !copy_mver_payload(candidate, base, error) ||
-            !bongo_cat_path_create_directory(patch_path) ||
-            (candidate->overrides[0] && !copy_relative_directory(
-                candidate->patch_root, candidate->overrides, patch_path, error)) ||
-            !rebase(candidate->patch_root, patch_path, candidate->overrides,
-                installed->overrides, sizeof(installed->overrides))) return false;
-        snprintf(installed->patch_root, sizeof(installed->patch_root), "%s", patch_path);
+        char patch_relative[BONGO_CAT_PATH_CAP];
+        bool patch_inside_package = relative_path(candidate->package_root,
+            candidate->patch_root, patch_relative, sizeof(patch_relative));
+        const char *patch_source_root = patch_inside_package
+            ? candidate->package_root : candidate->patch_root;
+        snprintf(base, sizeof(base), "%s", target);
+        if (!copy_mver_package(candidate, base, error) ||
+            (!patch_inside_package && candidate->overrides[0] &&
+                !copy_mver_relative_directory(patch_source_root,
+                    candidate->overrides, target, error)) ||
+            (candidate->overrides[0] && !rebase(patch_source_root, target,
+                candidate->overrides, installed->overrides,
+                sizeof(installed->overrides))) ||
+            !rebase(patch_source_root, target, candidate->patch_root,
+                installed->patch_root, sizeof(installed->patch_root)))
+            return false;
     } else if (candidate->format == BONGO_CAT_IMPORT_MVER) {
-        snprintf(base, sizeof(base), "%s", payload);
-        if (!copy_mver_payload(candidate, base, error)) return false;
-    } else {
-        snprintf(base, sizeof(base), "%s", payload);
-        if (!copy_tauri_payload(candidate, base, error)) return false;
-    }
+        snprintf(base, sizeof(base), "%s", target);
+        if (!copy_mver_package(candidate, base, error)) return false;
+    } else return false;
     if (!rebase(candidate->package_root, base, candidate->directory,
             installed->directory, sizeof(installed->directory)) ||
         !rebase(candidate->package_root, base, candidate->assets,
             installed->assets, sizeof(installed->assets)) ||
         !rebase(candidate->package_root, base, candidate->config,
             installed->config, sizeof(installed->config))) return false;
-    snprintf(installed->package_root, sizeof(installed->package_root), "%s", base);
+    installed->format = candidate->format;
     return true;
 }
 
 bool bongo_cat_import_prepare_package(const BongoCatImportCandidate *candidate,
-    const char *target, BongoCatImportCandidate *installed, BongoCatError *error) {
-    if (!candidate || !target || !installed || !bongo_cat_path_create_directory(target)) return false;
+    const char *target, BongoCatImportCandidate *installed,
+    BongoCatError *error) {
+    if (!candidate || !target || !installed ||
+        !bongo_cat_path_create_directory(target)) return false;
     *installed = *candidate;
-    if (!copy_payload(candidate, target, installed, error)) {
-        if (error && !error->message[0]) bongo_cat_error_set(error,
-            BONGO_CAT_ERROR_IO, "Cannot preserve imported model payload");
-        return false;
+    if (copy_package_files(candidate, target, installed, error)) return true;
+    if (error && !error->message[0]) bongo_cat_error_set(error,
+        BONGO_CAT_ERROR_IO, "Cannot preserve imported model files");
+    return false;
+}
+
+static bool tauri_variant_directory(char *output, size_t capacity,
+    const char *target, const BongoCatImportDiscovery *discovery,
+    size_t index) {
+    const char *mode = bongo_cat_mode_name(discovery->candidates[index].mode);
+    size_t occurrence = 1;
+    for (size_t i = 0; i < index; ++i)
+        if (discovery->candidates[i].mode == discovery->candidates[index].mode)
+            occurrence++;
+    char name[48];
+    int written = occurrence == 1
+        ? snprintf(name, sizeof(name), "%s", mode)
+        : snprintf(name, sizeof(name), "%s-%zu", mode, occurrence);
+    return written >= 0 && (size_t)written < sizeof(name) &&
+        bongo_cat_path_join(output, capacity, target, name);
+}
+
+bool bongo_cat_import_prepare_storage(
+    const BongoCatImportDiscovery *discovery, const char *target,
+    BongoCatError *error) {
+    if (!discovery || !discovery->count || !target) return false;
+    bool tauri = true;
+    for (size_t i = 0; i < discovery->count; ++i)
+        tauri = tauri && discovery->candidates[i].format ==
+            BONGO_CAT_IMPORT_TAURI;
+    if (!tauri) {
+        BongoCatImportCandidate installed;
+        return bongo_cat_import_prepare_package(&discovery->candidates[0],
+            target, &installed, error);
     }
-    char adapter[BONGO_CAT_PATH_CAP];
-    return bongo_cat_path_join(adapter, sizeof(adapter), target, "adapter") &&
-        bongo_cat_path_create_directory(adapter);
-}
-
-static const char *format_name(BongoCatImportFormat format) {
-    if (format == BONGO_CAT_IMPORT_MVER) return "bongo-cat-mver";
-    if (format == BONGO_CAT_IMPORT_MVER_PATCH) return "bongo-cat-mver-patch";
-    return "tauri-live2d";
-}
-
-static const char *layout_name(BongoCatImportFormat format) {
-    if (format == BONGO_CAT_IMPORT_MVER) return "full-package";
-    if (format == BONGO_CAT_IMPORT_MVER_PATCH) return "image-patch";
-    return "single-model";
-}
-
-typedef struct CapabilityName { uint32_t flag; const char *name; } CapabilityName;
-
-static bool add_capabilities(yyjson_mut_doc *document, yyjson_mut_val *root,
-    uint32_t capabilities) {
-    static const CapabilityName names[] = {
-        {BONGO_CAT_MODEL_CAPABILITY_LIVE2D, "live2d"},
-        {BONGO_CAT_MODEL_CAPABILITY_PREVIEW, "preview"},
-        {BONGO_CAT_MODEL_CAPABILITY_RUNTIME_ADAPTER, "runtime-adapter"},
-        {BONGO_CAT_MODEL_CAPABILITY_INPUT_IMAGES, "input-images"},
-        {BONGO_CAT_MODEL_CAPABILITY_KEYBOARD_INPUT, "keyboard-input"},
-        {BONGO_CAT_MODEL_CAPABILITY_GAMEPAD_INPUT, "gamepad-input"},
-        {BONGO_CAT_MODEL_CAPABILITY_BEHAVIORS, "behaviors"},
-        {BONGO_CAT_MODEL_CAPABILITY_AUDIO, "audio"},
-        {BONGO_CAT_MODEL_CAPABILITY_EFFECTS, "effects"},
-        {BONGO_CAT_MODEL_CAPABILITY_MVER_PROJECTION, "mver-projection"},
-        {BONGO_CAT_MODEL_CAPABILITY_POINTER_OVERLAY, "pointer-overlay"},
-        {BONGO_CAT_MODEL_CAPABILITY_IMAGE_PATCH, "image-patch"}
-    };
-    yyjson_mut_val *array = yyjson_mut_obj_add_arr(document, root, "capabilities");
-    if (!array) return false;
-    for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
-        if ((capabilities & names[i].flag) &&
-            !yyjson_mut_arr_add_str(document, array, names[i].name)) return false;
+    for (size_t i = 0; i < discovery->count; ++i) {
+        char package[BONGO_CAT_PATH_CAP];
+        if (discovery->count == 1)
+            snprintf(package, sizeof(package), "%s", target);
+        else if (!tauri_variant_directory(package, sizeof(package), target,
+                discovery, i)) return false;
+        BongoCatImportCandidate installed;
+        if (!bongo_cat_import_prepare_package(&discovery->candidates[i],
+                package, &installed, error)) return false;
+    }
     return true;
 }
 
-static bool add_extensions(yyjson_mut_doc *document, yyjson_mut_val *root,
-    const BongoCatImportCandidate *candidate, const char *target) {
-    yyjson_mut_val *extensions = yyjson_mut_obj_add_obj(document, root, "extensions");
-    if (!extensions) return false;
-    if (candidate->format == BONGO_CAT_IMPORT_TAURI) return true;
-    char config[BONGO_CAT_PATH_CAP];
-    if (!relative_path(target, candidate->config, config, sizeof(config))) return false;
-    yyjson_mut_val *mver = yyjson_mut_obj_add_obj(document, extensions, "mver");
-    return mver && yyjson_mut_obj_add_strcpy(document, mver,
-        "configuration", config);
-}
-
-bool bongo_cat_import_write_package(const BongoCatImportCandidate *candidate,
-    const BongoCatPackageMetadata *metadata, const char *target,
-    BongoCatError *error) {
-    char directory[BONGO_CAT_PATH_CAP], path[BONGO_CAT_PATH_CAP];
-    bool relative = relative_path(target, candidate->directory,
-        directory, sizeof(directory));
-    if (relative && !directory[0]) snprintf(directory, sizeof(directory), ".");
-    yyjson_mut_doc *document = yyjson_mut_doc_new(NULL);
-    yyjson_mut_val *root = document ? yyjson_mut_obj(document) : NULL;
-    yyjson_mut_val *source = root ? yyjson_mut_obj_add_obj(document, root, "source") : NULL;
-    yyjson_mut_val *model = root ? yyjson_mut_obj_add_obj(document, root, "model") : NULL;
-    yyjson_mut_val *runtime = root ? yyjson_mut_obj_add_obj(document, root, "runtime") : NULL;
-    if (document) yyjson_mut_doc_set_root(document, root);
-    bool ok = candidate && metadata && relative && root && source && model && runtime &&
-        yyjson_mut_obj_add_int(document, root, "schemaVersion",
-            BONGO_CAT_MODEL_PACKAGE_SCHEMA) &&
-        yyjson_mut_obj_add_strcpy(document, root, "packageId", metadata->package_id) &&
-        yyjson_mut_obj_add_strcpy(document, root, "contentDigest",
-            metadata->content_digest) &&
-        (!metadata->family_id[0] || yyjson_mut_obj_add_strcpy(document, root,
-            "familyId", metadata->family_id)) &&
-        yyjson_mut_obj_add_strcpy(document, root, "displayName",
-            metadata->display_name) &&
-        yyjson_mut_obj_add_strcpy(document, root, "mode",
-            bongo_cat_mode_name(candidate->mode)) &&
-        yyjson_mut_obj_add_strcpy(document, source, "format",
-            format_name(candidate->format)) &&
-        yyjson_mut_obj_add_strcpy(document, source, "name", metadata->source_name) &&
-        yyjson_mut_obj_add_strcpy(document, source, "layout",
-            layout_name(candidate->format)) &&
-        yyjson_mut_obj_add_bool(document, source, "preserved", true) &&
-        yyjson_mut_obj_add_strcpy(document, model, "directory", directory) &&
-        yyjson_mut_obj_add_strcpy(document, model, "setting", candidate->setting) &&
-        yyjson_mut_obj_add_str(document, runtime, "adapter", "adapter") &&
-        yyjson_mut_obj_add_str(document, runtime, "metadata",
-            "adapter/" BONGO_CAT_MODEL_ADAPTER_FILE) &&
-        yyjson_mut_obj_add_int(document, runtime, "adapterSchemaVersion",
-            BONGO_CAT_MODEL_ADAPTER_SCHEMA) &&
-        yyjson_mut_obj_add_int(document, runtime, "generatorVersion",
-            BONGO_CAT_MODEL_ADAPTER_GENERATOR) &&
-        add_capabilities(document, root, metadata->capabilities) &&
-        add_extensions(document, root, candidate, target) &&
-        bongo_cat_path_join(path, sizeof(path), target,
-            BONGO_CAT_MODEL_PACKAGE_FILE) &&
-        bongo_cat_json_write_file(path, document, YYJSON_WRITE_PRETTY, NULL);
-    yyjson_mut_doc_free(document);
-    if (!ok) bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
-        "Cannot write model package description");
-    return ok;
+bool bongo_cat_import_authored_package(const char *directory) {
+    char path[BONGO_CAT_PATH_CAP];
+    if (!directory || !bongo_cat_path_is_dir(directory)) return false;
+    static const char *const internal[] = {
+        ".bongo-cat-package.json", ".bongo-cat-adapter",
+        BONGO_CAT_MODEL_BUILTIN_MARKER
+    };
+    for (size_t i = 0; i < sizeof(internal) / sizeof(internal[0]); ++i)
+        if (bongo_cat_path_join(path, sizeof(path), directory, internal[i]) &&
+            (bongo_cat_path_is_file(path) || bongo_cat_path_is_dir(path)))
+            return false;
+    return true;
 }

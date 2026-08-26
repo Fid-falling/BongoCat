@@ -176,6 +176,8 @@ int bongo_cat_import_mver_discover_exact(const char *source,
     BongoCatImportDiscovery *discovery, BongoCatError *error) {
     char config[BONGO_CAT_PATH_CAP], image_root[BONGO_CAT_PATH_CAP];
     if (!package_at(source, config, image_root)) return 0;
+    if (!discovery->source_name[0]) snprintf(discovery->source_name,
+        sizeof(discovery->source_name), "%s", bongo_cat_path_name(source));
     return discover_package(source, config, image_root, discovery, error);
 }
 
@@ -184,5 +186,7 @@ int bongo_cat_import_mver_discover(const char *source,
     char package[BONGO_CAT_PATH_CAP], config[BONGO_CAT_PATH_CAP];
     char image_root[BONGO_CAT_PATH_CAP];
     if (!find_package(source, package, sizeof(package), config, image_root)) return 0;
+    if (!discovery->source_name[0]) snprintf(discovery->source_name,
+        sizeof(discovery->source_name), "%s", bongo_cat_path_name(package));
     return discover_package(package, config, image_root, discovery, error);
 }

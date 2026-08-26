@@ -2,6 +2,7 @@
 
 #include "model_import.h"
 #include "model_storage.h"
+#include "runtime.h"
 #include "bongo_cat/path.h"
 
 #include <SDL3/SDL.h>
@@ -29,6 +30,69 @@ static void disabled_mver_live2d_is_not_imported(const char *temporary) {
     CHECK(discovery.count == 0);
     CHECK(strstr(error.message, "no supported model modes") != NULL);
     CHECK(bongo_cat_model_remove_tree(root, NULL));
+}
+
+static bool ends_with(const char *value, const char *suffix) {
+    size_t value_length = strlen(value), suffix_length = strlen(suffix);
+    return value_length >= suffix_length &&
+        strcmp(value + value_length - suffix_length, suffix) == 0;
+}
+
+static void package_identity_rules(const BongoCatImportDiscovery *fixture) {
+    static const char unicode_name[] =
+        "\xE9\x9C\xB2\xE8\xA5\xBF\xE4\xBA\x9A-"
+        "\xE8\xAA\x93\xE7\x84\xB0\xE7\x89\x88";
+    BongoCatImportDiscovery discovery = *fixture;
+    BongoCatPackageMetadata metadata[BONGO_CAT_IMPORT_CANDIDATE_CAP] = {0};
+    BongoCatError error = {0};
+
+    snprintf(discovery.source_name, sizeof(discovery.source_name), "%s",
+        unicode_name);
+    CHECK(bongo_cat_import_prepare_package_metadata(&discovery, metadata,
+        &error));
+    CHECK(discovery.count == 1 &&
+        strcmp(metadata[0].package_id, unicode_name) == 0);
+
+    discovery = *fixture;
+    memset(metadata, 0, sizeof(metadata));
+    snprintf(discovery.source_name, sizeof(discovery.source_name),
+        "bad:name. ");
+    CHECK(bongo_cat_import_prepare_package_metadata(&discovery, metadata,
+        &error));
+    CHECK(strcmp(metadata[0].package_id, "bad-name") == 0 &&
+        strcmp(metadata[0].display_name, "bad:name. ") == 0);
+
+    discovery = *fixture;
+    memset(metadata, 0, sizeof(metadata));
+    snprintf(discovery.source_name, sizeof(discovery.source_name), "CON.txt");
+    CHECK(bongo_cat_import_prepare_package_metadata(&discovery, metadata,
+        &error));
+    CHECK(strcmp(metadata[0].package_id, "_CON.txt") == 0);
+
+    discovery = *fixture;
+    discovery.count = 2;
+    discovery.candidates[1] = discovery.candidates[0];
+    discovery.candidates[1].mode = BONGO_CAT_MODE_GAMEPAD;
+    discovery.candidates[1].gamepad_buttons = true;
+    memset(discovery.source_name, 'x', sizeof(discovery.source_name) - 1);
+    discovery.source_name[sizeof(discovery.source_name) - 1] = '\0';
+    memset(metadata, 0, sizeof(metadata));
+    CHECK(bongo_cat_import_prepare_package_metadata(&discovery, metadata,
+        &error));
+    CHECK(discovery.count == 2 &&
+        strlen(metadata[0].package_id) < BONGO_CAT_ID_CAP &&
+        strlen(metadata[1].package_id) < BONGO_CAT_ID_CAP &&
+        ends_with(metadata[1].package_id, "~2"));
+
+    discovery = *fixture;
+    discovery.count = 2;
+    discovery.candidates[1] = discovery.candidates[0];
+    snprintf(discovery.source_name, sizeof(discovery.source_name), "duplicate");
+    memset(metadata, 0, sizeof(metadata));
+    CHECK(bongo_cat_import_prepare_package_metadata(&discovery, metadata,
+        &error));
+    CHECK(discovery.count == 1 && strcmp(metadata[0].package_id,
+        "duplicate") == 0);
 }
 
 int test_model_import_identity(void) {
@@ -62,13 +126,17 @@ int test_model_import_identity(void) {
     bool placeholder = true;
     CHECK(bongo_cat_import_candidate_inspect(&discovered.candidates[0],
         digest, &placeholder, &error) && !placeholder);
+    package_identity_rules(&discovered);
     BongoCatImportReceipt first = {0}, repeated = {0}, wrapped = {0};
+    BongoCatImportReceipt changed = {0};
     BongoCatImportSession *session = bongo_cat_import_session_create(models_root,
         &error);
     CHECK(session != NULL);
     CHECK(session && bongo_cat_import_session_install(session, config, &first,
         &error) == BONGO_CAT_OK);
     CHECK(first.count == 1 && first.installed_count == 1 && first.installed[0]);
+    CHECK(strcmp(first.ids[0], "source") == 0);
+    CHECK(strncmp(first.ids[0], "model-", 6) != 0);
     CHECK(session && bongo_cat_import_session_install(session, missing, NULL,
         &error) != BONGO_CAT_OK);
     error = (BongoCatError){0};
@@ -81,22 +149,53 @@ int test_model_import_identity(void) {
         BONGO_CAT_OK);
     CHECK(wrapped.count == 1 && wrapped.installed_count == 0 &&
         strcmp(first.ids[0], wrapped.ids[0]) == 0);
+    char extra[BONGO_CAT_PATH_CAP];
+    CHECK(child(extra, sizeof(extra), source,
+        "img/standard/cat_model/changed.txt", false));
+    CHECK(write_text(extra, "changed"));
+    CHECK(bongo_cat_import_install(source, models_root, &changed, &error) ==
+        BONGO_CAT_OK);
+    CHECK(changed.count == 1 && changed.installed_count == 1 &&
+        changed.installed[0] && strcmp(changed.ids[0], "source-2") == 0);
     char adapter_metadata[BONGO_CAT_PATH_CAP];
-    BongoCatModelCatalog *installed = calloc(1, sizeof(*installed));
-    CHECK(installed != NULL);
-    if (installed) {
-        CHECK(bongo_cat_models_scan(installed, models_root, false, &error) ==
+    BongoCatApp *app = calloc(1, sizeof(*app));
+    CHECK(app != NULL);
+    if (app) {
+        snprintf(app->models_root, sizeof(app->models_root), "%s", models_root);
+        CHECK(child(app->cache_root, sizeof(app->cache_root), data, "cache",
+            true));
+        bongo_cat_models_init(&app->models);
+        CHECK(bongo_cat_import_installed_models(app, models_root, &error) ==
             BONGO_CAT_OK);
-        CHECK(installed->count == 1 && installed->entries[0].package_schema == 2 &&
-            installed->entries[0].source_format == BONGO_CAT_MODEL_SOURCE_MVER &&
-            installed->entries[0].content_digest[0] != '\0' &&
-            (installed->entries[0].capabilities &
+        const BongoCatModelEntry *original = bongo_cat_models_find(&app->models,
+            "source");
+        const BongoCatModelEntry *modified = bongo_cat_models_find(&app->models,
+            "source-2");
+        CHECK(app->models.count == 2 && original && modified &&
+            original->source_format == BONGO_CAT_MODEL_SOURCE_MVER &&
+            original->content_digest[0] != '\0' &&
+            strcmp(original->content_digest, modified->content_digest) != 0 &&
+            (original->capabilities &
                 BONGO_CAT_MODEL_CAPABILITY_MVER_PROJECTION));
-        CHECK(child(adapter_metadata, sizeof(adapter_metadata),
-            installed->entries[0].adapter_directory,
-            ".bongo-cat-adapter.json", false));
-        CHECK(bongo_cat_path_is_file(adapter_metadata));
-        free(installed);
+        if (original) {
+            CHECK(child(adapter_metadata, sizeof(adapter_metadata),
+                original->adapter_directory,
+                ".bongo-cat-adapter.json", false));
+            CHECK(bongo_cat_path_is_file(adapter_metadata));
+            char imported_config[BONGO_CAT_PATH_CAP];
+            CHECK(child(imported_config, sizeof(imported_config),
+                original->storage_directory, "config.json", false));
+            CHECK(bongo_cat_path_is_file(imported_config));
+            char internal[BONGO_CAT_PATH_CAP];
+            CHECK(child(internal, sizeof(internal),
+                original->storage_directory, ".bongo-cat-adapter", false));
+            CHECK(!bongo_cat_path_is_dir(internal));
+            CHECK(child(internal, sizeof(internal),
+                original->storage_directory, ".bongo-cat-package.json",
+                false));
+            CHECK(!bongo_cat_path_is_file(internal));
+        }
+        free(app);
     }
     CHECK(bongo_cat_model_remove_tree(root, NULL));
     CHECK(bongo_cat_model_remove_tree(data, NULL));

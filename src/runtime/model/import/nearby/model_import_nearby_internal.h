@@ -5,6 +5,10 @@
 
 #define BONGO_CAT_NEARBY_CACHE_MARKER ".bongo-cat-cache.json"
 #define BONGO_CAT_NEARBY_CACHE_SCHEMA 4
+#define BONGO_CAT_ADAPTER_CACHE_DIRECTORY "model-adapters"
+
+void bongo_cat_import_model_scan_lock(void);
+void bongo_cat_import_model_scan_unlock(void);
 
 bool bongo_cat_nearby_signature(const BongoCatImportCandidate *candidate,
     char output[65], BongoCatError *error);

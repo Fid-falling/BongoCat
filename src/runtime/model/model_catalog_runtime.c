@@ -33,6 +33,22 @@ static void restore_model_selection(BongoCatApp *app,
     bongo_cat_multi_pet_primary_update(app, SDL_GetTicksNS());
 }
 
+static size_t models_using_storage(const BongoCatModelCatalog *models,
+    const char *directory) {
+    size_t count = 0;
+    if (!models || !directory || !directory[0]) return 0;
+    for (size_t i = 0; i < models->count; ++i)
+        if (!strcmp(models->entries[i].storage_directory, directory)) count++;
+    return count;
+}
+
+static bool storage_package_id(const char *directory,
+    char output[BONGO_CAT_ID_CAP]) {
+    const char *name = directory ? bongo_cat_path_name(directory) : NULL;
+    return name && name[0] && bongo_cat_import_package_id(output,
+        BONGO_CAT_ID_CAP, name);
+}
+
 static bool shortcut_model_exists(const BongoCatModelCatalog *models,
     const char *shortcut_id) {
     const char *separator = shortcut_id ? strchr(shortcut_id, ':') : NULL;
@@ -78,6 +94,10 @@ static void scan_owned_models(BongoCatApp *app, bool cleanup) {
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
     if (cleanup) bongo_cat_model_cleanup_imports(app->models_root, &error);
     bongo_cat_models_scan(&app->models, app->models_root, false, &error);
+    error = (BongoCatError){0};
+    if (bongo_cat_import_installed_models(app, app->models_root, &error) !=
+            BONGO_CAT_OK && error.message[0])
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
 }
 
 void bongo_cat_model_catalog_finish(BongoCatApp *app) {
@@ -161,6 +181,22 @@ BongoCatResult bongo_cat_app_remove_model(BongoCatApp *app, const char *id,
     ModelSelection previous_selection = capture_model_selection(app);
     char directory[BONGO_CAT_PATH_CAP];
     snprintf(directory, sizeof(directory), "%s", entry->storage_directory);
+    char package_id[BONGO_CAT_ID_CAP];
+    if (!directory[0] || !storage_package_id(directory, package_id)) {
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
+            "Model storage directory is invalid: %s", id);
+        return BONGO_CAT_ERROR_FORMAT;
+    }
+    bool shared_storage = models_using_storage(&app->models, directory) > 1;
+    bongo_cat_settings_validate(&app->settings);
+    bool already_removed = bongo_cat_settings_model_removed(
+        &app->settings, id);
+    if (shared_storage && !already_removed &&
+        app->settings.removed_model_count >= BONGO_CAT_MODEL_CAP) {
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
+            "Too many removed model versions are recorded");
+        return BONGO_CAT_ERROR_FORMAT;
+    }
     if (additional) {
         BongoCatError deactivate_error = {0};
         if (!bongo_cat_app_set_model_active(app, id, false,
@@ -188,7 +224,23 @@ BongoCatResult bongo_cat_app_remove_model(BongoCatApp *app, const char *id,
             return BONGO_CAT_ERROR_CUBISM;
         }
     }
-    if (!bongo_cat_model_remove_tree(directory, error)) {
+    if (shared_storage && !already_removed &&
+        !bongo_cat_settings_set_model_removed(&app->settings, id, true)) {
+        if (primary) {
+            BongoCatError restore_error = {0};
+            if (!bongo_cat_app_select_model_with_error(app, id,
+                    &restore_error))
+                SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "Unable to restore model after recording deletion failed: %s",
+                    restore_error.message[0] ? restore_error.message :
+                    "unknown error");
+        }
+        if (additional) restore_model_selection(app, &previous_selection);
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
+            "Cannot record removed model version: %s", id);
+        return BONGO_CAT_ERROR_FORMAT;
+    }
+    if (!shared_storage && !bongo_cat_model_remove_tree(directory, error)) {
         bongo_cat_app_rescan_models(app);
         bool restore_selection = additional;
         if (primary && bongo_cat_models_find(&app->models, id)) {
@@ -205,6 +257,8 @@ BongoCatResult bongo_cat_app_remove_model(BongoCatApp *app, const char *id,
             restore_model_selection(app, &previous_selection);
         return BONGO_CAT_ERROR_IO;
     }
+    if (!shared_storage)
+        bongo_cat_settings_restore_model_package(&app->settings, package_id);
     bongo_cat_app_forget_behavior_state(app, id);
     bongo_cat_settings_set_model_label(&app->settings, id, "");
     bongo_cat_app_rescan_models(app);

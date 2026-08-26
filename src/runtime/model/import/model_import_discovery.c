@@ -23,6 +23,19 @@ static bool safe_reference(const char *value) {
     return true;
 }
 
+static void seed_source_name(const char *source,
+    BongoCatImportDiscovery *discovery) {
+    char path[BONGO_CAT_PATH_CAP];
+    int written = snprintf(path, sizeof(path), "%s", source ? source : "");
+    if (written < 0 || (size_t)written >= sizeof(path)) return;
+    size_t length = strlen(path);
+    while (length && (path[length - 1] == '/' || path[length - 1] == '\\'))
+        path[--length] = '\0';
+    const char *name = bongo_cat_path_name(path);
+    if (name && name[0]) snprintf(discovery->source_name,
+        sizeof(discovery->source_name), "%s", name);
+}
+
 static bool referenced_file(const char *root, const char *relative) {
     char path[BONGO_CAT_PATH_CAP];
     return safe_reference(relative) &&
@@ -104,6 +117,26 @@ static bool path_parent(const char *path, char *parent, size_t capacity) {
     return true;
 }
 
+static bool ascii_contains_ci(const char *value, const char *needle) {
+    if (!value || !needle || !needle[0]) return false;
+    size_t length = strlen(needle);
+    for (const char *cursor = value; *cursor; ++cursor)
+        if (SDL_strncasecmp(cursor, needle, length) == 0) return true;
+    return false;
+}
+
+static bool utf8_contains(const char *value, const unsigned char *needle,
+    size_t length) {
+    if (!value || !needle || !length) return false;
+    for (const unsigned char *cursor = (const unsigned char *)value; *cursor;
+        ++cursor) {
+        size_t remaining = strlen((const char *)cursor);
+        if (remaining >= length && memcmp(cursor, needle, length) == 0)
+            return true;
+    }
+    return false;
+}
+
 static BongoCatModelMode import_mode(const char *path) {
     const char *cursor = path;
     BongoCatModelMode mode = BONGO_CAT_MODE_STANDARD;
@@ -120,6 +153,19 @@ static BongoCatModelMode import_mode(const char *path) {
         if (!end) break;
         cursor = end + 1;
     }
+    const char *name = bongo_cat_path_name(path);
+    static const unsigned char keyboard_cn[] = {0xe9,0x94,0xae,0xe7,0x9b,0x98};
+    static const unsigned char gamepad_cn[] = {0xe6,0x89,0x8b,0xe6,0x9f,0x84};
+    static const unsigned char standard_cn[] = {0xe6,0xa0,0x87,0xe5,0x87,0x86};
+    if (name && (ascii_contains_ci(name, "keyboard") ||
+            utf8_contains(name, keyboard_cn, sizeof(keyboard_cn))))
+        return BONGO_CAT_MODE_KEYBOARD;
+    if (name && (ascii_contains_ci(name, "gamepad") ||
+            utf8_contains(name, gamepad_cn, sizeof(gamepad_cn))))
+        return BONGO_CAT_MODE_GAMEPAD;
+    if (name && (ascii_contains_ci(name, "standard") ||
+            utf8_contains(name, standard_cn, sizeof(standard_cn))))
+        return BONGO_CAT_MODE_STANDARD;
     return mode;
 }
 
@@ -155,6 +201,64 @@ static bool has_background_asset(const char *directory) {
     return false;
 }
 
+typedef struct TauriRightKeys {
+    bool gamepad;
+} TauriRightKeys;
+
+static bool gamepad_key_name(const char *name) {
+    static const char *const names[] = {
+        "South", "East", "West", "North", "LeftTrigger", "RightTrigger",
+        "LeftTrigger2", "RightTrigger2", "LeftThumb", "RightThumb",
+        "DPadLeft", "DPadRight", "DPadUp", "DPadDown", "Start", "Select"
+    };
+    size_t length = name ? strlen(name) : 0;
+    if (length <= 4 || SDL_strcasecmp(name + length - 4, ".png") != 0)
+        return false;
+    length -= 4;
+    for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
+        if (strlen(names[i]) == length &&
+            SDL_strncasecmp(name, names[i], length) == 0) return true;
+    return false;
+}
+
+static BongoCatPathVisit inspect_right_key(void *userdata,
+    const char *dirname, const char *name) {
+    (void)dirname;
+    TauriRightKeys *keys = userdata;
+    if (gamepad_key_name(name)) keys->gamepad = true;
+    return BONGO_CAT_PATH_CONTINUE;
+}
+
+static bool tauri_resource_mode(const char *directory, const char *assets,
+    BongoCatModelMode *mode, bool *gamepad_buttons) {
+    const char *roots[] = {directory, assets};
+    bool right_keys = false;
+    TauriRightKeys keys = {0};
+    for (size_t i = 0; i < sizeof(roots) / sizeof(roots[0]); ++i) {
+        if (!roots[i] || !roots[i][0] || (i && strcmp(roots[0], roots[i]) == 0))
+            continue;
+        const char *prefixes[] = {"resources", NULL};
+        for (size_t j = 0; j < sizeof(prefixes) / sizeof(prefixes[0]); ++j) {
+            char parent[BONGO_CAT_PATH_CAP], path[BONGO_CAT_PATH_CAP];
+            const char *root = roots[i];
+            if (prefixes[j]) {
+                if (!bongo_cat_path_join(parent, sizeof(parent), root,
+                        prefixes[j])) continue;
+                root = parent;
+            }
+            if (!bongo_cat_path_join(path, sizeof(path), root, "right-keys") ||
+                !bongo_cat_path_is_dir(path)) continue;
+            right_keys = true;
+            if (!bongo_cat_path_enumerate(path, inspect_right_key, &keys))
+                return false;
+        }
+    }
+    if (!right_keys) return false;
+    *mode = keys.gamepad ? BONGO_CAT_MODE_GAMEPAD : BONGO_CAT_MODE_KEYBOARD;
+    *gamepad_buttons = keys.gamepad;
+    return true;
+}
+
 bool bongo_cat_import_tauri_add_candidate(BongoCatImportDiscovery *discovery,
     const char *directory, const char *setting) {
     if (discovery->count >= BONGO_CAT_IMPORT_CANDIDATE_CAP) return false;
@@ -174,7 +278,11 @@ bool bongo_cat_import_tauri_add_candidate(BongoCatImportDiscovery *discovery,
     if ((!has_cover_asset(directory) || !has_background_asset(directory)) &&
         path_parent(directory, parent, sizeof(parent)) && has_preview_assets(parent))
         snprintf(candidate->assets, sizeof(candidate->assets), "%s", parent);
-    candidate->mode = import_mode(candidate->assets);
+    if (!tauri_resource_mode(candidate->directory, candidate->assets,
+            &candidate->mode, &candidate->gamepad_buttons)) {
+        candidate->mode = import_mode(candidate->directory);
+        candidate->gamepad_buttons = candidate->mode == BONGO_CAT_MODE_GAMEPAD;
+    }
     return true;
 }
 
@@ -237,6 +345,7 @@ static BongoCatResult collect_container(void *userdata, const char *source,
 bool bongo_cat_import_discover(const char *source, BongoCatImportDiscovery *discovery,
     BongoCatError *error) {
     memset(discovery, 0, sizeof(*discovery));
+    seed_source_name(source, discovery);
     int mver = bongo_cat_import_mver_discover(source, discovery, error);
     if (mver > 0) return true;
     if (mver < 0) return false;
@@ -244,15 +353,24 @@ bool bongo_cat_import_discover(const char *source, BongoCatImportDiscovery *disc
     int patch = bongo_cat_import_mver_patch_discover(source, discovery, &patch_error);
     if (patch > 0) return true;
     memset(discovery, 0, sizeof(*discovery));
+    seed_source_name(source, discovery);
     int tauri = bongo_cat_import_tauri_discover_exact(source, discovery, error);
     if (tauri > 0) return true;
     if (tauri < 0) return false;
     memset(discovery, 0, sizeof(*discovery));
+    seed_source_name(source, discovery);
     ContainerDiscovery container = {discovery};
     BongoCatResult container_result = bongo_cat_import_scan(source,
         collect_container, &container, error);
     if (container_result != BONGO_CAT_OK) return false;
     if (discovery->count) {
+        char config[BONGO_CAT_PATH_CAP];
+        bool is_container = !bongo_cat_import_mver_config_path(source,
+            config, sizeof(config));
+        if (is_container) for (size_t i = 0; i < discovery->count; ++i)
+            if (discovery->candidates[i].format != BONGO_CAT_IMPORT_TAURI)
+                snprintf(discovery->candidates[i].package_root,
+                    sizeof(discovery->candidates[i].package_root), "%s", source);
         qsort(discovery->candidates, discovery->count,
             sizeof(discovery->candidates[0]), compare_candidates);
         return true;
@@ -274,7 +392,8 @@ bool bongo_cat_import_discover(const char *source, BongoCatImportDiscovery *disc
         return false;
     }
     for (size_t i = 0; i < discovery->count; ++i)
-        if (discovery->candidates[i].format == BONGO_CAT_IMPORT_TAURI)
+        if (discovery->candidates[i].format == BONGO_CAT_IMPORT_TAURI &&
+            !discovery->candidates[i].package_root[0])
             snprintf(discovery->candidates[i].package_root,
                 sizeof(discovery->candidates[i].package_root), "%s", source);
     qsort(discovery->candidates, discovery->count,

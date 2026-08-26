@@ -1,7 +1,6 @@
 #include "bongo_cat/file.h"
 #include "bongo_cat/model.h"
 #include "bongo_cat/path.h"
-#include "model_package.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -16,6 +15,13 @@
 
 void bongo_cat_models_init(BongoCatModelCatalog *catalog) {
     if (catalog) memset(catalog, 0, sizeof(*catalog));
+}
+
+bool bongo_cat_model_adapter_metadata_path(const char *directory,
+    char *path, size_t capacity) {
+    return directory && path && capacity &&
+        bongo_cat_path_join(path, capacity, directory,
+            BONGO_CAT_MODEL_ADAPTER_FILE);
 }
 
 static BongoCatModelMode infer_mode(const char *directory) {
@@ -47,11 +53,6 @@ static bool builtin_marker(const char *directory) {
 }
 
 static bool add_model(BongoCatModelCatalog *catalog, const char *directory, bool preset) {
-    bool handled = false;
-    bool package_ok = bongo_cat_model_package_add(catalog, directory,
-        preset, &handled);
-    if (handled) return package_ok;
-    if (!package_ok) return false;
     if (!preset && !builtin_marker(directory)) return true;
     if (catalog->count >= BONGO_CAT_MODEL_CAP) return false;
     char setting[BONGO_CAT_PATH_CAP];

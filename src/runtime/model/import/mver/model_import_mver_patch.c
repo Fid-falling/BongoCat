@@ -97,13 +97,17 @@ static int finish_patch(const char *source, const char *image_root,
     }
     int result = bongo_cat_import_mver_discover(base, discovery, error);
     if (result <= 0) return result < 0 ? -1 : 0;
+    const char *source_name = bongo_cat_path_name(source);
+    if (source_name && source_name[0]) snprintf(discovery->source_name,
+        sizeof(discovery->source_name), "%s", source_name);
     for (size_t i = 0; i < discovery->count; ++i) {
         BongoCatImportCandidate *candidate = &discovery->candidates[i];
         char mode[BONGO_CAT_PATH_CAP];
         if (bongo_cat_path_join(mode, sizeof(mode), image_root,
             bongo_cat_mode_name(candidate->mode)) && bongo_cat_path_is_dir(mode))
             snprintf(candidate->overrides, sizeof(candidate->overrides), "%s", mode);
-        snprintf(candidate->patch_root, sizeof(candidate->patch_root), "%s", source);
+        snprintf(candidate->patch_root, sizeof(candidate->patch_root), "%s",
+            source);
         candidate->format = BONGO_CAT_IMPORT_MVER_PATCH;
     }
     return 1;

@@ -43,8 +43,8 @@ static void model_runtime_stage(BongoCatApp *app, const char *stage,
 }
 
 static bool behavior_cacheable(const BongoCatModelEntry *entry) {
-    /* Installed packages are content-addressed and immutable. Nearby models
-       are managed by their source directory, so do not retain stale data. */
+    /* Installed Mver trees keep a stable content digest. Nearby models are
+       managed by their source directory, so do not retain stale data. */
     return entry && (entry->preset || (!entry->managed &&
         entry->content_digest[0]));
 }

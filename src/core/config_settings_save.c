@@ -109,6 +109,17 @@ static bool write_model_labels(yyjson_mut_doc *doc, yyjson_mut_val *root,
     return true;
 }
 
+static bool write_removed_models(yyjson_mut_doc *doc, yyjson_mut_val *root,
+    const BongoCatSettings *settings) {
+    yyjson_mut_val *array = yyjson_mut_arr(doc);
+    if (!array || !yyjson_mut_obj_add_val(
+            doc, root, "removedModels", array)) return false;
+    for (size_t i = 0; i < settings->removed_model_count; ++i)
+        if (!yyjson_mut_arr_add_strcpy(doc, array,
+                settings->removed_models[i].id)) return false;
+    return true;
+}
+
 static yyjson_mut_val *write_extensions(yyjson_mut_doc *target,
     const BongoCatSettings *settings, BongoCatResult *failure,
     BongoCatError *error) {
@@ -190,6 +201,7 @@ BongoCatResult bongo_cat_settings_save(const char *path,
             &canonical.shortcuts) &&
         write_behaviors(doc, root, &canonical) &&
         write_model_labels(doc, root, &canonical) &&
+        write_removed_models(doc, root, &canonical) &&
         yyjson_mut_obj_add_val(doc, root, "extensions", extensions);
     if (!built) {
         yyjson_mut_doc_free(doc);

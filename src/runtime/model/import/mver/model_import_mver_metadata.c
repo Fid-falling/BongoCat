@@ -19,6 +19,15 @@ static double number_or(yyjson_val *value, double fallback) {
     return yyjson_is_num(value) ? yyjson_get_num(value) : fallback;
 }
 
+static bool pointer_asset(const BongoCatImportCandidate *candidate,
+    const char *name) {
+    char path[BONGO_CAT_PATH_CAP];
+    if (candidate->overrides[0] && bongo_cat_path_join(path, sizeof(path),
+            candidate->overrides, name) && bongo_cat_path_is_file(path)) return true;
+    return bongo_cat_path_join(path, sizeof(path), candidate->assets, name) &&
+        bongo_cat_path_is_file(path);
+}
+
 static bool add_standard_pointer(yyjson_mut_doc *output, yyjson_mut_val *root,
     yyjson_val *config, const BongoCatImportCandidate *candidate) {
     if (candidate->mode != BONGO_CAT_MODE_STANDARD) return true;
@@ -43,12 +52,14 @@ static bool add_standard_pointer(yyjson_mut_doc *output, yyjson_mut_val *root,
     const char *right = mouse ? "resources/mver-pointer/mouse_right.png" :
         "resources/mver-pointer/tablet_right.png";
     const char *side = mouse ? "resources/mver-pointer/mouse_side.png" : "";
+    bool enabled = pointer_asset(candidate, "arm.png") &&
+        pointer_asset(candidate, mouse ? "mouse.png" : "tablet.png");
     yyjson_mut_val *pointer = yyjson_mut_obj_add_obj(output, root, "standardPointer");
     return pointer &&
         /* Mver draws the pointer layer after the Live2D model in both standard
            and Live2D-standard modes. Keep it enabled so the authored hand,
            device, and button overlays continue to follow the pointer. */
-        yyjson_mut_obj_add_bool(output, pointer, "enabled", true) &&
+        yyjson_mut_obj_add_bool(output, pointer, "enabled", enabled) &&
         yyjson_mut_obj_add_bool(output, pointer, "mouse", mouse) &&
         yyjson_mut_obj_add_bool(output, pointer, "leftHanded",
             yyjson_is_bool(left_handed) && yyjson_get_bool(left_handed)) &&

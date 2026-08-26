@@ -28,6 +28,8 @@ typedef struct BongoCatImportCandidate {
 
 typedef struct BongoCatImportDiscovery {
     BongoCatImportCandidate candidates[BONGO_CAT_IMPORT_CANDIDATE_CAP];
+    /* Basename selected by the user. This becomes the visible model id. */
+    char source_name[BONGO_CAT_ID_CAP];
     size_t count;
     int depth;
     bool ambiguous;
@@ -75,6 +77,9 @@ bool bongo_cat_import_manifest_valid(const char *root, const char *setting,
     BongoCatError *error);
 bool bongo_cat_import_tauri_add_candidate(BongoCatImportDiscovery *discovery,
     const char *directory, const char *setting);
+bool bongo_cat_import_tauri_convert_to_mver(
+    const BongoCatImportCandidate *candidate, const char *target,
+    BongoCatImportCandidate *installed, BongoCatError *error);
 bool bongo_cat_import_mver_assets(const BongoCatImportCandidate *candidate,
     const char *target, BongoCatError *error);
 bool bongo_cat_import_adapter_metadata(const BongoCatImportCandidate *candidate,
@@ -85,9 +90,10 @@ bool bongo_cat_import_prepare_adapter(const BongoCatImportCandidate *candidate,
     const char *target, BongoCatError *error);
 bool bongo_cat_import_prepare_package(const BongoCatImportCandidate *candidate,
     const char *target, BongoCatImportCandidate *installed, BongoCatError *error);
-bool bongo_cat_import_write_package(const BongoCatImportCandidate *candidate,
-    const BongoCatPackageMetadata *metadata, const char *target,
+bool bongo_cat_import_prepare_storage(
+    const BongoCatImportDiscovery *discovery, const char *target,
     BongoCatError *error);
+bool bongo_cat_import_authored_package(const char *directory);
 bool bongo_cat_import_candidate_digest(const BongoCatImportCandidate *candidate,
     char output[65], BongoCatError *error);
 bool bongo_cat_import_candidate_inspect(const BongoCatImportCandidate *candidate,
@@ -106,9 +112,12 @@ bool bongo_cat_import_prepare_package_metadata(
 bool bongo_cat_import_prepare_package_metadata_cached(
     BongoCatImportDiscovery *discovery, BongoCatPackageMetadata *metadata,
     BongoCatImportDigestCache *cache, BongoCatError *error);
-const BongoCatModelEntry *bongo_cat_import_find_existing_package(
-    const BongoCatModelCatalog *catalog,
-    const BongoCatPackageMetadata *metadata, BongoCatModelMode mode);
+bool bongo_cat_import_package_id(char *output, size_t capacity,
+    const char *name);
+bool bongo_cat_import_variant_id(char *output, size_t capacity,
+    const char *package_id, size_t variant_index);
+uint32_t bongo_cat_import_candidate_capabilities(
+    const BongoCatImportCandidate *candidate);
 void bongo_cat_import_describe_nearby_entry(BongoCatModelEntry *entry,
     const BongoCatImportCandidate *candidate, const char *id,
     const char *identity, const char *source_hash, const char *source,
@@ -129,6 +138,8 @@ BongoCatResult bongo_cat_import_nearby_root(BongoCatApp *app,
 BongoCatResult bongo_cat_import_nearby_scan(BongoCatApp *app,
     const char *root, BongoCatError *error);
 BongoCatResult bongo_cat_import_nearby(BongoCatApp *app,
+    const char *root, BongoCatError *error);
+BongoCatResult bongo_cat_import_installed_models(BongoCatApp *app,
     const char *root, BongoCatError *error);
 BongoCatResult bongo_cat_import_install(const char *source,
     const char *models_root, BongoCatImportReceipt *receipt,

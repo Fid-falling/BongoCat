@@ -2,14 +2,17 @@
 #include "test_mver_support.h"
 #include "model_import_mver_internal.h"
 #include "model_storage.h"
+#include "runtime.h"
 #include "bongo_cat/path.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 void test_mver_container_discovery(void) {
     char root[BONGO_CAT_PATH_CAP], package[BONGO_CAT_PATH_CAP];
+    char backup[BONGO_CAT_PATH_CAP];
     char mode[BONGO_CAT_PATH_CAP];
     char bundle[BONGO_CAT_PATH_CAP], nested_package[BONGO_CAT_PATH_CAP];
     char variant[BONGO_CAT_PATH_CAP], variant_model[BONGO_CAT_PATH_CAP];
@@ -25,6 +28,9 @@ void test_mver_container_discovery(void) {
     CHECK(SDL_CreateDirectory(root));
     CHECK(child(package, sizeof(package), root, "app", true));
     CHECK(mver_fixture(package));
+    CHECK(child(backup, sizeof(backup), package,
+        "config.json.before_console_bak", false));
+    CHECK(write_text(backup, "backup"));
     CHECK(child(bundle, sizeof(bundle), root, "bundle", true));
     CHECK(child(nested_package, sizeof(nested_package), bundle, "model", true));
     CHECK(mver_fixture(nested_package));
@@ -45,6 +51,9 @@ void test_mver_container_discovery(void) {
         "img/standard/hand/0.png", false));
     CHECK(child(mode, sizeof(mode), variant_hand, "0.png", false) &&
         SDL_CopyFile(source_hand, mode));
+    CHECK(child(backup, sizeof(backup), variant_standard,
+        "override_bak", false));
+    CHECK(write_text(backup, "backup"));
     char normalized[BONGO_CAT_PATH_CAP];
     BongoCatError source_error = {0};
     CHECK(bongo_cat_import_source_directory(mode, normalized,
@@ -62,10 +71,101 @@ void test_mver_container_discovery(void) {
     CHECK(bongo_cat_import_discover(root, &selected_container, &error));
     CHECK(selected_container.count == 3);
     size_t patch_count = 0;
+    const BongoCatImportCandidate *contained_patch = NULL;
     for (size_t i = 0; i < selected_container.count; ++i)
         if (selected_container.candidates[i].format ==
-            BONGO_CAT_IMPORT_MVER_PATCH) patch_count++;
+            BONGO_CAT_IMPORT_MVER_PATCH) {
+            patch_count++;
+            contained_patch = &selected_container.candidates[i];
+        }
     CHECK(patch_count == 1);
+    char installed_root[BONGO_CAT_PATH_CAP];
+    snprintf(installed_root, sizeof(installed_root),
+        "%s/bongo-cat-container-installed-%llu", temporary, stamp);
+    BongoCatImportCandidate installed = {0};
+    CHECK(contained_patch && bongo_cat_import_prepare_package(contained_patch,
+        installed_root, &installed, &error));
+    CHECK(strncmp(installed.overrides, installed_root,
+        strlen(installed_root)) == 0);
+    CHECK(child(mode, sizeof(mode), installed.overrides, "hand/0.png", false) &&
+        bongo_cat_path_is_file(mode));
+    CHECK(child(backup, sizeof(backup), installed_root,
+        "app/config.json.before_console_bak", false) &&
+        !bongo_cat_path_is_file(backup));
+
+    BongoCatImportDiscovery external_patch = {0};
+    CHECK(bongo_cat_import_mver_patch_discover(variant, &external_patch,
+        &error) == 1);
+    char external_root[BONGO_CAT_PATH_CAP];
+    snprintf(external_root, sizeof(external_root),
+        "%s/bongo-cat-container-external-%llu", temporary, stamp);
+    installed = (BongoCatImportCandidate){0};
+    CHECK(external_patch.count == 1 &&
+        bongo_cat_import_prepare_package(&external_patch.candidates[0],
+            external_root, &installed, &error));
+    CHECK(strncmp(installed.overrides, external_root,
+        strlen(external_root)) == 0);
+    CHECK(child(mode, sizeof(mode), installed.overrides, "hand/0.png", false) &&
+        bongo_cat_path_is_file(mode));
+    CHECK(child(backup, sizeof(backup), installed.overrides,
+        "override_bak", false) && !bongo_cat_path_is_file(backup));
+
+    char models_root[BONGO_CAT_PATH_CAP], cache_root[BONGO_CAT_PATH_CAP];
+    snprintf(models_root, sizeof(models_root),
+        "%s/bongo-cat-container-models-%llu", temporary, stamp);
+    snprintf(cache_root, sizeof(cache_root),
+        "%s/bongo-cat-container-cache-%llu", temporary, stamp);
+    CHECK(SDL_CreateDirectory(models_root));
+    CHECK(SDL_CreateDirectory(cache_root));
+    BongoCatImportReceipt receipt = {0};
+    CHECK(bongo_cat_import_install(root, models_root, &receipt, &error) ==
+        BONGO_CAT_OK);
+    CHECK(receipt.count > 1 && receipt.installed_count == receipt.count);
+    char stored[BONGO_CAT_PATH_CAP], duplicate_directory[BONGO_CAT_PATH_CAP];
+    CHECK(child(stored, sizeof(stored), models_root, receipt.ids[0], false) &&
+        bongo_cat_path_is_dir(stored));
+    CHECK(child(duplicate_directory, sizeof(duplicate_directory), models_root,
+        receipt.ids[1], false) && !bongo_cat_path_is_dir(duplicate_directory));
+    CHECK(child(backup, sizeof(backup), stored,
+        ".bongo-cat-package.json", false) && !bongo_cat_path_is_file(backup));
+    CHECK(child(backup, sizeof(backup), stored,
+        ".bongo-cat-adapter", false) && !bongo_cat_path_is_dir(backup));
+    CHECK(child(backup, sizeof(backup), stored,
+        BONGO_CAT_MODEL_ADAPTER_FILE, false) &&
+        !bongo_cat_path_is_file(backup));
+    BongoCatApp *app = calloc(1, sizeof(*app));
+    CHECK(app != NULL);
+    if (app) {
+        snprintf(app->models_root, sizeof(app->models_root), "%s", models_root);
+        snprintf(app->cache_root, sizeof(app->cache_root), "%s", cache_root);
+        bongo_cat_models_init(&app->models);
+        CHECK(bongo_cat_import_installed_models(app, models_root, &error) ==
+            BONGO_CAT_OK);
+        CHECK(app->models.count == receipt.count);
+        for (size_t i = 0; i < app->models.count; ++i)
+            CHECK(strcmp(app->models.entries[i].storage_directory, stored) == 0);
+        CHECK(bongo_cat_settings_set_model_removed(&app->settings,
+            receipt.ids[0], true));
+        bongo_cat_models_init(&app->models);
+        CHECK(bongo_cat_import_installed_models(app, models_root, &error) ==
+            BONGO_CAT_OK);
+        CHECK(app->models.count + 1 == receipt.count &&
+            !bongo_cat_models_find(&app->models, receipt.ids[0]) &&
+            bongo_cat_models_find(&app->models, receipt.ids[1]) &&
+            bongo_cat_path_is_dir(stored));
+        CHECK(bongo_cat_settings_restore_model_package(&app->settings,
+            receipt.ids[0]));
+        bongo_cat_models_init(&app->models);
+        CHECK(bongo_cat_import_installed_models(app, models_root, &error) ==
+            BONGO_CAT_OK);
+        CHECK(app->models.count == receipt.count &&
+            bongo_cat_models_find(&app->models, receipt.ids[0]));
+        free(app);
+    }
+    CHECK(bongo_cat_model_remove_tree(models_root, NULL));
+    CHECK(bongo_cat_model_remove_tree(cache_root, NULL));
+    CHECK(bongo_cat_model_remove_tree(installed_root, NULL));
+    CHECK(bongo_cat_model_remove_tree(external_root, NULL));
     CHECK(bongo_cat_model_remove_tree(root, NULL));
     SDL_free(temporary);
 }

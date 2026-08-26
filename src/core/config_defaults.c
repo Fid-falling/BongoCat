@@ -102,6 +102,79 @@ bool bongo_cat_settings_set_model_label(BongoCatSettings *config,
     return true;
 }
 
+bool bongo_cat_settings_model_removed(const BongoCatSettings *config,
+    const char *id) {
+    if (!config || !id) return false;
+    size_t count = config->removed_model_count;
+    if (count > BONGO_CAT_MODEL_CAP) count = BONGO_CAT_MODEL_CAP;
+    for (size_t i = 0; i < count; ++i)
+        if (!strcmp(config->removed_models[i].id, id)) return true;
+    return false;
+}
+
+bool bongo_cat_settings_set_model_removed(BongoCatSettings *config,
+    const char *id, bool removed) {
+    if (!config || !id || !id[0] || strlen(id) >= BONGO_CAT_ID_CAP ||
+        !bongo_cat_utf8_valid(id)) return false;
+    bongo_cat_settings_validate(config);
+    size_t index = config->removed_model_count;
+    for (size_t i = 0; i < config->removed_model_count; ++i)
+        if (!strcmp(config->removed_models[i].id, id)) {
+            index = i;
+            break;
+        }
+    if (removed) {
+        if (index < config->removed_model_count) return false;
+        if (config->removed_model_count >= BONGO_CAT_MODEL_CAP) return false;
+        BongoCatRemovedModel *entry =
+            &config->removed_models[config->removed_model_count++];
+        memset(entry, 0, sizeof(*entry));
+        snprintf(entry->id, sizeof(entry->id), "%s", id);
+        return true;
+    }
+    if (index == config->removed_model_count) return false;
+    if (index + 1 < config->removed_model_count)
+        memmove(&config->removed_models[index],
+            &config->removed_models[index + 1],
+            (config->removed_model_count - index - 1) *
+            sizeof(config->removed_models[0]));
+    config->removed_model_count--;
+    memset(&config->removed_models[config->removed_model_count], 0,
+        sizeof(config->removed_models[0]));
+    return true;
+}
+
+static bool package_model_id(const char *id, const char *package_id) {
+    size_t length = package_id ? strlen(package_id) : 0;
+    if (!id || !length || strncmp(id, package_id, length) != 0) return false;
+    const char *suffix = id + length;
+    if (!suffix[0]) return true;
+    if (*suffix++ != '~' || !*suffix) return false;
+    while (*suffix)
+        if (!isdigit((unsigned char)*suffix++)) return false;
+    return true;
+}
+
+bool bongo_cat_settings_restore_model_package(BongoCatSettings *config,
+    const char *package_id) {
+    if (!config || !package_id || !package_id[0]) return false;
+    bongo_cat_settings_validate(config);
+    size_t output = 0;
+    bool changed = false;
+    for (size_t i = 0; i < config->removed_model_count; ++i) {
+        BongoCatRemovedModel entry = config->removed_models[i];
+        if (package_model_id(entry.id, package_id)) {
+            changed = true;
+            continue;
+        }
+        config->removed_models[output++] = entry;
+    }
+    memset(&config->removed_models[output], 0,
+        (BONGO_CAT_MODEL_CAP - output) * sizeof(config->removed_models[0]));
+    config->removed_model_count = output;
+    return changed;
+}
+
 static void validate_shortcuts(BongoCatSettings *config) {
     char *global[] = {config->shortcuts.toggle_pet_visibility,
         config->shortcuts.visible_preferences, config->shortcuts.mirror,
@@ -212,6 +285,32 @@ static void compact_model_overrides(BongoCatSettings *config) {
     config->model_label_count = output_count;
 }
 
+static void compact_removed_models(BongoCatSettings *config) {
+    size_t input_count = config->removed_model_count;
+    if (input_count > BONGO_CAT_MODEL_CAP) input_count = BONGO_CAT_MODEL_CAP;
+    size_t output_count = 0;
+    for (size_t i = 0; i < input_count; ++i) {
+        BongoCatRemovedModel entry = config->removed_models[i];
+        entry.id[sizeof(entry.id) - 1] = '\0';
+        if (!entry.id[0] || !bongo_cat_utf8_valid(entry.id)) continue;
+        bool duplicate = false;
+        for (size_t j = 0; j < output_count; ++j)
+            if (!strcmp(config->removed_models[j].id, entry.id)) {
+                duplicate = true;
+                break;
+            }
+        if (!duplicate) {
+            BongoCatRemovedModel canonical = {0};
+            snprintf(canonical.id, sizeof(canonical.id), "%s", entry.id);
+            config->removed_models[output_count++] = canonical;
+        }
+    }
+    memset(&config->removed_models[output_count], 0,
+        (BONGO_CAT_MODEL_CAP - output_count) *
+        sizeof(config->removed_models[0]));
+    config->removed_model_count = output_count;
+}
+
 void bongo_cat_settings_defaults(BongoCatSettings *config) {
     if (!config) return;
     memset(config, 0, sizeof(*config));
@@ -246,6 +345,7 @@ void bongo_cat_settings_validate(BongoCatSettings *config) {
         config->app.language = BONGO_CAT_LANG_EN_US;
     compact_behavior_overrides(config);
     compact_model_overrides(config);
+    compact_removed_models(config);
     validate_shortcuts(config);
     compact_behavior_overrides(config);
 }

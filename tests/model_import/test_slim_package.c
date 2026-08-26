@@ -50,7 +50,7 @@ int test_slim_package(void) {
     CHECK_SLIM(bongo_cat_path_join(package, sizeof(package), models,
         receipt.ids[0]));
     CHECK_SLIM(child(installed, sizeof(installed), package,
-        "payload/" BONGO_CAT_SKIN_CONFIG_FILE, false));
+        BONGO_CAT_SKIN_CONFIG_FILE, false));
     CHECK_SLIM(bongo_cat_path_is_file(installed));
     CHECK_SLIM(bongo_cat_model_remove_tree(source, NULL));
     CHECK_SLIM(bongo_cat_model_remove_tree(data, NULL));
