@@ -82,15 +82,22 @@ static bool distribution_file(const char *name) {
 static bool copy_mver_tree(const char *source, const char *target,
     unsigned depth, BongoCatError *error);
 
+static bool mver_runtime_resources(const char *directory, const char *name) {
+    if (!name || SDL_strcasecmp(name, "Resources") != 0 ||
+        !bongo_cat_path_is_dir(directory)) return false;
+    char font[BONGO_CAT_PATH_CAP], logo[BONGO_CAT_PATH_CAP];
+    return bongo_cat_path_join(font, sizeof(font), directory, "cat.ttf") &&
+        bongo_cat_path_join(logo, sizeof(logo), directory, "l2dlogo.png") &&
+        bongo_cat_path_is_file(font) && bongo_cat_path_is_file(logo);
+}
+
 static BongoCatPathVisit copy_mver_child(void *userdata,
     const char *dirname, const char *name) {
     MverDirectoryCopy *context = userdata;
-    if (context->depth == 0 && name &&
-        SDL_strcasecmp(name, "Resources") == 0)
-        return BONGO_CAT_PATH_CONTINUE;
     char source[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_join(source, sizeof(source), dirname, name))
         return BONGO_CAT_PATH_FAILURE;
+    if (mver_runtime_resources(source, name)) return BONGO_CAT_PATH_CONTINUE;
     if (distribution_file(name)) return BONGO_CAT_PATH_CONTINUE;
     char target[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_join(target, sizeof(target), context->target_root,
