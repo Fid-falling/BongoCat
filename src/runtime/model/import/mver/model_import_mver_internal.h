@@ -37,5 +37,4 @@ bool bongo_cat_mver_labels_load(const char *path, const char *mode,
     BongoCatMverLabels *labels);
 const char *bongo_cat_mver_label(const BongoCatMverLabels *labels,
     const char *field, size_t index);
-
 #endif

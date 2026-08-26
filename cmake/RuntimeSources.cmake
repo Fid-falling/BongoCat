@@ -95,6 +95,7 @@ set(BONGO_CAT_RUNTIME_IMPORT_SOURCES
   src/runtime/model/import/model_import_tauri_mver_keys.c
   src/runtime/model/import/model_import_tauri_mver_tree.c
   src/runtime/model/import/mver/model_import_mver.c
+  src/runtime/model/import/mver/model_import_mver_copy.c
   src/runtime/model/import/mver/model_import_mver_effect.c
   src/runtime/model/import/mver/model_import_mver_image.c
   src/runtime/model/import/mver/model_import_mver_labels.c
