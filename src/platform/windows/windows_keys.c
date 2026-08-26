@@ -77,7 +77,9 @@ const char *bongo_cat_windows_key_name(const KBDLLHOOKSTRUCT *key, char output[1
     case VK_OEM_COMMA: return "Comma";
     case VK_OEM_PERIOD: return "Period";
     case VK_OEM_2: return "Slash";
-    default: return NULL;
+    default:
+        snprintf(output, 16, "%lu", code);
+        return output;
     }
 }
 

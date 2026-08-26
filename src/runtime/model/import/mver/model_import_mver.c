@@ -50,6 +50,9 @@ static bool copy_standard_pointer_assets(const BongoCatImportCandidate *candidat
     for (size_t index = 0; index < sizeof(names) / sizeof(names[0]); ++index) {
         char source[BONGO_CAT_PATH_CAP], destination[BONGO_CAT_PATH_CAP];
         if (!root_asset_file(candidate, names[index], source, sizeof(source))) continue;
+        int width = 0, height = 0;
+        if (!bongo_cat_image_info(source, &width, &height) ||
+            (width <= 1 && height <= 1)) continue;
         if (!bongo_cat_path_join(destination, sizeof(destination), output, names[index]) ||
             !bongo_cat_path_copy_file(source, destination)) return false;
     }
@@ -112,6 +115,10 @@ KeyNames bongo_cat_mver_device_names(int code, size_t occurrence, size_t total) 
         };
         for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); ++i)
             if (map[i].code == code) { names.items[0] = map[i].name; names.count = 1; break; }
+        if (!names.count && code > 0 && code <= 255) {
+            snprintf(names.generated, sizeof(names.generated), "%d", code);
+            names.count = 1;
+        }
         return names;
     }
     names.count = 1;

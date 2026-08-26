@@ -2,6 +2,7 @@
 #include "model_import_mver_internal.h"
 #include "runtime.h"
 #include "bongo_cat/file.h"
+#include "bongo_cat/image.h"
 #include "bongo_cat/json.h"
 #include "bongo_cat/path.h"
 
@@ -19,13 +20,21 @@ static double number_or(yyjson_val *value, double fallback) {
     return yyjson_is_num(value) ? yyjson_get_num(value) : fallback;
 }
 
+static bool usable_pointer_image(const char *path) {
+    int width = 0, height = 0;
+    return bongo_cat_path_is_file(path) &&
+        bongo_cat_image_info(path, &width, &height) &&
+        (width > 1 || height > 1);
+}
+
 static bool pointer_asset(const BongoCatImportCandidate *candidate,
     const char *name) {
     char path[BONGO_CAT_PATH_CAP];
     if (candidate->overrides[0] && bongo_cat_path_join(path, sizeof(path),
-            candidate->overrides, name) && bongo_cat_path_is_file(path)) return true;
+            candidate->overrides, name) && bongo_cat_path_is_file(path))
+        return usable_pointer_image(path);
     return bongo_cat_path_join(path, sizeof(path), candidate->assets, name) &&
-        bongo_cat_path_is_file(path);
+        usable_pointer_image(path);
 }
 
 static bool add_standard_pointer(yyjson_mut_doc *output, yyjson_mut_val *root,

@@ -6,6 +6,7 @@
 #include "runtime.h"
 #include "test_mver_support.h"
 #include "test_mver_import_internal.h"
+#include "bongo_cat/image.h"
 #include "bongo_cat/json.h"
 #include "bongo_cat/path.h"
 #include <SDL3/SDL.h>
@@ -186,6 +187,16 @@ static void model_visual_curve(void) {
     CHECK(complete == 1.0f && !value.model_load_visual_active);
 }
 
+static void check_portable_images(const char *root,
+    const char *const *relative, size_t count) {
+    char path[BONGO_CAT_PATH_CAP];
+    for (size_t i = 0; i < count; ++i) {
+        CHECK(child(path, sizeof(path), root, relative[i], false));
+        CHECK(bongo_cat_path_is_file(path));
+        CHECK(bongo_cat_image_info(path, NULL, NULL));
+    }
+}
+
 static void tauri_exact_discovery(void) {
     char *temporary = SDL_GetCurrentDirectory();
     CHECK(temporary != NULL);
@@ -204,12 +215,20 @@ static void tauri_exact_discovery(void) {
     char tray[BONGO_CAT_PATH_CAP];
     snprintf(tray, sizeof(tray), "%s/resources/assets/tray.png",
         BONGO_CAT_NATIVE_SOURCE_DIR);
-    char resources[BONGO_CAT_PATH_CAP], right_keys[BONGO_CAT_PATH_CAP];
-    char east[BONGO_CAT_PATH_CAP], model_texture[BONGO_CAT_PATH_CAP];
+    char resources[BONGO_CAT_PATH_CAP], left_keys[BONGO_CAT_PATH_CAP];
+    char right_keys[BONGO_CAT_PATH_CAP], east[BONGO_CAT_PATH_CAP];
+    char numeric[BONGO_CAT_PATH_CAP], model_texture[BONGO_CAT_PATH_CAP];
     CHECK(child(resources, sizeof(resources), model, "resources", true));
     CHECK(child(model_texture, sizeof(model_texture), resources,
         "model-texture.png", false));
     CHECK(SDL_CopyFile(tray, model_texture));
+    CHECK(child(path, sizeof(path), resources, "background.png", false));
+    CHECK(SDL_CopyFile(tray, path));
+    CHECK(child(path, sizeof(path), resources, "cover.png", false));
+    CHECK(SDL_CopyFile(tray, path));
+    CHECK(child(left_keys, sizeof(left_keys), resources, "left-keys", true));
+    CHECK(child(numeric, sizeof(numeric), left_keys, "24.png", false));
+    CHECK(SDL_CopyFile(tray, numeric));
     CHECK(child(right_keys, sizeof(right_keys), resources, "right-keys", true));
     CHECK(child(east, sizeof(east), right_keys, "East.png", false));
     CHECK(SDL_CopyFile(tray, east));
@@ -249,9 +268,18 @@ static void tauri_exact_discovery(void) {
     yyjson_val *normalized_root = normalized
         ? yyjson_doc_get_root(normalized) : NULL;
     yyjson_val *normalized_mode = yyjson_obj_get(normalized_root, "keyboard");
+    yyjson_val *normalized_left = yyjson_obj_get(normalized_mode, "lefthand");
+    yyjson_val *window_size = yyjson_obj_get(
+        yyjson_obj_get(normalized_root, "decoration"), "window_size");
+    int expected_width = 0, expected_height = 0;
+    CHECK(bongo_cat_image_info(tray, &expected_width, &expected_height));
     CHECK(yyjson_get_int(yyjson_obj_get(normalized_root, "mode")) == 2 &&
-        yyjson_is_arr(yyjson_obj_get(normalized_mode, "lefthand")) &&
-        yyjson_is_arr(yyjson_obj_get(normalized_mode, "righthand")));
+        yyjson_is_arr(normalized_left) &&
+        yyjson_is_arr(yyjson_obj_get(normalized_mode, "righthand")) &&
+        yyjson_get_int(yyjson_arr_get(yyjson_arr_get(normalized_left, 0), 0)) ==
+            24 &&
+        yyjson_get_int(yyjson_arr_get(window_size, 0)) == expected_width &&
+        yyjson_get_int(yyjson_arr_get(window_size, 1)) == expected_height);
     yyjson_doc_free(normalized);
     CHECK(child(path, sizeof(path), package,
         "img/keyboard/cat_model/cat.model3.json", false) &&
@@ -265,6 +293,12 @@ static void tauri_exact_discovery(void) {
     CHECK(child(path, sizeof(path), package,
         "img/keyboard/cat_model/nested/resources/keep.bin", false) &&
         bongo_cat_path_is_file(path));
+    static const char *const keyboard_runtime[] = {
+        "img/keyboard/lefthand/leftup.png",
+        "img/keyboard/righthand/rightup.png"
+    };
+    check_portable_images(package, keyboard_runtime,
+        sizeof(keyboard_runtime) / sizeof(keyboard_runtime[0]));
     CHECK(child(path, sizeof(path), package, ".bongo-cat-adapter", false) &&
         !bongo_cat_path_is_dir(path));
     CHECK(child(path, sizeof(path), package, ".bongo-cat-package.json", false) &&
@@ -284,6 +318,61 @@ static void tauri_exact_discovery(void) {
             strcmp(app->models.entries[0].adapter_directory, package) != 0);
         free(app);
     }
+    BongoCatImportCandidate portable = keyboard.candidates[0], installed = {0};
+    char portable_root[BONGO_CAT_PATH_CAP];
+    portable.mode = BONGO_CAT_MODE_STANDARD;
+    portable.gamepad_buttons = false;
+    CHECK(child(portable_root, sizeof(portable_root), root,
+        "portable-standard", false));
+    error = (BongoCatError){0};
+    CHECK(bongo_cat_import_tauri_convert_to_mver(&portable, portable_root,
+        &installed, &error));
+    static const char *const standard_runtime[] = {
+        "img/standard/arm.png", "img/standard/up.png",
+        "img/standard/mousebg.png", "img/standard/l2dmousebg.png",
+        "img/standard/mouse.png", "img/standard/mouse_left.png",
+        "img/standard/mouse_right.png", "img/standard/mouse_side.png",
+        "img/standard/tabletbg.png", "img/standard/l2dtabletbg.png",
+        "img/standard/tablet.png", "img/standard/tablet_left.png",
+        "img/standard/tablet_right.png"
+    };
+    check_portable_images(portable_root, standard_runtime,
+        sizeof(standard_runtime) / sizeof(standard_runtime[0]));
+    CHECK(child(path, sizeof(path), portable_root, "img/standard/bg.png",
+        false) && !bongo_cat_path_is_file(path));
+    char adapter_root[BONGO_CAT_PATH_CAP];
+    CHECK(child(adapter_root, sizeof(adapter_root), root,
+        "portable-standard-adapter", true));
+    error = (BongoCatError){0};
+    CHECK(bongo_cat_import_prepare_adapter(&installed, adapter_root, &error));
+    CHECK(child(path, sizeof(path), adapter_root,
+        BONGO_CAT_MODEL_ADAPTER_FILE, false));
+    yyjson_doc *adapter = bongo_cat_json_read_file(path, 0, NULL);
+    yyjson_val *pointer = adapter ? yyjson_obj_get(
+        yyjson_doc_get_root(adapter), "standardPointer") : NULL;
+    CHECK(yyjson_is_obj(pointer) &&
+        !yyjson_get_bool(yyjson_obj_get(pointer, "enabled")));
+    yyjson_doc_free(adapter);
+    CHECK(child(path, sizeof(path), adapter_root,
+        "resources/mver-pointer/arm.png", false) &&
+        !bongo_cat_path_is_file(path));
+    portable.mode = BONGO_CAT_MODE_GAMEPAD;
+    portable.gamepad_buttons = true;
+    installed = (BongoCatImportCandidate){0};
+    CHECK(child(portable_root, sizeof(portable_root), root,
+        "portable-gamepad", false));
+    error = (BongoCatError){0};
+    CHECK(bongo_cat_import_tauri_convert_to_mver(&portable, portable_root,
+        &installed, &error));
+    static const char *const gamepad_runtime[] = {
+        "img/gamepad/arm_L.png", "img/gamepad/arm_R.png",
+        "img/gamepad/left_stick.png", "img/gamepad/left_stick_down.png",
+        "img/gamepad/right_stick.png", "img/gamepad/right_stick_down.png",
+        "img/gamepad/lefthand/leftup.png",
+        "img/gamepad/righthand/rightup.png"
+    };
+    check_portable_images(portable_root, gamepad_runtime,
+        sizeof(gamepad_runtime) / sizeof(gamepad_runtime[0]));
     CHECK(bongo_cat_model_remove_tree(root, NULL));
     SDL_free(temporary);
 }
@@ -294,6 +383,7 @@ int main(void) {
     CHECK(chord("[0]", true, "Gamepad:South"));
     CHECK(chord("[15]", true, "Gamepad:Select"));
     CHECK(chord("[8]", false, "Backspace"));
+    CHECK(chord("[24]", false, "24"));
     CHECK(chord("[16,65]", false, "Shift+A"));
     CHECK(chord("[17,18,90]", false, "Control+Alt+Z"));
     CHECK(chord("[0]", false, NULL));
@@ -303,6 +393,8 @@ int main(void) {
     CHECK(modifier.count == 1 && strcmp(modifier.items[0], "ShiftRight") == 0);
     BongoCatMverKeyNames dpad = bongo_cat_mver_gamepad_names(12);
     CHECK(dpad.count == 1 && strcmp(dpad.items[0], "DPadUp") == 0);
+    BongoCatMverKeyNames numeric = bongo_cat_mver_device_names(24, 0, 1);
+    CHECK(numeric.count == 1 && strcmp(numeric.generated, "24") == 0);
     labels_from_shortcut_rows();
     metadata_backfills_labels();
     failures += test_mver_missing_motion_groups();

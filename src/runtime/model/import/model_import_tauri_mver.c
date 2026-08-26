@@ -1,5 +1,6 @@
 #include "model_import.h"
 #include "bongo_cat/file.h"
+#include "bongo_cat/image.h"
 #include "bongo_cat/json.h"
 #include "bongo_cat/path.h"
 
@@ -34,6 +35,10 @@ static int key_code(const char *filename) {
     char *dot = strrchr(name, '.');
     if (!dot || SDL_strcasecmp(dot, ".png") != 0) return -1;
     *dot = '\0';
+    char *end = NULL;
+    long numeric = strtol(name, &end, 10);
+    if (name[0] && end && !end[0] && numeric >= 0 && numeric <= 255)
+        return (int)numeric;
     if (strlen(name) == 4 && SDL_strncasecmp(name, "Key", 3) == 0 &&
         name[3] >= 'A' && name[3] <= 'Z') return name[3];
     if (strlen(name) == 4 && SDL_strncasecmp(name, "Num", 3) == 0 &&
@@ -138,6 +143,76 @@ static bool copy_image_or_placeholder(const char *source, const char *target,
     if (!ok && error) bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
         "Cannot create normalized Mver image: %s", target);
     return ok;
+}
+
+static bool copy_mver_image(const BongoCatImportCandidate *candidate,
+    const char *mode_root, const char *source_name, const char *target_name,
+    const char *fallback, BongoCatError *error) {
+    char source[BONGO_CAT_PATH_CAP], target[BONGO_CAT_PATH_CAP];
+    const char *selected = fallback;
+    if (source_name && resource_file(candidate, source_name, source,
+            sizeof(source))) selected = source;
+    if (!bongo_cat_path_join(target, sizeof(target), mode_root, target_name))
+        return false;
+    return copy_image_or_placeholder(selected, target, error);
+}
+
+static bool copy_mver_runtime_images(
+    const BongoCatImportCandidate *candidate, const char *mode_root,
+    BongoCatError *error) {
+    char background[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_path_join(background, sizeof(background), mode_root,
+            candidate->mode == BONGO_CAT_MODE_STANDARD ? "mousebg.png" :
+                "bg.png")) return false;
+    /* Tauri omits these Mver-only layers. Preserve real files when supplied;
+       otherwise use transparent PNGs so the portable package still loads. */
+    if (candidate->mode == BONGO_CAT_MODE_STANDARD) {
+        static const char *const backgrounds[] = {
+            "tabletbg.png", "l2dmousebg.png", "l2dtabletbg.png"
+        };
+        static const char *const layers[] = {
+            "arm.png", "up.png", "mouse.png", "mouse_left.png",
+            "mouse_right.png", "mouse_side.png", "tablet.png",
+            "tablet_left.png", "tablet_right.png"
+        };
+        for (size_t i = 0; i < sizeof(backgrounds) / sizeof(backgrounds[0]);
+                ++i)
+            if (!copy_mver_image(candidate, mode_root, backgrounds[i],
+                    backgrounds[i], background, error)) return false;
+        for (size_t i = 0; i < sizeof(layers) / sizeof(layers[0]); ++i)
+            if (!copy_mver_image(candidate, mode_root, layers[i], layers[i],
+                    NULL, error)) return false;
+        return true;
+    }
+    static const char *const idle_hands[] = {
+        "lefthand/leftup.png", "righthand/rightup.png"
+    };
+    for (size_t i = 0; i < sizeof(idle_hands) / sizeof(idle_hands[0]); ++i)
+        if (!copy_mver_image(candidate, mode_root, idle_hands[i],
+                idle_hands[i], NULL, error)) return false;
+    if (candidate->mode != BONGO_CAT_MODE_GAMEPAD) return true;
+    static const char *const gamepad[] = {
+        "arm_L.png", "arm_R.png", "left_stick.png", "left_stick_down.png",
+        "right_stick.png", "right_stick_down.png"
+    };
+    for (size_t i = 0; i < sizeof(gamepad) / sizeof(gamepad[0]); ++i)
+        if (!copy_mver_image(candidate, mode_root, gamepad[i], gamepad[i],
+                NULL, error)) return false;
+    return true;
+}
+
+static void mver_window_size(const BongoCatImportCandidate *candidate,
+    int *width, int *height) {
+    *width = 612;
+    *height = 352;
+    char source[BONGO_CAT_PATH_CAP];
+    if ((resource_file(candidate, "background.png", source,
+             sizeof(source)) ||
+            resource_file(candidate, "cover.png", source, sizeof(source))) &&
+        !bongo_cat_image_info(source, width, height)) {
+        *width = 612;
+        *height = 352;
+    }
 }
 
 typedef struct TauriModelCopy {
@@ -251,7 +326,7 @@ static bool add_matrix(yyjson_mut_doc *document, yyjson_mut_val *mode,
 
 static bool config_write(const char *path, BongoCatModelMode mode,
     const TauriKeyFiles *left, const TauriKeyFiles *right,
-    BongoCatError *error) {
+    int width, int height, BongoCatError *error) {
     yyjson_mut_doc *document = yyjson_mut_doc_new(NULL);
     yyjson_mut_val *root = document ? yyjson_mut_obj(document) : NULL;
     if (document) yyjson_mut_doc_set_root(document, root);
@@ -259,7 +334,11 @@ static bool config_write(const char *path, BongoCatModelMode mode,
         "decoration") : NULL;
     yyjson_mut_val *mode_object = root ? yyjson_mut_obj_add_obj(document, root,
         bongo_cat_mode_name(mode)) : NULL;
-    bool ok = root && decoration && mode_object &&
+    yyjson_mut_val *window_size = decoration ? yyjson_mut_obj_add_arr(document,
+        decoration, "window_size") : NULL;
+    bool ok = root && decoration && mode_object && window_size &&
+        yyjson_mut_arr_add_int(document, window_size, width) &&
+        yyjson_mut_arr_add_int(document, window_size, height) &&
         yyjson_mut_obj_add_int(document, root, "mode",
             mode == BONGO_CAT_MODE_STANDARD ? 1 :
             mode == BONGO_CAT_MODE_KEYBOARD ? 2 : 3) &&
@@ -303,7 +382,10 @@ static bool copy_preview(const BongoCatImportCandidate *candidate,
         snprintf(source, sizeof(source), "%s", cat);
         have_background = true;
     }
-    if (!bongo_cat_path_join(target, sizeof(target), mode_root, "bg.png"))
+    const char *background_name = candidate->mode == BONGO_CAT_MODE_STANDARD
+        ? "mousebg.png" : "bg.png";
+    if (!bongo_cat_path_join(target, sizeof(target), mode_root,
+            background_name))
         return false;
     return copy_image_or_placeholder(have_background ? source : NULL, target,
         error);
@@ -397,10 +479,14 @@ bool bongo_cat_import_tauri_convert_to_mver(
         right.values[0].code = candidate->mode == BONGO_CAT_MODE_GAMEPAD ? 1 : 65;
         right.count = 1;
     }
+    int width, height;
+    mver_window_size(candidate, &width, &height);
     char config[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_join(config, sizeof(config), target, "config.json") ||
-        !config_write(config, candidate->mode, &left, &right, error) ||
-        !copy_preview(candidate, mode_root, error)) return false;
+        !config_write(config, candidate->mode, &left, &right, width, height,
+            error) ||
+        !copy_preview(candidate, mode_root, error) ||
+        !copy_mver_runtime_images(candidate, mode_root, error)) return false;
     *installed = *candidate;
     snprintf(installed->directory, sizeof(installed->directory), "%s", model_root);
     snprintf(installed->assets, sizeof(installed->assets), "%s", mode_root);
