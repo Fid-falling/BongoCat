@@ -46,6 +46,7 @@ if(BUILD_TESTING)
 
   set(BONGO_CAT_MVER_IMPORT_TEST_SOURCES
     tests/model_import/test_mver_import.c
+    tests/model_import/test_tauri_portable.c
     tests/model_import/test_mver_container.c
     tests/model_import/test_mver_missing_motion.c
     tests/model_import/test_mver_pointer_import.c

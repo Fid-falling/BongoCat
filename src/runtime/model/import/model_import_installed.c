@@ -26,6 +26,16 @@ static bool existing_identity(const BongoCatModelCatalog *models,
     return false;
 }
 
+static bool package_identity_seen(
+    const char identities[BONGO_CAT_IMPORT_CANDIDATE_CAP][65],
+    const BongoCatModelMode modes[BONGO_CAT_IMPORT_CANDIDATE_CAP],
+    size_t count, const char *identity, BongoCatModelMode mode) {
+    for (size_t i = 0; i < count; ++i)
+        if (modes[i] == mode && strcmp(identities[i], identity) == 0)
+            return true;
+    return false;
+}
+
 static BongoCatModelSourceFormat source_format(
     const BongoCatImportCandidate *candidate) {
     if (candidate->format == BONGO_CAT_IMPORT_MVER_PATCH)
@@ -77,6 +87,9 @@ static bool add_package(InstalledModelScan *scan, const char *directory,
     bongo_cat_sha256_bytes(directory, strlen(directory), path_hash);
     snprintf(family, sizeof(family), "family-installed-%.16s", path_hash);
     size_t emitted = 0;
+    char identities[BONGO_CAT_IMPORT_CANDIDATE_CAP][65] = {{0}};
+    BongoCatModelMode modes[BONGO_CAT_IMPORT_CANDIDATE_CAP] = {0};
+    size_t identity_count = 0;
     for (size_t i = 0; i < discovery->count; ++i) {
         BongoCatImportCandidate *candidate = &discovery->candidates[i];
         char cache_id[BONGO_CAT_ID_CAP], adapter[BONGO_CAT_PATH_CAP];
@@ -97,6 +110,13 @@ static bool add_package(InstalledModelScan *scan, const char *directory,
                 directory, signature, identity, true, candidate->mode);
             continue;
         }
+        bool duplicate = existing_identity(&scan->app->models, identity,
+                candidate->mode) || package_identity_seen(identities, modes,
+                identity_count, identity, candidate->mode);
+        if (identity_count < BONGO_CAT_IMPORT_CANDIDATE_CAP) {
+            snprintf(identities[identity_count], 65, "%s", identity);
+            modes[identity_count++] = candidate->mode;
+        }
         char id[BONGO_CAT_ID_CAP];
         if (!bongo_cat_import_variant_id(id, sizeof(id), package_id, emitted)) {
             bongo_cat_error_set(scan->error, BONGO_CAT_ERROR_FORMAT,
@@ -109,7 +129,7 @@ static bool add_package(InstalledModelScan *scan, const char *directory,
                 directory, signature, identity, false, candidate->mode);
             continue;
         }
-        if (existing_identity(&scan->app->models, identity, candidate->mode)) {
+        if (duplicate) {
             if (!cached) bongo_cat_nearby_remember_inspection(adapter,
                 directory, signature, identity, false, candidate->mode);
             continue;

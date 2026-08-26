@@ -1,23 +1,19 @@
 #include "preferences_import_internal.h"
 #include "preferences_state.h"
 #include "model_import.h"
-
 #ifdef _WIN32
 #include "windows_dialog.h"
 #endif
-
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 static void free_job(BongoCatImportJob *job) {
     if (!job) return;
     for (size_t i = 0; i < job->count; ++i) SDL_free(job->paths[i]);
     SDL_free(job->paths);
     SDL_free(job);
 }
-
 static void release_dialog(BongoCatImportDialog *dialog) {
     bool destroy = false;
     SDL_LockMutex(dialog->mutex);
@@ -28,7 +24,6 @@ static void release_dialog(BongoCatImportDialog *dialog) {
         SDL_free(dialog);
     }
 }
-
 void bongo_cat_preferences_import_destroy(BongoCatImportDialog *dialog) {
     if (!dialog) return;
     SDL_LockMutex(dialog->mutex);
@@ -56,7 +51,6 @@ void bongo_cat_preferences_import_destroy(BongoCatImportDialog *dialog) {
     if (release_worker) release_dialog(dialog);
     release_dialog(dialog);
 }
-
 static BongoCatImportJob *copy_job(const char *const *files) {
     if (!files || !files[0]) return NULL;
     size_t count = 0;

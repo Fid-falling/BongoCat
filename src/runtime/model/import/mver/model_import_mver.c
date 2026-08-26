@@ -2,6 +2,7 @@
 #include "model_import_mver_internal.h"
 #include "runtime.h"
 #include "bongo_cat/file.h"
+#include "bongo_cat/image.h"
 #include "bongo_cat/path.h"
 
 #include <stdio.h>

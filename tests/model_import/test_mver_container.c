@@ -149,10 +149,10 @@ void test_mver_container_discovery(void) {
         bongo_cat_models_init(&app->models);
         CHECK(bongo_cat_import_installed_models(app, models_root, &error) ==
             BONGO_CAT_OK);
-        CHECK(app->models.count + 1 == receipt.count &&
-            !bongo_cat_models_find(&app->models, receipt.ids[0]) &&
-            bongo_cat_models_find(&app->models, receipt.ids[1]) &&
-            bongo_cat_path_is_dir(stored));
+        CHECK(app->models.count + 1 == receipt.count);
+        CHECK(!bongo_cat_models_find(&app->models, receipt.ids[0]));
+        CHECK(bongo_cat_models_find(&app->models, receipt.ids[1]));
+        CHECK(bongo_cat_path_is_dir(stored));
         CHECK(bongo_cat_settings_restore_model_package(&app->settings,
             receipt.ids[0]));
         bongo_cat_models_init(&app->models);
