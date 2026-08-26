@@ -273,7 +273,9 @@ flowchart TB
   style Toolchain fill:#fffaf3,stroke:#dda866,stroke-width:1.5px
 ```
 
+# Here are a few things you might be curious about:
 
+1. Why OpenGL instead of Vulkan
 
 
 
