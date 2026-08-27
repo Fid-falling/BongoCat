@@ -8,6 +8,7 @@ if(BUILD_TESTING)
     tests/core/test_models.c
     tests/core/test_mver_pointer.c
     tests/core/test_shortcut.c
+    tests/core/test_update.c
     src/platform/windows/windows_keys.c)
   target_link_libraries(bongo_cat_core_tests PRIVATE
     bongo_cat_core bongo_cat_warnings $<$<PLATFORM_ID:Windows>:user32>)

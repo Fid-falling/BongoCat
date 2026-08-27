@@ -94,7 +94,7 @@ try {
     [xml]$manifest = Get-Content -LiteralPath $manifestPath -Raw
     $identity = $manifest.Package.Identity
     $expectedIdentity = @{
-        Name = 'vladelaina.bongocat'
+        Name = 'vladelaina.31811E74C2C3B'
         Publisher = 'CN=5503A135-7FA4-466B-815C-DBE627F4065F'
         Version = $ExpectedPackageVersion
         ProcessorArchitecture = $ExpectedArchitecture
@@ -147,7 +147,7 @@ try {
         throw "Publisher ID calculation failed with Windows error $publisherResult."
     }
     $packageFamilyName = "$($identity.Name)_$publisherId"
-    if ($packageFamilyName -ne 'vladelaina.bongocat_hnew8t3b8e0t6') {
+    if ($packageFamilyName -ne 'vladelaina.31811E74C2C3B_hnew8t3b8e0t6') {
         throw "Derived package family name is unexpected: $packageFamilyName"
     }
 

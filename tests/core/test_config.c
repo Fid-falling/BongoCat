@@ -72,6 +72,8 @@ void test_config(void) {
     session.window.content_width = 612;
     session.window.content_height = 354;
     memcpy(session.active_model_id, "model", sizeof("model"));
+    session.last_update_check_day = 20260827;
+    memcpy(session.last_update_check_version, "0.1.0", sizeof("0.1.0"));
     CHECK(bongo_cat_session_add_model(&session, "keyboard"));
     CHECK(bongo_cat_session_add_model(&session, "gamepad"));
     session.active_behavior_count = 2;
@@ -105,6 +107,7 @@ void test_config(void) {
     CHECK(contains_text(session_path, "\"contentWidth\": 612") &&
         contains_text(session_path, "\"contentHeight\": 354"));
     CHECK(contains_text(session_path, "\"activeModelId\": \"model\""));
+    CHECK(contains_text(session_path, "\"lastUpdateCheckDay\": 20260827"));
     CHECK(contains_text(session_path, "\"additionalModelIds\""));
     CHECK(contains_text(session_path, "\"activeBehaviors\""));
     CHECK(contains_text(session_path,
@@ -143,6 +146,8 @@ void test_config(void) {
         loaded_session.window.content_width == 612 &&
         loaded_session.window.content_height == 354);
     CHECK(strcmp(loaded_session.active_model_id, "model") == 0);
+    CHECK(loaded_session.last_update_check_day == 20260827 &&
+        strcmp(loaded_session.last_update_check_version, "0.1.0") == 0);
     CHECK(loaded_session.additional_model_count == 2 &&
         bongo_cat_session_model_active(&loaded_session, "keyboard") &&
         bongo_cat_session_model_active(&loaded_session, "gamepad"));

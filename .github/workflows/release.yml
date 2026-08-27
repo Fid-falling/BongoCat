@@ -1,4 +1,4 @@
-name: Release BongoCat
+name: Release BongoCat for Windows
 
 on:
   push:
@@ -6,15 +6,15 @@ on:
       - "v*"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: bongo-cat-release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: release / ${{ matrix.platform }}
+  build:
+    name: build / ${{ matrix.platform }}
     if: github.repository == 'vladelaina/BongoCat'
     runs-on: windows-2022
     strategy:
@@ -45,8 +45,7 @@ jobs:
             throw 'Unable to read the BongoCat version from CMakeLists.txt'
           }
           $version = $Matches[1]
-          $expectedTag = "v$version"
-          if ($env:GITHUB_REF_NAME -ne $expectedTag) {
+          if ($env:GITHUB_REF_NAME -ne "v$version") {
             throw "Tag $env:GITHUB_REF_NAME does not match project version $version"
           }
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT `
@@ -98,7 +97,6 @@ jobs:
             -Append -Encoding utf8
 
       - name: Package release
-        id: package
         shell: pwsh
         run: |
           $name = (Get-Content build-release/bongo-cat-package-name.txt -Raw).Trim()
@@ -112,22 +110,139 @@ jobs:
 
           $portableSource = "build-release/dist/$name.zip"
           $portable = "build-release/dist/$name-portable.zip"
-          $portableChecksumSource = "$portableSource.sha256"
           $portableChecksum = "$portable.sha256"
-          $files = @(
-            $portableSource,
-            $portableChecksumSource,
-            "build-release/dist/$name-setup.exe",
-            "build-release/dist/$name-setup.exe.sha256"
-          )
-          foreach ($file in $files) {
+          $setup = "build-release/dist/$name-setup.exe"
+          $setupChecksum = "$setup.sha256"
+          foreach ($file in @($portableSource, $setup, $setupChecksum)) {
             if (-not (Test-Path -LiteralPath $file)) {
               throw "Release file is missing: $file"
             }
           }
           Move-Item -LiteralPath $portableSource -Destination $portable -Force
-          Move-Item -LiteralPath $portableChecksumSource -Destination $portableChecksum -Force
-          "name=$name" | Out-File -FilePath $env:GITHUB_OUTPUT `
+          $portableHash = (Get-FileHash -LiteralPath $portable -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$portableHash  $([IO.Path]::GetFileName($portable))" |
+            Set-Content -LiteralPath $portableChecksum -Encoding ascii
+
+          New-Item -ItemType Directory -Path release-output -Force | Out-Null
+          Copy-Item -LiteralPath $portable, $portableChecksum, $setup, `
+            $setupChecksum -Destination release-output
+
+      - name: Upload packaged release
+        uses: actions/upload-artifact@v7
+        with:
+          name: bongo-cat-release-${{ matrix.platform }}
+          path: release-output/*
+          if-no-files-found: error
+          retention-days: 7
+
+  virus-total:
+    name: security / virustotal
+    needs: build
+    if: github.repository == 'vladelaina/BongoCat'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Download packaged releases
+        uses: actions/download-artifact@v8
+        with:
+          pattern: bongo-cat-release-windows-*
+          path: vt-input
+          merge-multiple: true
+
+      - name: Scan Windows installers with VirusTotal
+        env:
+          VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+        run: |
+          set -euo pipefail
+          for platform in windows-x64 windows-x86; do
+            file=$(find vt-input -type f \
+              -name "BongoCat-*-$platform-setup.exe" -print -quit)
+            if [ -z "$file" ]; then
+              echo "::error::VirusTotal input for $platform was not found"
+              exit 1
+            fi
+            VT_REPORT_PATH="virustotal-report-$platform.json" \
+              python3 .github/scripts/scan-virustotal.py --file "$file"
+          done
+
+      - name: Add VirusTotal note when scanning is skipped
+        if: always() && hashFiles('virustotal-report-*.json') == ''
+        run: |
+          {
+            echo "## VirusTotal scans"
+            echo
+            echo "No report was produced. Check that VIRUSTOTAL_API_KEY is configured."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload VirusTotal reports
+        if: always() && hashFiles('virustotal-report-*.json') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: virustotal-release-reports-${{ github.run_id }}-${{ github.run_attempt }}
+          path: virustotal-report-*.json
+          if-no-files-found: error
+          retention-days: 90
+
+  publish:
+    name: publish / windows
+    needs: build
+    if: github.repository == 'vladelaina/BongoCat'
+    runs-on: windows-2022
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download packaged releases
+        uses: actions/download-artifact@v8
+        with:
+          pattern: bongo-cat-release-windows-*
+          path: release-output
+          merge-multiple: true
+
+      - name: Validate complete release
+        id: version
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_NAME -notmatch '^v([0-9]+\.[0-9]+\.[0-9]+)$') {
+            throw "Invalid release tag: $env:GITHUB_REF_NAME"
+          }
+          $version = $Matches[1]
+          $files = foreach ($platform in 'windows-x64', 'windows-x86') {
+            $base = "BongoCat-$version-$platform"
+            "release-output/$base-portable.zip"
+            "release-output/$base-portable.zip.sha256"
+            "release-output/$base-setup.exe"
+            "release-output/$base-setup.exe.sha256"
+          }
+          foreach ($file in $files) {
+            if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
+              throw "Release is incomplete: $file"
+            }
+          }
+          foreach ($checksum in $files | Where-Object { $_ -like '*.sha256' }) {
+            $line = (Get-Content -LiteralPath $checksum -Raw).Trim()
+            if ($line -notmatch '^([0-9a-fA-F]{64})\s+(.+)$') {
+              throw "Invalid checksum file: $checksum"
+            }
+            $expectedHash = $Matches[1]
+            $checksumName = $Matches[2]
+            $payload = $checksum.Substring(0, $checksum.Length - 7)
+            $expectedName = Split-Path $payload -Leaf
+            if ($checksumName -ne $expectedName) {
+              throw "Checksum names the wrong file: $checksum"
+            }
+            $actual = (Get-FileHash -LiteralPath $payload -Algorithm SHA256).Hash
+            if ($actual -ne $expectedHash) {
+              throw "Checksum mismatch: $payload"
+            }
+          }
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT `
             -Append -Encoding utf8
 
       - name: Publish GitHub Release
@@ -136,8 +251,7 @@ jobs:
           name: BongoCat v${{ steps.version.outputs.version }}
           generate_release_notes: true
           fail_on_unmatched_files: true
+          make_latest: true
           files: |
-            build-release/dist/${{ steps.package.outputs.name }}-portable.zip
-            build-release/dist/${{ steps.package.outputs.name }}-portable.zip.sha256
-            build-release/dist/${{ steps.package.outputs.name }}-setup.exe
-            build-release/dist/${{ steps.package.outputs.name }}-setup.exe.sha256
+            release-output/*-portable.zip
+            release-output/*-setup.exe

@@ -13,7 +13,11 @@ static bool append(char *output, size_t capacity, const char *value) {
 
 static const char *shortcut_key(int code, char generated[16]) {
     BongoCatMverKeyNames names = bongo_cat_mver_device_names(code, 0, 1);
-    const char *name = names.items[0] ? names.items[0] : names.generated;
+    const char *name = names.items[0];
+    if (!name && names.generated[0]) {
+        snprintf(generated, 16, "%s", names.generated);
+        name = generated;
+    }
     if (!name || !*name || bongo_cat_mver_modifier_index(code) >= 0) return NULL;
     if (strncmp(name, "Key", 3) == 0 || strncmp(name, "Num", 3) == 0) {
         generated[0] = name[3]; generated[1] = '\0'; return generated;

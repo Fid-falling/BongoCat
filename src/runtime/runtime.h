@@ -3,6 +3,7 @@
 
 #include "bongo_cat/app.h"
 #include "bongo_cat/memory_policy.h"
+#include "update_service.h"
 #include <SDL3/SDL.h>
 
 BongoCatResult bongo_cat_window_create(BongoCatApp *app, BongoCatError *error);

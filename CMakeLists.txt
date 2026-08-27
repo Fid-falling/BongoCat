@@ -71,7 +71,8 @@ add_library(bongo_cat_core STATIC
   src/core/mouse_tracking.c src/core/sha256.c src/core/utf8.c
   src/core/model_catalog.c
   src/core/model_behavior.c
-  src/core/path.c src/core/path_io.c src/core/json.c src/core/shortcut.c)
+  src/core/path.c src/core/path_io.c src/core/json.c src/core/shortcut.c
+  src/core/update_release.c src/core/update_version.c)
 target_include_directories(bongo_cat_core PUBLIC "${BONGO_CAT_GENERATED_INCLUDE_DIR}" include)
 target_link_libraries(bongo_cat_core PUBLIC yyjson PRIVATE bongo_cat_warnings)
 include(cmake/CubismAssets.cmake)

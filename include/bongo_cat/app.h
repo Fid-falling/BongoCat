@@ -16,6 +16,7 @@ typedef struct BongoCatPreferences BongoCatPreferences;
 typedef struct BongoCatI18n BongoCatI18n;
 typedef struct BongoCatMultiPetRuntime BongoCatMultiPetRuntime;
 typedef struct BongoCatModelRefresh BongoCatModelRefresh;
+typedef struct BongoCatUpdateService BongoCatUpdateService;
 
 typedef struct BongoCatApp {
     BongoCatSettings settings;
@@ -43,6 +44,7 @@ typedef struct BongoCatApp {
     BongoCatPreferences *preferences;
     BongoCatMultiPetRuntime *multi_pet;
     BongoCatModelRefresh *model_refresh;
+    BongoCatUpdateService *update;
     SDL_Window *window;
     void *gl_context;
     char settings_path[BONGO_CAT_PATH_CAP];

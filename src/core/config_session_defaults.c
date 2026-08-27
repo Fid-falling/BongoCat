@@ -115,6 +115,11 @@ void bongo_cat_session_validate(BongoCatSessionState *session) {
             sizeof(session->active_model_id)) ||
         !session->active_model_id[0])
         memcpy(session->active_model_id, "standard", sizeof("standard"));
+    if (session->last_update_check_day < 0 ||
+        session->last_update_check_day > 99991231)
+        session->last_update_check_day = 0;
+    normalize_text(session->last_update_check_version,
+        sizeof(session->last_update_check_version));
     compact_additional_models(session);
     compact_active_behaviors(session);
 }

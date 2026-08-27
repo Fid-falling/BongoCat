@@ -11,11 +11,17 @@ $workflowDirectory = Join-Path (Split-Path $PSScriptRoot -Parent) 'workflows'
 $sensitiveMarkers = @(
     'build-store-package.ps1',
     'CUBISM_SDK_ARCHIVE_URL',
+    'VIRUSTOTAL_API_KEY',
     'actions/upload-artifact',
     'softprops/action-gh-release'
 )
-$artifactMarkers = @(
-    'actions/upload-artifact',
+$runtimeArtifactMarkers = @(
+    'build-store-package.ps1',
+    'Upload desktop release',
+    'Upload Microsoft Store MSIX',
+    'Upload Windows desktop release',
+    'Upload Windows portable release',
+    'name: bongo-cat-release-',
     'softprops/action-gh-release'
 )
 
@@ -31,8 +37,14 @@ function Get-PublishingGuardFailures {
     $jobPattern = '(?ms)^  ([A-Za-z0-9_-]+):\s*\r?\n' +
         '(.*?)(?=^  [A-Za-z0-9_-]+:\s*\r?\n|\z)'
     $failures = @()
+    $jobMatches = [regex]::Matches($jobsText, $jobPattern)
+    $buildJob = @($jobMatches | Where-Object {
+        $_.Groups[1].Value -eq 'build'
+    } | Select-Object -First 1)
+    $protectedBuild = $buildJob.Count -eq 1 -and
+        $buildJob[0].Value.Contains('-DBONGO_CAT_REQUIRE_CUBISM=ON')
 
-    foreach ($job in [regex]::Matches($jobsText, $jobPattern)) {
+    foreach ($job in $jobMatches) {
         $jobName = $job.Groups[1].Value
         $jobText = $job.Value
         $matched = @($sensitiveMarkers | Where-Object { $jobText.Contains($_) })
@@ -44,13 +56,16 @@ function Get-PublishingGuardFailures {
             $failures += "$Label`: job '$jobName' lacks upstream guard; " +
                 "matched $($matched -join ', ')"
         }
-        $publishesArtifacts = @($artifactMarkers | Where-Object {
+        $publishesRuntimeArtifacts = @($runtimeArtifactMarkers | Where-Object {
             $jobText.Contains($_)
         }).Count -gt 0
-        if ($publishesArtifacts -and
-            -not $jobText.Contains('-DBONGO_CAT_REQUIRE_CUBISM=ON')) {
+        $usesProtectedBuild = $protectedBuild -and $jobText -match
+            '(?m)^\s+needs:\s*(?:build|\[[^\]]*\bbuild\b[^\]]*\])\s*$'
+        if ($publishesRuntimeArtifacts -and
+            -not $jobText.Contains('-DBONGO_CAT_REQUIRE_CUBISM=ON') -and
+            -not $usesProtectedBuild) {
             $failures += "$Label`: job '$jobName' publishes artifacts without " +
-                'requiring the Cubism SDK'
+                'requiring a Cubism SDK build'
         }
     }
     return $failures
@@ -105,7 +120,7 @@ if ($SelfTest) {
             '-DBONGO_CAT_REQUIRE_CUBISM=OFF')
         $cubismFailures = @(Get-PublishingGuardFailures `
             -Text $withoutCubism -Label 'self-test')
-        if (-not ($cubismFailures -match 'requiring the Cubism SDK')) {
+        if (-not ($cubismFailures -match 'requiring a Cubism SDK build')) {
             $failures += 'Self-test did not reject an SDK-free artifact job.'
         }
     }

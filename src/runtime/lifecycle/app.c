@@ -116,6 +116,11 @@ bool bongo_cat_app_initialize(BongoCatApp *app, int argc, char **argv,
     if (!app->secondary_pet && !app->preferences)
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
         "Preferences are unavailable because their state could not be allocated");
+    app->update = app->secondary_pet ? NULL : bongo_cat_update_create(app);
+    if (!app->secondary_pet && !app->update)
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+            "The update checker could not be initialized");
+    bongo_cat_update_start_automatic(app->update);
     if (!app->secondary_pet && !app->tray && !app->session.window.visible) {
         bongo_cat_window_set_visible(app, true);
     }
@@ -154,6 +159,7 @@ bool bongo_cat_app_initialize(BongoCatApp *app, int argc, char **argv,
     return true;
 }
 static void handle_event(BongoCatApp *app, const SDL_Event *event) {
+    if (bongo_cat_update_event(app->update, event)) return;
     if (bongo_cat_model_refresh_event(app, event)) return;
     if (bongo_cat_preferences_event(app->preferences, event)) return;
     if (!bongo_cat_window_event(app, event)) app->running = false;

@@ -6,6 +6,7 @@
 #include "ui_catime.h"
 #include "ui_icons.h"
 #include "ui_paint.h"
+#include "update_service.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
@@ -74,7 +75,7 @@ static void open_logs(BongoCatPreferences *value) {
 static void draw_update(BongoCatPreferences *value,
     struct nk_context *context, struct nk_command_buffer *canvas,
     struct nk_rect bounds, const char *label, float content_width,
-    BongoCatUIPalette p) {
+    BongoCatUIPalette p, const BongoCatUpdateSnapshot *snapshot) {
     if (p.effects) bongo_cat_ui_paint_shadow(context, bounds, 10,
         0, 4, 14, 0, nk_rgba(p.accent.r, p.accent.g, p.accent.b, 89));
     nk_fill_rect(canvas, bounds, 10, p.accent);
@@ -86,11 +87,38 @@ static void draw_update(BongoCatPreferences *value,
         nk_rgb(255, 255, 255));
     link_cursor(context, bounds);
     if (hit(context, bounds)) {
-        char message[160];
-        snprintf(message, sizeof(message), "%s v%s", tr(value,
-            "native.support.latest", "Already up to date"),
-            BONGO_CAT_VERSION);
-        bongo_cat_preferences_notice_show(value->app, message, false);
+        if (snapshot->status == BONGO_CAT_UPDATE_CHECKING) return;
+        if (snapshot->status == BONGO_CAT_UPDATE_AVAILABLE ||
+            snapshot->status == BONGO_CAT_UPDATE_STORE ||
+            snapshot->status == BONGO_CAT_UPDATE_UNSUPPORTED) {
+            if (!bongo_cat_update_open(value->app->update))
+                bongo_cat_preferences_notice_show(value->app, tr(value,
+                    "native.support.openUpdateFailed",
+                    "Unable to open the update page"), true);
+        } else if (!bongo_cat_update_check(value->app->update, true)) {
+            bongo_cat_preferences_notice_show(value->app, tr(value,
+                "native.support.updateFailed",
+                "Unable to check for updates"), true);
+        } else value->render_dirty = true;
+    }
+}
+
+static const char *update_label(BongoCatPreferences *value,
+    const BongoCatUpdateSnapshot *snapshot, char *buffer, size_t capacity) {
+    switch (snapshot->status) {
+    case BONGO_CAT_UPDATE_CHECKING:
+        return tr(value, "native.support.checkingUpdate", "Checking...");
+    case BONGO_CAT_UPDATE_AVAILABLE:
+        snprintf(buffer, capacity, tr(value,
+            "native.support.downloadUpdate", "Download v%s"),
+            snapshot->release.version);
+        return buffer;
+    case BONGO_CAT_UPDATE_STORE:
+        return tr(value, "native.support.openStore", "Open Microsoft Store");
+    case BONGO_CAT_UPDATE_UNSUPPORTED:
+        return tr(value, "native.support.viewReleases", "View releases");
+    default:
+        return tr(value, "native.support.checkUpdate", "Check for updates");
     }
 }
 
@@ -130,8 +158,11 @@ void bongo_cat_preferences_about_footer(BongoCatPreferences *value,
     struct nk_rect bounds, BongoCatUIPalette p) {
     const char *version_label = tr(value,
         "native.support.version", "App version");
-    const char *update = tr(value,
-        "native.support.checkUpdate", "Check for updates");
+    BongoCatUpdateSnapshot update_snapshot;
+    bongo_cat_update_snapshot(value->app->update, &update_snapshot);
+    char update_buffer[96];
+    const char *update = update_label(value, &update_snapshot,
+        update_buffer, sizeof(update_buffer));
     const char *feedback = tr(value, "native.support.feedback", "Feedback");
     const char *logs = tr(value, "native.support.openLogs", "Open logs");
     const struct nk_user_font *small_font = logs_font(value);
@@ -164,7 +195,7 @@ void bongo_cat_preferences_about_footer(BongoCatPreferences *value,
     struct nk_rect update_button = nk_rect(actions_x, actions_y,
         update_width, 36);
     draw_update(value, context, canvas, update_button, update,
-        update_content_width, p);
+        update_content_width, p, &update_snapshot);
     struct nk_rect feedback_link = nk_rect(actions_x + update_width + 14,
         actions_y, feedback_width, 36);
     struct nk_rect logs_link = nk_rect(feedback_link.x + feedback_width + 20,

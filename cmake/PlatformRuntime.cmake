@@ -21,7 +21,8 @@ if(WIN32)
   target_include_directories(bongo_cat_runtime PRIVATE
     src/platform/windows)
   target_link_libraries(bongo_cat_runtime PRIVATE
-    dinput8 dxguid dwmapi ole32 shell32 user32 uuid windowscodecs advapi32)
+    dinput8 dxguid dwmapi ole32 shell32 user32 uuid windowscodecs advapi32
+    winhttp)
 elseif(APPLE)
   enable_language(OBJC)
   target_sources(bongo_cat_runtime PRIVATE

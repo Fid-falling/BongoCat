@@ -6,6 +6,7 @@ set(BONGO_CAT_RUNTIME_INTERNAL_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/model/import/mver"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/model/import/nearby"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/shell"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/update"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/backend"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/preferences"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/rendering"
@@ -43,6 +44,11 @@ set(BONGO_CAT_RUNTIME_LIFECYCLE_SOURCES
   src/runtime/lifecycle/startup_arguments.c
   src/runtime/lifecycle/system_language.c
   src/runtime/lifecycle/storage_paths.c)
+
+set(BONGO_CAT_RUNTIME_UPDATE_SOURCES
+  src/runtime/update/update_channel.c
+  src/runtime/update/update_http.c
+  src/runtime/update/update_service.c)
 
 set(BONGO_CAT_RUNTIME_DIAGNOSTIC_SOURCES
   src/runtime/diagnostics/frame_audit.c
@@ -202,6 +208,7 @@ set(BONGO_CAT_RUNTIME_SOURCES
   ${BONGO_CAT_MEDIA_SOURCES}
   ${BONGO_CAT_RENDER_SOURCES}
   ${BONGO_CAT_RUNTIME_LIFECYCLE_SOURCES}
+  ${BONGO_CAT_RUNTIME_UPDATE_SOURCES}
   ${BONGO_CAT_RUNTIME_DIAGNOSTIC_SOURCES}
   ${BONGO_CAT_RUNTIME_INPUT_SOURCES}
   ${BONGO_CAT_RUNTIME_MODEL_SOURCES}

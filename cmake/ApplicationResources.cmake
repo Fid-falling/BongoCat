@@ -52,8 +52,7 @@ if(WIN32)
     "${BONGO_CAT_WINDOWS_MANIFEST}" @ONLY)
   if(MSVC)
     set(BONGO_CAT_MANIFEST_RESOURCE "")
-    target_link_options(bongo_cat PRIVATE "/MANIFEST:EMBED"
-      "/MANIFESTINPUT:${BONGO_CAT_WINDOWS_MANIFEST}")
+    target_sources(bongo_cat PRIVATE "${BONGO_CAT_WINDOWS_MANIFEST}")
   else()
     file(TO_CMAKE_PATH "${BONGO_CAT_WINDOWS_MANIFEST}"
       BONGO_CAT_MANIFEST_RC)
