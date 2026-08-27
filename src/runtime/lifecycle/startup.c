@@ -11,6 +11,7 @@
 #include <string.h>
 
 #ifdef _WIN32
+#include "windows_package.h"
 #include <windows.h>
 #endif
 
@@ -131,6 +132,10 @@ static void begin_log(BongoCatApp *app) {
     SDL_Log("[runtime] Process started: version=%s platform=%s storage=%s",
         BONGO_CAT_VERSION, SDL_GetPlatform(), app->storage_root[0]
             ? app->storage_root : app->config_root);
+#ifdef _WIN32
+    SDL_Log("[runtime] Package identity: %s",
+        bongo_cat_windows_is_packaged() ? "MSIX" : "unpackaged Win32");
+#endif
     if (interrupted[0]) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
         "Previous startup ended before readiness at stage: %s", interrupted);
     if (unexpected[0] && !strstr(unexpected, "stage=clean-shutdown"))

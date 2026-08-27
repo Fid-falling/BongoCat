@@ -3,6 +3,7 @@
 #include "windows_diagnostics.h"
 #include "windows_direct_input.h"
 #include "windows_input.h"
+#include "windows_package.h"
 #include "windows_popup.h"
 #include "windows_tray.h"
 
@@ -18,6 +19,20 @@ static int nonclient_size_messages;
         __FILE__, __LINE__, #value); \
     failures++; \
 } } while (0)
+
+static void test_package_storage_root(void) {
+    char path[BONGO_CAT_PATH_CAP];
+    CHECK(bongo_cat_windows_package_storage_root_for(
+        L"C:\\Users\\Alice", L"publisher.BongoCat_abcd1234",
+        path, sizeof(path)));
+    CHECK(strcmp(path, "C:\\Users\\Alice\\AppData\\Local\\Packages\\"
+        "publisher.BongoCat_abcd1234\\LocalCache\\Local\\BongoCat") == 0);
+    CHECK(!bongo_cat_windows_package_storage_root_for(
+        L"C:\\Users\\Alice", L"publisher.BongoCat_abcd1234", path, 8));
+    CHECK(path[0] == '\0');
+    CHECK(!bongo_cat_windows_package_storage_root_for(
+        L"C:\\Users\\Alice", L"", path, sizeof(path)));
+}
 
 static LRESULT CALLBACK click_through_test_proc(HWND window, UINT message,
     WPARAM wparam, LPARAM lparam) {
@@ -170,6 +185,7 @@ static void test_capture_styles(void) {
 }
 
 int main(void) {
+    test_package_storage_root();
     test_click_through_does_not_refresh_frame();
     test_capture_styles();
     test_tray_restart_notification();

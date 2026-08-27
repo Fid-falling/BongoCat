@@ -1,6 +1,7 @@
 #include "update_internal.h"
 
 #ifdef _WIN32
+#include "windows_package.h"
 #include <windows.h>
 
 bool bongo_cat_update_platform_supported(void) {
@@ -8,15 +9,7 @@ bool bongo_cat_update_platform_supported(void) {
 }
 
 bool bongo_cat_update_platform_store(void) {
-    typedef LONG (WINAPI *GetCurrentPackageFullNameFn)(UINT32 *, PWSTR);
-    HMODULE kernel = GetModuleHandleW(L"kernel32.dll");
-    GetCurrentPackageFullNameFn get_package_name = kernel ?
-        (GetCurrentPackageFullNameFn)(void *)GetProcAddress(kernel,
-            "GetCurrentPackageFullName") : NULL;
-    if (!get_package_name) return false;
-    UINT32 length = 0;
-    LONG result = get_package_name(&length, NULL);
-    return result == ERROR_INSUFFICIENT_BUFFER;
+    return bongo_cat_windows_is_packaged();
 }
 
 static bool current_executable(wchar_t *path, size_t capacity) {

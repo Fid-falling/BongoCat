@@ -4,6 +4,7 @@ if(WIN32)
     src/platform/windows/windows.c
     src/platform/windows/windows_menu.c
     src/platform/windows/windows_directory.c
+    src/platform/windows/windows_package.c
     src/platform/windows/windows_startup.c
     src/platform/windows/windows_borderless.c
     src/platform/windows/windows_capture.c

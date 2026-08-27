@@ -20,6 +20,22 @@ and package SID are derived by Windows and must not be used as signing
 secrets. The Store package is x64; the separate Windows x86 workflow target
 only publishes its desktop installer and portable archive.
 
+## App data isolation
+
+Ordinary EXE, installer, and portable launches store data under
+`%LOCALAPPDATA%\BongoCat`. When the process has an MSIX package identity,
+BongoCat instead resolves the package-private virtualization location as
+`%LOCALAPPDATA%\Packages\<PFN>\LocalCache\Local\BongoCat`. Configuration,
+session state, imported models, caches, and logs therefore remain separate
+between the desktop and Microsoft Store versions. An explicit
+`--storage-root` argument remains isolated at the requested location.
+In particular, the desktop settings file is
+`%LOCALAPPDATA%\BongoCat\config\settings.json`, while the Store settings file
+is `%LOCALAPPDATA%\Packages\<PFN>\LocalCache\Local\BongoCat\config\settings.json`.
+
+Package identity is detected at runtime with `GetCurrentPackageFullName`, and
+the selected mode and resolved storage path are written to `BongoCat.log`.
+
 MSIX versions must have a non-zero major component and a zero revision. The
 script maps app version `0.1.1` to package version `1.1.1.0` by default; pass
 `-PackageVersion` when advancing the Store version independently. The app

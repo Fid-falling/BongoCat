@@ -8,6 +8,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef _WIN32
+#include "windows_package.h"
+#endif
+
 static bool child_path(char *target, size_t capacity, const char *root,
     const char *child) {
     return root && root[0] &&
@@ -26,38 +30,34 @@ static bool writable_directory(const char *root) {
     return written;
 }
 
-static bool isolated_roots(BongoCatApp *app) {
+static bool roots_under(BongoCatApp *app, const char *root) {
     return child_path(app->config_root, sizeof(app->config_root),
-            app->storage_root, "config") &&
+            root, "config") &&
         child_path(app->data_root, sizeof(app->data_root),
-            app->storage_root, "data") &&
+            root, "data") &&
         child_path(app->models_root, sizeof(app->models_root),
-            app->storage_root, "models") &&
+            root, "models") &&
         child_path(app->cache_root, sizeof(app->cache_root),
-            app->storage_root, "cache") &&
+            root, "cache") &&
         child_path(app->state_root, sizeof(app->state_root),
-            app->storage_root, "state") &&
+            root, "state") &&
         child_path(app->log_root, sizeof(app->log_root),
-            app->storage_root, "logs");
+            root, "logs");
+}
+
+static bool isolated_roots(BongoCatApp *app) {
+    return roots_under(app, app->storage_root);
 }
 
 #ifdef _WIN32
 static bool platform_roots(BongoCatApp *app) {
-    const char *local = SDL_getenv("LOCALAPPDATA");
     char local_app[BONGO_CAT_PATH_CAP];
+    if (bongo_cat_windows_is_packaged())
+        return bongo_cat_windows_package_storage_root(local_app,
+            sizeof(local_app)) && roots_under(app, local_app);
+    const char *local = SDL_getenv("LOCALAPPDATA");
     return child_path(local_app, sizeof(local_app), local, BONGO_CAT_NAME) &&
-        child_path(app->config_root, sizeof(app->config_root),
-            local_app, "config") &&
-        child_path(app->data_root, sizeof(app->data_root),
-            local_app, "data") &&
-        child_path(app->models_root, sizeof(app->models_root),
-            local_app, "models") &&
-        child_path(app->cache_root, sizeof(app->cache_root),
-            local_app, "cache") &&
-        child_path(app->state_root, sizeof(app->state_root),
-            local_app, "state") &&
-        child_path(app->log_root, sizeof(app->log_root),
-            local_app, "logs");
+        roots_under(app, local_app);
 }
 #elif defined(__APPLE__)
 static bool platform_roots(BongoCatApp *app) {
