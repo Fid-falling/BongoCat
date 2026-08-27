@@ -441,30 +441,26 @@ jobs:
       - name: Download Linux x64 archive
         uses: actions/download-artifact@v8
         with:
-          pattern: bongo-cat-vt-linux-x64-archive-${{ github.run_id }}-*
+          name: bongo-cat-vt-linux-x64-archive-${{ github.run_id }}-${{ github.run_attempt }}
           path: vt-input
-          merge-multiple: true
 
       - name: Download macOS arm64 archive
         uses: actions/download-artifact@v8
         with:
-          pattern: bongo-cat-vt-macos-arm64-archive-${{ github.run_id }}-*
+          name: bongo-cat-vt-macos-arm64-archive-${{ github.run_id }}-${{ github.run_attempt }}
           path: vt-input
-          merge-multiple: true
 
       - name: Download Windows x64 installer
         uses: actions/download-artifact@v8
         with:
-          pattern: bongo-cat-vt-windows-x64-setup-${{ github.run_id }}-*
+          name: bongo-cat-vt-windows-x64-setup-${{ github.run_id }}-${{ github.run_attempt }}
           path: vt-input
-          merge-multiple: true
 
       - name: Download Windows x64 MSIX
         uses: actions/download-artifact@v8
         with:
-          pattern: bongo-cat-vt-windows-x64-msix-${{ github.run_id }}-*
+          name: bongo-cat-vt-windows-x64-msix-${{ github.run_id }}-${{ github.run_attempt }}
           path: vt-input
-          merge-multiple: true
 
       - name: Scan all release artifacts with VirusTotal
         env:
