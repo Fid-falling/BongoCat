@@ -444,10 +444,10 @@ jobs:
           pattern: BongoCat-*-linux-x64.tar.gz
           path: vt-input
 
-      - name: Download macOS arm64 archive
+      - name: Download Windows x64 portable archive
         uses: actions/download-artifact@v8
         with:
-          pattern: BongoCat-*-macos-arm64.zip
+          pattern: BongoCat-*-windows-x64-portable.zip
           path: vt-input
 
       - name: Download Windows x64 installer
@@ -471,7 +471,7 @@ jobs:
             -iname '*-windows-x64-setup.exe' -o \
             -iname 'bongocat_*_x64.msix' -o \
             -iname '*-linux-x64.tar.gz' -o \
-            -iname '*-macos-arm64.zip' \
+            -iname '*-windows-x64-portable.zip' \
             \) -print0 | sort -z)
           if [ "${#files[@]}" -ne 4 ]; then
             echo "::error::Expected 4 representative VirusTotal inputs, found ${#files[@]}"

@@ -9,8 +9,8 @@
 
 #define RELEASES_URL \
     "https://github.com/vladelaina/BongoCat/releases/latest"
-#define STORE_URI "ms-windows-store://pdp/?ProductId=9NX7G84J3WM6"
-#define STORE_WEB_URL "https://apps.microsoft.com/detail/9NX7G84J3WM6"
+#define STORE_URI "ms-windows-store://pdp/?ProductId=9P41MLSX72XW"
+#define STORE_WEB_URL "https://apps.microsoft.com/detail/9P41MLSX72XW"
 
 static void reap_worker(BongoCatUpdateService *service) {
     SDL_LockMutex(service->mutex);
