@@ -438,10 +438,31 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v5
 
-      - name: Download release artifacts
+      - name: Download Linux x64 archive
         uses: actions/download-artifact@v8
         with:
-          pattern: bongo-cat-vt-*
+          pattern: bongo-cat-vt-linux-x64-archive-${{ github.run_id }}-*
+          path: vt-input
+          merge-multiple: true
+
+      - name: Download macOS arm64 archive
+        uses: actions/download-artifact@v8
+        with:
+          pattern: bongo-cat-vt-macos-arm64-archive-${{ github.run_id }}-*
+          path: vt-input
+          merge-multiple: true
+
+      - name: Download Windows x64 installer
+        uses: actions/download-artifact@v8
+        with:
+          pattern: bongo-cat-vt-windows-x64-setup-${{ github.run_id }}-*
+          path: vt-input
+          merge-multiple: true
+
+      - name: Download Windows x64 MSIX
+        uses: actions/download-artifact@v8
+        with:
+          pattern: bongo-cat-vt-windows-x64-msix-${{ github.run_id }}-*
           path: vt-input
           merge-multiple: true
 
@@ -451,10 +472,13 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -d '' files < <(find vt-input -type f \( \
-            -iname '*.exe' -o -iname '*.zip' -o -iname '*.tar.gz' -o \
-            -iname '*.msix' \) -print0 | sort -z)
-          if [ "${#files[@]}" -ne 8 ]; then
-            echo "::error::Expected 8 VirusTotal inputs, found ${#files[@]}"
+            -iname '*-windows-x64-setup.exe' -o \
+            -iname 'bongocat_*_x64.msix' -o \
+            -iname '*-linux-x64.tar.gz' -o \
+            -iname '*-macos-arm64.zip' \
+            \) -print0 | sort -z)
+          if [ "${#files[@]}" -ne 4 ]; then
+            echo "::error::Expected 4 representative VirusTotal inputs, found ${#files[@]}"
             printf 'Found: %s\n' "${files[@]}"
             exit 1
           fi
