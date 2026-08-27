@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 #define RELEASES_URL \
     "https://github.com/vladelaina/BongoCat/releases/latest"
@@ -23,15 +22,11 @@ static void reap_worker(BongoCatUpdateService *service) {
 }
 
 static int local_day(void) {
-    time_t timestamp = time(NULL);
-    struct tm local = {0};
-#ifdef _WIN32
-    if (localtime_s(&local, &timestamp) != 0) return 0;
-#else
-    if (!localtime_r(&timestamp, &local)) return 0;
-#endif
-    return (local.tm_year + 1900) * 10000 +
-        (local.tm_mon + 1) * 100 + local.tm_mday;
+    SDL_Time timestamp = 0;
+    SDL_DateTime local = {0};
+    if (!SDL_GetCurrentTime(&timestamp) ||
+        !SDL_TimeToDateTime(timestamp, &local, true)) return 0;
+    return local.year * 10000 + local.month * 100 + local.day;
 }
 
 static void complete(BongoCatUpdateService *service,
