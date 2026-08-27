@@ -155,19 +155,22 @@ jobs:
           path: vt-input
           merge-multiple: true
 
-      - name: Scan Windows installers with VirusTotal
+      - name: Scan all Windows release artifacts with VirusTotal
         env:
           VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
         run: |
           set -euo pipefail
-          for platform in windows-x64 windows-x86; do
-            file=$(find vt-input -type f \
-              -name "BongoCat-*-$platform-setup.exe" -print -quit)
-            if [ -z "$file" ]; then
-              echo "::error::VirusTotal input for $platform was not found"
-              exit 1
-            fi
-            VT_REPORT_PATH="virustotal-report-$platform.json" \
+          mapfile -d '' files < <(find vt-input -type f \( \
+            -iname '*-setup.exe' -o -iname '*-portable.zip' \) \
+            -print0 | sort -z)
+          if [ "${#files[@]}" -ne 4 ]; then
+            echo "::error::Expected 4 VirusTotal inputs, found ${#files[@]}"
+            printf 'Found: %s\n' "${files[@]}"
+            exit 1
+          fi
+          for file in "${files[@]}"; do
+            report=$(basename "$file" | tr -c 'A-Za-z0-9._-' '_')
+            VT_REPORT_PATH="virustotal-report-$report.json" \
               python3 .github/scripts/scan-virustotal.py --file "$file"
           done
 

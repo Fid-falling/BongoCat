@@ -105,6 +105,12 @@ jobs:
           - os: ubuntu-latest
             platform: linux-x64
             cmake_arch: ''
+          - os: macos-15-intel
+            platform: macos-x64
+            cmake_arch: x86_64
+          - os: macos-15
+            platform: macos-arm64
+            cmake_arch: arm64
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout source
@@ -181,6 +187,12 @@ jobs:
           - os: ubuntu-latest
             platform: linux-x64
             cmake_arch: ''
+          - os: macos-15-intel
+            platform: macos-x64
+            cmake_arch: x86_64
+          - os: macos-15
+            platform: macos-arm64
+            cmake_arch: arm64
     runs-on: ${{ matrix.os }}
     env:
       CUBISM_SDK_ARCHIVE_URL: ${{ secrets.CUBISM_SDK_ARCHIVE_URL }}
@@ -245,6 +257,7 @@ jobs:
       - name: Upload desktop release
         uses: actions/upload-artifact@v7
         with:
+          name: bongo-cat-vt-${{ matrix.platform }}-archive-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ steps.package.outputs.file }}
           if-no-files-found: error
           retention-days: 30
@@ -382,6 +395,7 @@ jobs:
         if: matrix.store_arch == 'x64'
         uses: actions/upload-artifact@v7
         with:
+          name: bongo-cat-vt-windows-x64-msix-${{ github.run_id }}-${{ github.run_attempt }}
           path: store-output/bongocat_${{ steps.version.outputs.version }}_${{ matrix.store_arch }}.msix
           if-no-files-found: error
           retention-days: 90
@@ -391,6 +405,7 @@ jobs:
       - name: Upload Windows desktop release
         uses: actions/upload-artifact@v7
         with:
+          name: bongo-cat-vt-${{ matrix.platform }}-setup-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ steps.desktop-package.outputs.file }}
           if-no-files-found: error
           retention-days: 30
@@ -400,8 +415,69 @@ jobs:
       - name: Upload Windows portable release
         uses: actions/upload-artifact@v7
         with:
+          name: bongo-cat-vt-${{ matrix.platform }}-portable-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ steps.desktop-package.outputs.portable }}
           if-no-files-found: error
           retention-days: 30
           compression-level: 0
           archive: false
+
+  virus-total:
+    name: security / virustotal
+    if: >-
+      github.repository == 'vladelaina/BongoCat' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main'
+    needs: [desktop-package, store-package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: bongo-cat-vt-*
+          path: vt-input
+          merge-multiple: true
+
+      - name: Scan all release artifacts with VirusTotal
+        env:
+          VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+        run: |
+          set -euo pipefail
+          mapfile -d '' files < <(find vt-input -type f \( \
+            -iname '*.exe' -o -iname '*.zip' -o -iname '*.tar.gz' -o \
+            -iname '*.msix' \) -print0 | sort -z)
+          if [ "${#files[@]}" -ne 8 ]; then
+            echo "::error::Expected 8 VirusTotal inputs, found ${#files[@]}"
+            printf 'Found: %s\n' "${files[@]}"
+            exit 1
+          fi
+          for file in "${files[@]}"; do
+            report=$(basename "$file" | tr -c 'A-Za-z0-9._-' '_')
+            VT_REPORT_PATH="virustotal-report-$report.json" \
+              python3 .github/scripts/scan-virustotal.py --file "$file"
+          done
+
+      - name: Add VirusTotal note when scanning is skipped
+        if: always() && hashFiles('virustotal-report-*.json') == ''
+        run: |
+          {
+            echo "## VirusTotal scans"
+            echo
+            echo "No report was produced. Check that VIRUSTOTAL_API_KEY is configured."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload VirusTotal reports
+        if: always() && hashFiles('virustotal-report-*.json') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: virustotal-ci-reports-${{ github.run_id }}-${{ github.run_attempt }}
+          path: virustotal-report-*.json
+          if-no-files-found: error
+          retention-days: 30
