@@ -33,6 +33,10 @@ elseif(WIN32)
   set(CPACK_NSIS_INSTALL_ROOT "$LOCALAPPDATA/Programs")
   set(CPACK_NSIS_DISPLAY_NAME "BongoCat")
   set(CPACK_NSIS_PACKAGE_NAME "BongoCat")
+  # LZMA-packed NSIS payloads are frequently classified as cryptors by
+  # antivirus heuristics. zlib changes only installer compression, not the
+  # packaged files or installation behavior.
+  set(CPACK_NSIS_COMPRESSOR "zlib")
   set(CPACK_NSIS_INSTALLED_ICON_NAME "BongoCat.exe")
   set(CPACK_NSIS_MUI_ICON
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/icon.ico")
