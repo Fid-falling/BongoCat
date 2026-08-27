@@ -105,12 +105,6 @@ jobs:
           - os: ubuntu-latest
             platform: linux-x64
             cmake_arch: ''
-          - os: macos-13
-            platform: macos-x64
-            cmake_arch: x86_64
-          - os: macos-14
-            platform: macos-arm64
-            cmake_arch: arm64
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout source
@@ -187,12 +181,6 @@ jobs:
           - os: ubuntu-latest
             platform: linux-x64
             cmake_arch: ''
-          - os: macos-13
-            platform: macos-x64
-            cmake_arch: x86_64
-          - os: macos-14
-            platform: macos-arm64
-            cmake_arch: arm64
     runs-on: ${{ matrix.os }}
     env:
       CUBISM_SDK_ARCHIVE_URL: ${{ secrets.CUBISM_SDK_ARCHIVE_URL }}
