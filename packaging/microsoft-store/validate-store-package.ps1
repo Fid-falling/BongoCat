@@ -3,24 +3,22 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$PackagePath,
 
-    [Parameter(Mandatory = $true)]
-    [string]$ExpectedAppVersion,
-
     [ValidateSet('x86', 'x64')]
-    [string]$ExpectedArchitecture = 'x64',
-
-    [string]$ExpectedPackageVersion
+    [string]$ExpectedArchitecture = 'x64'
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+$scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repositoryRoot = (Resolve-Path (Join-Path $scriptDirectory '..\..')).Path
+$projectVersion = & (Join-Path $repositoryRoot 'packaging\get-project-version.ps1')
+$ExpectedAppVersion = $projectVersion.AppVersion
+$ExpectedPackageVersion = $projectVersion.StorePackageVersion
 $PackagePath = (Resolve-Path $PackagePath).Path
-if ($ExpectedAppVersion -notmatch '^([0-9]+)\.([0-9]+)\.([0-9]+)$') {
-    throw 'ExpectedAppVersion must use Major.Minor.Patch format.'
-}
-if (-not $ExpectedPackageVersion) {
-    $ExpectedPackageVersion = "$([int]$Matches[1] + 1).$($Matches[2]).$($Matches[3]).0"
+if ((Split-Path $PackagePath -Leaf) -notmatch
+    "^bongocat_$([regex]::Escape($ExpectedAppVersion))_") {
+    throw "Package filename does not match app version $ExpectedAppVersion."
 }
 
 function Get-WindowsSdkTool {
@@ -127,7 +125,15 @@ try {
         throw 'Unsigned Store submission package unexpectedly contains AppxSignature.p7x.'
     }
 
-    $machine = Get-PeMachine (Join-Path $temporaryRoot 'BongoCat.exe')
+    $executablePath = Join-Path $temporaryRoot 'BongoCat.exe'
+    $versionInfo = (Get-Item -LiteralPath $executablePath).VersionInfo
+    $packagedAppVersion = '{0}.{1}.{2}' -f $versionInfo.FileMajorPart,
+        $versionInfo.FileMinorPart, $versionInfo.FileBuildPart
+    if ($packagedAppVersion -ne $ExpectedAppVersion) {
+        throw "Packaged executable version is $packagedAppVersion; expected $ExpectedAppVersion."
+    }
+
+    $machine = Get-PeMachine $executablePath
     $expectedMachine = if ($ExpectedArchitecture -eq 'x64') { 0x8664 } else { 0x014C }
     if ($machine -ne $expectedMachine) {
         throw ('Packaged executable machine is 0x{0:X4}; expected {1}.' -f

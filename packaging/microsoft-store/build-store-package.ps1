@@ -3,10 +3,6 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$ExecutablePath,
 
-    [Parameter(Mandatory = $true)]
-    [string]$Version,
-
-    [string]$PackageVersion,
     [string]$OutputDirectory,
     [string]$CertificateOutputPath,
     [ValidateSet('x86', 'x64')]
@@ -19,6 +15,9 @@ Set-StrictMode -Version Latest
 
 $scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repositoryRoot = (Resolve-Path (Join-Path $scriptDirectory "..\..")).Path
+$projectVersion = & (Join-Path $repositoryRoot 'packaging\get-project-version.ps1')
+$Version = $projectVersion.AppVersion
+$PackageVersion = $projectVersion.StorePackageVersion
 
 if (-not $OutputDirectory) {
     $OutputDirectory = Join-Path $repositoryRoot "output\microsoft-store"
@@ -26,42 +25,6 @@ if (-not $OutputDirectory) {
 
 $ExecutablePath = (Resolve-Path $ExecutablePath).Path
 $OutputDirectory = [System.IO.Path]::GetFullPath($OutputDirectory)
-
-if ($Version -notmatch '^([0-9]+)\.([0-9]+)\.([0-9]+)$') {
-    throw "Version must use Major.Minor.Patch format, for example 0.1.1."
-}
-
-$versionParts = @(
-    [int]$Matches[1],
-    [int]$Matches[2],
-    [int]$Matches[3]
-)
-if ($versionParts | Where-Object { $_ -gt 65535 }) {
-    throw "MSIX version components must be between 0 and 65535."
-}
-
-# Microsoft Store package versions cannot start at zero. Keep the app's
-# semantic version in the filename and reserve the first package component
-# for Store versioning, which makes pre-1.0 builds valid and monotonic.
-if (-not $PackageVersion) {
-    $packageMajor = $versionParts[0] + 1
-    $PackageVersion = "$packageMajor.$($versionParts[1]).$($versionParts[2]).0"
-}
-if ($PackageVersion -notmatch '^([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)$') {
-    throw "PackageVersion must use Major.Minor.Patch.Revision format."
-}
-$packageParts = @(
-    [int]$Matches[1],
-    [int]$Matches[2],
-    [int]$Matches[3],
-    [int]$Matches[4]
-)
-if ($packageParts[0] -eq 0 -or ($packageParts | Where-Object { $_ -gt 65535 })) {
-    throw "MSIX version components must be between 0 and 65535 and Major cannot be zero."
-}
-if ($packageParts[3] -ne 0) {
-    throw "PackageVersion revision must be zero for Microsoft Store submissions."
-}
 
 $packageBaseName = if ($SignForLocalTesting) {
     "bongocat_${Version}_${Architecture}-local-test"

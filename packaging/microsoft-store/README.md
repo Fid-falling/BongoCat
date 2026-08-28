@@ -36,10 +36,11 @@ is `%LOCALAPPDATA%\Packages\<PFN>\LocalCache\Local\BongoCat\config\settings.json
 Package identity is detected at runtime with `GetCurrentPackageFullName`, and
 the selected mode and resolved storage path are written to `BongoCat.log`.
 
-MSIX versions must have a non-zero major component and a zero revision. The
-script maps app version `0.1.1` to package version `1.1.1.0` by default; pass
-`-PackageVersion` when advancing the Store version independently. The app
-version remains in the filename so GitHub artifacts are easy to identify.
+The app version is declared only in the top-level `CMakeLists.txt` and read by
+all Store scripts through `packaging/get-project-version.ps1`. MSIX versions
+must have a non-zero major component and a zero revision, so the helper maps
+the app version to `(major + 1).minor.patch.0`. The app version remains in the
+filename so GitHub artifacts are easy to identify.
 
 ## Actions SDK setup
 
@@ -68,20 +69,20 @@ cmake -S . -B build-cubism -G "Visual Studio 17 2022" -A x64 `
 cmake --build build-cubism --config Release --target bongo_cat --parallel 2
 
 .\packaging\microsoft-store\build-store-package.ps1 `
-  -ExecutablePath .\build-cubism\Release\BongoCat.exe `
-  -Version 0.1.1
+  -ExecutablePath .\build-cubism\Release\BongoCat.exe
 ```
 
 The script writes the unsigned Store submission package to
-`output\microsoft-store\bongocat_0.1.1_x64.msix`. Upload that file directly to
-Partner Center. It cannot be installed locally until Microsoft Store signs it.
-Validate the exact Identity, PFN, version, architecture, payload, and unsigned
-submission state with:
+`output\microsoft-store\bongocat_<app-version>_x64.msix`. Upload that file
+directly to Partner Center. It cannot be installed locally until Microsoft
+Store signs it. Validate the exact Identity, PFN, manifest and executable
+versions, architecture, payload, and unsigned submission state with:
 
 ```powershell
+$projectVersion = .\packaging\get-project-version.ps1
+$msix = ".\output\microsoft-store\bongocat_$($projectVersion.AppVersion)_x64.msix"
 .\packaging\microsoft-store\validate-store-package.ps1 `
-  -PackagePath .\output\microsoft-store\bongocat_0.1.1_x64.msix `
-  -ExpectedAppVersion 0.1.1
+  -PackagePath $msix
 ```
 
 The protected Actions job runs this validation before uploading its artifact.
@@ -90,16 +91,17 @@ To test local deployment before submission, explicitly build a separate
 self-signed package:
 
 ```powershell
+$projectVersion = .\packaging\get-project-version.ps1
+$localBase = ".\output\microsoft-store\bongocat_$($projectVersion.AppVersion)_x64-local-test"
 .\packaging\microsoft-store\build-store-package.ps1 `
   -ExecutablePath .\build-cubism\Release\BongoCat.exe `
-  -Version 0.1.1 -SignForLocalTesting
+  -SignForLocalTesting
 
 # Run these certificate/deployment commands from an elevated PowerShell.
 Import-Certificate `
-  .\output\microsoft-store\bongocat_0.1.1_x64-local-test.cer `
+  "$localBase.cer" `
   -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
-Add-AppxPackage `
-  .\output\microsoft-store\bongocat_0.1.1_x64-local-test.msix
+Add-AppxPackage "$localBase.msix"
 Get-AppxPackage -Name vladelaina.bongocat
 ```
 

@@ -40,11 +40,8 @@ jobs:
         id: version
         shell: pwsh
         run: |
-          $cmake = Get-Content CMakeLists.txt -Raw
-          if ($cmake -notmatch '(?m)^project\(BongoCat VERSION ([0-9]+\.[0-9]+\.[0-9]+)\b') {
-            throw 'Unable to read the BongoCat version from CMakeLists.txt'
-          }
-          $version = $Matches[1]
+          $projectVersion = & ./packaging/get-project-version.ps1
+          $version = $projectVersion.AppVersion
           if ($env:GITHUB_REF_NAME -ne "v$version") {
             throw "Tag $env:GITHUB_REF_NAME does not match project version $version"
           }
@@ -205,6 +202,9 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
       - name: Download packaged releases
         uses: actions/download-artifact@v8
         with:
@@ -216,10 +216,11 @@ jobs:
         id: version
         shell: pwsh
         run: |
-          if ($env:GITHUB_REF_NAME -notmatch '^v([0-9]+\.[0-9]+\.[0-9]+)$') {
-            throw "Invalid release tag: $env:GITHUB_REF_NAME"
+          $projectVersion = & ./packaging/get-project-version.ps1
+          $version = $projectVersion.AppVersion
+          if ($env:GITHUB_REF_NAME -ne "v$version") {
+            throw "Tag $env:GITHUB_REF_NAME does not match project version $version"
           }
-          $version = $Matches[1]
           $files = foreach ($platform in 'windows-x64', 'windows-x86') {
             $base = "BongoCat-$version-$platform"
             "release-output/$base-portable.exe"

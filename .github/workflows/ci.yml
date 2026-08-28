@@ -233,11 +233,8 @@ jobs:
         id: package
         shell: pwsh
         run: |
-          $header = Get-Content build-package/generated/bongo_cat/version.h -Raw
-          if ($header -notmatch '#define\s+BONGO_CAT_VERSION\s+"([^"]+)"') {
-            throw 'Unable to read the BongoCat version'
-          }
-          $version = $Matches[1]
+          $projectVersion = & ./packaging/get-project-version.ps1
+          $version = $projectVersion.AppVersion
           $name = (Get-Content build-package/bongo-cat-package-name.txt -Raw).Trim()
           $platform = "${{ matrix.platform }}"
           if ($name -notmatch "^BongoCat-$([regex]::Escape($version))-$platform$") {
@@ -319,11 +316,9 @@ jobs:
         id: version
         shell: pwsh
         run: |
-          $header = Get-Content build-store/generated/bongo_cat/version.h -Raw
-          if ($header -notmatch '#define\s+BONGO_CAT_VERSION\s+"([^"]+)"') {
-            throw 'Unable to read BongoCat version from generated header'
-          }
-          "version=$($Matches[1])" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          $projectVersion = & ./packaging/get-project-version.ps1
+          "version=$($projectVersion.AppVersion)" |
+            Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Install NSIS
         shell: pwsh
@@ -380,7 +375,6 @@ jobs:
         run: |
           ./packaging/microsoft-store/build-store-package.ps1 `
             -ExecutablePath "./build-store/Release/BongoCat.exe" `
-            -Version "${{ steps.version.outputs.version }}" `
             -Architecture "${{ matrix.store_arch }}" `
             -OutputDirectory "./store-output"
           $msix = Get-Item "store-output/bongocat_${{ steps.version.outputs.version }}_${{ matrix.store_arch }}.msix"
@@ -392,7 +386,6 @@ jobs:
         run: |
           ./packaging/microsoft-store/validate-store-package.ps1 `
             -PackagePath "./store-output/bongocat_${{ steps.version.outputs.version }}_${{ matrix.store_arch }}.msix" `
-            -ExpectedAppVersion "${{ steps.version.outputs.version }}" `
             -ExpectedArchitecture "${{ matrix.store_arch }}"
 
       - name: Upload Microsoft Store MSIX
