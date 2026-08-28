@@ -8,6 +8,16 @@
     <img src="https://count.getloli.com/@bongocat?name=bongocat&theme=booru-qualityhentais&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto" width="400">
   </p>
 
+## 📥 Download
+
+<a href="https://apps.microsoft.com/detail/9p41mlsx72xw?referrer=appbadge" target="_self" >
+	<img src="https://get.microsoft.com/images/en-us%20light.svg" width="600"/>
+</a>
+
+- GitHub Releases
+
+  Download the latest release from [GitHub Releases](https://github.com/vladelaina/BongoCat/releases/latest).
+
 ## Project Status
 
 
