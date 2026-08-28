@@ -94,8 +94,7 @@ done:
 }
 
 static int excluded_path(const char *path) {
-    return strcmp(path, "assets/bongocat.png") == 0 ||
-        strcmp(path, "assets/ui-icons.png") == 0 ||
+    return strcmp(path, "assets/ui-icons.png") == 0 ||
         strcmp(path, "assets/ui-symbols-1x.png") == 0 ||
         strcmp(path, "assets/ui-symbols-4x.png") == 0;
 }
