@@ -86,6 +86,7 @@ if(WIN32)
     "${BONGO_CAT_NSIS_TEMPLATE}")
   string(REPLACE [=[  !include "MUI.nsh"]=]
     [=[  !include "MUI.nsh"
+  !include "nsDialogs.nsh"
   !include "WordFunc.nsh"
   !include "Win\RestartManager.nsh"]=] BONGO_CAT_NSIS_TEMPLATE
     "${BONGO_CAT_NSIS_TEMPLATE}")
@@ -104,10 +105,17 @@ if(WIN32)
     [=[  !insertmacro MUI_INSTALLOPTIONS_READ $INSTALL_DESKTOP "NSIS.InstallOptions.ini" "Field 5" "State"]=]
     [=[  StrCpy $INSTALL_DESKTOP "1"]=] BONGO_CAT_NSIS_TEMPLATE
     "${BONGO_CAT_NSIS_TEMPLATE}")
+  # Silent uninstalls are used during upgrades, so user data defaults to kept.
+  string(REPLACE [=[  !insertmacro MUI_UNPAGE_CONFIRM]=]
+    [=[  UninstPage custom un.bongo_cat_uninstall_options_page \
+    un.bongo_cat_uninstall_options_leave]=] BONGO_CAT_NSIS_TEMPLATE
+    "${BONGO_CAT_NSIS_TEMPLATE}")
   string(REPLACE [=[  Var IS_DEFAULT_INSTALLDIR]=]
     [=[  Var IS_DEFAULT_INSTALLDIR
   Var BONGO_CAT_UPGRADE_DIR
-  Var BONGO_CAT_UPDATE_SHUTDOWN]=] BONGO_CAT_NSIS_TEMPLATE
+  Var BONGO_CAT_UPDATE_SHUTDOWN
+  Var BONGO_CAT_KEEP_USER_DATA
+  Var BONGO_CAT_KEEP_USER_DATA_CHECKBOX]=] BONGO_CAT_NSIS_TEMPLATE
     "${BONGO_CAT_NSIS_TEMPLATE}")
   string(REPLACE [=[  !insertmacro MUI_PAGE_DIRECTORY]=]
     [=[  !define MUI_PAGE_CUSTOMFUNCTION_PRE bongo_cat_directory_page_pre
@@ -122,6 +130,32 @@ FunctionEnd
 
 Function bongo_cat_startmenu_page_pre
   Abort
+FunctionEnd
+
+Function un.bongo_cat_uninstall_options_page
+  !insertmacro MUI_HEADER_TEXT "Uninstall BongoCat" \
+    "Choose whether to keep your user data"
+  nsDialogs::Create 1018
+  Pop $0
+  StrCmp "$0" "error" 0 bongo_cat_uninstall_options_ready
+  Abort
+bongo_cat_uninstall_options_ready:
+  ${NSD_CreateLabel} 0 0 100% 24u \
+    "BongoCat will be removed from this computer."
+  Pop $0
+  ${NSD_CreateCheckbox} 0 36u 100% 18u \
+    "Keep settings, imported models, and other user data"
+  Pop $BONGO_CAT_KEEP_USER_DATA_CHECKBOX
+  StrCmp "$BONGO_CAT_KEEP_USER_DATA" "1" 0 \
+    bongo_cat_uninstall_options_show
+  ${NSD_Check} $BONGO_CAT_KEEP_USER_DATA_CHECKBOX
+bongo_cat_uninstall_options_show:
+  nsDialogs::Show
+FunctionEnd
+
+Function un.bongo_cat_uninstall_options_leave
+  ${NSD_GetState} $BONGO_CAT_KEEP_USER_DATA_CHECKBOX \
+    $BONGO_CAT_KEEP_USER_DATA
 FunctionEnd
 
 Function InstallOptionsPage]=] BONGO_CAT_NSIS_TEMPLATE
@@ -144,6 +178,11 @@ bongo_cat_shortcuts_done:
   WriteRegStr SHCTX \
     "Software\Microsoft\Windows\CurrentVersion\Uninstall\BongoCat" \
     "InstallLocation" "$INSTDIR"
+]=] BONGO_CAT_NSIS_TEMPLATE "${BONGO_CAT_NSIS_TEMPLATE}")
+  string(REPLACE [=[@CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS@]=] [=[
+  StrCmp "$BONGO_CAT_KEEP_USER_DATA" "1" bongo_cat_user_data_done
+  RMDir /r "$LOCALAPPDATA\BongoCat"
+bongo_cat_user_data_done:
 ]=] BONGO_CAT_NSIS_TEMPLATE "${BONGO_CAT_NSIS_TEMPLATE}")
   string(REPLACE [=[@CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS@]=] [=[
   StrCmp "$BONGO_CAT_UPGRADE_DIR" "" bongo_cat_upgrade_ready
@@ -287,6 +326,7 @@ FunctionEnd]=]
   bongo_cat_replace_nsis_function(BONGO_CAT_NSIS_TEMPLATE "un.onInit"
     [=[Function un.onInit
   SetShellVarContext current
+  StrCpy $BONGO_CAT_KEEP_USER_DATA "1"
 FunctionEnd]=]
     BONGO_CAT_NSIS_TEMPLATE)
   file(WRITE "${BONGO_CAT_CPACK_TEMPLATE_DIR}/NSIS.template.in"
