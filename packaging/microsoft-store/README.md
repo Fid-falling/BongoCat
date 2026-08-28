@@ -38,9 +38,10 @@ the selected mode and resolved storage path are written to `BongoCat.log`.
 
 The app version is declared only in the top-level `CMakeLists.txt` and read by
 all Store scripts through `packaging/get-project-version.ps1`. MSIX versions
-must have a non-zero major component and a zero revision, so the helper maps
-the app version to `(major + 1).minor.patch.0`. The app version remains in the
-filename so GitHub artifacts are easy to identify.
+must use four numeric components, have a non-zero major component, and use a
+zero revision. The helper therefore converts `major.minor.patch` to the same
+version with a `.0` suffix, for example `1.1.0` to `1.1.0.0`. The app version
+remains in the filename so GitHub artifacts are easy to identify.
 
 ## Actions SDK setup
 

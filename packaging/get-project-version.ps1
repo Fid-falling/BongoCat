@@ -16,11 +16,11 @@ $parts = @([int]$Matches[1], [int]$Matches[2], [int]$Matches[3])
 if ($parts | Where-Object { $_ -gt 65535 }) {
     throw 'Version components must be between 0 and 65535.'
 }
-if ($parts[0] -ge 65535) {
-    throw 'The major version is too large for the Microsoft Store mapping.'
+if ($parts[0] -eq 0) {
+    throw 'The major version must be greater than zero for Microsoft Store packages.'
 }
 
 [PSCustomObject]@{
     AppVersion = $parts -join '.'
-    StorePackageVersion = "$($parts[0] + 1).$($parts[1]).$($parts[2]).0"
+    StorePackageVersion = "$($parts[0]).$($parts[1]).$($parts[2]).0"
 }
