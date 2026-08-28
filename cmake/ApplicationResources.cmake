@@ -37,10 +37,14 @@ if(WIN32)
     COMMAND ${CMAKE_COMMAND} -E copy_directory
       "${CMAKE_CURRENT_SOURCE_DIR}/resources/assets"
       "${BONGO_CAT_ASSET_STAGE}/assets"
+    COMMAND ${CMAKE_COMMAND} -E copy
+      "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
+      "${BONGO_CAT_ASSET_STAGE}/assets/LICENSE"
     ${BONGO_CAT_ASSET_EXTRA_COMMANDS}
     COMMAND "$<TARGET_FILE:bongo_cat_asset_packer>"
       "${BONGO_CAT_ASSET_STAGE}/assets" "${BONGO_CAT_ASSET_PACK}"
-    DEPENDS ${BONGO_CAT_ASSET_INPUTS} bongo_cat_asset_packer
+    DEPENDS ${BONGO_CAT_ASSET_INPUTS} "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
+      bongo_cat_asset_packer
     VERBATIM)
   add_custom_target(bongo_cat_asset_pack DEPENDS "${BONGO_CAT_ASSET_PACK}")
   file(TO_CMAKE_PATH "${BONGO_CAT_ASSET_PACK}" BONGO_CAT_ASSET_PACK_RC)

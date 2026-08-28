@@ -42,6 +42,8 @@ elseif(WIN32)
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/icon.ico")
   set(CPACK_NSIS_MUI_UNIICON
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/icon.ico")
+  set(CPACK_NSIS_MUI_HEADERIMAGE
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/nsis-header.bmp")
   set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL OFF)
   set(CPACK_NSIS_MODIFY_PATH OFF)
   set(CPACK_NSIS_MUI_FINISHPAGE_RUN "BongoCat.exe")

@@ -105,20 +105,20 @@ jobs:
             throw "Unexpected release package name: $name"
           }
 
-          cmake --build build-release --config Release --target package
+          cmake --build build-release --config Release --target package-portable
           cmake --build build-release --config Release --target package-installer
 
-          $portableSource = "build-release/dist/$name.zip"
           $portable = "build-release/dist/$name-portable.zip"
           $portableChecksum = "$portable.sha256"
           $setup = "build-release/dist/$name-setup.exe"
           $setupChecksum = "$setup.sha256"
-          foreach ($file in @($portableSource, $setup, $setupChecksum)) {
+          foreach ($file in @($portable, $setup, $setupChecksum)) {
             if (-not (Test-Path -LiteralPath $file)) {
               throw "Release file is missing: $file"
             }
           }
-          Move-Item -LiteralPath $portableSource -Destination $portable -Force
+          & ./.github/scripts/validate-windows-portable.ps1 `
+            -PackagePath $portable -ExecutableName "$name.exe"
           $portableHash = (Get-FileHash -LiteralPath $portable -Algorithm SHA256).Hash.ToLowerInvariant()
           "$portableHash  $([IO.Path]::GetFileName($portable))" |
             Set-Content -LiteralPath $portableChecksum -Encoding ascii

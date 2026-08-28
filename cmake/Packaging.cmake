@@ -36,6 +36,27 @@ set(CPACK_INSTALL_CMAKE_PROJECTS
   "${CMAKE_BINARY_DIR};${PROJECT_NAME};Runtime;/")
 
 if(WIN32)
+  set(BONGO_CAT_PORTABLE_ARCHIVE
+    "${CMAKE_BINARY_DIR}/dist/${BONGO_CAT_PACKAGE_NAME}-portable.zip")
+  set(BONGO_CAT_PORTABLE_STAGE
+    "${CMAKE_CURRENT_BINARY_DIR}/portable-stage")
+  add_custom_command(OUTPUT "${BONGO_CAT_PORTABLE_ARCHIVE}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/dist"
+    COMMAND ${CMAKE_COMMAND} -E remove_directory
+      "${BONGO_CAT_PORTABLE_STAGE}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+      "${BONGO_CAT_PORTABLE_STAGE}"
+    COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:bongo_cat>"
+      "${BONGO_CAT_PORTABLE_STAGE}/${BONGO_CAT_PACKAGE_NAME}.exe"
+    COMMAND ${CMAKE_COMMAND} -E chdir "${BONGO_CAT_PORTABLE_STAGE}"
+      ${CMAKE_COMMAND} -E tar cf "${BONGO_CAT_PORTABLE_ARCHIVE}"
+      --format=zip "${BONGO_CAT_PACKAGE_NAME}.exe"
+    DEPENDS bongo_cat
+    COMMENT "Building the BongoCat Windows portable package"
+    VERBATIM)
+  add_custom_target(package-portable
+    DEPENDS "${BONGO_CAT_PORTABLE_ARCHIVE}")
+
   # CPack's stock NSIS template requests elevation and switches administrator
   # accounts to the machine-wide shell context. Generate a small, versioned
   # override from the CMake-provided template so this installer is always
@@ -77,6 +98,11 @@ if(WIN32)
   !include "WordFunc.nsh"
   !include "Win\RestartManager.nsh"]=] BONGO_CAT_NSIS_TEMPLATE
     "${BONGO_CAT_NSIS_TEMPLATE}")
+  # Keep the AGPL text in the installed package, but do not interrupt the
+  # install flow with a license agreement page. The license does not require
+  # affirmative acceptance at install time.
+  string(REPLACE [=[  @CPACK_NSIS_LICENSE_PAGE@]=] ""
+    BONGO_CAT_NSIS_TEMPLATE "${BONGO_CAT_NSIS_TEMPLATE}")
   string(REPLACE [=[  Var IS_DEFAULT_INSTALLDIR]=]
     [=[  Var IS_DEFAULT_INSTALLDIR
   Var BONGO_CAT_UPGRADE_DIR
