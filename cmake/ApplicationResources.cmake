@@ -44,6 +44,8 @@ if(WIN32)
     VERBATIM)
   add_custom_target(bongo_cat_asset_pack DEPENDS "${BONGO_CAT_ASSET_PACK}")
   file(TO_CMAKE_PATH "${BONGO_CAT_ASSET_PACK}" BONGO_CAT_ASSET_PACK_RC)
+  file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/icon.ico"
+    BONGO_CAT_ICON_RC)
   set(BONGO_CAT_WINDOWS_MANIFEST
     "${CMAKE_CURRENT_BINARY_DIR}/windows.manifest")
   configure_file(cmake/windows.manifest.in

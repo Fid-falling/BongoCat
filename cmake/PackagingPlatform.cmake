@@ -38,6 +38,10 @@ elseif(WIN32)
   # packaged files or installation behavior.
   set(CPACK_NSIS_COMPRESSOR "zlib")
   set(CPACK_NSIS_INSTALLED_ICON_NAME "BongoCat.exe")
+  set(CPACK_NSIS_MUI_ICON
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/icon.ico")
+  set(CPACK_NSIS_MUI_UNIICON
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/icon.ico")
   set(CPACK_NSIS_IGNORE_LICENSE_PAGE ON)
   set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL OFF)
   set(CPACK_NSIS_MODIFY_PATH OFF)
