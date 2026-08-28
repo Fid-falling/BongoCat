@@ -156,12 +156,7 @@ BongoCatTray *bongo_cat_tray_create(BongoCatApp *app, BongoCatError *error) {
     tray->app = app;
     bongo_cat_modal_frame_init(&tray->modal_frame, app);
     char path[BONGO_CAT_PATH_CAP];
-    bongo_cat_path_join(path, sizeof(path), app->asset_root,
-#ifdef __APPLE__
-        "tray-mac.png");
-#else
-        "tray.png");
-#endif
+    bongo_cat_path_join(path, sizeof(path), app->asset_root, "bongocat.png");
     if (bongo_cat_image_load(path, &tray->icon, error) != BONGO_CAT_OK) {
         bongo_cat_tray_destroy(tray);
         return NULL;

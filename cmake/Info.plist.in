@@ -6,7 +6,6 @@
   <key>CFBundleDevelopmentRegion</key><string>en</string>
   <key>CFBundleDisplayName</key><string>BongoCat</string>
   <key>CFBundleExecutable</key><string>BongoCat</string>
-  <key>CFBundleIconFile</key><string>icon.icns</string>
   <key>CFBundleIdentifier</key><string>com.bongocat.desktop</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
   <key>CFBundleName</key><string>BongoCat</string>

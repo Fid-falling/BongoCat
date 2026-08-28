@@ -11,7 +11,7 @@ if(NOT BONGO_CAT_CUBISM_ENABLED)
 endif()
 if(UNIX AND NOT APPLE)
   install(DIRECTORY resources/assets DESTINATION . COMPONENT Runtime
-    PATTERN "logo-mac.png" EXCLUDE PATTERN "ui-icons.png" EXCLUDE
+    PATTERN "ui-icons.png" EXCLUDE
     PATTERN "ui-symbols-1x.png" EXCLUDE PATTERN "ui-symbols-4x.png" EXCLUDE)
 endif()
 

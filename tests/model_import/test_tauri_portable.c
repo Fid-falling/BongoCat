@@ -41,7 +41,7 @@ void test_tauri_portable(void) {
     CHECK(child(path, sizeof(path), model, "cat.moc3", false));
     CHECK(write_text(path, "MOC3"));
     char tray[BONGO_CAT_PATH_CAP];
-    snprintf(tray, sizeof(tray), "%s/resources/assets/tray.png",
+    snprintf(tray, sizeof(tray), "%s/resources/assets/bongocat.png",
         BONGO_CAT_NATIVE_SOURCE_DIR);
     char resources[BONGO_CAT_PATH_CAP], left_keys[BONGO_CAT_PATH_CAP];
     char right_keys[BONGO_CAT_PATH_CAP], east[BONGO_CAT_PATH_CAP];

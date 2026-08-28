@@ -1,12 +1,8 @@
 if(APPLE)
-  set_source_files_properties(resources/icons/icon.icns PROPERTIES
-    MACOSX_PACKAGE_LOCATION Resources)
-  target_sources(bongo_cat PRIVATE resources/icons/icon.icns)
   set_target_properties(bongo_cat PROPERTIES
     MACOSX_BUNDLE TRUE
     MACOSX_BUNDLE_BUNDLE_NAME "BongoCat"
     MACOSX_BUNDLE_GUI_IDENTIFIER com.bongocat.desktop
-    MACOSX_BUNDLE_ICON_FILE icon.icns
     MACOSX_BUNDLE_INFO_PLIST
       "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Info.plist.in")
   add_custom_command(TARGET bongo_cat POST_BUILD
@@ -48,8 +44,6 @@ if(WIN32)
     VERBATIM)
   add_custom_target(bongo_cat_asset_pack DEPENDS "${BONGO_CAT_ASSET_PACK}")
   file(TO_CMAKE_PATH "${BONGO_CAT_ASSET_PACK}" BONGO_CAT_ASSET_PACK_RC)
-  file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/icon.ico"
-    BONGO_CAT_ICON_RC)
   set(BONGO_CAT_WINDOWS_MANIFEST
     "${CMAKE_CURRENT_BINARY_DIR}/windows.manifest")
   configure_file(cmake/windows.manifest.in

@@ -126,7 +126,7 @@ try {
         [System.Text.UTF8Encoding]::new($false))
 
     Add-Type -AssemblyName System.Drawing
-    $sourceLogo = [System.Drawing.Image]::FromFile((Join-Path $repositoryRoot "resources\icons\icon.png"))
+    $sourceLogo = [System.Drawing.Image]::FromFile((Join-Path $repositoryRoot "resources\assets\bongocat.png"))
     try {
         New-StoreLogo $sourceLogo 50 50 (Join-Path $assetsDirectory "StoreLogo.png")
         New-StoreLogo $sourceLogo 44 44 (Join-Path $assetsDirectory "Square44x44Logo.png")

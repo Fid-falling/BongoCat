@@ -42,7 +42,7 @@ bool mver_fixture(const char *root) {
             "{\"Moc\":\"cat.moc3\",\"Textures\":[\"texture.png\"]}}") ||
         !child(path, sizeof(path), model, "cat.moc3", false) ||
         !write_text(path, "MOC3")) return false;
-    snprintf(source, sizeof(source), "%s/resources/assets/tray.png",
+    snprintf(source, sizeof(source), "%s/resources/assets/bongocat.png",
         BONGO_CAT_NATIVE_SOURCE_DIR);
     if (!child(path, sizeof(path), model, "texture.png", false) ||
         !SDL_CopyFile(source, path) ||

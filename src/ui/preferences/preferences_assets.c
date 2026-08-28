@@ -36,7 +36,7 @@ static int raster_size(const BongoCatPreferences *value, int logical) {
 }
 
 void bongo_cat_preferences_assets_load(BongoCatPreferences *value) {
-    value->logo_texture = load(value, "logo.png", raster_size(value, 192),
+    value->logo_texture = load(value, "bongocat.png", raster_size(value, 192),
         &value->logo_width, &value->logo_height);
     int width = 0, height = 0;
     value->icon_texture = load(value, "ui-symbols.png", 0, &width, &height);
