@@ -1,7 +1,7 @@
 {
   "problemMatcher": [
     {
-      "owner": "bongo-cat-gcc",
+      "owner": "bongocat-gcc",
       "pattern": [
         {
           "regexp": "^(.+?):(\\d+):(\\d+):\\s+(warning|error|fatal error):\\s+(.*)$",

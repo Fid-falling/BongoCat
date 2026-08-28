@@ -20,9 +20,9 @@ int test_mver_missing_motion_groups(void) {
     unsigned long long stamp = (unsigned long long)SDL_GetTicksNS();
     char source[BONGO_CAT_PATH_CAP], data[BONGO_CAT_PATH_CAP];
     char path[BONGO_CAT_PATH_CAP];
-    snprintf(source, sizeof(source), "%s/bongo-cat-stale-motion-%llu",
+    snprintf(source, sizeof(source), "%s/bongocat-stale-motion-%llu",
         temporary, stamp);
-    snprintf(data, sizeof(data), "%s/bongo-cat-stale-motion-data-%llu",
+    snprintf(data, sizeof(data), "%s/bongocat-stale-motion-data-%llu",
         temporary, stamp);
     CHECK(mver_fixture(source));
     CHECK(SDL_CreateDirectory(data));

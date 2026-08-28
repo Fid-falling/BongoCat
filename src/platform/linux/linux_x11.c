@@ -1,4 +1,5 @@
 #include "linux_internal.h"
+#include "bongo_cat/common.h"
 
 #if !defined(_WIN32) && !defined(__APPLE__)
 #include <SDL3/SDL.h>
@@ -164,7 +165,8 @@ bool bongo_cat_linux_x11_start(BongoCatPlatform *platform, BongoCatError *error)
     atomic_init(&state->running, true); atomic_init(&state->supported, false);
     platform->native = state;
     if (!display || !window) return true;
-    state->thread = SDL_CreateThread(input_thread, "bongo-cat-x11-input", state);
+    state->thread = SDL_CreateThread(input_thread,
+        BONGO_CAT_SLUG "-x11-input", state);
     if (!state->thread) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM, "Cannot start X11 input listener");
         return false;

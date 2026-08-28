@@ -169,7 +169,8 @@ static bool start_job(BongoCatImportDialog *dialog, BongoCatApp *app,
     dialog->completed = 0;
     dialog->total = job->count;
     ++dialog->references;
-    dialog->worker = SDL_CreateThread(import_worker, "bongo-cat-model-import", job);
+    dialog->worker = SDL_CreateThread(import_worker,
+        BONGO_CAT_SLUG "-model-import", job);
     if (!dialog->worker) {
         dialog->worker_job = NULL;
         dialog->busy = false;

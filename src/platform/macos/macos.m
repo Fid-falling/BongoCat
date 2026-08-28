@@ -261,7 +261,8 @@ void bongo_cat_platform_set_tray_callbacks(void *tray,
         NSEventMaskRightMouseUp];
 }
 bool bongo_cat_platform_single_instance_begin(void) {
-    char path[96]; snprintf(path, sizeof(path), "/tmp/bongo-cat-%lu.lock",
+    char path[96]; snprintf(path, sizeof(path),
+        "/tmp/" BONGO_CAT_SLUG "-%lu.lock",
         (unsigned long)getuid());
     instance_lock = open(path, O_CREAT | O_RDWR, 0600);
     if (instance_lock < 0 || flock(instance_lock, LOCK_EX | LOCK_NB) == 0) {

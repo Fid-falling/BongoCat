@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: bongo-cat-ci-${{ github.workflow }}-${{ github.ref }}
+  group: bongocat-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -235,7 +235,7 @@ jobs:
         run: |
           $projectVersion = & ./packaging/get-project-version.ps1
           $version = $projectVersion.AppVersion
-          $name = (Get-Content build-package/bongo-cat-package-name.txt -Raw).Trim()
+          $name = (Get-Content build-package/bongocat-package-name.txt -Raw).Trim()
           $platform = "${{ matrix.platform }}"
           if ($name -notmatch "^BongoCat-$([regex]::Escape($version))-$platform$") {
             throw "Cubism desktop package is not production-ready: $name"
@@ -254,7 +254,7 @@ jobs:
       - name: Upload desktop release
         uses: actions/upload-artifact@v7
         with:
-          name: bongo-cat-vt-${{ matrix.platform }}-archive-${{ github.run_id }}-${{ github.run_attempt }}
+          name: bongocat-vt-${{ matrix.platform }}-archive-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ steps.package.outputs.file }}
           if-no-files-found: error
           retention-days: 30
@@ -344,7 +344,7 @@ jobs:
         id: desktop-package
         shell: pwsh
         run: |
-          $name = (Get-Content build-store/bongo-cat-package-name.txt -Raw).Trim()
+          $name = (Get-Content build-store/bongocat-package-name.txt -Raw).Trim()
           $expected = "BongoCat-${{ steps.version.outputs.version }}-${{ matrix.platform }}"
           if ($name -ne $expected) {
             throw "Cubism desktop package is not production-ready: $name"
@@ -392,7 +392,7 @@ jobs:
         if: matrix.store_arch == 'x64'
         uses: actions/upload-artifact@v7
         with:
-          name: bongo-cat-vt-windows-x64-msix-${{ github.run_id }}-${{ github.run_attempt }}
+          name: bongocat-vt-windows-x64-msix-${{ github.run_id }}-${{ github.run_attempt }}
           path: store-output/bongocat_${{ steps.version.outputs.version }}_${{ matrix.store_arch }}.msix
           if-no-files-found: error
           retention-days: 90
@@ -402,7 +402,7 @@ jobs:
       - name: Upload Windows desktop release
         uses: actions/upload-artifact@v7
         with:
-          name: bongo-cat-vt-${{ matrix.platform }}-setup-${{ github.run_id }}-${{ github.run_attempt }}
+          name: bongocat-vt-${{ matrix.platform }}-setup-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ steps.desktop-package.outputs.file }}
           if-no-files-found: error
           retention-days: 30
@@ -412,7 +412,7 @@ jobs:
       - name: Upload Windows portable release
         uses: actions/upload-artifact@v7
         with:
-          name: bongo-cat-vt-${{ matrix.platform }}-portable-${{ github.run_id }}-${{ github.run_attempt }}
+          name: bongocat-vt-${{ matrix.platform }}-portable-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ steps.desktop-package.outputs.portable }}
           if-no-files-found: error
           retention-days: 30

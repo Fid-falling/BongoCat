@@ -3,6 +3,7 @@
 #endif
 
 #include "bongo_cat/platform.h"
+#include "bongo_cat/common.h"
 #include "bongo_cat/path.h"
 #include "linux_internal.h"
 
@@ -193,7 +194,8 @@ void bongo_cat_platform_set_tray_callbacks(void *tray,
     (void)restore; (void)userdata;
 }
 bool bongo_cat_platform_single_instance_begin(void) {
-    char path[96]; snprintf(path, sizeof(path), "/tmp/bongo-cat-%lu.lock",
+    char path[96]; snprintf(path, sizeof(path), "/tmp/%s-%lu.lock",
+        BONGO_CAT_SLUG,
         (unsigned long)getuid());
     instance_lock = open(path, O_CREAT | O_RDWR, 0600);
     if (instance_lock < 0 || flock(instance_lock, LOCK_EX | LOCK_NB) == 0) return true;
@@ -211,7 +213,7 @@ BongoCatResult bongo_cat_platform_set_autostart(bool enabled, BongoCatError *err
     else if (home && bongo_cat_path_join(config, sizeof(config), home, ".config")) {}
     else return BONGO_CAT_ERROR_PLATFORM;
     if (!bongo_cat_path_join(directory, sizeof(directory), config, "autostart") ||
-        !bongo_cat_path_join(path, sizeof(path), directory, "bongo-cat.desktop"))
+        !bongo_cat_path_join(path, sizeof(path), directory, BONGO_CAT_SLUG ".desktop"))
         return BONGO_CAT_ERROR_IO;
     if (!enabled) {
         if (remove(path) == 0 || errno == ENOENT) return BONGO_CAT_OK;

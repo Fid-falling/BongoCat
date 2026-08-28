@@ -18,7 +18,7 @@ static int failures;
 
 static void disabled_mver_live2d_is_not_imported(const char *temporary) {
     char root[BONGO_CAT_PATH_CAP], config[BONGO_CAT_PATH_CAP];
-    snprintf(root, sizeof(root), "%s/bongo-cat-disabled-mver-%llu", temporary,
+    snprintf(root, sizeof(root), "%s/bongocat-disabled-mver-%llu", temporary,
         (unsigned long long)SDL_GetTicksNS());
     CHECK(mver_fixture(root));
     CHECK(child(config, sizeof(config), root, "config.json", false));
@@ -105,9 +105,9 @@ int test_model_import_identity(void) {
     char source[BONGO_CAT_PATH_CAP], config[BONGO_CAT_PATH_CAP];
     char manifest[BONGO_CAT_PATH_CAP], missing[BONGO_CAT_PATH_CAP];
     unsigned long long nonce = (unsigned long long)SDL_GetTicksNS();
-    snprintf(root, sizeof(root), "%s/bongo-cat-import-identity-%llu",
+    snprintf(root, sizeof(root), "%s/bongocat-import-identity-%llu",
         temporary, nonce);
-    snprintf(data, sizeof(data), "%s/bongo-cat-import-data-%llu",
+    snprintf(data, sizeof(data), "%s/bongocat-import-data-%llu",
         temporary, nonce);
     CHECK(SDL_CreateDirectory(root));
     CHECK(SDL_CreateDirectory(data));

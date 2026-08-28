@@ -93,12 +93,6 @@ done:
     return ok;
 }
 
-static int excluded_path(const char *path) {
-    return strcmp(path, "assets/ui-icons.png") == 0 ||
-        strcmp(path, "assets/ui-symbols-1x.png") == 0 ||
-        strcmp(path, "assets/ui-symbols-4x.png") == 0;
-}
-
 static int append_asset(AssetList *list, const wchar_t *file,
     const char *relative) {
     Asset *asset;
@@ -112,7 +106,6 @@ static int append_asset(AssetList *list, const wchar_t *file,
     if (!path) { free(data); return 0; }
     memcpy(path, "assets/", 7);
     memcpy(path + 7, relative, relative_length + 1);
-    if (excluded_path(path)) { free(path); free(data); return 1; }
     if (list->count == list->capacity && !reserve_assets(list)) {
         free(path); free(data); return 0;
     }

@@ -4,7 +4,7 @@ param(
 )
 
 $tempRoot = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { '.' }
-$log = Join-Path $tempRoot 'bongo-cat-native-build.log'
+$log = Join-Path $tempRoot 'bongocat-native-build.log'
 $executable = $BuildCommand[0]
 $arguments = if ($BuildCommand.Count -gt 1) { $BuildCommand[1..($BuildCommand.Count - 1)] } else { @() }
 

@@ -63,7 +63,7 @@ BongoCatResult bongo_cat_image_decode_pixels_responsive(const char *path,
         return bongo_cat_image_decode_pixels(path, image, error);
     PixelDecodeJob job = {path, image, error, BONGO_CAT_ERROR_PLATFORM};
     SDL_Thread *worker = SDL_CreateThread(decode_pixels_worker,
-        "bongo-cat-image-decode", &job);
+        BONGO_CAT_SLUG "-image-decode", &job);
     if (!worker)
         return bongo_cat_image_decode_pixels(path, image, error);
     wait_for_decode(worker, progress, userdata);
@@ -201,7 +201,7 @@ bool bongo_cat_image_decode_wic_responsive(const char *path,
             (UINT)max_height, NULL, NULL);
     WicDecodeJob job = {path, image, (UINT)max_width, (UINT)max_height, false};
     SDL_Thread *worker = SDL_CreateThread(decode_wic_worker,
-        "bongo-cat-wic-decode", &job);
+        BONGO_CAT_SLUG "-wic-decode", &job);
     if (!worker)
         return decode_wic(path, image, (UINT)max_width,
             (UINT)max_height, progress, userdata);

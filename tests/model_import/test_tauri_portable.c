@@ -30,7 +30,7 @@ void test_tauri_portable(void) {
     if (!temporary) return;
     char root[BONGO_CAT_PATH_CAP], model[BONGO_CAT_PATH_CAP];
     char path[BONGO_CAT_PATH_CAP];
-    snprintf(root, sizeof(root), "%s/bongo-cat-tauri-%llu", temporary,
+    snprintf(root, sizeof(root), "%s/bongocat-tauri-%llu", temporary,
         (unsigned long long)SDL_GetTicksNS());
     CHECK(SDL_CreateDirectory(root));
     CHECK(child(model, sizeof(model), root, "keyboard", true));

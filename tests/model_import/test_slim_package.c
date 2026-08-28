@@ -20,9 +20,9 @@ int test_slim_package(void) {
     char source[BONGO_CAT_PATH_CAP], data[BONGO_CAT_PATH_CAP];
     char config[BONGO_CAT_PATH_CAP], slim[BONGO_CAT_PATH_CAP];
     unsigned long long nonce = (unsigned long long)SDL_GetTicksNS();
-    snprintf(source, sizeof(source), "%s/bongo-cat-slim-%llu",
+    snprintf(source, sizeof(source), "%s/bongocat-slim-%llu",
         temporary, nonce);
-    snprintf(data, sizeof(data), "%s/bongo-cat-slim-data-%llu",
+    snprintf(data, sizeof(data), "%s/bongocat-slim-data-%llu",
         temporary, nonce);
     CHECK_SLIM(mver_fixture(source));
     CHECK_SLIM(SDL_CreateDirectory(data));

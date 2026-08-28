@@ -41,7 +41,7 @@ static void labels_from_shortcut_rows(void) {
     CHECK(temporary != NULL);
     if (!temporary) return;
     char root[BONGO_CAT_PATH_CAP], path[BONGO_CAT_PATH_CAP];
-    snprintf(root, sizeof(root), "%s/bongo-cat-labels-%llu", temporary,
+    snprintf(root, sizeof(root), "%s/bongocat-labels-%llu", temporary,
         (unsigned long long)SDL_GetTicksNS());
     CHECK(SDL_CreateDirectory(root));
     CHECK(child(path, sizeof(path), root, "config.json", false));
@@ -70,7 +70,7 @@ static void metadata_backfills_labels(void) {
     CHECK(temporary != NULL);
     if (!temporary) return;
     char root[BONGO_CAT_PATH_CAP], path[BONGO_CAT_PATH_CAP];
-    snprintf(root, sizeof(root), "%s/bongo-cat-metadata-%llu", temporary,
+    snprintf(root, sizeof(root), "%s/bongocat-metadata-%llu", temporary,
         (unsigned long long)SDL_GetTicksNS());
     CHECK(SDL_CreateDirectory(root));
     CHECK(child(path, sizeof(path), root, ".bongo-cat-adapter.json", false));

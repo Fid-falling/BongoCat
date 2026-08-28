@@ -119,7 +119,7 @@ bool bongo_cat_update_check(BongoCatUpdateService *service, bool manual) {
     service->http_cancelled = false;
     SDL_UnlockMutex(service->http_mutex);
     service->worker = SDL_CreateThread(update_worker,
-        "bongo-cat-update-check", service);
+        BONGO_CAT_SLUG "-update-check", service);
     bool started = service->worker != NULL;
     if (!started) {
         service->status = BONGO_CAT_UPDATE_ERROR;

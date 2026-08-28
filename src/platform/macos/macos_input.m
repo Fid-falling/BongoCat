@@ -137,7 +137,7 @@ bool bongo_cat_macos_input_start(BongoCatPlatform *platform, BongoCatError *erro
     atomic_init(&state->stop_requested, false);
     state->ready = SDL_CreateSemaphore(0);
     state->thread = state->ready ? SDL_CreateThread(input_thread,
-        "bongo-cat-macos-input", state) : NULL;
+        BONGO_CAT_SLUG "-macos-input", state) : NULL;
     if (!state->ready || !state->thread) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM,
             "Cannot start the macOS input listener");

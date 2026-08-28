@@ -22,7 +22,7 @@ if(WIN32)
     _CRT_SECURE_NO_WARNINGS)
   target_link_libraries(bongo_cat_asset_packer PRIVATE bongo_cat_warnings)
   set(BONGO_CAT_ASSET_STAGE "${CMAKE_CURRENT_BINARY_DIR}/embedded-assets")
-  set(BONGO_CAT_ASSET_PACK "${CMAKE_CURRENT_BINARY_DIR}/bongo-cat-assets.pak")
+  set(BONGO_CAT_ASSET_PACK "${CMAKE_CURRENT_BINARY_DIR}/bongocat-assets.pak")
   file(GLOB_RECURSE BONGO_CAT_ASSET_INPUTS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/assets/*")
   bongo_cat_configure_embedded_cubism_assets()

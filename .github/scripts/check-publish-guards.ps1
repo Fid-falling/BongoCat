@@ -21,7 +21,7 @@ $runtimeArtifactMarkers = @(
     'Upload Microsoft Store MSIX',
     'Upload Windows desktop release',
     'Upload Windows portable release',
-    'name: bongo-cat-release-',
+    'name: bongocat-release-',
     'softprops/action-gh-release'
 )
 

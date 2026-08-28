@@ -32,9 +32,9 @@ int test_mver_nearby_identity(void) {
     char source[BONGO_CAT_PATH_CAP], moved[BONGO_CAT_PATH_CAP];
     char again[BONGO_CAT_PATH_CAP], duplicate[BONGO_CAT_PATH_CAP];
     unsigned long long nonce = (unsigned long long)SDL_GetTicksNS();
-    snprintf(root, sizeof(root), "%s/bongo-cat-nearby-move-%llu",
+    snprintf(root, sizeof(root), "%s/bongocat-nearby-move-%llu",
         temporary, nonce);
-    snprintf(data, sizeof(data), "%s/bongo-cat-nearby-data-%llu",
+    snprintf(data, sizeof(data), "%s/bongocat-nearby-data-%llu",
         temporary, nonce);
     CHECK(SDL_CreateDirectory(root));
     CHECK(SDL_CreateDirectory(data));
@@ -127,9 +127,9 @@ int test_mver_nearby_refresh(void) {
     char root[BONGO_CAT_PATH_CAP], data[BONGO_CAT_PATH_CAP];
     char startup_source[BONGO_CAT_PATH_CAP], sync_source[BONGO_CAT_PATH_CAP];
     char background_source[BONGO_CAT_PATH_CAP];
-    snprintf(root, sizeof(root), "%s/bongo-cat-nearby-root-%llu",
+    snprintf(root, sizeof(root), "%s/bongocat-nearby-root-%llu",
         temporary, nonce);
-    snprintf(data, sizeof(data), "%s/bongo-cat-nearby-refresh-data-%llu",
+    snprintf(data, sizeof(data), "%s/bongocat-nearby-refresh-data-%llu",
         temporary, nonce);
     CHECK(SDL_CreateDirectory(root));
     CHECK(SDL_CreateDirectory(data));

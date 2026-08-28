@@ -10,16 +10,14 @@ if(NOT BONGO_CAT_CUBISM_ENABLED)
     COMPONENT Runtime)
 endif()
 if(UNIX AND NOT APPLE)
-  install(DIRECTORY resources/assets DESTINATION . COMPONENT Runtime
-    PATTERN "ui-icons.png" EXCLUDE
-    PATTERN "ui-symbols-1x.png" EXCLUDE PATTERN "ui-symbols-4x.png" EXCLUDE)
+  install(DIRECTORY resources/assets DESTINATION . COMPONENT Runtime)
 endif()
 
 include(cmake/PackagingPlatform.cmake)
 
 set(BONGO_CAT_PACKAGE_NAME
   "${BONGO_CAT_PACKAGE_PRODUCT}-${PROJECT_VERSION}-${BONGO_CAT_PACKAGE_PLATFORM}")
-file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/bongo-cat-package-name.txt"
+file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/bongocat-package-name.txt"
   CONTENT "${BONGO_CAT_PACKAGE_NAME}\n")
 
 set(CPACK_PACKAGE_NAME "${BONGO_CAT_PACKAGE_PRODUCT}")

@@ -22,7 +22,7 @@ void test_mver_container_discovery(void) {
     CHECK(temporary != NULL);
     if (!temporary) return;
     unsigned long long stamp = (unsigned long long)SDL_GetTicksNS();
-    snprintf(root, sizeof(root), "%s/bongo-cat-container-%llu", temporary,
+    snprintf(root, sizeof(root), "%s/bongocat-container-%llu", temporary,
         stamp);
     bongo_cat_model_remove_tree(root, NULL);
     CHECK(SDL_CreateDirectory(root));
@@ -94,7 +94,7 @@ void test_mver_container_discovery(void) {
     CHECK(patch_count == 1);
     char installed_root[BONGO_CAT_PATH_CAP];
     snprintf(installed_root, sizeof(installed_root),
-        "%s/bongo-cat-container-installed-%llu", temporary, stamp);
+        "%s/bongocat-container-installed-%llu", temporary, stamp);
     BongoCatImportCandidate installed = {0};
     CHECK(contained_patch && bongo_cat_import_prepare_package(contained_patch,
         installed_root, &installed, &error));
@@ -111,7 +111,7 @@ void test_mver_container_discovery(void) {
         &error) == 1);
     char external_root[BONGO_CAT_PATH_CAP];
     snprintf(external_root, sizeof(external_root),
-        "%s/bongo-cat-container-external-%llu", temporary, stamp);
+        "%s/bongocat-container-external-%llu", temporary, stamp);
     installed = (BongoCatImportCandidate){0};
     CHECK(external_patch.count == 1 &&
         bongo_cat_import_prepare_package(&external_patch.candidates[0],
@@ -125,9 +125,9 @@ void test_mver_container_discovery(void) {
 
     char models_root[BONGO_CAT_PATH_CAP], cache_root[BONGO_CAT_PATH_CAP];
     snprintf(models_root, sizeof(models_root),
-        "%s/bongo-cat-container-models-%llu", temporary, stamp);
+        "%s/bongocat-container-models-%llu", temporary, stamp);
     snprintf(cache_root, sizeof(cache_root),
-        "%s/bongo-cat-container-cache-%llu", temporary, stamp);
+        "%s/bongocat-container-cache-%llu", temporary, stamp);
     CHECK(SDL_CreateDirectory(models_root));
     CHECK(SDL_CreateDirectory(cache_root));
     BongoCatImportReceipt receipt = {0};

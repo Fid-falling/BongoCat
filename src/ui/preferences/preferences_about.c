@@ -78,26 +78,24 @@ static void image_contain(struct nk_command_buffer *canvas, unsigned int texture
     struct nk_image image = nk_image_id((int)texture);
     nk_draw_image(canvas, target, &image, nk_rgb(255, 255, 255));
 }
-static void logo(BongoCatPreferences *value, struct nk_context *context,
+static void support_logo(BongoCatPreferences *value,
+    struct nk_context *context,
     struct nk_command_buffer *canvas, struct nk_rect bounds,
     BongoCatUIPalette p) {
     bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
     float lift = bongo_cat_ui_animate_eased(context, "support-logo-hover",
         hover ? 1.0f : 0.0f, 250.0f, BONGO_CAT_UI_EASE_SPRING);
-    struct nk_rect raised = bounds; raised.y -= 5.0f * lift;
-    if (p.effects) {
-        bongo_cat_ui_paint_shadow(context, raised, 36, 0, 18, 42, 0,
-            nk_rgba(p.accent.r, p.accent.g, p.accent.b, 89));
-        bongo_cat_ui_paint_shadow(context, raised, 36, 0, 8, 22, 0,
-            nk_rgba(p.pink.r, p.pink.g, p.pink.b, 89));
-        bongo_cat_ui_paint_gradient(context, raised, 36, p.accent, p.pink);
-    } else nk_fill_rect(canvas, raised, 36, p.accent);
-    struct nk_rect inner = nk_rect(raised.x + 5, raised.y + 5,
-        raised.w - 10, raised.h - 10);
-    nk_fill_rect(canvas, inner, 31, p.surface);
+    float scale = 1.0f + .04f * lift;
+    struct nk_rect raised = nk_rect(
+        bounds.x + (bounds.w - bounds.w * scale) * .5f,
+        bounds.y - 5.0f * lift + (bounds.h - bounds.h * scale) * .5f,
+        bounds.w * scale, bounds.h * scale);
+    /* The logo asset is the complete brand mark; avoid wrapping it in a
+       second card so the support page and sidebar share the same identity. */
+    if (p.effects) bongo_cat_ui_paint_shadow(context, raised, 42, 0, 10, 24, 0,
+        nk_rgba(p.pink.r, p.pink.g, p.pink.b, 70));
     image_contain(canvas, value->logo_texture, value->logo_width,
-        value->logo_height, nk_rect(inner.x + 12, inner.y + 12,
-        inner.w - 24, inner.h - 24));
+        value->logo_height, raised);
     link_cursor(context, bounds);
     if (hit(context, bounds)) open_url("https://bongocat.pet");
 }
@@ -154,7 +152,7 @@ static void hero_title(BongoCatPreferences *value, struct nk_context *context,
 void bongo_cat_preferences_about_hero(BongoCatPreferences *value,
     struct nk_context *context) {
     struct nk_rect bounds;
-    nk_layout_row_dynamic(context, 320, 1);
+    nk_layout_row_dynamic(context, 340, 1);
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return;
     BongoCatUIPalette p = bongo_cat_ui_palette(bongo_cat_ui_dark(context));
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
@@ -169,21 +167,22 @@ void bongo_cat_preferences_about_hero(BongoCatPreferences *value,
     }
     star_button(value, context, canvas,
         nk_rect(bounds.x + bounds.w - 188, bounds.y + 6, 177, 46), p);
-    logo(value, context, canvas, nk_rect(bounds.x + (bounds.w - 144) * .5f + 3,
-        bounds.y + 18, 144, 144), p);
-    hero_title(value, context, canvas, nk_rect(bounds.x + 3, bounds.y + 178,
+    support_logo(value, context, canvas,
+        nk_rect(bounds.x + (bounds.w - 168) * .5f + 3,
+        bounds.y + 10, 168, 168), p);
+    hero_title(value, context, canvas, nk_rect(bounds.x + 3, bounds.y + 190,
         bounds.w, 36), p);
     bongo_cat_preferences_about_localized_link(value, context, canvas,
-        nk_rect(bounds.x, bounds.y + 214, bounds.w, 24),
+        nk_rect(bounds.x, bounds.y + 226, bounds.w, 24),
         "native.support.website", "Website: bongocat.pet",
         "https://bongocat.pet", "support-website-hover", p);
-    centered_wrapped(canvas, nk_rect(bounds.x + 36, bounds.y + 242,
+    centered_wrapped(canvas, nk_rect(bounds.x + 36, bounds.y + 254,
         bounds.w - 72, 40),
         tr(value, "native.support.heroText",
         "Thank you for your support. Every use and share helps BongoCat grow."),
         value->ui.caption_font, p.muted);
     bongo_cat_preferences_about_footer(value, context, canvas,
-        nk_rect(bounds.x, bounds.y + 286, bounds.w, 34), p);
+        nk_rect(bounds.x, bounds.y + 300, bounds.w, 34), p);
 }
 static void project(BongoCatPreferences *value, struct nk_context *context,
     struct nk_command_buffer *canvas, struct nk_rect bounds, unsigned int texture,

@@ -90,7 +90,7 @@ static bool start_refresh(BongoCatApp *app) {
     refresh->busy = true;
     refresh->rerun = false;
     refresh->worker = SDL_CreateThread(refresh_worker,
-        "bongo-cat-model-catalog", job);
+        BONGO_CAT_SLUG "-model-catalog", job);
     if (refresh->worker) return true;
     refresh->busy = false;
     free(job);
