@@ -114,7 +114,7 @@ jobs:
             throw 'Windows installer packaging failed'
           }
 
-          $portable = "build-release/dist/$name-portable.zip"
+          $portable = "build-release/dist/$name-portable.exe"
           $portableChecksum = "$portable.sha256"
           $setup = "build-release/dist/$name-setup.exe"
           $setupChecksum = "$setup.sha256"
@@ -123,8 +123,6 @@ jobs:
               throw "Release file is missing: $file"
             }
           }
-          & ./.github/scripts/validate-windows-portable.ps1 `
-            -PackagePath $portable -ExecutableName "$name.exe"
           $portableHash = (Get-FileHash -LiteralPath $portable -Algorithm SHA256).Hash.ToLowerInvariant()
           "$portableHash  $([IO.Path]::GetFileName($portable))" |
             Set-Content -LiteralPath $portableChecksum -Encoding ascii
@@ -167,7 +165,7 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -d '' files < <(find vt-input -type f \( \
-            -iname '*-setup.exe' -o -iname '*-portable.zip' \) \
+            -iname '*-setup.exe' -o -iname '*-portable.exe' \) \
             -print0 | sort -z)
           if [ "${#files[@]}" -ne 4 ]; then
             echo "::error::Expected 4 VirusTotal inputs, found ${#files[@]}"
@@ -224,8 +222,8 @@ jobs:
           $version = $Matches[1]
           $files = foreach ($platform in 'windows-x64', 'windows-x86') {
             $base = "BongoCat-$version-$platform"
-            "release-output/$base-portable.zip"
-            "release-output/$base-portable.zip.sha256"
+            "release-output/$base-portable.exe"
+            "release-output/$base-portable.exe.sha256"
             "release-output/$base-setup.exe"
             "release-output/$base-setup.exe.sha256"
           }
@@ -262,5 +260,5 @@ jobs:
           fail_on_unmatched_files: true
           make_latest: true
           files: |
-            release-output/*-portable.zip
+            release-output/*-portable.exe
             release-output/*-setup.exe

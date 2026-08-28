@@ -36,26 +36,17 @@ set(CPACK_INSTALL_CMAKE_PROJECTS
   "${CMAKE_BINARY_DIR};${PROJECT_NAME};Runtime;/")
 
 if(WIN32)
-  set(BONGO_CAT_PORTABLE_ARCHIVE
-    "${CMAKE_BINARY_DIR}/dist/${BONGO_CAT_PACKAGE_NAME}-portable.zip")
-  set(BONGO_CAT_PORTABLE_STAGE
-    "${CMAKE_CURRENT_BINARY_DIR}/portable-stage")
-  add_custom_command(OUTPUT "${BONGO_CAT_PORTABLE_ARCHIVE}"
+  set(BONGO_CAT_PORTABLE_EXECUTABLE
+    "${CMAKE_BINARY_DIR}/dist/${BONGO_CAT_PACKAGE_NAME}-portable.exe")
+  add_custom_command(OUTPUT "${BONGO_CAT_PORTABLE_EXECUTABLE}"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/dist"
-    COMMAND ${CMAKE_COMMAND} -E remove_directory
-      "${BONGO_CAT_PORTABLE_STAGE}"
-    COMMAND ${CMAKE_COMMAND} -E make_directory
-      "${BONGO_CAT_PORTABLE_STAGE}"
-    COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:bongo_cat>"
-      "${BONGO_CAT_PORTABLE_STAGE}/${BONGO_CAT_PACKAGE_NAME}.exe"
-    COMMAND ${CMAKE_COMMAND} -E chdir "${BONGO_CAT_PORTABLE_STAGE}"
-      ${CMAKE_COMMAND} -E tar cf "${BONGO_CAT_PORTABLE_ARCHIVE}"
-      --format=zip "${BONGO_CAT_PACKAGE_NAME}.exe"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:bongo_cat>"
+      "${BONGO_CAT_PORTABLE_EXECUTABLE}"
     DEPENDS bongo_cat
-    COMMENT "Building the BongoCat Windows portable package"
+    COMMENT "Building the BongoCat Windows portable executable"
     VERBATIM)
   add_custom_target(package-portable
-    DEPENDS "${BONGO_CAT_PORTABLE_ARCHIVE}")
+    DEPENDS "${BONGO_CAT_PORTABLE_EXECUTABLE}")
 
   # CPack's stock NSIS template requests elevation and switches administrator
   # accounts to the machine-wide shell context. Generate a small, versioned
@@ -98,6 +89,21 @@ if(WIN32)
   !include "WordFunc.nsh"
   !include "Win\RestartManager.nsh"]=] BONGO_CAT_NSIS_TEMPLATE
     "${BONGO_CAT_NSIS_TEMPLATE}")
+  # The only choice before installation is the destination directory.
+  # Shortcuts are created automatically using the fixed BongoCat folder.
+  string(REPLACE [=[  !insertmacro MUI_PAGE_WELCOME]=] ""
+    BONGO_CAT_NSIS_TEMPLATE "${BONGO_CAT_NSIS_TEMPLATE}")
+  string(REPLACE [=[  Page custom InstallOptionsPage]=] ""
+    BONGO_CAT_NSIS_TEMPLATE "${BONGO_CAT_NSIS_TEMPLATE}")
+  string(REPLACE
+    [=[  !insertmacro MUI_PAGE_STARTMENU Application $STARTMENU_FOLDER]=]
+    [=[  !define MUI_PAGE_CUSTOMFUNCTION_PRE bongo_cat_startmenu_page_pre
+  !insertmacro MUI_PAGE_STARTMENU Application $STARTMENU_FOLDER]=]
+    BONGO_CAT_NSIS_TEMPLATE "${BONGO_CAT_NSIS_TEMPLATE}")
+  string(REPLACE
+    [=[  !insertmacro MUI_INSTALLOPTIONS_READ $INSTALL_DESKTOP "NSIS.InstallOptions.ini" "Field 5" "State"]=]
+    [=[  StrCpy $INSTALL_DESKTOP "1"]=] BONGO_CAT_NSIS_TEMPLATE
+    "${BONGO_CAT_NSIS_TEMPLATE}")
   string(REPLACE [=[  Var IS_DEFAULT_INSTALLDIR]=]
     [=[  Var IS_DEFAULT_INSTALLDIR
   Var BONGO_CAT_UPGRADE_DIR
@@ -112,6 +118,10 @@ if(WIN32)
   StrCmp "$BONGO_CAT_UPGRADE_DIR" "" bongo_cat_directory_page_show
   Abort
 bongo_cat_directory_page_show:
+FunctionEnd
+
+Function bongo_cat_startmenu_page_pre
+  Abort
 FunctionEnd
 
 Function InstallOptionsPage]=] BONGO_CAT_NSIS_TEMPLATE
@@ -209,6 +219,8 @@ bongo_cat_upgrade_ready:
   bongo_cat_replace_nsis_function(BONGO_CAT_NSIS_TEMPLATE ".onInit"
     [=[Function .onInit
   SetShellVarContext current
+  StrCpy $STARTMENU_FOLDER "BongoCat"
+  StrCpy $INSTALL_DESKTOP "1"
   StrCpy $BONGO_CAT_UPGRADE_DIR ""
   StrCpy $BONGO_CAT_UPDATE_SHUTDOWN ""
 

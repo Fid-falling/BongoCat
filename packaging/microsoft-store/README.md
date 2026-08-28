@@ -18,7 +18,7 @@ certificate during submission.
 The package name and publisher are stored in `AppxManifest.xml.in`. The PFN
 and package SID are derived by Windows and must not be used as signing
 secrets. The Store package is x64; the separate Windows x86 workflow target
-only publishes its desktop installer and portable archive.
+only publishes its desktop installer and portable executable.
 
 ## App data isolation
 

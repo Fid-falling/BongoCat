@@ -55,7 +55,7 @@ static bool read_assets(yyjson_val *root, const char *platform,
     int installer_length = snprintf(installer, sizeof(installer),
         "BongoCat-%s-%s-setup.exe", release->version, platform);
     int portable_length = snprintf(portable, sizeof(portable),
-        "BongoCat-%s-%s-portable.zip", release->version, platform);
+        "BongoCat-%s-%s-portable.exe", release->version, platform);
     if (installer_length < 0 || (size_t)installer_length >= sizeof(installer) ||
         portable_length < 0 || (size_t)portable_length >= sizeof(portable))
         return false;

@@ -363,7 +363,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw 'Windows installer packaging failed'
           }
-          $portable = "build-store/dist/$name-portable.zip"
+          $portable = "build-store/dist/$name-portable.exe"
           $setup = "build-store/dist/$name-setup.exe"
           if (-not (Test-Path -LiteralPath $portable)) {
             throw "Production portable package is missing: $portable"
@@ -371,8 +371,6 @@ jobs:
           if (-not (Test-Path -LiteralPath $setup)) {
             throw "Production desktop installer is missing: $setup"
           }
-          & ./.github/scripts/validate-windows-portable.ps1 `
-            -PackagePath $portable -ExecutableName "$name.exe"
           "portable=$portable" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "file=$setup" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
