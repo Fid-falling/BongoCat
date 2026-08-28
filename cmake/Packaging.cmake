@@ -98,11 +98,6 @@ if(WIN32)
   !include "WordFunc.nsh"
   !include "Win\RestartManager.nsh"]=] BONGO_CAT_NSIS_TEMPLATE
     "${BONGO_CAT_NSIS_TEMPLATE}")
-  # Keep the AGPL text in the installed package, but do not interrupt the
-  # install flow with a license agreement page. The license does not require
-  # affirmative acceptance at install time.
-  string(REPLACE [=[  @CPACK_NSIS_LICENSE_PAGE@]=] ""
-    BONGO_CAT_NSIS_TEMPLATE "${BONGO_CAT_NSIS_TEMPLATE}")
   string(REPLACE [=[  Var IS_DEFAULT_INSTALLDIR]=]
     [=[  Var IS_DEFAULT_INSTALLDIR
   Var BONGO_CAT_UPGRADE_DIR
@@ -290,11 +285,23 @@ endif()
 include(CPack)
 
 if(WIN32)
+  set(BONGO_CAT_INSTALLER_CPACK_CONFIG
+    "${CMAKE_BINARY_DIR}/CPackInstallerConfig.cmake")
+  string(CONCAT BONGO_CAT_INSTALLER_CPACK_CONTENT
+    "include(\"${CMAKE_BINARY_DIR}/CPackConfig.cmake\")\n"
+    "set(CPACK_GENERATOR \"NSIS\")\n"
+    "set(CPACK_PACKAGE_FILE_NAME \"${BONGO_CAT_PACKAGE_NAME}-setup\")\n"
+    "set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)\n")
+  file(GENERATE OUTPUT "${BONGO_CAT_INSTALLER_CPACK_CONFIG}"
+    CONTENT "${BONGO_CAT_INSTALLER_CPACK_CONTENT}")
+  set(BONGO_CAT_INSTALLER_FILE
+    "${CMAKE_BINARY_DIR}/dist/${BONGO_CAT_PACKAGE_NAME}-setup.exe")
   add_custom_target(package-installer
-    COMMAND "${CMAKE_CPACK_COMMAND}" -G NSIS -C "$<CONFIG>"
-      --config "${CMAKE_BINARY_DIR}/CPackConfig.cmake"
-      -D "CPACK_PACKAGE_FILE_NAME=${BONGO_CAT_PACKAGE_NAME}-setup"
-      -D "CPACK_INCLUDE_TOPLEVEL_DIRECTORY=OFF"
+    COMMAND "${CMAKE_CPACK_COMMAND}" -C "$<CONFIG>"
+      --config "${BONGO_CAT_INSTALLER_CPACK_CONFIG}"
+    COMMAND "${CMAKE_COMMAND}"
+      -D "REQUIRED_FILE=${BONGO_CAT_INSTALLER_FILE}"
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/RequireFile.cmake"
     DEPENDS bongo_cat
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
     COMMENT "Building the BongoCat Windows installer"

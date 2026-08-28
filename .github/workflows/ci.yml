@@ -356,7 +356,13 @@ jobs:
           }
 
           cmake --build build-store --config Release --target package-portable
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Windows portable packaging failed'
+          }
           cmake --build build-store --config Release --target package-installer
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Windows installer packaging failed'
+          }
           $portable = "build-store/dist/$name-portable.zip"
           $setup = "build-store/dist/$name-setup.exe"
           if (-not (Test-Path -LiteralPath $portable)) {

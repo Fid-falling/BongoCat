@@ -106,7 +106,13 @@ jobs:
           }
 
           cmake --build build-release --config Release --target package-portable
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Windows portable packaging failed'
+          }
           cmake --build build-release --config Release --target package-installer
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Windows installer packaging failed'
+          }
 
           $portable = "build-release/dist/$name-portable.zip"
           $portableChecksum = "$portable.sha256"
