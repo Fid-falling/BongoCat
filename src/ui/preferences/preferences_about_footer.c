@@ -166,8 +166,7 @@ void bongo_cat_preferences_about_footer(BongoCatPreferences *value,
     const char *feedback = tr(value, "native.support.feedback", "Feedback");
     const char *logs = tr(value, "native.support.openLogs", "Open logs");
     const struct nk_user_font *small_font = logs_font(value);
-    char version[32];
-    snprintf(version, sizeof(version), "v%s", BONGO_CAT_VERSION);
+    const char *version = BONGO_CAT_VERSION_DISPLAY;
     float label_width = width(value->ui.caption_font, version_label) + 2;
     float version_width = width(value->ui.label_font, version) + 2;
     float update_text_width = width(value->ui.caption_font, update);
