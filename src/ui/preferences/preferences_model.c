@@ -177,10 +177,6 @@ void bongo_cat_preferences_import_complete(BongoCatApp *app,
     } else bongo_cat_preferences_notice_show(app, message,
         result != BONGO_CAT_OK || partial);
     if (result == BONGO_CAT_OK) {
-        if (installed_count && app->preferences->page == 1) {
-            app->preferences->font_reload_pending = true;
-            app->preferences->font_reload_defer_once = true;
-        }
         SDL_Log("Resolved %zu model package(s); installed %zu new package(s)",
             resolved_count, installed_count);
     }

@@ -144,5 +144,9 @@ add_custom_target(check-platform-runtime-safety ALL
   COMMAND ${CMAKE_COMMAND} -DROOT=${CMAKE_CURRENT_SOURCE_DIR}
     -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CheckPlatformRuntimeSafety.cmake
   VERBATIM)
+add_custom_target(check-cubism-user-model-safety ALL
+  COMMAND ${CMAKE_COMMAND}
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CheckCubismUserModelSafety.cmake
+  VERBATIM)
 include(cmake/Tests.cmake)
 include(cmake/Packaging.cmake)

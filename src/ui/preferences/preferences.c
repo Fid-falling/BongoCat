@@ -257,8 +257,8 @@ void bongo_cat_preferences_models_changed(BongoCatPreferences *value) {
         return;
     }
     value->model_glyphs_loaded = true;
-    if (bongo_cat_preferences_import_status(value->import_dialog,
-            NULL, NULL, NULL)) return;
     value->font_reload_pending = value->ui_initialized;
-    value->font_reload_defer_once = value->font_reload_pending;
+    /* Catalog refreshes finish between UI frames. Rebuild before drawing the
+       new cards so names never appear with missing-glyph placeholders. */
+    value->font_reload_defer_once = false;
 }

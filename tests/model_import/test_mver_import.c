@@ -160,6 +160,16 @@ static void font_reload_defers_during_frame(void) {
         NULL, NULL, NULL, NULL, NULL, 1.0f));
 }
 
+static void model_change_reloads_glyphs_before_drawing(void) {
+    BongoCatPreferences value = {0};
+    value.page = 1;
+    value.ui_initialized = true;
+    value.font_reload_defer_once = true;
+    bongo_cat_preferences_models_changed(&value);
+    CHECK(value.render_dirty && value.model_glyphs_loaded);
+    CHECK(value.font_reload_pending && !value.font_reload_defer_once);
+}
+
 static void model_visual_expires_without_window(void) {
     BongoCatPreferences value = {0};
     value.model_load_visual_active = true;
@@ -211,6 +221,7 @@ int main(void) {
     failures += test_mver_missing_motion_groups();
     behavior_labels_add_font_glyphs();
     font_reload_defers_during_frame();
+    model_change_reloads_glyphs_before_drawing();
     model_visual_expires_without_window();
     model_visual_curve();
     failures += test_mver_nearby_identity();
