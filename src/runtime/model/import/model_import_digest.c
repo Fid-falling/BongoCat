@@ -1,4 +1,5 @@
 #include "model_import.h"
+#include "model_import_mver_policy.h"
 #include "bongo_cat/path.h"
 #include "bongo_cat/sha256.h"
 
@@ -214,11 +215,13 @@ static bool stamp_equal(const DigestStamp *value, uint64_t sum, uint64_t exclusi
 }
 
 static bool candidate_placeholder(const BongoCatImportCandidate *candidate,
-    const DigestStamp *content, const DigestStamp *overrides) {
+    const DigestStamp *content, const DigestStamp *overrides,
+    BongoCatImportDigestCache *cache) {
     /* These fingerprints are the stock mode and input-image templates shipped
        by the Mver 0.1.6 runtime; package configuration is intentionally not
        part of the placeholder decision. */
     if (candidate->format == BONGO_CAT_IMPORT_TAURI) return false;
+    if (bongo_cat_import_mver_stock_model(candidate, cache)) return true;
     if (candidate->format == BONGO_CAT_IMPORT_MVER_PATCH) {
         if (!overrides->files) return true;
         if (candidate->mode != BONGO_CAT_MODE_GAMEPAD) return false;
@@ -284,6 +287,7 @@ bool bongo_cat_import_candidate_inspect_cached(
     if (length < 0 || (size_t)length >= sizeof(summary)) return false;
     bongo_cat_sha256_bytes(summary, (size_t)length, output);
     if (placeholder)
-        *placeholder = candidate_placeholder(candidate, &content, &overrides);
+        *placeholder = candidate_placeholder(candidate, &content, &overrides,
+            cache);
     return true;
 }

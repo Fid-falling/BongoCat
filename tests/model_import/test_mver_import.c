@@ -18,6 +18,7 @@ int failures;
 int test_preferences_text(void); int test_mver_nearby_identity(void);
 int test_mver_nearby_refresh(void);
 int test_mver_missing_motion_groups(void);
+int test_mver_policy(void);
 int test_model_import_identity(void);
 int test_slim_package(void);
 static bool chord(const char *json, bool gamepad, const char *expected) {
@@ -214,6 +215,7 @@ int main(void) {
     model_visual_curve();
     failures += test_mver_nearby_identity();
     failures += test_mver_nearby_refresh();
+    failures += test_mver_policy();
     failures += test_model_import_identity();
     test_mver_container_discovery();
     test_tauri_portable();

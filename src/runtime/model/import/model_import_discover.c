@@ -48,10 +48,19 @@ static int rank(const BongoCatImportCandidate *candidate) {
         candidate->mode == BONGO_CAT_MODE_KEYBOARD ? 1 : 2;
 }
 
+static int format_rank(const BongoCatImportCandidate *candidate) {
+    return candidate->format == BONGO_CAT_IMPORT_MVER ? 0 :
+        candidate->format == BONGO_CAT_IMPORT_TAURI ? 1 : 2;
+}
+
 static int compare_candidates(const void *left, const void *right) {
     const BongoCatImportCandidate *a = left, *b = right;
     int difference = rank(a) - rank(b);
-    return difference ? difference : strcmp(a->directory, b->directory);
+    if (difference) return difference;
+    difference = format_rank(a) - format_rank(b);
+    if (difference) return difference;
+    difference = strcmp(a->directory, b->directory);
+    return difference ? difference : strcmp(a->patch_root, b->patch_root);
 }
 
 typedef struct ContainerDiscovery {

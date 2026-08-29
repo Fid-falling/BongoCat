@@ -92,6 +92,14 @@ void test_mver_container_discovery(void) {
             contained_patch = &selected_container.candidates[i];
         }
     CHECK(patch_count == 1);
+    BongoCatImportDiscovery filtered = selected_container;
+    BongoCatPackageMetadata filtered_metadata[
+        BONGO_CAT_IMPORT_CANDIDATE_CAP] = {0};
+    CHECK(bongo_cat_import_prepare_package_metadata(&filtered,
+        filtered_metadata, &error));
+    CHECK(filtered.count == 2);
+    for (size_t i = 0; i < filtered.count; ++i)
+        CHECK(filtered.candidates[i].format == BONGO_CAT_IMPORT_MVER);
     char installed_root[BONGO_CAT_PATH_CAP];
     snprintf(installed_root, sizeof(installed_root),
         "%s/bongocat-container-installed-%llu", temporary, stamp);
@@ -109,6 +117,13 @@ void test_mver_container_discovery(void) {
     BongoCatImportDiscovery external_patch = {0};
     CHECK(bongo_cat_import_mver_patch_discover(variant, &external_patch,
         &error) == 1);
+    BongoCatImportDiscovery standalone_patch = external_patch;
+    BongoCatPackageMetadata standalone_metadata[
+        BONGO_CAT_IMPORT_CANDIDATE_CAP] = {0};
+    CHECK(bongo_cat_import_prepare_package_metadata(&standalone_patch,
+        standalone_metadata, &error));
+    CHECK(standalone_patch.count == 1 &&
+        standalone_patch.candidates[0].format == BONGO_CAT_IMPORT_MVER_PATCH);
     char external_root[BONGO_CAT_PATH_CAP];
     snprintf(external_root, sizeof(external_root),
         "%s/bongocat-container-external-%llu", temporary, stamp);
@@ -133,7 +148,7 @@ void test_mver_container_discovery(void) {
     BongoCatImportReceipt receipt = {0};
     CHECK(bongo_cat_import_install(root, models_root, &receipt, &error) ==
         BONGO_CAT_OK);
-    CHECK(receipt.count > 1 && receipt.installed_count == receipt.count);
+    CHECK(receipt.count == 2 && receipt.installed_count == 2);
     char stored[BONGO_CAT_PATH_CAP], duplicate_directory[BONGO_CAT_PATH_CAP];
     CHECK(child(stored, sizeof(stored), models_root, receipt.ids[0], false) &&
         bongo_cat_path_is_dir(stored));

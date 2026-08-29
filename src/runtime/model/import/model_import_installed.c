@@ -1,4 +1,5 @@
 #include "model_import.h"
+#include "model_import_mver_policy.h"
 #include "model_import_nearby_internal.h"
 #include "runtime.h"
 #include "bongo_cat/path.h"
@@ -91,6 +92,7 @@ static bool add_package(InstalledModelScan *scan, const char *directory,
     BongoCatModelMode modes[BONGO_CAT_IMPORT_CANDIDATE_CAP] = {0};
     size_t identity_count = 0;
     for (size_t i = 0; i < discovery->count; ++i) {
+        if (bongo_cat_import_patch_has_full_base(discovery, i)) continue;
         BongoCatImportCandidate *candidate = &discovery->candidates[i];
         char cache_id[BONGO_CAT_ID_CAP], adapter[BONGO_CAT_PATH_CAP];
         char signature[65], identity[65];

@@ -1,4 +1,5 @@
 #include "model_import.h"
+#include "model_import_mver_policy.h"
 #include "bongo_cat/path.h"
 #include "bongo_cat/sha256.h"
 #include "bongo_cat/utf8.h"
@@ -176,6 +177,7 @@ bool bongo_cat_import_prepare_package_metadata_cached(
     size_t used = 0, output = 0;
     for (size_t i = 0; i < discovery->count; ++i) {
         BongoCatImportCandidate candidate = discovery->candidates[i];
+        if (bongo_cat_import_patch_has_full_base(discovery, i)) continue;
         BongoCatPackageMetadata *item = &metadata[output];
         bool placeholder = false;
         if (!bongo_cat_import_candidate_inspect_cached(&candidate,

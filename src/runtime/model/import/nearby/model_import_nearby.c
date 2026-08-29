@@ -1,4 +1,5 @@
 #include "model_import.h"
+#include "model_import_mver_policy.h"
 #include "model_import_nearby_internal.h"
 #include "runtime.h"
 #include "bongo_cat/path.h"
@@ -116,6 +117,14 @@ static bool add_candidate(BongoCatApp *app, const char *cache_root,
         if (!identity_cached) bongo_cat_nearby_remember_inspection(adapter,
             source, signature, identity, true, candidate->mode);
         return true;
+    }
+    if (candidate->format == BONGO_CAT_IMPORT_MVER_PATCH) {
+        char base_identity[65];
+        bool base_placeholder = false;
+        if (!bongo_cat_import_patch_base_inspect(candidate, base_identity,
+                &base_placeholder, error)) return false;
+        if (base_placeholder || existing_identity(&app->models, base_identity,
+                candidate->mode, same_id)) return true;
     }
     if (existing_identity(&app->models, identity, candidate->mode, same_id)) {
         if (!identity_cached) bongo_cat_nearby_remember_inspection(adapter,

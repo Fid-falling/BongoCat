@@ -53,6 +53,7 @@ if(BUILD_TESTING)
     tests/model_import/test_mver_pointer_import.c
     tests/ui/test_preferences_text.c
     tests/model_import/test_mver_nearby_identity.c
+    tests/model_import/test_mver_policy.c
     tests/model_import/test_model_import_identity.c
     tests/model_import/test_slim_package.c
     tests/model_import/test_mver_support.c)

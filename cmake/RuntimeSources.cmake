@@ -108,6 +108,7 @@ set(BONGO_CAT_RUNTIME_IMPORT_SOURCES
   src/runtime/model/import/mver/model_import_mver_metadata.c
   src/runtime/model/import/mver/model_import_mver_motion.c
   src/runtime/model/import/mver/model_import_mver_patch.c
+  src/runtime/model/import/mver/model_import_mver_policy.c
   src/runtime/model/import/mver/model_import_mver_shortcut.c
   src/runtime/model/import/nearby/model_import_nearby.c
   src/runtime/model/import/nearby/model_import_nearby_cache.c
