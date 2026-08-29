@@ -95,7 +95,8 @@
           "importOutOfMemory": "La mémoire disponible est insuffisante pour importer ce modèle",
           "importLoadFailed": "Le modèle a été importé, mais il n'a pas pu être affiché",
           "importFailed": "Échec de l'importation du modèle. Vérifiez les fichiers sélectionnés et réessayez",
-          "clickOrDragToImport": "Cliquez ou déposez ici pour importer",
+          "clickOrDragToImport": "Cliquez ou déposez un dossier",
+          "supportedImportFormats": "Formats Mver et Tauri pris en charge",
           "openDirectoryFailed": "Impossible d'ouvrir le dossier du modèle"
         },
         "tooltips": {

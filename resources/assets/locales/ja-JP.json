@@ -95,7 +95,8 @@
           "importOutOfMemory": "メモリが不足しているため、このモデルをインポートできません",
           "importLoadFailed": "モデルはインポートされましたが、表示できませんでした",
           "importFailed": "モデルのインポートに失敗しました。選択したファイルを確認して、もう一度お試しください",
-          "clickOrDragToImport": "クリックまたはここへドラッグしてインポート",
+          "clickOrDragToImport": "モデルフォルダーをクリックまたはドラッグ",
+          "supportedImportFormats": "Mver・Tauri形式に対応",
           "openDirectoryFailed": "モデルフォルダーを開けません"
         },
         "tooltips": {

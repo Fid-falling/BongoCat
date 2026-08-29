@@ -95,7 +95,8 @@
           "importOutOfMemory": "記憶體不足，無法匯入此模型",
           "importLoadFailed": "模型已匯入，但無法正常顯示",
           "importFailed": "模型匯入失敗，請檢查所選檔案後再試一次",
-          "clickOrDragToImport": "點擊或拖曳至此區域匯入",
+          "clickOrDragToImport": "點擊或拖入模型資料夾",
+          "supportedImportFormats": "支援 Mver 與 Tauri 格式",
           "openDirectoryFailed": "無法開啟模型目錄"
         },
         "tooltips": {

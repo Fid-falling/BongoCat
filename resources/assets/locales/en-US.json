@@ -95,7 +95,8 @@
           "importOutOfMemory": "There is not enough memory to import this model",
           "importLoadFailed": "The model was imported, but it could not be displayed",
           "importFailed": "Model import failed. Check the selected files and try again",
-          "clickOrDragToImport": "Click or drag here to import",
+          "clickOrDragToImport": "Click or drag a model folder",
+          "supportedImportFormats": "Supports Mver and Tauri formats",
           "openDirectoryFailed": "Unable to open model directory"
         },
         "tooltips": {

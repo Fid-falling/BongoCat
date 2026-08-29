@@ -95,7 +95,8 @@
           "importOutOfMemory": "Недостаточно памяти для импорта этой модели",
           "importLoadFailed": "Модель импортирована, но её не удалось отобразить",
           "importFailed": "Не удалось импортировать модель. Проверьте выбранные файлы и повторите попытку",
-          "clickOrDragToImport": "Щёлкните или перетащите сюда для импорта",
+          "clickOrDragToImport": "Выберите или перетащите папку",
+          "supportedImportFormats": "Поддержка форматов Mver и Tauri",
           "openDirectoryFailed": "Не удалось открыть папку модели"
         },
         "tooltips": {

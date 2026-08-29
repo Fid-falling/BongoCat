@@ -64,11 +64,20 @@ bool bongo_cat_preferences_model_import_card(BongoCatPreferences *value,
     bongo_cat_preferences_icon_draw(value, canvas,
         BONGO_CAT_UI_ICON_UPLOAD, nk_rect(cx - 20, cy - 20, 40, 40), p.pink);
     const char *label = tr(value->app,
-        "pages.preference.model.hints.clickOrDragToImport", "Import model directory");
+        "pages.preference.model.hints.clickOrDragToImport",
+        "Click or drag a model folder");
     float width = value->ui.caption_font->width(value->ui.caption_font->userdata,
         value->ui.caption_font->height, label, nk_strlen(label));
-    text(context, canvas, nk_rect(cx - width * .5f, cy + 30,
+    text(context, canvas, nk_rect(cx - width * .5f, cy + 25,
         NK_MIN(width + 1, bounds.w - 20), 24), label, p.accent,
+        value->ui.caption_font);
+    const char *support = tr(value->app,
+        "pages.preference.model.hints.supportedImportFormats",
+        "Supports Mver and Tauri formats");
+    width = value->ui.caption_font->width(value->ui.caption_font->userdata,
+        value->ui.caption_font->height, support, nk_strlen(support));
+    text(context, canvas, nk_rect(cx - width * .5f, cy + 47,
+        NK_MIN(width + 1, bounds.w - 20), 24), support, p.muted,
         value->ui.caption_font);
     if (pointer_hover) bongo_cat_ui_cursor_hover_rect(context, bounds,
         BONGO_CAT_UI_CURSOR_POINTER);
