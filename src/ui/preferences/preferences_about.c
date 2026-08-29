@@ -222,8 +222,6 @@ void bongo_cat_preferences_about_projects(BongoCatPreferences *value,
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return;
     BongoCatUIPalette p = bongo_cat_ui_palette(bongo_cat_ui_dark(context));
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
-    nk_stroke_line(canvas, bounds.x + 8, bounds.y - 5, bounds.x + bounds.w - 8,
-        bounds.y - 5, 1, p.border_subtle);
     bongo_cat_preferences_about_projects_heading(value, context, bounds);
     float card_width = 220, center = bounds.x + bounds.w * .5f + 3;
     project(value, context, canvas, nk_rect(center - 262, bounds.y + 112,

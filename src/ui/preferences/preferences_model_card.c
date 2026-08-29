@@ -77,7 +77,7 @@ bool bongo_cat_preferences_model_import_card(BongoCatPreferences *value,
     width = value->ui.caption_font->width(value->ui.caption_font->userdata,
         value->ui.caption_font->height, support, nk_strlen(support));
     text(context, canvas, nk_rect(cx - width * .5f, cy + 47,
-        NK_MIN(width + 1, bounds.w - 20), 24), support, p.muted,
+        NK_MIN(width + 1, bounds.w - 20), 24), support, p.pink,
         value->ui.caption_font);
     if (pointer_hover) bongo_cat_ui_cursor_hover_rect(context, bounds,
         BONGO_CAT_UI_CURSOR_POINTER);
