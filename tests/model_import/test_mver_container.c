@@ -10,6 +10,20 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct ProgressiveImportLog {
+    size_t callbacks;
+    size_t resolved;
+    size_t installed;
+} ProgressiveImportLog;
+
+static void progressive_receipt(void *userdata,
+    const BongoCatImportReceipt *receipt) {
+    ProgressiveImportLog *log = userdata;
+    log->callbacks++;
+    log->resolved += receipt->count;
+    log->installed += receipt->installed_count;
+}
+
 void test_mver_container_discovery(void) {
     char root[BONGO_CAT_PATH_CAP], package[BONGO_CAT_PATH_CAP];
     char backup[BONGO_CAT_PATH_CAP];
@@ -138,6 +152,20 @@ void test_mver_container_discovery(void) {
     CHECK(child(backup, sizeof(backup), installed.overrides,
         "override_bak", false) && !bongo_cat_path_is_file(backup));
 
+    char progressive_root[BONGO_CAT_PATH_CAP];
+    snprintf(progressive_root, sizeof(progressive_root),
+        "%s/bongocat-container-progressive-%llu", temporary, stamp);
+    CHECK(SDL_CreateDirectory(progressive_root));
+    ProgressiveImportLog progressive = {0};
+    BongoCatImportSession *session = bongo_cat_import_session_create(
+        progressive_root, &error);
+    CHECK(session != NULL);
+    CHECK(session && bongo_cat_import_session_install_progressive(session,
+        root, progressive_receipt, &progressive, &error) == BONGO_CAT_OK);
+    CHECK(progressive.callbacks == 2 && progressive.resolved == 2 &&
+        progressive.installed == 2);
+    bongo_cat_import_session_destroy(session);
+
     char models_root[BONGO_CAT_PATH_CAP], cache_root[BONGO_CAT_PATH_CAP];
     snprintf(models_root, sizeof(models_root),
         "%s/bongocat-container-models-%llu", temporary, stamp);
@@ -149,6 +177,11 @@ void test_mver_container_discovery(void) {
     CHECK(bongo_cat_import_install(root, models_root, &receipt, &error) ==
         BONGO_CAT_OK);
     CHECK(receipt.count == 2 && receipt.installed_count == 2);
+    BongoCatImportReceipt subset_receipt = {0};
+    CHECK(bongo_cat_import_install(package, models_root, &subset_receipt,
+        &error) == BONGO_CAT_OK);
+    CHECK(subset_receipt.count == 1 && subset_receipt.installed_count == 0 &&
+        strcmp(subset_receipt.ids[0], receipt.ids[0]) == 0);
     char stored[BONGO_CAT_PATH_CAP], duplicate_directory[BONGO_CAT_PATH_CAP];
     CHECK(child(stored, sizeof(stored), models_root, receipt.ids[0], false) &&
         bongo_cat_path_is_dir(stored));
@@ -197,6 +230,7 @@ void test_mver_container_discovery(void) {
     }
     CHECK(bongo_cat_model_remove_tree(models_root, NULL));
     CHECK(bongo_cat_model_remove_tree(cache_root, NULL));
+    CHECK(bongo_cat_model_remove_tree(progressive_root, NULL));
     CHECK(bongo_cat_model_remove_tree(installed_root, NULL));
     CHECK(bongo_cat_model_remove_tree(external_root, NULL));
     CHECK(bongo_cat_model_remove_tree(root, NULL));

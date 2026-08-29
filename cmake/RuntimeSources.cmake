@@ -69,7 +69,9 @@ set(BONGO_CAT_RUNTIME_MODEL_SOURCES
   src/runtime/model/model_behavior_state.c
   src/runtime/model/model_catalog_runtime.c
   src/runtime/model/model_catalog_builtins.c
+  src/runtime/model/model_catalog_commit.c
   src/runtime/model/model_catalog_refresh.c
+  src/runtime/model/model_catalog_selection.c
   src/runtime/model/model_files.c
   src/runtime/model/model_geometry.c
   src/runtime/model/multi_pet.c
@@ -93,6 +95,8 @@ set(BONGO_CAT_RUNTIME_IMPORT_SOURCES
   src/runtime/model/import/model_import_installed.c
   src/runtime/model/import/model_import_metadata.c
   src/runtime/model/import/model_import_package.c
+  src/runtime/model/import/model_import_package_index.c
+  src/runtime/model/import/model_import_progressive.c
   src/runtime/model/import/model_import_report.c
   src/runtime/model/import/model_import_scan.c
   src/runtime/model/import/model_import_source.c
@@ -176,6 +180,7 @@ set(BONGO_CAT_UI_PREFERENCES_SOURCES
   src/ui/preferences/preferences_gl.c
   src/ui/preferences/preferences_import.c
   src/ui/preferences/preferences_import_dialog.c
+  src/ui/preferences/preferences_import_progress.c
   src/ui/preferences/preferences_icons.c
   src/ui/preferences/preferences_language.c
   src/ui/preferences/preferences_lifecycle.c
@@ -185,6 +190,7 @@ set(BONGO_CAT_UI_PREFERENCES_SOURCES
   src/ui/preferences/preferences_model_card_paint.c
   src/ui/preferences/preferences_model_cover.c
   src/ui/preferences/preferences_model_section.c
+  src/ui/preferences/preferences_model_watch.c
   src/ui/preferences/preferences_model_glyphs.c
   src/ui/preferences/preferences_model_rename.c
   src/ui/preferences/preferences_notice.c

@@ -169,6 +169,19 @@ bool bongo_cat_import_variant_id(char *output, size_t capacity,
     return written >= 0 && (size_t)written < capacity;
 }
 
+bool bongo_cat_import_package_base_id(char *output, size_t capacity,
+    const char *model_id) {
+    if (!output || capacity < 2 || !model_id || !model_id[0]) return false;
+    int written = snprintf(output, capacity, "%s", model_id);
+    if (written < 0 || (size_t)written >= capacity) return false;
+    char *separator = strrchr(output, '~');
+    if (!separator || !separator[1]) return true;
+    for (char *cursor = separator + 1; *cursor; ++cursor)
+        if (*cursor < '0' || *cursor > '9') return true;
+    *separator = '\0';
+    return output[0] != '\0';
+}
+
 bool bongo_cat_import_prepare_package_metadata_cached(
     BongoCatImportDiscovery *discovery,
     BongoCatPackageMetadata *metadata, BongoCatImportDigestCache *cache,

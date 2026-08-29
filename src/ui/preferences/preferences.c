@@ -251,11 +251,14 @@ void bongo_cat_preferences_invalidate(BongoCatPreferences *value) {
 void bongo_cat_preferences_models_changed(BongoCatPreferences *value) {
     if (!value) return;
     value->render_dirty = true;
+    value->model_directory_watch_known = false;
     if (value->page != 1) {
         value->model_glyphs_loaded = false;
         return;
     }
     value->model_glyphs_loaded = true;
+    if (bongo_cat_preferences_import_status(value->import_dialog,
+            NULL, NULL, NULL)) return;
     value->font_reload_pending = value->ui_initialized;
     value->font_reload_defer_once = value->font_reload_pending;
 }

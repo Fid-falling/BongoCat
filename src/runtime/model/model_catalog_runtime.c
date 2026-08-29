@@ -1,37 +1,14 @@
 #include "runtime.h"
+#include "model_catalog_selection.h"
 #include "model_import.h"
 #include "model_storage.h"
 #include "bongo_cat/path.h"
+#include "bongo_cat/preferences.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-typedef struct ModelSelection {
-    char additional[BONGO_CAT_ADDITIONAL_MODEL_CAP][BONGO_CAT_ID_CAP];
-    size_t count;
-} ModelSelection;
-
-static ModelSelection capture_model_selection(const BongoCatApp *app) {
-    ModelSelection selection = {0};
-    selection.count = app->session.additional_model_count;
-    if (selection.count > BONGO_CAT_ADDITIONAL_MODEL_CAP)
-        selection.count = BONGO_CAT_ADDITIONAL_MODEL_CAP;
-    memcpy(selection.additional, app->session.additional_model_ids,
-        selection.count * sizeof(selection.additional[0]));
-    return selection;
-}
-
-static void restore_model_selection(BongoCatApp *app,
-    const ModelSelection *selection) {
-    bongo_cat_session_clear_additional_models(&app->session);
-    for (size_t i = 0; i < selection->count; ++i)
-        if (bongo_cat_models_find(&app->models, selection->additional[i]))
-            bongo_cat_session_add_model(&app->session,
-                selection->additional[i]);
-    bongo_cat_multi_pet_primary_update(app, SDL_GetTicksNS());
-}
 
 static size_t models_using_storage(const BongoCatModelCatalog *models,
     const char *directory) {
@@ -73,8 +50,9 @@ static void prune_behavior_shortcuts(BongoCatApp *app) {
     app->settings.behavior_shortcut_count = output;
 }
 
-static void scan_nearby_root(BongoCatApp *app, const char *root) {
-    if (!root || !root[0] || !bongo_cat_path_is_dir(root)) return;
+static BongoCatResult scan_nearby_root(BongoCatApp *app, const char *root) {
+    if (!root || !root[0] || !bongo_cat_path_is_dir(root))
+        return BONGO_CAT_OK;
     size_t before = app->models.count;
     BongoCatError error = {0};
     BongoCatResult result = bongo_cat_import_nearby_scan(app, root,
@@ -84,41 +62,77 @@ static void scan_nearby_root(BongoCatApp *app, const char *root) {
         (unsigned long long)added, root);
     if (result != BONGO_CAT_OK && error.message[0])
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
+    return result;
 }
 
-static void scan_owned_models(BongoCatApp *app, bool cleanup) {
+static BongoCatResult scan_owned_models(BongoCatApp *app, bool cleanup) {
     BongoCatError error = {0};
     bongo_cat_models_init(&app->models);
-    if (bongo_cat_model_install_builtins(app->asset_root, app->models_root,
-        &error) != BONGO_CAT_OK && error.message[0])
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
-    if (cleanup) bongo_cat_model_cleanup_imports(app->models_root, &error);
-    bongo_cat_models_scan(&app->models, app->models_root, false, &error);
+    BongoCatResult result = bongo_cat_model_install_builtins(app->asset_root,
+        app->models_root, &error);
+    if (result != BONGO_CAT_OK) {
+        if (error.message[0]) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+            "%s", error.message);
+        return result;
+    }
+    if (cleanup) {
+        if (!bongo_cat_model_cleanup_imports(app->models_root, &error)) {
+            if (error.message[0]) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                "%s", error.message);
+            return error.code ? error.code : BONGO_CAT_ERROR_IO;
+        }
+    }
+    result = bongo_cat_models_scan(&app->models, app->models_root, false,
+        &error);
+    if (result != BONGO_CAT_OK) {
+        if (error.message[0]) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+            "%s", error.message);
+        return result;
+    }
     error = (BongoCatError){0};
-    if (bongo_cat_import_installed_models(app, app->models_root, &error) !=
-            BONGO_CAT_OK && error.message[0])
+    result = bongo_cat_import_installed_models(app, app->models_root, &error);
+    if (result != BONGO_CAT_OK && error.message[0])
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
+    return result;
 }
 
 void bongo_cat_model_catalog_finish(BongoCatApp *app) {
+    if (!app) return;
     prune_behavior_shortcuts(app);
+    bool selection_changed = bongo_cat_model_catalog_reconcile(app);
     for (size_t i = 0; i < app->models.count; ++i)
         bongo_cat_import_apply_metadata(app, app->models.entries[i].id,
             app->models.entries[i].adapter_directory);
+    if (selection_changed && app->preferences) bongo_cat_preferences_models_changed(app->preferences);
 }
 
-void bongo_cat_model_catalog_scan(BongoCatApp *app, bool cleanup,
+BongoCatResult bongo_cat_model_catalog_scan(BongoCatApp *app, bool cleanup,
     const char *nearby_root) {
-    if (!app) return;
-    scan_owned_models(app, cleanup);
+    if (!app) return BONGO_CAT_ERROR_ARGUMENT;
+    BongoCatResult result = scan_owned_models(app, cleanup);
+    if (result != BONGO_CAT_OK) return result;
     if (nearby_root && !SDL_getenv("BONGO_CAT_DISABLE_NEARBY_MODEL_SCAN"))
-        scan_nearby_root(app, nearby_root);
+        return scan_nearby_root(app, nearby_root);
+    return BONGO_CAT_OK;
 }
 
 void bongo_cat_app_rescan_models(BongoCatApp *app) {
     if (!app) return;
     bongo_cat_model_refresh_invalidate(app);
-    bongo_cat_model_catalog_scan(app, true, app->nearby_root);
+    BongoCatModelCatalog previous = app->models;
+    char active_model_id[BONGO_CAT_ID_CAP];
+    snprintf(active_model_id, sizeof(active_model_id), "%s",
+        app->session.active_model_id);
+    BongoCatResult result = bongo_cat_model_catalog_scan(app, true,
+        app->nearby_root);
+    if (result != BONGO_CAT_OK) {
+        app->models = previous;
+        snprintf(app->session.active_model_id,
+            sizeof(app->session.active_model_id), "%s", active_model_id);
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+            "Model catalog rescan failed; keeping previous catalog");
+        return;
+    }
     bongo_cat_model_catalog_finish(app);
 }
 
@@ -131,7 +145,14 @@ void bongo_cat_app_refresh_installed_models(BongoCatApp *app) {
         return;
     }
     *previous = app->models;
-    scan_owned_models(app, false);
+    BongoCatResult result = scan_owned_models(app, false);
+    if (result != BONGO_CAT_OK) {
+        app->models = *previous;
+        free(previous);
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+            "Installed model refresh failed; keeping previous catalog");
+        return;
+    }
     for (size_t i = 0; i < previous->count &&
         app->models.count < BONGO_CAT_MODEL_CAP; ++i) {
         const BongoCatModelEntry *entry = &previous->entries[i];
@@ -149,8 +170,18 @@ void bongo_cat_app_refresh_nearby_models(BongoCatApp *app) {
     char active_model_id[BONGO_CAT_ID_CAP];
     snprintf(active_model_id, sizeof(active_model_id), "%s",
         app->session.active_model_id);
-    scan_owned_models(app, false);
-    scan_nearby_root(app, app->nearby_root);
+    BongoCatModelCatalog previous = app->models;
+    BongoCatResult result = scan_owned_models(app, false);
+    if (result == BONGO_CAT_OK)
+        result = scan_nearby_root(app, app->nearby_root);
+    if (result != BONGO_CAT_OK) {
+        app->models = previous;
+        snprintf(app->session.active_model_id,
+            sizeof(app->session.active_model_id), "%s", active_model_id);
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+            "Nearby model refresh failed; keeping previous catalog");
+        return;
+    }
     snprintf(app->session.active_model_id,
         sizeof(app->session.active_model_id), "%s", active_model_id);
     bongo_cat_model_catalog_finish(app);
@@ -178,7 +209,8 @@ BongoCatResult bongo_cat_app_remove_model(BongoCatApp *app, const char *id,
     bool primary = !strcmp(id, app->session.active_model_id) ||
         !strcmp(id, app->loaded_model);
     bool additional = !primary && bongo_cat_app_model_active(app, id);
-    ModelSelection previous_selection = capture_model_selection(app);
+    BongoCatModelSelection previous_selection =
+        bongo_cat_model_selection_capture(app);
     char directory[BONGO_CAT_PATH_CAP];
     snprintf(directory, sizeof(directory), "%s", entry->storage_directory);
     char package_id[BONGO_CAT_ID_CAP];
@@ -235,7 +267,8 @@ BongoCatResult bongo_cat_app_remove_model(BongoCatApp *app, const char *id,
                     restore_error.message[0] ? restore_error.message :
                     "unknown error");
         }
-        if (additional) restore_model_selection(app, &previous_selection);
+        if (additional)
+            bongo_cat_model_selection_restore(app, &previous_selection);
         bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
             "Cannot record removed model version: %s", id);
         return BONGO_CAT_ERROR_FORMAT;
@@ -254,7 +287,7 @@ BongoCatResult bongo_cat_app_remove_model(BongoCatApp *app, const char *id,
                     "unknown error");
         }
         if (restore_selection)
-            restore_model_selection(app, &previous_selection);
+            bongo_cat_model_selection_restore(app, &previous_selection);
         return BONGO_CAT_ERROR_IO;
     }
     if (!shared_storage)

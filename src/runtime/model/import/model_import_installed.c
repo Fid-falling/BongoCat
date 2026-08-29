@@ -194,18 +194,72 @@ static BongoCatPathVisit scan_package(void *userdata,
     return BONGO_CAT_PATH_FAILURE;
 }
 
+static bool installed_cache_root(const BongoCatApp *app,
+    char cache_root[BONGO_CAT_PATH_CAP], BongoCatError *error) {
+    if (bongo_cat_path_join(cache_root, BONGO_CAT_PATH_CAP, app->cache_root,
+            BONGO_CAT_ADAPTER_CACHE_DIRECTORY) &&
+        bongo_cat_path_create_directory(cache_root)) return true;
+    bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
+        "Cannot create installed model adapter cache");
+    return false;
+}
+
+static void remove_storage_models(BongoCatModelCatalog *models,
+    const char *directory) {
+    size_t output = 0;
+    for (size_t i = 0; i < models->count; ++i) {
+        BongoCatModelEntry entry = models->entries[i];
+        if (!strcmp(entry.storage_directory, directory)) continue;
+        models->entries[output++] = entry;
+    }
+    if (output < BONGO_CAT_MODEL_CAP)
+        memset(&models->entries[output], 0,
+            (BONGO_CAT_MODEL_CAP - output) * sizeof(models->entries[0]));
+    models->count = output;
+}
+
+BongoCatResult bongo_cat_import_installed_package(BongoCatApp *app,
+    const char *root, const char *package_id, BongoCatError *error) {
+    if (!app || !root || !package_id || !package_id[0] ||
+        !app->cache_root[0]) return BONGO_CAT_ERROR_ARGUMENT;
+    char normalized_id[BONGO_CAT_ID_CAP];
+    if (!bongo_cat_import_package_id(normalized_id, sizeof(normalized_id),
+            package_id) || strcmp(normalized_id, package_id))
+        return BONGO_CAT_ERROR_ARGUMENT;
+    char directory[BONGO_CAT_PATH_CAP], cache_root[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_path_join(directory, sizeof(directory), root, package_id) ||
+        !bongo_cat_import_authored_package(directory) ||
+        !installed_cache_root(app, cache_root, error)) {
+        if (error && !error->code)
+            bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
+                "Installed model package is unavailable: %s", package_id);
+        return error && error->code ? error->code : BONGO_CAT_ERROR_FORMAT;
+    }
+    BongoCatImportDiscovery *discovery = calloc(1, sizeof(*discovery));
+    if (!discovery) return BONGO_CAT_ERROR_MEMORY;
+    bongo_cat_import_model_scan_lock();
+    bool found = bongo_cat_import_discover(directory, discovery, error);
+    InstalledModelScan scan = {app, cache_root, error, BONGO_CAT_OK};
+    if (found) {
+        remove_storage_models(&app->models, directory);
+        if (!add_package(&scan, directory, discovery))
+            scan.result = error && error->code ? error->code :
+                BONGO_CAT_ERROR_IO;
+    }
+    bongo_cat_import_model_scan_unlock();
+    free(discovery);
+    if (!found && scan.result == BONGO_CAT_OK)
+        scan.result = error && error->code ? error->code :
+            BONGO_CAT_ERROR_FORMAT;
+    return scan.result;
+}
+
 BongoCatResult bongo_cat_import_installed_models(BongoCatApp *app,
     const char *root, BongoCatError *error) {
     if (!app || !root || !app->cache_root[0]) return BONGO_CAT_ERROR_ARGUMENT;
     if (!bongo_cat_path_is_dir(root)) return BONGO_CAT_OK;
     char cache_root[BONGO_CAT_PATH_CAP];
-    if (!bongo_cat_path_join(cache_root, sizeof(cache_root), app->cache_root,
-            BONGO_CAT_ADAPTER_CACHE_DIRECTORY) ||
-        !bongo_cat_path_create_directory(cache_root)) {
-        bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
-            "Cannot create installed model adapter cache");
-        return BONGO_CAT_ERROR_IO;
-    }
+    if (!installed_cache_root(app, cache_root, error)) return BONGO_CAT_ERROR_IO;
     InstalledModelScan scan = {app, cache_root, error, BONGO_CAT_OK};
     bongo_cat_import_model_scan_lock();
     bool ok = bongo_cat_path_enumerate(root, scan_package, &scan);

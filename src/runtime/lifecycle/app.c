@@ -263,10 +263,12 @@ void bongo_cat_app_loop(BongoCatApp *app) {
                 handle_event(app, &event);
         }
         bongo_cat_preferences_input_end(app->preferences);
+        uint64_t now = SDL_GetTicksNS();
+        bongo_cat_preferences_model_watch(app->preferences, now);
         bongo_cat_model_refresh_update(app);
         take_instance_wake(app);
         if (take_update_shutdown(app)) continue;
-        uint64_t now = SDL_GetTicksNS(); bongo_cat_window_update_wheel_animation(app, now);
+        now = SDL_GetTicksNS(); bongo_cat_window_update_wheel_animation(app, now);
         bongo_cat_multi_pet_update(app, now);
         bongo_cat_random_expression_update(app, now);
         bongo_cat_window_update_display_recovery(app, now);

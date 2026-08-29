@@ -10,9 +10,11 @@ BongoCatResult bongo_cat_window_create(BongoCatApp *app, BongoCatError *error);
 bool bongo_cat_app_initialize(BongoCatApp *app, int argc,
     char **argv, BongoCatError *error);
 void bongo_cat_app_loop(BongoCatApp *app);
-void bongo_cat_model_catalog_scan(BongoCatApp *app, bool cleanup,
+BongoCatResult bongo_cat_model_catalog_scan(BongoCatApp *app, bool cleanup,
     const char *nearby_root);
 void bongo_cat_model_catalog_finish(BongoCatApp *app);
+void bongo_cat_model_catalog_finish_package(BongoCatApp *app,
+    const char *package_id);
 void bongo_cat_model_refresh_invalidate(BongoCatApp *app);
 bool bongo_cat_model_refresh_event(BongoCatApp *app,
     const SDL_Event *event);

@@ -42,6 +42,9 @@ typedef struct BongoCatImportReceipt {
     size_t installed_count;
 } BongoCatImportReceipt;
 
+typedef void (*BongoCatImportReceiptCallback)(void *userdata,
+    const BongoCatImportReceipt *receipt);
+
 typedef struct BongoCatPackageMetadata {
     char package_id[BONGO_CAT_ID_CAP];
     char content_digest[65];
@@ -116,6 +119,8 @@ bool bongo_cat_import_package_id(char *output, size_t capacity,
     const char *name);
 bool bongo_cat_import_variant_id(char *output, size_t capacity,
     const char *package_id, size_t variant_index);
+bool bongo_cat_import_package_base_id(char *output, size_t capacity,
+    const char *model_id);
 uint32_t bongo_cat_import_candidate_capabilities(
     const BongoCatImportCandidate *candidate);
 void bongo_cat_import_describe_nearby_entry(BongoCatModelEntry *entry,
@@ -141,6 +146,8 @@ BongoCatResult bongo_cat_import_nearby(BongoCatApp *app,
     const char *root, BongoCatError *error);
 BongoCatResult bongo_cat_import_installed_models(BongoCatApp *app,
     const char *root, BongoCatError *error);
+BongoCatResult bongo_cat_import_installed_package(BongoCatApp *app,
+    const char *root, const char *package_id, BongoCatError *error);
 BongoCatResult bongo_cat_import_install(const char *source,
     const char *models_root, BongoCatImportReceipt *receipt,
     BongoCatError *error);
@@ -150,5 +157,9 @@ void bongo_cat_import_session_destroy(BongoCatImportSession *session);
 BongoCatResult bongo_cat_import_session_install(
     BongoCatImportSession *session, const char *source,
     BongoCatImportReceipt *receipt, BongoCatError *error);
+BongoCatResult bongo_cat_import_session_install_progressive(
+    BongoCatImportSession *session, const char *source,
+    BongoCatImportReceiptCallback callback, void *userdata,
+    BongoCatError *error);
 
 #endif

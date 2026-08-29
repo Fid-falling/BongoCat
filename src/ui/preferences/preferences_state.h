@@ -55,6 +55,14 @@ struct BongoCatPreferences {
     bool font_reload_pending;
     bool font_reload_defer_once;
     bool model_glyphs_loaded;
+    bool model_directory_watch_active;
+    bool model_directory_watch_known;
+    bool model_directory_watch_refresh;
+    bool model_directory_watch_available;
+    size_t model_directory_watch_count;
+    uint64_t model_directory_watch_sum;
+    uint64_t model_directory_watch_xor;
+    uint64_t model_directory_watch_due_ns;
     bool smoke_behavior_open_pending;
     bool model_selection_pending;
     bool pending_model_multiple;

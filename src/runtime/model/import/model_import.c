@@ -1,4 +1,5 @@
 #include "model_import.h"
+#include "model_import_session_internal.h"
 #include "model_storage.h"
 #include "bongo_cat/path.h"
 
@@ -14,72 +15,19 @@ typedef struct ImportInstall {
     bool committed;
 } ImportInstall;
 
-struct BongoCatImportSession {
-    char root[BONGO_CAT_PATH_CAP];
-    BongoCatImportDigestCache *digests;
-};
-
 static void cleanup(ImportInstall *install) {
     if (!install) return;
     bongo_cat_model_remove_tree(install->committed
         ? install->target : install->temporary, NULL);
 }
 
-static bool same_package(const BongoCatImportDiscovery *left,
-    const BongoCatPackageMetadata *left_metadata,
-    const BongoCatImportDiscovery *right,
-    const BongoCatPackageMetadata *right_metadata) {
-    if (!left || !right || left->count != right->count) return false;
-    for (size_t i = 0; i < left->count; ++i)
-        if (left->candidates[i].mode != right->candidates[i].mode ||
-            strcmp(left_metadata[i].content_digest,
-                right_metadata[i].content_digest) != 0) return false;
-    return true;
-}
-
-typedef struct ExistingPackageSearch {
-    const BongoCatImportDiscovery *expected;
-    const BongoCatPackageMetadata *metadata;
-    BongoCatImportDigestCache *digests;
-    char id[BONGO_CAT_ID_CAP];
-} ExistingPackageSearch;
-
-static BongoCatPathVisit find_existing_package(void *userdata,
-    const char *dirname, const char *name) {
-    ExistingPackageSearch *search = userdata;
-    if (!name || name[0] == '.') return BONGO_CAT_PATH_CONTINUE;
-    char directory[BONGO_CAT_PATH_CAP];
-    if (!bongo_cat_path_join(directory, sizeof(directory), dirname, name) ||
-        !bongo_cat_import_authored_package(directory))
-        return BONGO_CAT_PATH_CONTINUE;
-    BongoCatImportDiscovery *discovery = calloc(1, sizeof(*discovery));
-    BongoCatPackageMetadata *metadata = calloc(BONGO_CAT_IMPORT_CANDIDATE_CAP,
-        sizeof(*metadata));
-    if (!discovery || !metadata) {
-        free(discovery);
-        free(metadata);
-        return BONGO_CAT_PATH_CONTINUE;
-    }
-    BongoCatError ignored = {0};
-    bool matches = bongo_cat_import_discover(directory, discovery, &ignored) &&
-        bongo_cat_import_prepare_package_metadata_cached(discovery, metadata,
-            search->digests, &ignored) &&
-        same_package(search->expected, search->metadata, discovery, metadata);
-    free(discovery);
-    free(metadata);
-    if (!matches) return BONGO_CAT_PATH_CONTINUE;
-    return bongo_cat_import_package_id(search->id, sizeof(search->id), name)
-        ? BONGO_CAT_PATH_SUCCESS : BONGO_CAT_PATH_CONTINUE;
-}
-
 static bool existing_package(BongoCatImportSession *session,
     const BongoCatImportDiscovery *discovery,
-    const BongoCatPackageMetadata *metadata, char id[BONGO_CAT_ID_CAP]) {
-    ExistingPackageSearch search = {discovery, metadata, session->digests, {0}};
-    if (!bongo_cat_path_enumerate(session->root, find_existing_package,
-            &search) || !search.id[0]) return false;
-    snprintf(id, BONGO_CAT_ID_CAP, "%s", search.id);
-    return true;
+    const BongoCatPackageMetadata *metadata,
+    char ids[BONGO_CAT_IMPORT_CANDIDATE_CAP][BONGO_CAT_ID_CAP],
+    size_t *count) {
+    return bongo_cat_import_package_index_find(session->packages,
+        discovery, metadata, ids, count);
 }
 
 static bool resolve_install_id(const char *base, const char *root,
@@ -111,6 +59,18 @@ static void fill_receipt(BongoCatImportReceipt *receipt, const char *id,
     for (size_t i = 0; i < count; ++i) {
         bongo_cat_import_variant_id(receipt->ids[i],
             sizeof(receipt->ids[i]), id, i);
+        receipt->installed[i] = installed;
+    }
+}
+
+static void fill_receipt_ids(BongoCatImportReceipt *receipt,
+    const char ids[BONGO_CAT_IMPORT_CANDIDATE_CAP][BONGO_CAT_ID_CAP],
+    size_t count, bool installed) {
+    if (!receipt) return;
+    receipt->count = count;
+    receipt->installed_count = installed ? count : 0;
+    for (size_t i = 0; i < count; ++i) {
+        snprintf(receipt->ids[i], sizeof(receipt->ids[i]), "%s", ids[i]);
         receipt->installed[i] = installed;
     }
 }
@@ -155,13 +115,24 @@ static BongoCatResult install_discovery(BongoCatImportSession *session,
         return error && error->code ? error->code : BONGO_CAT_ERROR_FORMAT;
     }
 
-    char existing[BONGO_CAT_ID_CAP];
-    if (existing_package(session, normalized, metadata, existing)) {
-        fill_receipt(receipt, existing, normalized->count, false);
+    char existing[BONGO_CAT_IMPORT_CANDIDATE_CAP][BONGO_CAT_ID_CAP];
+    size_t existing_count = 0;
+    if (existing_package(session, normalized, metadata, existing,
+            &existing_count)) {
+        fill_receipt_ids(receipt, existing, existing_count, false);
         free(normalized);
         free(metadata);
         cleanup(&install);
         return BONGO_CAT_OK;
+    }
+    if (!bongo_cat_import_package_index_has_capacity(session->packages,
+            normalized->count)) {
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
+            "Too many installed model variants");
+        free(normalized);
+        free(metadata);
+        cleanup(&install);
+        return BONGO_CAT_ERROR_FORMAT;
     }
     if (!resolve_install_id(source_metadata[0].package_id, session->root,
             install.id, error) ||
@@ -181,6 +152,13 @@ static BongoCatResult install_discovery(BongoCatImportSession *session,
         return BONGO_CAT_ERROR_IO;
     }
     install.committed = true;
+    if (!bongo_cat_import_package_index_add(session->packages, install.id,
+            normalized, metadata, error)) {
+        free(normalized);
+        free(metadata);
+        cleanup(&install);
+        return error && error->code ? error->code : BONGO_CAT_ERROR_FORMAT;
+    }
     fill_receipt(receipt, install.id, normalized->count, true);
     free(normalized);
     free(metadata);
@@ -206,11 +184,18 @@ BongoCatImportSession *bongo_cat_import_session_create(const char *models_root,
         bongo_cat_import_session_destroy(session);
         return NULL;
     }
+    session->packages = bongo_cat_import_package_index_create(session->root,
+        session->digests, error);
+    if (!session->packages) {
+        bongo_cat_import_session_destroy(session);
+        return NULL;
+    }
     return session;
 }
 
 void bongo_cat_import_session_destroy(BongoCatImportSession *session) {
     if (!session) return;
+    bongo_cat_import_package_index_destroy(session->packages);
     bongo_cat_import_digest_cache_destroy(session->digests);
     free(session);
 }

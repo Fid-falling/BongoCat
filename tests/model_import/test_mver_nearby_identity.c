@@ -23,6 +23,63 @@ static bool model_displayed(const BongoCatApp *app, const char *name) {
     return false;
 }
 
+static bool wait_for_model(BongoCatApp *app, const char *name, bool visible) {
+    uint64_t deadline = SDL_GetTicksNS() + 5000000000ull;
+    while (model_displayed(app, name) != visible &&
+        SDL_GetTicksNS() < deadline) {
+        bongo_cat_model_refresh_update(app);
+        SDL_Delay(2);
+    }
+    return model_displayed(app, name) == visible;
+}
+
+static void background_installed_refresh(const char *temporary) {
+    unsigned long long nonce = (unsigned long long)SDL_GetTicksNS();
+    char root[BONGO_CAT_PATH_CAP], data[BONGO_CAT_PATH_CAP];
+    char source[BONGO_CAT_PATH_CAP], models[BONGO_CAT_PATH_CAP];
+    char cache[BONGO_CAT_PATH_CAP];
+    snprintf(root, sizeof(root), "%s/bongocat-owned-source-%llu",
+        temporary, nonce);
+    snprintf(data, sizeof(data), "%s/bongocat-owned-data-%llu",
+        temporary, nonce);
+    CHECK(SDL_CreateDirectory(data));
+    CHECK(mver_fixture(root));
+    CHECK(child(source, sizeof(source), root, "config.json", false));
+    CHECK(child(models, sizeof(models), data, "models", true));
+    CHECK(child(cache, sizeof(cache), data, "cache", true));
+    BongoCatImportReceipt receipt = {0};
+    BongoCatError error = {0};
+    CHECK(bongo_cat_import_install(source, models, &receipt, &error) ==
+        BONGO_CAT_OK && receipt.count == 1);
+
+    BongoCatApp *app = calloc(1, sizeof(*app));
+    CHECK(app != NULL);
+    if (app) {
+        bongo_cat_settings_defaults(&app->settings);
+        bongo_cat_session_defaults(&app->session);
+        snprintf(app->asset_root, sizeof(app->asset_root),
+            "%s/resources/assets", BONGO_CAT_NATIVE_SOURCE_DIR);
+        snprintf(app->models_root, sizeof(app->models_root), "%s", models);
+        snprintf(app->cache_root, sizeof(app->cache_root), "%s", cache);
+        snprintf(app->models.entries[0].id,
+            sizeof(app->models.entries[0].id), "unrelated-model");
+        app->models.entries[0].managed = true;
+        app->models.count = 1;
+        bongo_cat_app_request_model_package_refresh(app, receipt.ids[0]);
+        CHECK(wait_for_model(app, bongo_cat_path_name(root), true));
+        CHECK(bongo_cat_models_find(&app->models, "unrelated-model") != NULL);
+        CHECK(bongo_cat_settings_set_model_removed(&app->settings,
+            receipt.ids[0], true));
+        bongo_cat_app_request_model_package_refresh(app, receipt.ids[0]);
+        CHECK(wait_for_model(app, bongo_cat_path_name(root), false));
+        CHECK(bongo_cat_models_find(&app->models, "unrelated-model") != NULL);
+        bongo_cat_model_refresh_shutdown(app);
+        free(app);
+    }
+    CHECK(bongo_cat_model_remove_tree(root, NULL));
+    CHECK(bongo_cat_model_remove_tree(data, NULL));
+}
+
 int test_mver_nearby_identity(void) {
     failures = 0;
     char *temporary = SDL_GetCurrentDirectory();
@@ -108,6 +165,7 @@ int test_mver_nearby_refresh(void) {
         SDL_free(temporary);
         return failures;
     }
+    background_installed_refresh(temporary);
 
     BongoCatApp *parsed = calloc(1, sizeof(*parsed));
     CHECK(parsed != NULL);
