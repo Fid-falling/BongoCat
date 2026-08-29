@@ -4,7 +4,6 @@
 #include "ui_icons.h"
 #include "ui_paint.h"
 
-#include <math.h>
 static BongoCatUIIconDraw external_icon_draw;
 static void *external_icon_userdata;
 
@@ -87,26 +86,6 @@ void bongo_cat_ui_shell_draw(struct nk_context *context, float width,
         p.border_subtle);
 }
 
-static void signature(struct nk_command_buffer *canvas, struct nk_rect bounds,
-    BongoCatUIPalette p) {
-    float x = bounds.x + (bounds.w - 90) * .5f, y = bounds.y + 124;
-    struct nk_color glow = p.effects ?
-        nk_rgba(p.pink.r, p.pink.g, p.pink.b, 89) : p.pink;
-    nk_stroke_curve(canvas, x + 3, y + 8, x + 25, y + 12,
-        x + 55, y + 10, x + 87, y + 6, 6, glow);
-    float previous_x = x + 3, previous_y = y + 8;
-    for (int i = 1; i <= 24; ++i) {
-        float t = i / 24.0f, u = 1.0f - t;
-        float next_x = x + u * u * u * 3 + 3 * u * u * t * 25 +
-            3 * u * t * t * 55 + t * t * t * 87;
-        float next_y = y + u * u * u * 8 + 3 * u * u * t * 12 +
-            3 * u * t * t * 10 + t * t * t * 6;
-        nk_stroke_line(canvas, previous_x, previous_y, next_x, next_y, 3,
-            bongo_cat_ui_color_mix(p.accent, p.pink, t));
-        previous_x = next_x; previous_y = next_y;
-    }
-}
-
 bool bongo_cat_ui_header(struct nk_context *context, const char *title,
     const struct nk_user_font *font, unsigned int logo_texture,
     bool *title_clicked, bool interactive, bool dark, bool native_chrome) {
@@ -121,13 +100,17 @@ bool bongo_cat_ui_header(struct nk_context *context, const char *title,
     /* The current logo asset already contains its own rounded brand mark.
        Give it room to read at a glance instead of framing it a second time. */
     float base_size = compact ? 68.0f : 84.0f;
+    float top = native_chrome ? 34.0f : (compact ? 6.0f : 8.0f);
+    struct nk_rect base_logo = nk_rect(bounds.x + (bounds.w - base_size) * .5f,
+        bounds.y + top, base_size, base_size);
+    bool logo_hover = interactive && nk_input_is_mouse_hovering_rect(
+        &context->input, base_logo);
     bool hover = interactive && nk_input_is_mouse_hovering_rect(&context->input,
         nk_rect(bounds.x, bounds.y, bounds.w, bounds.h));
     float hover_amount = bongo_cat_ui_animate_eased(context,
         "brand-logo-hover", hover ? 1.0f : 0.0f, 250.0f,
         BONGO_CAT_UI_EASE_SPRING);
     float size = base_size * (1.0f + .08f * hover_amount);
-    float top = native_chrome ? 34.0f : (compact ? 6.0f : 8.0f);
     struct nk_rect logo = nk_rect(bounds.x + (bounds.w - size) * .5f,
         bounds.y + top - (size - base_size) * .5f, size, size);
     if (p.effects) bongo_cat_ui_paint_shadow(context, logo,
@@ -140,13 +123,9 @@ bool bongo_cat_ui_header(struct nk_context *context, const char *title,
     if (bounds.w >= 100) {
         if (!font) font = bongo_cat_ui_caption_font(context);
         float title_y = native_chrome ? 124.0f : 94.0f;
+        struct nk_color title_color = logo_hover ? nk_rgb(84, 174, 255) : p.pink;
         centered(canvas, nk_rect(bounds.x, bounds.y + title_y, bounds.w, 28), title,
-            font, p.pink);
-        if (native_chrome) {
-            struct nk_rect signature_bounds = nk_rect(bounds.x, bounds.y + 28,
-                bounds.w, bounds.h - 28);
-            signature(canvas, signature_bounds, p);
-        } else signature(canvas, bounds, p);
+            font, title_color);
     }
     if (hover) bongo_cat_ui_cursor_hover_rect(context, bounds,
         BONGO_CAT_UI_CURSOR_POINTER);
