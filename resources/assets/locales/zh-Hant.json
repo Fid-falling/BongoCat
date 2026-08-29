@@ -9,14 +9,14 @@
     "preference": {
       "title": "偏好設定",
       "cat": {
-        "title": "顯示設定",
+        "title": "偏好",
         "labels": {
-          "modelSettings": "模型設定",
+          "modelSettings": "模型",
           "mirrorMode": "鏡像模式",
           "mouseMirror": "滑鼠游標鏡像",
           "mouseCentered": "滑鼠以桌寵為中心",
           "ignoreMouse": "忽略滑鼠事件",
-          "windowSettings": "視窗設定",
+          "windowSettings": "視窗",
           "passThrough": "視窗穿透",
           "alwaysOnTop": "視窗置頂",
           "keepInScreen": "保持在螢幕內",
@@ -40,10 +40,10 @@
       "general": {
         "title": "一般設定",
         "labels": {
-          "appSettings": "應用程式設定",
+          "appSettings": "應用程式",
           "launchOnStartup": "開機自動啟動",
           "showTrayIcon": "顯示托盤圖示",
-          "appearanceSettings": "外觀設定",
+          "appearanceSettings": "外觀",
           "themeMode": "主題",
           "language": "語言",
           "permissionsSettings": "權限設定",
@@ -77,7 +77,7 @@
         }
       },
       "model": {
-        "title": "模型管理",
+        "title": "模型",
         "nearbyTitle": "附近模型",
         "labels": {
           "deleteModel": "刪除模型"

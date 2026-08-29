@@ -9,14 +9,14 @@
     "preference": {
       "title": "환경 설정",
       "cat": {
-        "title": "표시",
+        "title": "환경 설정",
         "labels": {
-          "modelSettings": "모델 설정",
+          "modelSettings": "모델",
           "mirrorMode": "미러 모드",
           "mouseMirror": "마우스 반전",
           "mouseCentered": "마우스를 데스크톱 펫 중심으로",
           "ignoreMouse": "마우스 이벤트 무시",
-          "windowSettings": "창 설정",
+          "windowSettings": "창",
           "passThrough": "클릭 통과",
           "alwaysOnTop": "항상 위",
           "keepInScreen": "화면 안에 유지",
@@ -40,10 +40,10 @@
       "general": {
         "title": "일반",
         "labels": {
-          "appSettings": "앱 설정",
+          "appSettings": "앱",
           "launchOnStartup": "시작할 때 실행",
           "showTrayIcon": "트레이 아이콘 표시",
-          "appearanceSettings": "모양 설정",
+          "appearanceSettings": "모양",
           "themeMode": "테마",
           "language": "언어",
           "permissionsSettings": "권한 설정",

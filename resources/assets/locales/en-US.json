@@ -9,14 +9,14 @@
     "preference": {
       "title": "Preferences",
       "cat": {
-        "title": "Display",
+        "title": "Preferences",
         "labels": {
-          "modelSettings": "Model Settings",
+          "modelSettings": "Model",
           "mirrorMode": "Mirror Mode",
           "mouseMirror": "Mouse Mirror",
           "mouseCentered": "Mouse Centered on Desktop Pet",
           "ignoreMouse": "Ignore Mouse Events",
-          "windowSettings": "Window Settings",
+          "windowSettings": "Window",
           "passThrough": "Pass Through",
           "alwaysOnTop": "Always on Top",
           "keepInScreen": "Keep on Screen",
@@ -40,10 +40,10 @@
       "general": {
         "title": "General",
         "labels": {
-          "appSettings": "Application Settings",
+          "appSettings": "Application",
           "launchOnStartup": "Launch on Startup",
           "showTrayIcon": "Show Tray Icon",
-          "appearanceSettings": "Appearance Settings",
+          "appearanceSettings": "Appearance",
           "themeMode": "Theme",
           "language": "Language",
           "permissionsSettings": "Permissions Settings",

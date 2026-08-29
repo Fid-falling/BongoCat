@@ -177,7 +177,7 @@ void bongo_cat_preferences_import_complete(BongoCatApp *app,
     } else bongo_cat_preferences_notice_show(app, message,
         result != BONGO_CAT_OK || partial);
     if (result == BONGO_CAT_OK) {
-        if (installed_count && app->preferences->page == 2) {
+        if (installed_count && app->preferences->page == 1) {
             app->preferences->font_reload_pending = true;
             app->preferences->font_reload_defer_once = true;
         }
@@ -242,6 +242,7 @@ void bongo_cat_preferences_page_model(BongoCatPreferences *value,
     smoke_model_behavior(value);
     bongo_cat_preferences_model_covers_begin(app);
     bool multiple = app->settings.model.multiple_pets;
+    bongo_cat_pref_row_icon(context, BONGO_CAT_PREF_ICON_MULTIPLE_MODELS);
     if (bongo_cat_pref_toggle(context, "multiple-pets", tr(app,
             "native.multiplePets",
             "Display multiple"), "", &multiple))

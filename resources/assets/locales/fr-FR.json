@@ -9,14 +9,14 @@
     "preference": {
       "title": "Préférences",
       "cat": {
-        "title": "Affichage",
+        "title": "Préférences",
         "labels": {
-          "modelSettings": "Paramètres du modèle",
+          "modelSettings": "Modèle",
           "mirrorMode": "Mode miroir",
           "mouseMirror": "Miroir de la souris",
           "mouseCentered": "Souris centrée sur le compagnon",
           "ignoreMouse": "Ignorer les événements de souris",
-          "windowSettings": "Paramètres de la fenêtre",
+          "windowSettings": "Fenêtre",
           "passThrough": "Clics traversants",
           "alwaysOnTop": "Toujours au premier plan",
           "keepInScreen": "Maintenir à l'écran",
@@ -40,10 +40,10 @@
       "general": {
         "title": "Général",
         "labels": {
-          "appSettings": "Paramètres de l'application",
+          "appSettings": "Application",
           "launchOnStartup": "Lancer au démarrage",
           "showTrayIcon": "Afficher l'icône dans la zone de notification",
-          "appearanceSettings": "Paramètres d'apparence",
+          "appearanceSettings": "Apparence",
           "themeMode": "Thème",
           "language": "Langue",
           "permissionsSettings": "Paramètres des autorisations",

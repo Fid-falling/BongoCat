@@ -162,8 +162,9 @@ bool bongo_cat_preferences_shortcuts_blocked(
 
 static void shortcut_row(BongoCatPreferences *value, struct nk_context *context,
     const char *id, const char *label_key, const char *label_fallback,
-    char *target, int capacity) {
+    char *target, int capacity, BongoCatPrefIcon icon) {
     bool active = bongo_cat_preferences_shortcut_active(value, id);
+    bongo_cat_pref_row_icon(context, icon);
     int action = bongo_cat_pref_edit(context, id,
         tr(value, label_key, label_fallback), "",
         target, active, tr(value, "components.shortcut.hints.clickRecordShortcut",
@@ -179,21 +180,24 @@ static void shortcut_row(BongoCatPreferences *value, struct nk_context *context,
 void bongo_cat_preferences_page_shortcuts(BongoCatPreferences *value,
     struct nk_context *context) {
     BongoCatShortcutPreferences *keys = &value->app->settings.shortcuts;
-    bongo_cat_pref_section(context, tr(value,
-        "pages.preference.shortcut.title", "Shortcuts"));
     shortcut_row(value, context, "shortcut-cat", "native.shortcut.toggleCat",
         "Show/Hide",
-        keys->toggle_pet_visibility, sizeof(keys->toggle_pet_visibility));
+        keys->toggle_pet_visibility, sizeof(keys->toggle_pet_visibility),
+        BONGO_CAT_PREF_ICON_SHORTCUT_VISIBILITY);
     shortcut_row(value, context, "shortcut-pref", "native.shortcut.preferences",
         "Preferences",
-        keys->visible_preferences, sizeof(keys->visible_preferences));
-    shortcut_row(value, context, "shortcut-mirror", "native.shortcut.mirror",
-        "Mirror",
-        keys->mirror, sizeof(keys->mirror));
+        keys->visible_preferences, sizeof(keys->visible_preferences),
+        BONGO_CAT_PREF_ICON_SHORTCUT_PREFERENCES);
     shortcut_row(value, context, "shortcut-pass", "native.shortcut.passThrough",
         "Pass Through",
-        keys->pass_through, sizeof(keys->pass_through));
+        keys->pass_through, sizeof(keys->pass_through),
+        BONGO_CAT_PREF_ICON_PASS_THROUGH);
     shortcut_row(value, context, "shortcut-top", "native.shortcut.alwaysOnTop",
         "Always on Top",
-        keys->always_on_top, sizeof(keys->always_on_top));
+        keys->always_on_top, sizeof(keys->always_on_top),
+        BONGO_CAT_PREF_ICON_ALWAYS_ON_TOP);
+    shortcut_row(value, context, "shortcut-mirror", "native.shortcut.mirror",
+        "Mirror",
+        keys->mirror, sizeof(keys->mirror),
+        BONGO_CAT_PREF_ICON_MIRROR);
 }

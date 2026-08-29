@@ -9,14 +9,14 @@
     "preference": {
       "title": "Einstellungen",
       "cat": {
-        "title": "Anzeige",
+        "title": "Einstellungen",
         "labels": {
-          "modelSettings": "Modelleinstellungen",
+          "modelSettings": "Modell",
           "mirrorMode": "Spiegelmodus",
           "mouseMirror": "Maus spiegeln",
           "mouseCentered": "Maus auf Desktop-Begleiter zentriert",
           "ignoreMouse": "Mausereignisse ignorieren",
-          "windowSettings": "Fenstereinstellungen",
+          "windowSettings": "Fenster",
           "passThrough": "Klicks durchlassen",
           "alwaysOnTop": "Immer im Vordergrund",
           "keepInScreen": "Auf dem Bildschirm halten",
@@ -40,10 +40,10 @@
       "general": {
         "title": "Allgemein",
         "labels": {
-          "appSettings": "Anwendungseinstellungen",
+          "appSettings": "Anwendung",
           "launchOnStartup": "Beim Systemstart ausführen",
           "showTrayIcon": "Infobereichssymbol anzeigen",
-          "appearanceSettings": "Darstellung",
+          "appearanceSettings": "Erscheinungsbild",
           "themeMode": "Design",
           "language": "Sprache",
           "permissionsSettings": "Berechtigungen",

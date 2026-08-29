@@ -9,14 +9,14 @@
     "preference": {
       "title": "Настройки",
       "cat": {
-        "title": "Отображение",
+        "title": "Настройки",
         "labels": {
-          "modelSettings": "Настройки модели",
+          "modelSettings": "Модель",
           "mirrorMode": "Зеркальный режим",
           "mouseMirror": "Отражение мыши",
           "mouseCentered": "Мышь относительно питомца",
           "ignoreMouse": "Игнорировать события мыши",
-          "windowSettings": "Настройки окна",
+          "windowSettings": "Окно",
           "passThrough": "Пропускать щелчки",
           "alwaysOnTop": "Поверх всех окон",
           "keepInScreen": "Удерживать на экране",
@@ -40,10 +40,10 @@
       "general": {
         "title": "Общие",
         "labels": {
-          "appSettings": "Настройки приложения",
+          "appSettings": "Приложение",
           "launchOnStartup": "Запускать при входе в систему",
           "showTrayIcon": "Показывать значок в трее",
-          "appearanceSettings": "Настройки оформления",
+          "appearanceSettings": "Оформление",
           "themeMode": "Тема",
           "language": "Язык",
           "permissionsSettings": "Настройки разрешений",

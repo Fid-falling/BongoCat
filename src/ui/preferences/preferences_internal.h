@@ -6,8 +6,8 @@
 #include "ui_catime.h"
 #include <SDL3/SDL.h>
 
-void bongo_cat_preferences_page_cat(BongoCatApp *app, struct nk_context *context);
-void bongo_cat_preferences_page_general(BongoCatApp *app, struct nk_context *context);
+void bongo_cat_preferences_page_settings(BongoCatApp *app,
+    struct nk_context *context);
 void bongo_cat_preferences_page_model(BongoCatPreferences *value,
     struct nk_context *context);
 bool bongo_cat_preferences_behavior_dialog_active(

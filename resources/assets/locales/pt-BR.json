@@ -9,14 +9,14 @@
     "preference": {
       "title": "Preferências",
       "cat": {
-        "title": "Exibição",
+        "title": "Preferências",
         "labels": {
-          "modelSettings": "Configurações do Modelo",
+          "modelSettings": "Modelo",
           "mirrorMode": "Modo Espelho",
           "mouseMirror": "Espelho do Mouse",
           "mouseCentered": "Mouse centrado no mascote de mesa",
           "ignoreMouse": "Ignorar Eventos do Mouse",
-          "windowSettings": "Configurações da Janela",
+          "windowSettings": "Janela",
           "passThrough": "Janela Transparente",
           "alwaysOnTop": "Sempre no Topo",
           "keepInScreen": "Manter na Tela",
@@ -40,10 +40,10 @@
       "general": {
         "title": "Geral",
         "labels": {
-          "appSettings": "Configurações do aplicativo",
+          "appSettings": "Aplicativo",
           "launchOnStartup": "Iniciar na inicialização",
           "showTrayIcon": "Mostrar ícone na bandeja",
-          "appearanceSettings": "Configurações de aparência",
+          "appearanceSettings": "Aparência",
           "themeMode": "Tema",
           "language": "Idiomas",
           "permissionsSettings": "Configurações de Permissões",

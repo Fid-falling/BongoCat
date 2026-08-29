@@ -3,10 +3,9 @@
 void bongo_cat_preferences_draw_page(BongoCatPreferences *value,
     struct nk_context *context) {
     switch (value->page) {
-    case 0: bongo_cat_preferences_page_cat(value->app, context); break;
-    case 1: bongo_cat_preferences_page_general(value->app, context); break;
-    case 2: bongo_cat_preferences_page_model(value, context); break;
-    case 3: bongo_cat_preferences_page_shortcuts(value, context); break;
+    case 0: bongo_cat_preferences_page_settings(value->app, context); break;
+    case 1: bongo_cat_preferences_page_model(value, context); break;
+    case 2: bongo_cat_preferences_page_shortcuts(value, context); break;
     default: bongo_cat_preferences_page_about(value, context); break;
     }
 }

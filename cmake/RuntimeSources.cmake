@@ -170,9 +170,11 @@ set(BONGO_CAT_UI_PREFERENCES_SOURCES
   src/ui/preferences/preferences_combo.c
   src/ui/preferences/preferences_controls.c
   src/ui/preferences/preferences_dialog.c
+  src/ui/preferences/preferences_form_label.c
   src/ui/preferences/preferences_fonts.c
   src/ui/preferences/preferences_import.c
   src/ui/preferences/preferences_import_dialog.c
+  src/ui/preferences/preferences_icons.c
   src/ui/preferences/preferences_language.c
   src/ui/preferences/preferences_lifecycle.c
   src/ui/preferences/preferences_live_resize.c
@@ -188,8 +190,10 @@ set(BONGO_CAT_UI_PREFERENCES_SOURCES
   src/ui/preferences/preferences_page_dispatch.c
   src/ui/preferences/preferences_pages.c
   src/ui/preferences/preferences_render.c
+  src/ui/preferences/preferences_row_icons.c
   src/ui/preferences/preferences_scale.c
   src/ui/preferences/preferences_scrollbar.c
+  src/ui/preferences/preferences_section_icons.c
   src/ui/preferences/preferences_shortcut_clear.c
   src/ui/preferences/preferences_shortcuts.c
   src/ui/preferences/preferences_smoke.c

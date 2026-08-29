@@ -70,7 +70,7 @@ static void tab_content(struct nk_command_buffer *canvas,
 }
 
 void bongo_cat_ui_tabs(struct nk_context *context, const char *const *labels,
-    int count, int *active, bool interactive, bool dark,
+    const int *icons, int count, int *active, bool interactive, bool dark,
     float available_height,
     BongoCatUIIconDraw draw_icon, void *icon_userdata) {
     BongoCatUIPalette p = bongo_cat_ui_palette(dark);
@@ -78,12 +78,10 @@ void bongo_cat_ui_tabs(struct nk_context *context, const char *const *labels,
     float header_height = nk_window_get_content_region(context).w < 100.0f ?
         118.0f : 148.0f;
     float room = NK_MAX(1.0f, available_height - header_height);
-    float top_padding = NK_MIN(16.0f, NK_MAX(4.0f, room * .05f));
-    float row_height = 68.0f;
-    float gap = count > 1 ? NK_CLAMP(0.0f,
-        (room - top_padding - row_height * count) / (count - 1), 8.0f) : 0.0f;
-    if (top_padding + row_height * count > room)
-        row_height = NK_MAX(40.0f, (room - top_padding) / count);
+    float slot_height = room / count;
+    float row_height = NK_CLAMP(40.0f, slot_height - 8.0f, 68.0f);
+    float gap = NK_MAX(0.0f, slot_height - row_height);
+    float top_padding = gap * .5f;
     for (int i = 0; i < count; ++i) {
         struct nk_rect bounds;
         nk_layout_row_dynamic(context, row_height, 1);
@@ -111,7 +109,7 @@ void bongo_cat_ui_tabs(struct nk_context *context, const char *const *labels,
             nk_rgba(p.pink.r, p.pink.g, p.pink.b, (nk_byte)(255 * weight)));
         struct nk_color color = selected ? nk_rgb(255, 255, 255) :
             (hover ? p.accent : p.muted);
-        tab_content(canvas, context, tile, labels[i], i, color,
+        tab_content(canvas, context, tile, labels[i], icons ? icons[i] : i, color,
             draw_icon, icon_userdata);
         if (hover) bongo_cat_ui_cursor_hover_rect(context, hit,
             BONGO_CAT_UI_CURSOR_POINTER);

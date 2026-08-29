@@ -9,14 +9,14 @@
     "preference": {
       "title": "設定",
       "cat": {
-        "title": "表示",
+        "title": "設定",
         "labels": {
-          "modelSettings": "モデル設定",
+          "modelSettings": "モデル",
           "mirrorMode": "ミラーモード",
           "mouseMirror": "マウスを反転",
           "mouseCentered": "マウスをデスクトップペット中心にする",
           "ignoreMouse": "マウスイベントを無視",
-          "windowSettings": "ウィンドウ設定",
+          "windowSettings": "ウィンドウ",
           "passThrough": "クリックを透過",
           "alwaysOnTop": "常に手前に表示",
           "keepInScreen": "画面内に保持",
@@ -40,10 +40,10 @@
       "general": {
         "title": "一般",
         "labels": {
-          "appSettings": "アプリ設定",
+          "appSettings": "アプリ",
           "launchOnStartup": "起動時に実行",
           "showTrayIcon": "トレイアイコンを表示",
-          "appearanceSettings": "外観設定",
+          "appearanceSettings": "外観",
           "themeMode": "テーマ",
           "language": "言語",
           "permissionsSettings": "権限設定",

@@ -30,7 +30,7 @@ void bongo_cat_preferences_page_cache_clear(BongoCatPreferences *value,
     int previous_page, int next_page) {
     if (!value || previous_page == next_page) return;
     bool released = false;
-    if (previous_page == 4 && next_page != 4) {
+    if (previous_page == 3 && next_page != 3) {
         bongo_cat_preferences_support_assets_clear(value);
         released = true;
     }
@@ -45,7 +45,7 @@ BongoCatPreferences *bongo_cat_preferences_create(BongoCatApp *app) {
         if (!value->import_dialog) { free(value); return NULL; } }
     if (value && app->smoke_preference_page >= 0)
         value->page = app->smoke_preference_page;
-    if (value) value->model_glyphs_loaded = value->page == 2;
+    if (value) value->model_glyphs_loaded = value->page == 1;
     return value;
 }
 
@@ -104,7 +104,7 @@ static Uint32 event_window(const SDL_Event *event) {
 }
 
 static void enter_model_drop(BongoCatPreferences *value) {
-    value->page = 2;
+    value->page = 1;
     value->import_drop_active = true;
     value->render_dirty = true;
 }
@@ -251,7 +251,7 @@ void bongo_cat_preferences_invalidate(BongoCatPreferences *value) {
 void bongo_cat_preferences_models_changed(BongoCatPreferences *value) {
     if (!value) return;
     value->render_dirty = true;
-    if (value->page != 2) {
+    if (value->page != 1) {
         value->model_glyphs_loaded = false;
         return;
     }

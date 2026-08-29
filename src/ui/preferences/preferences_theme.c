@@ -1,4 +1,5 @@
 #include "preferences_theme.h"
+#include "preferences_widgets_internal.h"
 #include "ui_animation.h"
 #include "ui_backend.h"
 #include "ui_catime.h"
@@ -39,10 +40,12 @@ static bool form_begin(struct nk_context *context, const char *id,
     context->style.window.group_padding = saved->padding;
     context->style.window.spacing = saved->spacing;
     context->style.window.group_border = saved->border;
+    bongo_cat_pref_row_icon_clear(context);
     return false;
 }
 
 static void form_end(struct nk_context *context, const ThemeFormStyle *saved) {
+    bongo_cat_pref_row_icon_clear(context);
     nk_group_end(context);
     context->style.window.fixed_background = saved->background;
     context->style.window.background = saved->window_color;
@@ -168,12 +171,7 @@ int bongo_cat_pref_theme(struct nk_context *context, const char *id,
     float left = NK_MAX(220.0f, available - 184.0f);
     nk_layout_row_begin(context, NK_STATIC, 36, 2);
     nk_layout_row_push(context, left);
-    nk_style_push_font(context, bongo_cat_ui_label_font(context));
-    struct nk_vec2 padding = context->style.text.padding;
-    context->style.text.padding.x += 5.0f;
-    nk_label(context, title, NK_TEXT_LEFT);
-    context->style.text.padding = padding;
-    nk_style_pop_font(context);
+    bongo_cat_pref_form_label(context, title);
     nk_layout_row_push(context, NK_MAX(176.0f, available - left - 8.0f));
     selected = capsule(context, id, labels, selected);
     nk_layout_row_end(context);

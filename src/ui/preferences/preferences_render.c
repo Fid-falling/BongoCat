@@ -4,6 +4,7 @@
 #include "preferences_notice.h"
 #include "ui_catime.h"
 #include "ui_animation.h"
+#include "ui_icons.h"
 #include "ui_paint.h"
 #include "bongo_cat/memory_policy.h"
 #include "bongo_cat/tray.h"
@@ -52,10 +53,12 @@ static void root_style_restore(struct nk_context *context,
 static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
     float width, float height, bool dark) {
     static const char *page_ids[] = {
-        "page-cat", "page-general", "page-model", "page-shortcuts", "page-about"};
+        "page-settings", "page-model", "page-shortcuts", "page-about"};
+    static const int menu_icons[] = {
+        BONGO_CAT_UI_ICON_CAT, BONGO_CAT_UI_ICON_WAND,
+        BONGO_CAT_UI_ICON_KEYBOARD, BONGO_CAT_UI_ICON_HEART};
     const char *menus[] = {
-        tr(value, "pages.preference.cat.title", "Cat"),
-        tr(value, "pages.preference.general.title", "General"),
+        tr(value, "pages.preference.cat.title", "Preferences"),
         tr(value, "pages.preference.model.title", "Model"),
         tr(value, "pages.preference.shortcut.title", "Shortcuts"),
         tr(value, "native.support.title", "Support the Developer")};
@@ -79,13 +82,13 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
     if (title_clicked && !SDL_OpenURL("https://bongocat.pet"))
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Cannot open website: %s", SDL_GetError());
     bongo_cat_ui_set_icons(draw_icon, value);
-    bongo_cat_ui_tabs(context, menus, 5, &value->page, !modal, dark,
-        interior_height,
+    bongo_cat_ui_tabs(context, menus, menu_icons, 4, &value->page,
+        !modal, dark, interior_height,
         draw_icon, value);
     if (!value->page_seen) {
         value->page_seen = true; value->last_page = value->page;
     } else if (value->last_page != value->page) {
-        bool load_model_glyphs = value->page == 2 && !value->model_glyphs_loaded;
+        bool load_model_glyphs = value->page == 1 && !value->model_glyphs_loaded;
         bongo_cat_preferences_page_cache_clear(value,
             value->last_page, value->page);
         value->last_page = value->page;
@@ -102,7 +105,8 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
     bool close_requested = false;
     if (nk_group_begin(context, "preferences-content", NK_WINDOW_NO_SCROLLBAR)) {
     close_requested = bongo_cat_ui_content_header(context,
-        menus[value->page], value->page, !modal, dark, native_chrome);
+        menus[value->page], menu_icons[value->page], !modal, dark,
+        native_chrome);
     float body_height = interior_height - BONGO_CAT_UI_HEADER_HEIGHT;
     nk_layout_row_dynamic(context, NK_MAX(120.0f, body_height), 1);
     struct nk_rect body_bounds = nk_widget_bounds(context);
@@ -120,7 +124,7 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
     context->style.window.group_padding = nk_vec2(24,
         16 + 6.0f * (1.0f - page_progress));
     context->style.window.spacing = nk_vec2(10, 10);
-    int scroll_page = NK_CLAMP(0, value->page, 4);
+    int scroll_page = NK_CLAMP(0, value->page, 3);
     bool scroll_animating = fabsf(value->scroll_current[scroll_page] - value->scroll_target[scroll_page]) > .5f;
     struct nk_style_scrollbar saved_scrollv = context->style.scrollv;
     struct nk_rect scrollbar_hit = nk_rect(body_bounds.x + body_bounds.w - 14, body_bounds.y, 14, body_bounds.h);
