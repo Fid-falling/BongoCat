@@ -134,4 +134,8 @@ void bongo_cat_windows_keyboard_reconcile(BongoCatWindowsKeyboard *state,
             (GetAsyncKeyState((int)code) & 0x8000) != 0, emit, userdata);
     }
 }
+
+bool bongo_cat_windows_right_button_down(void) {
+    return (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
+}
 #endif

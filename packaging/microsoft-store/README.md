@@ -20,6 +20,13 @@ and package SID are derived by Windows and must not be used as signing
 secrets. The Store package is x64; the separate Windows x86 workflow target
 only publishes its desktop installer and portable executable.
 
+The manifest declares a system-managed `BongoCat.lnk` on the current user's
+desktop through the `desktop7:windows.shortcut` extension. Windows creates the
+link during package registration and removes it during package removal. The
+shortcut extension is supported starting with Windows build 19645; older
+supported Windows releases ignore that extension while continuing to install
+and run the app.
+
 ## App data isolation
 
 Ordinary EXE, installer, and portable launches store data under

@@ -1,5 +1,6 @@
 #include "windows_borderless.h"
 #include "windows_capture.h"
+#include "windows_keys.h"
 #include "windows_tray.h"
 
 #ifdef _WIN32
@@ -12,6 +13,13 @@ static const wchar_t drag_binding_property[] = L"BongoCat.DragBinding";
 #define BONGO_CAT_MENU_PREVIEW_TIMER ((UINT_PTR)0xBC4E)
 #define BONGO_CAT_DRAG_MODAL_TIMER ((UINT_PTR)0xBC50)
 #define BONGO_CAT_DRAG_FRAME_INTERVAL_MS 16
+#define BONGO_CAT_CLICK_THROUGH_FORCED ((INT_PTR)1)
+#define BONGO_CAT_CLICK_THROUGH_TRANSPARENT_PIXEL ((INT_PTR)2)
+
+bool bongo_cat_windows_borderless_hit_transparent(bool forced,
+    bool pointer_transparent, bool right_button_down) {
+    return forced || (pointer_transparent && !right_button_down);
+}
 
 typedef struct WindowsMenuBinding {
     BongoCatMenuPreview preview;
@@ -50,8 +58,18 @@ static LRESULT CALLBACK borderless_window_proc(HWND window, UINT message,
     WindowsDragBinding *drag = GetPropW(window, drag_binding_property);
     if (bongo_cat_windows_capture_handle_message(window, message, wparam)) {
         return 0;
-    } else if (message == WM_NCHITTEST && GetPropW(window, click_through_property)) {
-        return HTTRANSPARENT;
+    } else if (message == WM_NCHITTEST) {
+        INT_PTR click_through = (INT_PTR)GetPropW(
+            window, click_through_property);
+        if (bongo_cat_windows_borderless_hit_transparent(
+                click_through == BONGO_CAT_CLICK_THROUGH_FORCED,
+                click_through == BONGO_CAT_CLICK_THROUGH_TRANSPARENT_PIXEL,
+                bongo_cat_windows_right_button_down() ||
+                    GetCapture() == window)) return HTTRANSPARENT;
+    } else if (message == WM_RBUTTONDOWN &&
+        (INT_PTR)GetPropW(window, click_through_property) ==
+            BONGO_CAT_CLICK_THROUGH_TRANSPARENT_PIXEL) {
+        SetCapture(window);
     } else if (message == WM_SYSCOMMAND &&
         (wparam & 0xFFF0u) == SC_MINIMIZE) {
         return 0;
@@ -89,6 +107,8 @@ static LRESULT CALLBACK borderless_window_proc(HWND window, UINT message,
     }
     LRESULT result = CallWindowProcW(original ? original : DefWindowProcW,
         window, message, wparam, lparam);
+    if (message == WM_RBUTTONUP && GetCapture() == window)
+        ReleaseCapture();
     /* Move messages keep frames flowing when the low-priority timer is starved. */
     if (drag && (message == WM_MOUSEMOVE || message == WM_NCMOUSEMOVE))
         drag_tick(drag);
@@ -161,12 +181,15 @@ void bongo_cat_windows_borderless_uninstall(HWND window) {
     RemovePropW(window, click_through_property);
 }
 
-void bongo_cat_windows_borderless_set_click_through(HWND window, bool enabled) {
+void bongo_cat_windows_borderless_set_click_through(HWND window,
+    bool forced, bool pointer_transparent) {
     if (!window) return;
-    if (enabled) SetPropW(window, click_through_property, (HANDLE)(INT_PTR)1);
+    INT_PTR mode = forced ? BONGO_CAT_CLICK_THROUGH_FORCED :
+        pointer_transparent ? BONGO_CAT_CLICK_THROUGH_TRANSPARENT_PIXEL : 0;
+    if (mode) SetPropW(window, click_through_property, (HANDLE)mode);
     else RemovePropW(window, click_through_property);
     LONG_PTR style = GetWindowLongPtrW(window, GWL_EXSTYLE);
-    LONG_PTR next = enabled ? style | WS_EX_TRANSPARENT :
+    LONG_PTR next = forced ? style | WS_EX_TRANSPARENT :
         style & ~WS_EX_TRANSPARENT;
     /* The hit-test property is immediate; a frame refresh flickers OpenGL windows. */
     if (next != style) SetWindowLongPtrW(window, GWL_EXSTYLE, next);

@@ -110,6 +110,29 @@ try {
         throw 'Manifest application entry does not describe the BongoCat full-trust executable.'
     }
 
+    $namespaceManager = [Xml.XmlNamespaceManager]::new($manifest.NameTable)
+    $namespaceManager.AddNamespace(
+        'desktop7',
+        'http://schemas.microsoft.com/appx/manifest/desktop/windows10/7')
+    $shortcutExtension = $manifest.SelectSingleNode(
+        "//*[local-name()='Application']/*[local-name()='Extensions']/" +
+        "desktop7:Extension[@Category='windows.shortcut']",
+        $namespaceManager)
+    $shortcut = if ($shortcutExtension) {
+        $shortcutExtension.SelectSingleNode('desktop7:Shortcut', $namespaceManager)
+    }
+    else {
+        $null
+    }
+    if (-not $shortcutExtension -or
+        $shortcutExtension.Executable -ne 'BongoCat.exe' -or
+        $shortcutExtension.EntryPoint -ne 'Windows.FullTrustApplication' -or
+        -not $shortcut -or
+        $shortcut.File -ne '$(Desktop)\BongoCat.lnk' -or
+        $shortcut.Icon -ne 'BongoCat.exe') {
+        throw 'Manifest does not declare the expected system-managed desktop shortcut.'
+    }
+
     $requiredFiles = @(
         'BongoCat.exe',
         'Assets\StoreLogo.png',

@@ -23,6 +23,7 @@ bool bongo_cat_windows_keyboard_reconcile_key(BongoCatWindowsKeyboard *state,
     BongoCatWindowsKeyEmit emit, void *userdata);
 void bongo_cat_windows_keyboard_reconcile(BongoCatWindowsKeyboard *state,
     uint64_t now_ms, BongoCatWindowsKeyEmit emit, void *userdata);
+bool bongo_cat_windows_right_button_down(void);
 #endif
 
 #endif

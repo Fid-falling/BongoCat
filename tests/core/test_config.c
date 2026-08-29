@@ -42,6 +42,7 @@ void test_config(void) {
     static BongoCatSessionState session;
     bongo_cat_settings_defaults(&settings);
     bongo_cat_session_defaults(&session);
+    CHECK(!settings.window.pass_through);
     settings.model.max_fps = 30;
     settings.model.multiple_pets = true;
     settings.model.mirror = true;

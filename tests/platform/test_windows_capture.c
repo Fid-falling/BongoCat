@@ -42,6 +42,10 @@ static LRESULT CALLBACK click_through_test_proc(HWND window, UINT message,
 }
 
 static void test_click_through_does_not_refresh_frame(void) {
+    CHECK(!bongo_cat_windows_borderless_hit_transparent(false, false, false));
+    CHECK(bongo_cat_windows_borderless_hit_transparent(false, true, false));
+    CHECK(!bongo_cat_windows_borderless_hit_transparent(false, true, true));
+    CHECK(bongo_cat_windows_borderless_hit_transparent(true, false, true));
     const wchar_t class_name[] = L"BongoCat click-through test";
     WNDCLASSW type = {.lpfnWndProc = click_through_test_proc,
         .hInstance = GetModuleHandleW(NULL), .lpszClassName = class_name};
@@ -55,10 +59,17 @@ static void test_click_through_does_not_refresh_frame(void) {
     bongo_cat_windows_borderless_install(window);
     window_position_messages = 0;
     nonclient_size_messages = 0;
-    bongo_cat_windows_borderless_set_click_through(window, true);
+    bongo_cat_windows_borderless_set_click_through(window, false, true);
+    CHECK((GetWindowLongPtrW(window, GWL_EXSTYLE) & WS_EX_TRANSPARENT) == 0);
+    CHECK(SendMessageW(window, WM_NCHITTEST, 0, 0) == HTTRANSPARENT);
+    SendMessageW(window, WM_RBUTTONDOWN, MK_RBUTTON, 0);
+    CHECK(GetCapture() == window);
+    SendMessageW(window, WM_RBUTTONUP, 0, 0);
+    CHECK(GetCapture() != window);
+    bongo_cat_windows_borderless_set_click_through(window, true, false);
     CHECK((GetWindowLongPtrW(window, GWL_EXSTYLE) & WS_EX_TRANSPARENT) != 0);
     CHECK(SendMessageW(window, WM_NCHITTEST, 0, 0) == HTTRANSPARENT);
-    bongo_cat_windows_borderless_set_click_through(window, false);
+    bongo_cat_windows_borderless_set_click_through(window, false, false);
     CHECK((GetWindowLongPtrW(window, GWL_EXSTYLE) & WS_EX_TRANSPARENT) == 0);
     CHECK(window_position_messages == 0);
     CHECK(nonclient_size_messages == 0);

@@ -30,8 +30,8 @@ void bongo_cat_platform_set_click_through(BongoCatPlatform *platform,
     bool forced, bool pointer_transparent) {
     HWND window = native_window(platform);
     bongo_cat_windows_layered_set_click_through(platform, forced);
-    bongo_cat_windows_borderless_set_click_through(window,
-        forced || pointer_transparent);
+    bongo_cat_windows_borderless_set_click_through(window, forced,
+        pointer_transparent);
 }
 
 void bongo_cat_platform_raise_window(SDL_Window *window) {
