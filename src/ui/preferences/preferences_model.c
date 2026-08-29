@@ -267,7 +267,4 @@ void bongo_cat_preferences_page_model(BongoCatPreferences *value,
     }
     context->style.window.spacing = old_spacing;
     bongo_cat_preferences_model_covers_prune(app);
-    if (!value->model_loading &&
-        bongo_cat_preferences_model_cover_generate_current(app))
-        bongo_cat_preferences_invalidate(value);
 }

@@ -7,9 +7,10 @@
 
 #include <CubismFramework.hpp>
 #include <SDL3/SDL_filesystem.h>
+#include <SDL3/SDL_log.h>
+#include <SDL3/SDL_video.h>
 #include <cstdio>
 #include <cstdlib>
-#include <exception>
 #include <new>
 
 #ifdef _WIN32
@@ -139,54 +140,14 @@ extern "C" BongoCatLive2D *bongo_cat_live2d_create_cover_runtime(
 
 extern "C" void bongo_cat_live2d_destroy(BongoCatLive2D *runtime) {
     if (!runtime) return;
+    if (runtime->retired_count) SDL_Log("[runtime] Live2D resource handoff: "
+        "stage=retirement-flush queue=%u current_context=%p",
+        runtime->retired_count, (void *)SDL_GL_GetCurrentContext());
+    for (unsigned i = 0; i < runtime->retired_count; ++i)
+        delete runtime->retired[i].model;
     delete runtime->model;
     delete runtime;
     stop_framework();
-}
-
-extern "C" BongoCatResult bongo_cat_live2d_load(BongoCatLive2D *runtime,
-    const char *directory, const char *setting, bool preset,
-    const BongoCatLive2DRenderOptions *render_options,
-    BongoCatLive2DLoadProgress progress, void *userdata,
-    BongoCatError *error) {
-    if (!runtime) return BONGO_CAT_ERROR_ARGUMENT;
-    bongo_cat::NativeModel *previous = runtime->model;
-    bongo_cat::NativeModel *model = nullptr;
-    try {
-        model = new(std::nothrow) bongo_cat::NativeModel();
-        if (!model) {
-            bongo_cat_error_set(error, BONGO_CAT_ERROR_MEMORY,
-                "Cannot allocate Live2D model");
-            return BONGO_CAT_ERROR_MEMORY;
-        }
-        if (render_options) model->set_render_options(*render_options);
-        if (!model->load(directory, setting, preset, progress, userdata, error)) {
-            delete model;
-            return error ? error->code : BONGO_CAT_ERROR_CUBISM;
-        }
-        /* Keep the previous renderer alive until the replacement is complete. */
-        model->reshape(runtime->width, runtime->height);
-        if (!model->load_textures(error, progress, userdata)) {
-            BongoCatResult result = error ? error->code : BONGO_CAT_ERROR_CUBISM;
-            delete model;
-            return result;
-        }
-        if (progress) progress(userdata, 1.0f);
-        runtime->model = model;
-        delete previous;
-        return BONGO_CAT_OK;
-    } catch (const std::bad_alloc &) {
-        bongo_cat_error_set(error, BONGO_CAT_ERROR_MEMORY,
-            "Out of memory while loading the Live2D model");
-    } catch (const std::exception &exception) {
-        bongo_cat_error_set(error, BONGO_CAT_ERROR_CUBISM,
-            "Live2D model load failed: %s", exception.what());
-    } catch (...) {
-        bongo_cat_error_set(error, BONGO_CAT_ERROR_CUBISM,
-            "Live2D model load failed with an unknown exception");
-    }
-    delete model;
-    return error ? error->code : BONGO_CAT_ERROR_CUBISM;
 }
 
 extern "C" bool bongo_cat_live2d_ready(const BongoCatLive2D *runtime) {
@@ -230,7 +191,22 @@ extern "C" bool bongo_cat_live2d_update(BongoCatLive2D *runtime, float elapsed) 
     return runtime && runtime->model && runtime->model->update(elapsed);
 }
 extern "C" void bongo_cat_live2d_draw(BongoCatLive2D *runtime) {
-    if (runtime && runtime->model) runtime->model->draw();
+    if (!runtime) return;
+    unsigned keep = 0, released = 0;
+    for (unsigned i = 0; i < runtime->retired_count; ++i) {
+        BongoCatRetiredModel item = runtime->retired[i];
+        if (item.frames_remaining) item.frames_remaining--;
+        if (!item.frames_remaining) {
+            delete item.model;
+            released++;
+        } else runtime->retired[keep++] = item;
+    }
+    runtime->retired_count = keep;
+    if (released) SDL_Log("[runtime] Live2D resource handoff: "
+        "stage=retirement-complete released=%u queue=%u current_context=%p "
+        "gl_error=0x%x", released, keep, (void *)SDL_GL_GetCurrentContext(),
+        (unsigned)glGetError());
+    if (runtime->model) runtime->model->draw();
 }
 extern "C" void bongo_cat_live2d_set_mirror(BongoCatLive2D *runtime, bool mirror) {
     if (runtime && runtime->model) runtime->model->set_mirror(mirror); }

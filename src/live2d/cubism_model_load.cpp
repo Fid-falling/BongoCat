@@ -256,10 +256,12 @@ bool NativeModel::load_textures(BongoCatError *error,
     }
     prepare_expression_frame();
     release_renderer();
-    CreateRenderer((Csm::csmUint32)width_, (Csm::csmUint32)height_);
+    if (!create_renderer(error)) {
+        release_textures();
+        return false;
+    }
     renderer_width_ = width_;
     renderer_height_ = height_;
-    bind_textures();
     return true;
 }
 void NativeModel::release_textures() {

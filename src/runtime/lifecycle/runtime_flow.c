@@ -53,10 +53,19 @@ void bongo_cat_runtime_flow_update(BongoCatApp *app, uint64_t now) {
     case 6: model_mode(app, BONGO_CAT_MODE_KEYBOARD); mark(app, "model-keyboard"); break;
     case 7: model_mode(app, BONGO_CAT_MODE_STANDARD); mark(app, "model-standard"); break;
     case 8: model_mode(app, BONGO_CAT_MODE_GAMEPAD); mark(app, "model-gamepad"); break;
-    case 9: bongo_cat_preferences_show(app->preferences); mark(app, "settings-first"); break;
+    case 9:
+        app->smoke_preference_model_select = true;
+        bongo_cat_preferences_show(app->preferences);
+        mark(app, "settings-first-model-select"); break;
     case 10: mark(app, "settings-idle"); break;
-    case 11: bongo_cat_preferences_close(app->preferences); mark(app, "settings-closed"); break;
-    case 12: bongo_cat_preferences_show(app->preferences); mark(app, "settings-reopen"); break;
+    case 11:
+        bongo_cat_preferences_close(app->preferences);
+        model_mode(app, BONGO_CAT_MODE_STANDARD);
+        mark(app, "settings-closed-model-restored"); break;
+    case 12:
+        app->smoke_preference_model_select = true;
+        bongo_cat_preferences_show(app->preferences);
+        mark(app, "settings-reopen-model-select"); break;
     case 13:
         bongo_cat_preferences_close(app->preferences);
         bongo_cat_app_select_model(app, app->smoke_runtime_model);

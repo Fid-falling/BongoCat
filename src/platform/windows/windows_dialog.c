@@ -13,9 +13,10 @@
 typedef struct BongoCatWindowsFolderDialogArgs {
     SDL_DialogFileCallback callback;
     void *userdata;
-    SDL_Window *window;
+    HWND owner;
     char *default_location;
     bool allow_many;
+    Uint64 started_ns;
 } BongoCatWindowsFolderDialogArgs;
 
 static void notify_cancel(BongoCatWindowsFolderDialogArgs *args) {
@@ -94,7 +95,7 @@ static bool show_folder_dialog(BongoCatWindowsFolderDialogArgs *args) {
         }
     }
 
-    result = dialog->lpVtbl->Show(dialog, owner_window(args->window));
+    result = dialog->lpVtbl->Show(dialog, args->owner);
     if (result == HRESULT_FROM_WIN32(ERROR_CANCELLED)) {
         notify_cancel(args);
         callback_called = true;
@@ -162,6 +163,9 @@ done:
 static int SDLCALL folder_dialog_thread(void *userdata) {
     BongoCatWindowsFolderDialogArgs *args = userdata;
     show_folder_dialog(args);
+    SDL_Log("[runtime] Folder dialog: stage=completed owner=%p elapsed_ms=%.2f",
+        (void *)args->owner,
+        (double)(SDL_GetTicksNS() - args->started_ns) / 1000000.0);
     SDL_free(args->default_location);
     SDL_free(args);
     return 0;
@@ -179,8 +183,9 @@ void bongo_cat_windows_show_open_folder_dialog(
     }
     args->callback = callback;
     args->userdata = userdata;
-    args->window = window;
+    args->owner = owner_window(window);
     args->allow_many = allow_many;
+    args->started_ns = SDL_GetTicksNS();
     if (default_location) {
         args->default_location = SDL_strdup(default_location);
         if (!args->default_location) {
@@ -199,6 +204,8 @@ void bongo_cat_windows_show_open_folder_dialog(
         callback(userdata, files, -1);
         return;
     }
+    SDL_Log("[runtime] Folder dialog: stage=opened owner=%p allow_many=%d",
+        (void *)args->owner, allow_many);
     SDL_DetachThread(thread);
 }
 

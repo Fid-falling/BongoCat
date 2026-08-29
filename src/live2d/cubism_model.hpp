@@ -31,6 +31,7 @@ public:
         BongoCatError *error);
     bool load_textures(BongoCatError *error,
         BongoCatLive2DLoadProgress progress, void *userdata);
+    size_t texture_count() const { return textures_.size(); }
     void release_render_resources();
     bool canvas_size(int *width, int *height) const;
     bool frame(BongoCatLive2DFrame *frame) const;
@@ -128,6 +129,7 @@ private:
     void select_motion(const std::string &key, bool selected);
     void release_textures();
     void release_renderer();
+    bool create_renderer(BongoCatError *error);
     void bind_textures();
     std::vector<unsigned char> read(const std::string &path,
         size_t maximum = (size_t)-1) const;

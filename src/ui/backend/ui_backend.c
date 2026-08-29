@@ -1,6 +1,7 @@
 #include "ui_backend.h"
 #include "ui_font_atlas.h"
 #include "ui_paint.h"
+#include "ui_paint_cache.h"
 
 #include <stddef.h>
 #include <stdlib.h>
@@ -108,23 +109,35 @@ bool bongo_cat_ui_init(BongoCatUIBackend *ui, SDL_Window *window,
     return true;
 }
 
-void bongo_cat_ui_destroy(BongoCatUIBackend *ui) {
+static void release(BongoCatUIBackend *ui, bool release_gl) {
     if (!ui) return;
     if (context_backend == ui) context_backend = NULL;
-    bongo_cat_ui_paint_destroy(ui);
-    bongo_cat_ui_resize_cache_destroy(ui);
+    if (release_gl) {
+        bongo_cat_ui_paint_destroy(ui);
+        bongo_cat_ui_resize_cache_destroy(ui);
+    } else {
+        bongo_cat_ui_paint_cache_abandon(ui);
+        ui->resize_cache_texture = 0;
+        ui->resize_cache_width = ui->resize_cache_height = 0;
+    }
     if (ui->atlas.permanent.alloc) bongo_cat_ui_font_atlas_destroy(ui);
     nk_buffer_free(&ui->commands);
     nk_free(&ui->context);
-    if (ui->font_texture) glDeleteTextures(1, &ui->font_texture);
-    if (ui->vbo) ui->gl.delete_buffers(1, &ui->vbo);
-    if (ui->ebo) ui->gl.delete_buffers(1, &ui->ebo);
-    if (ui->vao) ui->gl.delete_vertex_arrays(1, &ui->vao);
-    if (ui->program) ui->gl.delete_program(ui->program);
+    if (release_gl) {
+        if (ui->font_texture) glDeleteTextures(1, &ui->font_texture);
+        if (ui->vbo) ui->gl.delete_buffers(1, &ui->vbo);
+        if (ui->ebo) ui->gl.delete_buffers(1, &ui->ebo);
+        if (ui->vao) ui->gl.delete_vertex_arrays(1, &ui->vao);
+        if (ui->program) ui->gl.delete_program(ui->program);
+    }
     free(ui->vertices);
     free(ui->elements);
     memset(ui, 0, sizeof(*ui));
 }
+
+void bongo_cat_ui_destroy(BongoCatUIBackend *ui) { release(ui, true); }
+
+void bongo_cat_ui_abandon(BongoCatUIBackend *ui) { release(ui, false); }
 
 static void convert(BongoCatUIBackend *ui) {
     static const struct nk_draw_vertex_layout_element layout[] = {

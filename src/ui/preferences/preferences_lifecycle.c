@@ -1,4 +1,6 @@
 #include "preferences_controls.h"
+#include "preferences_gl.h"
+#include "preferences_model_cover.h"
 #include "preferences_state.h"
 #include "ui_animation.h"
 #include "bongo_cat/memory.h"
@@ -12,28 +14,32 @@
 static void release_window(BongoCatPreferences *value) {
     if (!value || !value->window) return;
     bongo_cat_preferences_live_resize_uninstall(value);
-    if (value->gl_context) SDL_GL_MakeCurrent(value->window, value->gl_context);
+    bool context_ready = !value->gl_context ||
+        SDL_GL_MakeCurrent(value->window, value->gl_context);
+    if (!context_ready) SDL_LogError(SDL_LOG_CATEGORY_VIDEO,
+        "Preferences GL cleanup skipped because its context could not be "
+        "activated: %s", SDL_GetError());
     if (value->ui_initialized && value->input_active)
         bongo_cat_preferences_input_end(value);
     SDL_StopTextInput(value->window);
-    bongo_cat_preferences_model_cache_clear(value->app);
+    if (context_ready) bongo_cat_preferences_model_cache_clear(value->app);
+    else bongo_cat_preferences_model_cache_abandon(value->app);
     if (value->ui_initialized) {
         bongo_cat_pref_controls_reset(&value->ui.context);
         bongo_cat_ui_animations_reset(&value->ui.context);
     }
-    bongo_cat_preferences_assets_clear(value);
+    if (context_ready) bongo_cat_preferences_assets_clear(value);
+    else bongo_cat_preferences_assets_abandon(value);
     if (value->ui_initialized) {
         bongo_cat_ui_cursor_destroy(&value->ui);
-        bongo_cat_ui_destroy(&value->ui);
+        if (context_ready) bongo_cat_ui_destroy(&value->ui);
+        else bongo_cat_ui_abandon(&value->ui);
     }
     if (value->chrome_dragging) SDL_CaptureMouse(false);
-    if (value->owns_gl_context && value->gl_context)
-        SDL_GL_DestroyContext(value->gl_context);
+    bongo_cat_preferences_gl_destroy(value);
     SDL_DestroyWindow(value->window);
     value->window = NULL;
-    value->gl_context = NULL;
     value->visible = false;
-    value->owns_gl_context = false;
     value->transparent_window = false;
     value->ui_initialized = false;
     value->font_reload_pending = false;
@@ -112,8 +118,9 @@ void bongo_cat_preferences_close(BongoCatPreferences *value) {
 
 void bongo_cat_preferences_destroy(BongoCatPreferences *value) {
     if (!value) return;
+    bongo_cat_preferences_import_destroy(value->import_dialog);
+    value->import_dialog = NULL;
     bongo_cat_preferences_close(value);
     release_window(value);
-    bongo_cat_preferences_import_destroy(value->import_dialog);
     free(value);
 }

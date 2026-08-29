@@ -1,0 +1,31 @@
+#include "cubism_model.hpp"
+#include "bongo_cat/gl_api.h"
+
+#include <SDL3/SDL_video.h>
+
+namespace bongo_cat {
+
+bool NativeModel::create_renderer(BongoCatError *error) {
+    if (!SDL_GL_GetCurrentContext()) {
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_PLATFORM,
+            "Cannot create the Live2D renderer without an OpenGL context");
+        return false;
+    }
+    if (!bongo_cat_gl_clear_errors()) {
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_CUBISM,
+            "Cannot clear the OpenGL error state before creating the Live2D renderer");
+        return false;
+    }
+    CreateRenderer((Csm::csmUint32)width_, (Csm::csmUint32)height_);
+    auto *renderer = GetRenderer<Csm::Rendering::CubismRenderer_OpenGLES2>();
+    if (renderer) bind_textures();
+    GLenum renderer_error = glGetError();
+    if (renderer && renderer_error == GL_NO_ERROR) return true;
+    bongo_cat_error_set(error, BONGO_CAT_ERROR_CUBISM,
+        "Cannot create the Live2D renderer (OpenGL 0x%x)",
+        (unsigned)renderer_error);
+    release_renderer();
+    return false;
+}
+
+} // namespace bongo_cat

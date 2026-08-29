@@ -38,5 +38,6 @@ void bongo_cat_ui_paint_cache_begin_frame(BongoCatUIBackend *backend);
 size_t bongo_cat_ui_paint_cache_usage(BongoCatUIBackend *backend,
     size_t *texture_count);
 void bongo_cat_ui_paint_cache_destroy(BongoCatUIBackend *backend);
+void bongo_cat_ui_paint_cache_abandon(BongoCatUIBackend *backend);
 
 #endif

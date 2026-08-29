@@ -173,6 +173,7 @@ set(BONGO_CAT_UI_PREFERENCES_SOURCES
   src/ui/preferences/preferences_dialog.c
   src/ui/preferences/preferences_form_label.c
   src/ui/preferences/preferences_fonts.c
+  src/ui/preferences/preferences_gl.c
   src/ui/preferences/preferences_import.c
   src/ui/preferences/preferences_import_dialog.c
   src/ui/preferences/preferences_icons.c

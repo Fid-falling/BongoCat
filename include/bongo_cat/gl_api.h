@@ -4,6 +4,10 @@
 #include "bongo_cat/common.h"
 #include <SDL3/SDL_opengl.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct BongoCatGL {
     PFNGLCREATESHADERPROC create_shader;
     PFNGLSHADERSOURCEPROC shader_source;
@@ -39,5 +43,9 @@ bool bongo_cat_gl_load(BongoCatGL *gl, BongoCatError *error);
 bool bongo_cat_gl_clear_errors(void);
 unsigned int bongo_cat_gl_program(BongoCatGL *gl, const char *vertex, const char *fragment,
     BongoCatError *error);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -66,7 +66,6 @@ static BongoCatImportJob *copy_job(const char *const *files) {
     }
     return job;
 }
-
 static BongoCatImportJob *copy_path(const char *path) {
     const char *files[] = {path, NULL};
     return path && path[0] ? copy_job(files) : NULL;
@@ -181,7 +180,6 @@ static bool start_job(BongoCatImportDialog *dialog, BongoCatApp *app,
     SDL_UnlockMutex(dialog->mutex);
     return dialog->worker != NULL;
 }
-
 static void SDLCALL import_callback(void *userdata, const char *const *files,
     int filter) {
     (void)filter;
@@ -196,6 +194,8 @@ static void SDLCALL import_callback(void *userdata, const char *const *files,
     event.user.data1 = job;
     event.user.data2 = dialog;
     if (dialog->active && !dialog->busy && job) pushed = SDL_PushEvent(&event);
+    if (!dialog->active)
+        SDL_Log("[runtime] Folder dialog result ignored during shutdown");
     if (!pushed) dialog->open = false;
     SDL_UnlockMutex(dialog->mutex);
     if (!pushed) free_job(job);

@@ -103,3 +103,14 @@ void bongo_cat_preferences_assets_clear(BongoCatPreferences *value) {
     value->icon_hidpi_attempted = false;
     bongo_cat_preferences_support_assets_clear(value);
 }
+
+void bongo_cat_preferences_assets_abandon(BongoCatPreferences *value) {
+    if (!value) return;
+    value->logo_texture = 0;
+    value->icon_texture = 0;
+    value->icon_texture_hidpi = 0;
+    value->catime_texture = 0;
+    value->vlaina_texture = 0;
+    value->icon_hidpi_attempted = false;
+    value->support_assets_loaded = false;
+}

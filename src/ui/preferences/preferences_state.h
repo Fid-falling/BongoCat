@@ -136,6 +136,7 @@ void bongo_cat_preferences_model_load_progress(BongoCatPreferences *value,
 float bongo_cat_preferences_model_visual_progress(BongoCatPreferences *value,
     const char *model_id);
 void bongo_cat_preferences_assets_clear(BongoCatPreferences *value);
+void bongo_cat_preferences_assets_abandon(BongoCatPreferences *value);
 void bongo_cat_preferences_model_cover_cache_clear(BongoCatApp *app);
 void bongo_cat_preferences_page_cache_clear(BongoCatPreferences *value,
     int previous_page, int next_page);

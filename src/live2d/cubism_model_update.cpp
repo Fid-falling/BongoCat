@@ -8,6 +8,7 @@
 #include <Motion/CubismMotion.hpp>
 #include <Motion/CubismMotionManager.hpp>
 #include <Rendering/OpenGL/CubismOffscreenManager_OpenGLES2.hpp>
+#include <SDL3/SDL_log.h>
 #include <algorithm>
 #include <cmath>
 namespace bongo_cat {
@@ -23,11 +24,12 @@ void NativeModel::resize(int width, int height) {
         renderer_height_ = height_;
         return;
     }
-    DeleteRenderer();
-    CreateRenderer((Csm::csmUint32)width_, (Csm::csmUint32)height_);
+    SDL_LogDebug(SDL_LOG_CATEGORY_VIDEO,
+        "Live2D render target resized in place: %dx%d -> %dx%d",
+        renderer_width_, renderer_height_, width_, height_);
+    SetRenderTargetSize((Csm::csmUint32)width_, (Csm::csmUint32)height_);
     renderer_width_ = width_;
     renderer_height_ = height_;
-    bind_textures();
 }
 
 void NativeModel::reshape(int width, int height) {

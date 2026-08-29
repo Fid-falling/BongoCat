@@ -48,6 +48,8 @@ add_subdirectory("${CUBISM_GLEW_PATH}/build/cmake" "${CMAKE_BINARY_DIR}/cubism-g
   EXCLUDE_FROM_ALL)
 set(FRAMEWORK_SOURCE OpenGL)
 add_subdirectory("${CUBISM_FRAMEWORK_PATH}" "${CMAKE_BINARY_DIR}/cubism-framework")
+include(cmake/CubismUserModelSafety.cmake)
+bongo_cat_harden_cubism_user_model(Framework)
 include(cmake/CubismShaderOptimize.cmake)
 bongo_cat_optimize_cubism_shaders(Framework)
 

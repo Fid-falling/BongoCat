@@ -6,6 +6,7 @@
 #include "bongo_cat/preferences.h"
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_opengl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,6 +41,13 @@ static void model_runtime_stage(BongoCatApp *app, const char *stage,
     snprintf(state, sizeof(state), "model-load:%s:%s", stage, id);
     bongo_cat_runtime_stage(app, state);
     SDL_Log("[runtime] Model load %s: id=%s", stage, id);
+}
+
+static void model_running_stage(BongoCatApp *app, const char *model_id) {
+    char state[BONGO_CAT_ID_CAP + 16];
+    snprintf(state, sizeof(state), "running:model:%s",
+        model_id && model_id[0] ? model_id : "none");
+    bongo_cat_runtime_stage(app, state);
 }
 
 static bool behavior_cacheable(const BongoCatModelEntry *entry) {
@@ -186,6 +194,16 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
         free(behaviors);
         return false;
     }
+    char previous_model[BONGO_CAT_ID_CAP];
+    snprintf(previous_model, sizeof(previous_model), "%s",
+        app->loaded_model[0] ? app->loaded_model : "none");
+    uint64_t load_started_ns = SDL_GetTicksNS();
+    GLenum initial_gl_error = glGetError();
+    SDL_Log("[runtime] Model switch transaction: stage=begin previous=%s next=%s "
+        "main_window=%p main_context=%p current_window=%p current_context=%p "
+        "gl_error=0x%x", previous_model, entry->id, (void *)app->window,
+        (void *)app->gl_context, (void *)SDL_GL_GetCurrentWindow(),
+        (void *)SDL_GL_GetCurrentContext(), (unsigned)initial_gl_error);
     bongo_cat_live2d_reshape(app->live2d, pixel_width, pixel_height);
     snprintf(app->loading_model, sizeof(app->loading_model), "%s", entry->id);
     app->model_load_runtime_stage = 0;
@@ -197,8 +215,11 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     app->model_load_last_frame_ns = 0;
     if (replacing_model) app->last_frame_ns = SDL_GetTicksNS();
     if (load_result != BONGO_CAT_OK) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-            "Model load failed: id=%s error=%s", entry->id, failure->message);
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Model switch transaction: "
+            "stage=failed previous=%s next=%s elapsed_ms=%.2f gl_error=0x%x "
+            "error=%s", previous_model, entry->id,
+            (double)(SDL_GetTicksNS() - load_started_ns) / 1000000.0,
+            (unsigned)glGetError(), failure->message);
         if (restore_context && previous_window && previous_context &&
             !SDL_GL_MakeCurrent(previous_window, previous_context))
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
@@ -208,7 +229,7 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
         request_model_frame(app, false);
         app->loading_model[0] = '\0';
         app->model_load_runtime_stage = 0;
-        bongo_cat_runtime_stage(app, "running");
+        model_running_stage(app, app->loaded_model);
         return false;
     }
     model_runtime_stage(app, "committing", entry);
@@ -260,10 +281,16 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
             "Cannot restore the previous OpenGL context: %s", SDL_GetError());
     bongo_cat_memory_policy_model_loaded();
+    SDL_Log("[runtime] Model switch transaction: stage=complete previous=%s "
+        "next=%s elapsed_ms=%.2f current_window=%p current_context=%p "
+        "gl_error=0x%x", previous_model, entry->id,
+        (double)(SDL_GetTicksNS() - load_started_ns) / 1000000.0,
+        (void *)SDL_GL_GetCurrentWindow(), (void *)SDL_GL_GetCurrentContext(),
+        (unsigned)glGetError());
     model_runtime_stage(app, "completed", entry);
     app->loading_model[0] = '\0';
     app->model_load_runtime_stage = 0;
-    bongo_cat_runtime_stage(app, "running");
+    model_running_stage(app, entry->id);
     return true;
 }
 

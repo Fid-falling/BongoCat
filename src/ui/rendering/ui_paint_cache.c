@@ -162,3 +162,11 @@ void bongo_cat_ui_paint_cache_destroy(BongoCatUIBackend *backend) {
     }
     if (backend) backend->paint_frame_marker = 0;
 }
+
+void bongo_cat_ui_paint_cache_abandon(BongoCatUIBackend *backend) {
+    for (size_t i = 0; i < sizeof(textures) / sizeof(textures[0]); ++i) {
+        BongoCatUIPaintTexture *item = &textures[i];
+        if (item->backend == backend) memset(item, 0, sizeof(*item));
+    }
+    if (backend) backend->paint_frame_marker = 0;
+}

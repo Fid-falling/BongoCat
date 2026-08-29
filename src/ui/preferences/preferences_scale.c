@@ -1,5 +1,6 @@
 #include "preferences_state.h"
 #include "preferences_fonts.h"
+#include "preferences_gl.h"
 #include "ui_catime.h"
 #include "bongo_cat/memory_policy.h"
 #include <SDL3/SDL_opengl.h>
@@ -83,25 +84,10 @@ static SDL_HitTestResult SDLCALL preference_hit_test(SDL_Window *window,
     return SDL_HITTEST_NORMAL;
 }
 
-static bool attach_gl_context(BongoCatPreferences *value) {
-    value->gl_context = value->app->gl_context;
-    if (SDL_GL_MakeCurrent(value->window, value->gl_context)) return true;
-    SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
-    SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
-    value->gl_context = SDL_GL_CreateContext(value->window);
-    SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0);
-    value->owns_gl_context = value->gl_context != NULL;
-    return value->gl_context &&
-        SDL_GL_MakeCurrent(value->window, value->gl_context);
-}
-
 static void discard_window(BongoCatPreferences *value) {
-    if (value->owns_gl_context && value->gl_context)
-        SDL_GL_DestroyContext(value->gl_context);
+    bongo_cat_preferences_gl_destroy(value);
     if (value->window) SDL_DestroyWindow(value->window);
     value->window = NULL;
-    value->gl_context = NULL;
-    value->owns_gl_context = false;
     value->transparent_window = false;
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
 }
@@ -148,7 +134,7 @@ bool bongo_cat_preferences_open_window(BongoCatPreferences *value) {
     SDL_SetWindowPosition(value->window, SDL_WINDOWPOS_CENTERED_DISPLAY(display),
         SDL_WINDOWPOS_CENTERED_DISPLAY(display));
     SDL_SyncWindow(value->window);
-    bool context_ready = attach_gl_context(value);
+    bool context_ready = bongo_cat_preferences_gl_create(value);
     if (!context_ready && value->transparent_window) {
         SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
             "Transparent preferences OpenGL context unavailable: %s",
@@ -160,7 +146,7 @@ bool bongo_cat_preferences_open_window(BongoCatPreferences *value) {
             SDL_WINDOWPOS_CENTERED_DISPLAY(display),
             SDL_WINDOWPOS_CENTERED_DISPLAY(display));
         SDL_SyncWindow(value->window);
-        context_ready = attach_gl_context(value);
+        context_ready = bongo_cat_preferences_gl_create(value);
     }
     if (!context_ready) return false;
     BongoCatPreferenceFonts fonts;
