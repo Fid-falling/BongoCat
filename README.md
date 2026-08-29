@@ -23,13 +23,10 @@
 </div>
 
 
-
-
-
-
-
 > [!TIP]
 > The model featured in this demonstration is from [宇痕冫](https://www.bilibili.com/video/BV1ZVK56HECF).
+>
+> 🎁Looking for **free** models? Visit our official website: [bongocat.pet](https://bongocat.pet/models)
 
 
 <p align="center">
