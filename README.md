@@ -1,8 +1,4 @@
-<img width="1428" height="977"  src="https://github.com/user-attachments/assets/81ede706-f8d7-4722-bd2c-82b21006e149" />
 
-
-> [!TIP]
-> The model featured in this demonstration is from [宇痕冫](https://www.bilibili.com/video/BV1ZVK56HECF).
 
 <div align="center">
   <a href="https://bongocat.pet" target="_blank">
@@ -13,6 +9,12 @@
     <a href="https://bongocat.pet" target="_blank" style="text-decoration: none; color: inherit;">BongoCat</a>
   </h1>
 </div>
+
+<img width="1428" height="977"  src="https://github.com/user-attachments/assets/81ede706-f8d7-4722-bd2c-82b21006e149" />
+
+
+> [!TIP]
+> The model featured in this demonstration is from [宇痕冫](https://www.bilibili.com/video/BV1ZVK56HECF).
 
 
 <p align="center">
