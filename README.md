@@ -4,6 +4,17 @@
 > [!TIP]
 > The model featured in this demonstration is from [宇痕冫](https://www.bilibili.com/video/BV1ZVK56HECF).
 
+<div align="center">
+  <a href="https://bongocat.pet" target="_blank">
+    <img src="https://github.com/user-attachments/assets/dd693432-8342-440b-8a92-c9f57a96ffb4" alt="Catime" width="249">
+  </a>
+  
+  <h1>
+    <a href="https://bongocat.pet" target="_blank" style="text-decoration: none; color: inherit;">BongoCat</a>
+  </h1>
+</div>
+
+
 <p align="center">
     <img src="https://count.getloli.com/@bongocat?name=bongocat&theme=booru-qualityhentais&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto" width="400">
   </p>
