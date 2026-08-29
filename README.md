@@ -10,7 +10,22 @@
   </h1>
 </div>
 
-<img width="1428" height="977"  src="https://github.com/user-attachments/assets/81ede706-f8d7-4722-bd2c-82b21006e149" />
+
+<!-- Project Description + Rocket Icon -->
+<p align="center"> 
+ 💘C/C++ × SDL3 × OpenGL, stir it up, mash it together! Bong~ Bongocat!!! 
+</p>
+
+<!-- Demo Video -->
+<div align="center" style="margin-bottom: 30px;">
+  <video src="https://github.com/user-attachments/assets/0025d878-1970-40f6-9b52-394f1fe14b6c
+" autoplay loop style="border-radius: 8px; max-width: 800px;"></video>
+</div>
+
+
+
+
+
 
 
 > [!TIP]
