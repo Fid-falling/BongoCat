@@ -101,7 +101,7 @@
         "tooltips": {
           "createModel": "制作模型",
           "convertModel": "转换模型",
-          "moreModels": "更多模型"
+          "moreModels": "模型库"
         },
         "behaviorModal": {
           "title": "动作与表情",

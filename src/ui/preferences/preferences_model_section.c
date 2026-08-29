@@ -44,8 +44,7 @@ bool bongo_cat_preferences_model_section(BongoCatPreferences *value,
     float hover_amount = bongo_cat_ui_animate_eased(context,
         "model-more-link-hover", action_hover ? 1.0f : 0.0f, 180.0f,
         BONGO_CAT_UI_EASE_STANDARD);
-    struct nk_color action_color = bongo_cat_ui_color_mix(
-        p.accent, p.pink, hover_amount);
+    struct nk_color action_color = p.danger;
     nk_draw_text(canvas, nk_rect(action.x, action.y +
         (action.h - action_font->height) * .5f, label_width + 1,
         action_font->height), label, nk_strlen(label), action_font,

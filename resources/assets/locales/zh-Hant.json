@@ -101,7 +101,7 @@
         "tooltips": {
           "createModel": "製作模型",
           "convertModel": "轉換模型",
-          "moreModels": "更多模型"
+          "moreModels": "模型庫"
         },
         "behaviorModal": {
           "title": "動作與表情",
