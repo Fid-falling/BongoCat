@@ -16,7 +16,7 @@
 
 <!-- Project Description + Rocket Icon -->
 <p align="center"> 
- 💘C/C++ × SDL3 × OpenGL, stir it up, mash it together! Bong~ Bongocat!!! 
+ 💘C/C++ × SDL3 × OpenGL, stir it up, mash it together! Bong~ Bongo Cat!!! 
 </p>
 
 <!-- Demo Video -->
