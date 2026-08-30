@@ -139,6 +139,11 @@ static bool config_write(const char *path, BongoCatModelMode mode,
     bool ok = root && decoration && mode_object && window_size &&
         yyjson_mut_arr_add_int(document, window_size, width) &&
         yyjson_mut_arr_add_int(document, window_size, height) &&
+        /* Tauri resources are authored in the same pixel canvas as the
+           generated Mver input images. Make the projection explicit so a
+           missing legacy l2d_correct value cannot apply the 1.1 default. */
+        yyjson_mut_obj_add_real(document, decoration, "l2d_correct", 1.0) &&
+        yyjson_mut_obj_add_arr(document, decoration, "l2d_offset") &&
         yyjson_mut_obj_add_int(document, root, "mode",
             mode == BONGO_CAT_MODE_STANDARD ? 1 :
             mode == BONGO_CAT_MODE_KEYBOARD ? 2 : 3) &&

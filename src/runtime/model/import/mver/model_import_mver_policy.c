@@ -92,9 +92,10 @@ bool bongo_cat_import_mver_stock_model(
        those surrounding images so the bundled model cannot become a variant. */
     static const StockLive2DProfile profiles[] = {
         {BONGO_CAT_MODE_STANDARD,
-            "59f0969de5ddfb530c52c661e549e274e6af34cb59b4274399b9e9f1b37ede51",
-            {"1b5092cf3b1b54f69d8986d6ce7dfec324b36a13fcd10f129acc0053997dfd3e",
-             "c98d6db3a0a38ef312a38bacb5328e4787c079fa044e6faa85ed44e5b2fbb601"}, 2},
+            "7bbcdb3df4fe085b0cbd9dc3a1cf32d351bd56787d0ddd1c238e50a5dcb6729a",
+            {"f20955f2779f52dddefae131e6c7c5506ce4261d60cf020d594e095e5a2193b2",
+             "bf32b89f328160ac8bd7cd4e527646eedfae98294506c597f381001ae6a83eb4",
+             "93c3213355e4743b38e8dd2e14a24693f2d24f10dc8b51c4ca986a749ee24682"}, 3},
         {BONGO_CAT_MODE_KEYBOARD,
             "03ed67f3ee2ea612aba4da0d42874f8879853d69043c9aae98af440d1f66965e",
             {"3153891ec9c6b89ce9b33a610fb081d276ff356c5e19407d5ff0690d7ac7d97a",

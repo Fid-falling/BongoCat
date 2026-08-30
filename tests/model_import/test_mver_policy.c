@@ -20,6 +20,7 @@ int test_mver_policy(void) {
         const char *name;
         BongoCatModelMode mode;
     } fixtures[] = {
+        {"standard", BONGO_CAT_MODE_STANDARD},
         {"keyboard", BONGO_CAT_MODE_KEYBOARD},
         {"gamepad", BONGO_CAT_MODE_GAMEPAD}
     };

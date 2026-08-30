@@ -99,6 +99,8 @@ void test_tauri_portable(void) {
     yyjson_val *normalized_left = yyjson_obj_get(normalized_mode, "lefthand");
     yyjson_val *window_size = yyjson_obj_get(
         yyjson_obj_get(normalized_root, "decoration"), "window_size");
+    yyjson_val *l2d_correct = yyjson_obj_get(
+        yyjson_obj_get(normalized_root, "decoration"), "l2d_correct");
     int expected_width = 0, expected_height = 0;
     CHECK(bongo_cat_image_info(tray, &expected_width, &expected_height));
     CHECK(yyjson_get_int(yyjson_obj_get(normalized_root, "mode")) == 2 &&
@@ -107,7 +109,8 @@ void test_tauri_portable(void) {
         yyjson_get_int(yyjson_arr_get(yyjson_arr_get(normalized_left, 0), 0)) ==
             24 &&
         yyjson_get_int(yyjson_arr_get(window_size, 0)) == expected_width &&
-        yyjson_get_int(yyjson_arr_get(window_size, 1)) == expected_height);
+        yyjson_get_int(yyjson_arr_get(window_size, 1)) == expected_height &&
+        yyjson_is_num(l2d_correct) && yyjson_get_num(l2d_correct) == 1.0);
     yyjson_doc_free(normalized);
     CHECK(child(path, sizeof(path), package,
         "img/keyboard/cat_model/cat.model3.json", false) &&
