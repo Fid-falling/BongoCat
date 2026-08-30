@@ -1,5 +1,6 @@
 #include "runtime.h"
 #include "live2d_audit_scenario.h"
+#include "live2d_pointer_audit.h"
 #include "bongo_cat/file.h"
 #include "bongo_cat/path.h"
 
@@ -11,21 +12,6 @@
 #define motion bongo_cat_live2d_audit_motion
 #define parameter_override_scenario bongo_cat_live2d_audit_parameter_override
 
-typedef struct PointerAudit {
-    bool ran;
-    bool has_mouse;
-    float angle_x[4];
-    float angle_y[4];
-    float mouse_x[4];
-    float mouse_y[4];
-    float maximum_step;
-} PointerAudit;
-
-static PointerAudit pointer_audit;
-
-/* Viewer 5.3.03: (7.2727275 / 30) target speed * 30-degree range * 1.2 gain. */
-#define POINTER_VISIBLE_STEP_LIMIT 8.8f
-
 static bool value(BongoCatApp *app, const char *id, float *output) {
     BongoCatParameterRange range;
     if (!bongo_cat_live2d_parameter(app->live2d, id, &range)) return false;
@@ -33,69 +19,8 @@ static bool value(BongoCatApp *app, const char *id, float *output) {
     return true;
 }
 
-static bool pointer_test_center(BongoCatApp *app, SDL_Rect *bounds,
-    double *center_x, double *center_y) {
-    int window_x, window_y, width, height;
-    if (!app || !app->window || !bounds || !center_x || !center_y ||
-        !SDL_GetWindowPosition(app->window, &window_x, &window_y) ||
-        !SDL_GetWindowSize(app->window, &width, &height)) return false;
-    *center_x = window_x + width * 0.5;
-    *center_y = window_y + height * 0.5;
-    SDL_Point point = {(int)*center_x, (int)*center_y};
-    SDL_DisplayID display = SDL_GetDisplayForPoint(&point);
-    return display && SDL_GetDisplayBounds(display, bounds) &&
-        bounds->w > 0 && bounds->h > 0;
-}
-
-static bool pointer(BongoCatApp *app, bool mirror) {
-    SDL_Rect bounds;
-    double center_x, center_y;
-    if (!pointer_test_center(app, &bounds, &center_x, &center_y)) return false;
-    app->settings.model.mouse_mirror = mirror;
-    app->left_mouse_down = false;
-    bongo_cat_app_apply_mouse_position(app, center_x + bounds.w * 0.4,
-        center_y - bounds.h * 0.4, 1.0f / 60.0f);
-    for (int frame = 0; frame < 90; ++frame)
-        bongo_cat_app_step_live2d(app, 1.0f / 60.0f);
-    return true;
-}
-
-static bool reverse_pointer(BongoCatApp *app) {
-    SDL_Rect bounds;
-    double center_x, center_y;
-    if (!pointer_test_center(app, &bounds, &center_x, &center_y)) return false;
-    pointer_audit = (PointerAudit){.ran = true};
-    app->settings.model.mouse_mirror = false;
-    app->left_mouse_down = false;
-    const float ratios[4][2] = {
-        {-0.4f, -0.4f}, {0.4f, -0.4f}, {-0.4f, 0.4f}, {0.4f, 0.4f}};
-    float previous_x = 0.0f;
-    bool previous_ready = value(app, "ParamAngleX", &previous_x);
-    for (int corner = 0; corner < 4; ++corner) {
-        bongo_cat_app_apply_mouse_position(app,
-            center_x + bounds.w * ratios[corner][0],
-            center_y + bounds.h * ratios[corner][1], 1.0f / 60.0f);
-        for (int frame = 0; frame < 90; ++frame) {
-            bongo_cat_app_step_live2d(app, 1.0f / 60.0f);
-            float current_x = previous_x;
-            if (!value(app, "ParamAngleX", &current_x)) return false;
-            if (previous_ready) {
-                float step = SDL_fabsf(current_x - previous_x);
-                if (step > pointer_audit.maximum_step)
-                    pointer_audit.maximum_step = step;
-            }
-            previous_x = current_x;
-            previous_ready = true;
-        }
-        if (!value(app, "ParamAngleX", &pointer_audit.angle_x[corner]) ||
-            !value(app, "ParamAngleY", &pointer_audit.angle_y[corner])) return false;
-        bool mouse_x = value(app, "ParamMouseX", &pointer_audit.mouse_x[corner]);
-        bool mouse_y = value(app, "ParamMouseY", &pointer_audit.mouse_y[corner]);
-        if (corner == 0) pointer_audit.has_mouse = mouse_x && mouse_y;
-        else if (pointer_audit.has_mouse != (mouse_x && mouse_y)) return false;
-    }
-    return true;
-}
+/* Viewer 5.3.03: (7.2727275 / 30) target speed * 30-degree range * 1.2 gain. */
+#define POINTER_VISIBLE_STEP_LIMIT 8.8f
 
 static bool apply(BongoCatApp *app, const char *scenario) {
     if (strncmp(scenario, "switch:", 7) == 0)
@@ -109,10 +34,12 @@ static bool apply(BongoCatApp *app, const char *scenario) {
     if (strcmp(scenario, "mouse-hand-screen") == 0)
         return bongo_cat_app_audit_display_pointer(app);
     if (strcmp(scenario, "mirror") == 0) app->settings.model.mirror = true;
-    else if (strcmp(scenario, "mouse-move") == 0) return pointer(app, false);
-    else if (strcmp(scenario, "mouse-move-mirror") == 0) return pointer(app, true);
+    else if (strcmp(scenario, "mouse-move") == 0)
+        return bongo_cat_live2d_pointer_audit_run(app, false);
+    else if (strcmp(scenario, "mouse-move-mirror") == 0)
+        return bongo_cat_live2d_pointer_audit_run(app, true);
     else if (strcmp(scenario, "mouse-reverse") == 0)
-        return reverse_pointer(app);
+        return bongo_cat_live2d_pointer_reverse_audit_run(app);
     else if (strcmp(scenario, "key-left") == 0)
         input(app, BONGO_CAT_INPUT_KEY_DOWN, "KeyA", 1.0f);
     else if (strcmp(scenario, "key-tab-left") == 0)
@@ -220,17 +147,17 @@ static bool assertions(BongoCatApp *app, const char *scenario, bool operation) {
             signed_value(app, "ParamAngleY", true);
     if (strcmp(scenario, "mouse-reverse") == 0) {
         bool horizontal =
-            pointer_audit.angle_x[0] < -5.0f &&
-            pointer_audit.angle_x[1] > 5.0f &&
-            pointer_audit.angle_x[2] < -5.0f &&
-            pointer_audit.angle_x[3] > 5.0f;
-        bool direction = pointer_audit.ran && horizontal &&
-            pointer_audit.angle_y[0] > 5.0f &&
-            pointer_audit.angle_y[1] > 5.0f &&
-            pointer_audit.angle_y[2] < -5.0f &&
-            pointer_audit.angle_y[3] < -5.0f;
+            bongo_cat_pointer_audit.angle_x[0] < -5.0f &&
+            bongo_cat_pointer_audit.angle_x[1] > 5.0f &&
+            bongo_cat_pointer_audit.angle_x[2] < -5.0f &&
+            bongo_cat_pointer_audit.angle_x[3] > 5.0f;
+        bool direction = bongo_cat_pointer_audit.ran && horizontal &&
+            bongo_cat_pointer_audit.angle_y[0] > 5.0f &&
+            bongo_cat_pointer_audit.angle_y[1] > 5.0f &&
+            bongo_cat_pointer_audit.angle_y[2] < -5.0f &&
+            bongo_cat_pointer_audit.angle_y[3] < -5.0f;
         return direction &&
-            pointer_audit.maximum_step < POINTER_VISIBLE_STEP_LIMIT;
+            bongo_cat_pointer_audit.maximum_step < POINTER_VISIBLE_STEP_LIMIT;
     }
     if (strcmp(scenario, "gamepad-sticks") == 0)
         return signed_value(app, "CatParamStickLX", true) &&
@@ -276,19 +203,20 @@ void bongo_cat_live2d_audit_run(BongoCatApp *app) {
         "ParamEyeBallX", "ParamEyeBallY"};
     for (size_t i = 0; i < sizeof(parameters) / sizeof(parameters[0]); ++i)
         parameter(file, app, parameters[i]);
-    if (pointer_audit.ran) {
+    if (bongo_cat_pointer_audit.ran) {
         static const char *names[] = {"tl", "tr", "bl", "br"};
         fprintf(file, "pointer.maximum_step=%.4f\npointer.has_mouse=%d\n",
-            pointer_audit.maximum_step, pointer_audit.has_mouse);
+            bongo_cat_pointer_audit.maximum_step,
+            bongo_cat_pointer_audit.has_mouse);
         for (int corner = 0; corner < 4; ++corner)
             fprintf(file, "pointer.%s.angle_x=%.4f\n"
                 "pointer.%s.angle_y=%.4f\n"
                 "pointer.%s.mouse_x=%.4f\n"
                 "pointer.%s.mouse_y=%.4f\n", names[corner],
-                pointer_audit.angle_x[corner], names[corner],
-                pointer_audit.angle_y[corner], names[corner],
-                pointer_audit.mouse_x[corner], names[corner],
-                pointer_audit.mouse_y[corner]);
+                bongo_cat_pointer_audit.angle_x[corner], names[corner],
+                bongo_cat_pointer_audit.angle_y[corner], names[corner],
+                bongo_cat_pointer_audit.mouse_x[corner], names[corner],
+                bongo_cat_pointer_audit.mouse_y[corner]);
     }
     fclose(file);
 }

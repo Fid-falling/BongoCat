@@ -12,7 +12,6 @@
 static float clamp01(float value) {
     return NK_CLAMP(0.0f, value, 1.0f);
 }
-
 struct nk_color bongo_cat_ui_color_mix(struct nk_color first,
     struct nk_color second, float amount) {
     amount = clamp01(amount);
@@ -100,7 +99,6 @@ void bongo_cat_ui_paint_gradient(struct nk_context *context,
     bongo_cat_ui_paint_cache_draw(context, bounds, item,
         nk_rgb(255, 255, 255));
 }
-
 static void paint_radial(struct nk_context *context, int kind,
     struct nk_rect bounds, struct nk_color center, struct nk_color edge,
     float midpoint, float outer) {
@@ -275,12 +273,4 @@ void bongo_cat_ui_paint_dashed_rounded(struct nk_context *context,
     }
     bongo_cat_ui_paint_cache_draw(context, bounds, item,
         nk_rgb(255, 255, 255));
-}
-
-void bongo_cat_ui_paint_begin_frame(BongoCatUIBackend *backend) {
-    bongo_cat_ui_paint_cache_begin_frame(backend);
-}
-
-void bongo_cat_ui_paint_destroy(BongoCatUIBackend *backend) {
-    bongo_cat_ui_paint_cache_destroy(backend);
 }

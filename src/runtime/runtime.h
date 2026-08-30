@@ -124,6 +124,7 @@ bool bongo_cat_multi_pet_secondary_argument(int argc, char **argv);
 bool bongo_cat_multi_pet_state_directory(char *target, size_t capacity,
     const char *root, const char *model_id);
 void bongo_cat_multi_pet_update(BongoCatApp *app, uint64_t now);
+void bongo_cat_multi_pet_prune_selection(BongoCatApp *app);
 void bongo_cat_multi_pet_primary_update(BongoCatApp *app, uint64_t now);
 bool bongo_cat_multi_pet_request_remove(BongoCatApp *app);
 bool bongo_cat_multi_pet_request_preferences(BongoCatApp *app);

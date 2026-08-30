@@ -14,6 +14,7 @@ if(WIN32)
     src/platform/windows/windows_input.c
     src/platform/windows/windows_popup.c
     src/platform/windows/windows_layered.c
+    src/platform/windows/windows_layered_state.c
     src/platform/windows/windows_opacity.c
     src/platform/windows/windows_tray.c
     src/platform/windows/windows_assets.c
@@ -31,7 +32,8 @@ elseif(APPLE)
     src/platform/macos/macos_preferences.m
     src/platform/macos/macos_input.m
     src/platform/macos/macos_keys.m
-    src/platform/macos/macos_menu.m)
+    src/platform/macos/macos_menu.m
+    src/platform/macos/macos_tray.m)
   target_link_libraries(bongo_cat_runtime PRIVATE "-framework Cocoa"
     "-framework ApplicationServices")
 else()

@@ -1,4 +1,5 @@
 #include "windows_layered.h"
+#include "windows_layered_internal.h"
 #include "windows_capture.h"
 #ifdef _WIN32
 #include <SDL3/SDL.h>
@@ -10,18 +11,6 @@
 static const wchar_t proxy_class[] = L"BongoCat.LayeredPresenter";
 static const wchar_t proxy_property[] = L"BongoCat.LayeredProxy";
 /* SDL's OpenGL window owns a DC, so a separate layered window presents frames. */
-typedef struct BongoCatWindowsLayered {
-    HDC memory_dc;
-    HBITMAP bitmap;
-    HGDIOBJ original_bitmap;
-    unsigned char *pixels;
-    unsigned char *readback;
-    size_t readback_capacity;
-    HWND proxy;
-    int width, height, source_width, source_height;
-    bool readback_valid, active, has_frame, mode_logged;
-    bool source_transparent, visible, topmost;
-} BongoCatWindowsLayered;
 static HWND native_window(BongoCatPlatform *platform) {
     return platform && platform->window ? (HWND)SDL_GetPointerProperty(
         SDL_GetWindowProperties(platform->window),
@@ -107,7 +96,7 @@ static bool ensure_proxy(BongoCatPlatform *platform) {
     bongo_cat_windows_capture_log(value->proxy, "layered-proxy-created");
     return true;
 }
-static bool update_proxy(BongoCatPlatform *platform,
+bool bongo_cat_windows_layered_update_proxy(BongoCatPlatform *platform,
     BongoCatWindowsLayered *value) {
     HWND source_window = native_window(platform);
     RECT bounds;
@@ -184,41 +173,6 @@ HWND bongo_cat_windows_layered_proxy(HWND source) {
     return source ? (HWND)GetPropW(source, proxy_property) : NULL;
 }
 
-bool bongo_cat_platform_set_opacity(BongoCatPlatform *platform, float opacity) {
-    if (!platform || !platform->window) return false;
-    BongoCatWindowsLayered *value = platform->presenter;
-    platform->window_opacity = SDL_clamp(opacity, 0.0f, 1.0f);
-    if (value && value->active)
-        return !value->has_frame || update_proxy(platform, value);
-    return SDL_SetWindowOpacity(platform->window, platform->window_opacity);
-}
-
-
-bool bongo_cat_platform_frame_alpha(const BongoCatPlatform *platform,
-    int width, int height, int x, int y, uint8_t *alpha) {
-    const BongoCatWindowsLayered *value = platform ? platform->presenter : NULL;
-    const unsigned char *pixels = value && value->readback_valid ?
-        value->readback : value ? value->pixels : NULL;
-    if (!value || !value->active || !value->has_frame || !pixels ||
-        value->source_width != width || value->source_height != height || !alpha ||
-        x < 0 || y < 0 || x >= width || y >= height) return false;
-    *alpha = pixels[((size_t)y * (size_t)width + (size_t)x) * 4 + 3];
-    return true;
-}
-
-void bongo_cat_platform_set_visible(BongoCatPlatform *platform, bool visible) {
-    if (!platform || !platform->window) return;
-    BongoCatWindowsLayered *value = platform->presenter;
-    if (value) value->visible = visible;
-    if (!visible && value && value->proxy) ShowWindow(value->proxy, SW_HIDE);
-    visible ? SDL_ShowWindow(platform->window) : SDL_HideWindow(platform->window);
-    if (visible) {
-        HWND source = native_window(platform);
-        bongo_cat_windows_capture_configure(source);
-        bongo_cat_windows_capture_log(source, "visible");
-    }
-}
-
 static bool resize_bitmap(BongoCatWindowsLayered *value, int width, int height) {
     if (value->bitmap && value->width == width && value->height == height) return true;
     release_bitmap(value);
@@ -287,7 +241,10 @@ bool bongo_cat_platform_present(BongoCatPlatform *platform, int width, int heigh
         value->has_frame = false;
         return SDL_SetError("Cannot allocate the Windows layered frame");
     }
-    if (!update_proxy(platform, value)) { value->has_frame = false; return false; }
+    if (!bongo_cat_windows_layered_update_proxy(platform, value)) {
+        value->has_frame = false;
+        return false;
+    }
     value->has_frame = true;
     if (!make_source_transparent(platform))
         return SDL_SetError("Cannot suppress the OpenGL source window");

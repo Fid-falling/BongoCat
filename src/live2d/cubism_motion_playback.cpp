@@ -6,6 +6,11 @@
 
 namespace bongo_cat {
 
+bool motion_run_clears_selection(bool one_shot, bool committed,
+    bool replacement_running) {
+    return one_shot && committed && !replacement_running;
+}
+
 bool NativeModel::start_motion(const char *group, int index) {
     if (!group || index < 0) return false;
     std::string key = std::string(group) + "_" + std::to_string(index);

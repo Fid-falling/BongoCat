@@ -1,4 +1,5 @@
 #include "model_import.h"
+#include "model_import_digest_internal.h"
 #include "model_import_mver_policy.h"
 #include "bongo_cat/path.h"
 #include "bongo_cat/sha256.h"
@@ -8,6 +9,10 @@
 #include <string.h>
 
 #define DIGEST_ROOT_CAP 12
+#define path_length bongo_cat_import_digest_path_length
+#define path_contains bongo_cat_import_digest_path_contains
+#define hash_text bongo_cat_import_digest_hash_text
+#define mix bongo_cat_import_digest_mix
 
 typedef struct DigestStamp { uint64_t sum, exclusive, bytes, files, entries; } DigestStamp;
 
@@ -24,47 +29,6 @@ typedef struct DigestWalk {
 } DigestWalk;
 
 typedef struct DigestRoot { char path[BONGO_CAT_PATH_CAP]; const char *group; } DigestRoot;
-
-static bool separator(char value) { return value == '/' || value == '\\'; }
-
-static bool path_character_equal(char left, char right) {
-    if (separator(left) && separator(right)) return true;
-#ifdef _WIN32
-    if (left >= 'A' && left <= 'Z') left = (char)(left - 'A' + 'a');
-    if (right >= 'A' && right <= 'Z') right = (char)(right - 'A' + 'a');
-#endif
-    return left == right;
-}
-
-static size_t path_length(const char *path) {
-    size_t length = path ? strlen(path) : 0;
-    while (length > 1 && separator(path[length - 1])) length--;
-    return length;
-}
-
-static bool path_contains(const char *root, const char *path) {
-    size_t root_length = path_length(root), item_length = path_length(path);
-    if (!root_length || item_length < root_length) return false;
-    for (size_t i = 0; i < root_length; ++i)
-        if (!path_character_equal(root[i], path[i])) return false;
-    return item_length == root_length || separator(path[root_length]);
-}
-
-static uint64_t hash_text(const char *value) {
-    uint64_t hash = 1469598103934665603ull;
-    for (const unsigned char *cursor = (const unsigned char *)value;
-        cursor && *cursor; ++cursor) {
-        unsigned char byte = *cursor == '\\' ? '/' : *cursor;
-        hash ^= byte; hash *= 1099511628211ull;
-    }
-    return hash;
-}
-
-static uint64_t mix(uint64_t value) {
-    value ^= value >> 30; value *= 0xbf58476d1ce4e5b9ull;
-    value ^= value >> 27; value *= 0x94d049bb133111ebull;
-    return value ^ (value >> 31);
-}
 
 static bool stamp_path(const char *path, DigestWalk *walk);
 

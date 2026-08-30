@@ -197,15 +197,6 @@ static void reap_pets(BongoCatApp *app, uint64_t now) {
     }
 }
 
-static void prune_selection(BongoCatApp *app) {
-    bongo_cat_session_validate(&app->session);
-    for (size_t i = app->session.additional_model_count; i > 0; --i) {
-        const char *id = app->session.additional_model_ids[i - 1];
-        if (!bongo_cat_models_find(&app->models, id))
-            bongo_cat_session_remove_model(&app->session, id);
-    }
-}
-
 static void consume_remove_requests(BongoCatApp *app) {
     BongoCatMultiPetRuntime *runtime = app->multi_pet;
     for (size_t i = runtime->count; i > 0; --i) {
@@ -219,7 +210,7 @@ static void consume_remove_requests(BongoCatApp *app) {
 }
 
 void bongo_cat_multi_pet_primary_update(BongoCatApp *app, uint64_t now) {
-    prune_selection(app);
+    bongo_cat_multi_pet_prune_selection(app);
     if (!app->multi_pet && app->session.additional_model_count)
         app->multi_pet = calloc(1, sizeof(*app->multi_pet));
     if (!app->multi_pet) return;

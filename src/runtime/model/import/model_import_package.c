@@ -1,9 +1,11 @@
 #include "model_import.h"
+#include "model_import_path.h"
 #include "model_import_mver_copy.h"
 #include "tauri/model_import_tauri.h"
 #include "bongo_cat/path.h"
 
 #include <stdio.h>
+#include <string.h>
 
 static bool copy_package_files(const BongoCatImportCandidate *candidate,
     const char *target, BongoCatImportCandidate *installed,
@@ -43,6 +45,58 @@ static bool tauri_variant_directory(char *output, size_t capacity,
         bongo_cat_path_join(output, capacity, target, name);
 }
 
+static bool common_package_root(const BongoCatImportDiscovery *discovery,
+    char root[BONGO_CAT_PATH_CAP]) {
+    if (!bongo_cat_import_parent_path(discovery->candidates[0].package_root,
+            root, BONGO_CAT_PATH_CAP)) return false;
+    for (size_t i = 1; i < discovery->count; ++i) {
+        char relative[BONGO_CAT_PATH_CAP];
+        while (!bongo_cat_import_relative_path(root,
+                discovery->candidates[i].package_root, relative,
+                sizeof(relative))) {
+            char parent[BONGO_CAT_PATH_CAP];
+            if (!bongo_cat_import_parent_path(root, parent, sizeof(parent)))
+                return false;
+            snprintf(root, BONGO_CAT_PATH_CAP, "%s", parent);
+        }
+    }
+    return true;
+}
+
+static bool prepare_container_storage(
+    const BongoCatImportDiscovery *discovery, const char *target,
+    BongoCatError *error) {
+    char root[BONGO_CAT_PATH_CAP];
+    if (!common_package_root(discovery, root)) return false;
+    for (size_t i = 0; i < discovery->count; ++i) {
+        bool already_copied = false;
+        for (size_t j = 0; j < i; ++j)
+            if (strcmp(discovery->candidates[j].package_root,
+                    discovery->candidates[i].package_root) == 0) {
+                already_copied = true;
+                break;
+            }
+        if (already_copied) continue;
+        char relative[BONGO_CAT_PATH_CAP], package[BONGO_CAT_PATH_CAP];
+        if (!bongo_cat_import_relative_path(root,
+                discovery->candidates[i].package_root, relative,
+                sizeof(relative)) || !relative[0] ||
+            !bongo_cat_path_join(package, sizeof(package), target, relative))
+            return false;
+        BongoCatImportCandidate installed;
+        if (!bongo_cat_import_prepare_package(&discovery->candidates[i],
+                package, &installed, error)) return false;
+    }
+    return true;
+}
+
+static bool single_package_root(const BongoCatImportDiscovery *discovery) {
+    for (size_t i = 1; i < discovery->count; ++i)
+        if (strcmp(discovery->candidates[0].package_root,
+                discovery->candidates[i].package_root) != 0) return false;
+    return true;
+}
+
 bool bongo_cat_import_prepare_storage(
     const BongoCatImportDiscovery *discovery, const char *target,
     BongoCatError *error) {
@@ -51,11 +105,12 @@ bool bongo_cat_import_prepare_storage(
     for (size_t i = 0; i < discovery->count; ++i)
         tauri = tauri && discovery->candidates[i].format ==
             BONGO_CAT_IMPORT_TAURI;
-    if (!tauri) {
+    if (!tauri && single_package_root(discovery)) {
         BongoCatImportCandidate installed;
         return bongo_cat_import_prepare_package(&discovery->candidates[0],
             target, &installed, error);
     }
+    if (!tauri) return prepare_container_storage(discovery, target, error);
     for (size_t i = 0; i < discovery->count; ++i) {
         char package[BONGO_CAT_PATH_CAP];
         if (discovery->count == 1)

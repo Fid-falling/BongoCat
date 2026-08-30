@@ -217,11 +217,6 @@ bool NativeModel::motion_persistent(const char *group, int index) const {
         std::string(group) + "_" + std::to_string(index));
 }
 
-bool motion_run_clears_selection(bool one_shot, bool committed,
-    bool replacement_running) {
-    return one_shot && committed && !replacement_running;
-}
-
 bool NativeModel::restore_motion_defaults(const std::string &key) {
     auto state = motion_states_.find(key);
     if (_model == nullptr || state == motion_states_.end()) return false;

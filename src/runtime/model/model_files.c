@@ -1,5 +1,6 @@
 #include "runtime.h"
 #include "model_import.h"
+#include "model_behavior_cache.h"
 #include "model_geometry.h"
 #include "bongo_cat/audio.h"
 #include "bongo_cat/overlay.h"
@@ -48,42 +49,6 @@ static void model_running_stage(BongoCatApp *app, const char *model_id) {
     snprintf(state, sizeof(state), "running:model:%s",
         model_id && model_id[0] ? model_id : "none");
     bongo_cat_runtime_stage(app, state);
-}
-
-static bool behavior_cacheable(const BongoCatModelEntry *entry) {
-    /* Installed Mver trees keep a stable content digest. Nearby models are
-       managed by their source directory, so do not retain stale data. */
-    return entry && (entry->preset || (!entry->managed &&
-        entry->content_digest[0]));
-}
-
-static bool behavior_cache_matches(const BongoCatApp *app,
-    const BongoCatModelEntry *entry) {
-    return app && app->behavior_cache && app->behavior_cache_valid &&
-        behavior_cacheable(entry) &&
-        strcmp(app->behavior_cache_model_id, entry->id) == 0 &&
-        (entry->preset || strcmp(app->behavior_cache_digest,
-            entry->content_digest) == 0);
-}
-
-static void behavior_cache_store(BongoCatApp *app,
-    const BongoCatModelEntry *entry) {
-    if (!app || !behavior_cacheable(entry)) {
-        if (app) app->behavior_cache_valid = false;
-        return;
-    }
-    if (!app->behavior_cache)
-        app->behavior_cache = malloc(sizeof(*app->behavior_cache));
-    if (!app->behavior_cache) {
-        app->behavior_cache_valid = false;
-        return;
-    }
-    *app->behavior_cache = app->behaviors;
-    snprintf(app->behavior_cache_model_id,
-        sizeof(app->behavior_cache_model_id), "%s", entry->id);
-    snprintf(app->behavior_cache_digest, sizeof(app->behavior_cache_digest),
-        "%s", entry->content_digest);
-    app->behavior_cache_valid = true;
 }
 
 static void model_progress_runtime_stage(BongoCatApp *app, float progress) {
@@ -163,7 +128,8 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
             "Cannot allocate model behavior state");
         return false;
     }
-    bool behavior_catalog_valid = behavior_cache_matches(app, entry);
+    bool behavior_catalog_valid = bongo_cat_model_behavior_cache_matches(
+        app, entry);
     if (behavior_catalog_valid) {
         *behaviors = *app->behavior_cache;
     } else {
@@ -245,7 +211,7 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     if (app->loaded_model[0] && app->behavior_catalog_valid) {
         const BongoCatModelEntry *previous_entry = bongo_cat_models_find(
             &app->models, app->loaded_model);
-        behavior_cache_store(app, previous_entry);
+        bongo_cat_model_behavior_cache_store(app, previous_entry);
     } else if (app->loaded_model[0]) {
         app->behavior_cache_valid = false;
     }

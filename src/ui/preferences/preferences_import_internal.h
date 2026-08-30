@@ -67,5 +67,9 @@ void bongo_cat_preferences_import_merge_failures(BongoCatImportJob *job,
     const BongoCatImportBatchStats *stats);
 bool bongo_cat_preferences_import_progress_event(
     BongoCatImportDialog *dialog, BongoCatApp *app, const SDL_Event *event);
+void bongo_cat_preferences_import_job_free(BongoCatImportJob *job);
+void bongo_cat_preferences_import_dialog_release(
+    BongoCatImportDialog *dialog);
+int SDLCALL bongo_cat_preferences_import_worker(void *userdata);
 
 #endif

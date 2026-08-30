@@ -27,5 +27,10 @@ bool bongo_cat_import_package_index_has_capacity(
 bool bongo_cat_import_package_index_add(BongoCatImportPackageIndex *index,
     const char *id, const BongoCatImportDiscovery *discovery,
     const BongoCatPackageMetadata *metadata, BongoCatError *error);
+BongoCatResult bongo_cat_import_install_discovery(
+    BongoCatImportSession *session,
+    BongoCatImportDiscovery *source_discovery,
+    BongoCatPackageMetadata *source_metadata,
+    BongoCatImportReceipt *receipt, BongoCatError *error);
 
 #endif

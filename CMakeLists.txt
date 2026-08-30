@@ -54,9 +54,11 @@ if(EXISTS "${CUBISM_CORE_HEADER}")
       src/live2d/cubism_parameter_overrides.cpp
       src/live2d/cubism_cover_capture.cpp
       src/live2d/cubism_motion_playback.cpp
+      src/live2d/cubism_motion_preview.cpp
       src/live2d/cubism_motion_selection.cpp
       src/live2d/cubism_motion_state.cpp src/live2d/cubism_viewer_look.cpp
       src/live2d/cubism_model_bounds.cpp
+      src/live2d/cubism_model_viewport.cpp
       src/live2d/cubism_model_validate.cpp)
     set(BONGO_CAT_CUBISM_ENABLED ON)
   endif()

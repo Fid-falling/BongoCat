@@ -1,4 +1,5 @@
 #include "model_import_mver_copy.h"
+#include "model_import_path.h"
 #include "bongo_cat/path.h"
 
 #include <SDL3/SDL.h>
@@ -11,38 +12,11 @@ typedef struct MverDirectoryCopy {
     unsigned depth;
 } MverDirectoryCopy;
 
-static bool separator(char value) {
-    return value == '/' || value == '\\';
-}
-
-static bool character_equal(char left, char right) {
-    if (separator(left) && separator(right)) return true;
-#ifdef _WIN32
-    if (left >= 'A' && left <= 'Z') left = (char)(left - 'A' + 'a');
-    if (right >= 'A' && right <= 'Z') right = (char)(right - 'A' + 'a');
-#endif
-    return left == right;
-}
-
-static bool relative_path(const char *root, const char *path,
-    char *relative, size_t capacity) {
-    size_t root_length = root ? strlen(root) : 0;
-    while (root_length > 1 && separator(root[root_length - 1])) root_length--;
-    size_t path_length = path ? strlen(path) : 0;
-    if (!root_length || path_length < root_length) return false;
-    for (size_t i = 0; i < root_length; ++i)
-        if (!character_equal(root[i], path[i])) return false;
-    if (path_length > root_length && !separator(path[root_length])) return false;
-    const char *value = path + root_length;
-    while (separator(*value)) value++;
-    int written = snprintf(relative, capacity, "%s", value);
-    return written >= 0 && (size_t)written < capacity;
-}
-
 static bool rebase(const char *source_root, const char *installed_root,
     const char *source, char *target, size_t capacity) {
     char relative[BONGO_CAT_PATH_CAP];
-    if (!relative_path(source_root, source, relative, sizeof(relative)))
+    if (!bongo_cat_import_relative_path(source_root, source, relative,
+            sizeof(relative)))
         return false;
     if (!relative[0]) {
         int written = snprintf(target, capacity, "%s", installed_root);
@@ -54,7 +28,8 @@ static bool rebase(const char *source_root, const char *installed_root,
 static bool copy_relative_file(const char *source_root, const char *source,
     const char *target_root, BongoCatError *error) {
     char relative[BONGO_CAT_PATH_CAP], target[BONGO_CAT_PATH_CAP];
-    if (!relative_path(source_root, source, relative, sizeof(relative)) ||
+    if (!bongo_cat_import_relative_path(source_root, source, relative,
+            sizeof(relative)) ||
         !relative[0] || !bongo_cat_path_join(target, sizeof(target),
             target_root, relative)) return false;
     if (bongo_cat_path_is_file(target)) return true;
@@ -125,7 +100,8 @@ static bool copy_tree(const char *source, const char *target,
 static bool copy_relative_directory(const char *source_root,
     const char *source, const char *target_root, BongoCatError *error) {
     char relative[BONGO_CAT_PATH_CAP], target[BONGO_CAT_PATH_CAP];
-    if (!relative_path(source_root, source, relative, sizeof(relative)) ||
+    if (!bongo_cat_import_relative_path(source_root, source, relative,
+            sizeof(relative)) ||
         !relative[0] || !bongo_cat_path_join(target, sizeof(target),
             target_root, relative)) return false;
     return copy_tree(source, target, 1, error);
@@ -147,8 +123,9 @@ bool bongo_cat_import_mver_copy_package(
     bool patch = candidate->format == BONGO_CAT_IMPORT_MVER_PATCH;
     if (patch) {
         char patch_relative[BONGO_CAT_PATH_CAP];
-        bool patch_inside_package = relative_path(candidate->package_root,
-            candidate->patch_root, patch_relative, sizeof(patch_relative));
+        bool patch_inside_package = bongo_cat_import_relative_path(
+            candidate->package_root, candidate->patch_root, patch_relative,
+            sizeof(patch_relative));
         const char *patch_source_root = patch_inside_package
             ? candidate->package_root : candidate->patch_root;
         snprintf(base, sizeof(base), "%s", target);

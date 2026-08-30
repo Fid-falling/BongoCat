@@ -33,6 +33,7 @@ set(BONGO_CAT_RUNTIME_LIFECYCLE_SOURCES
   src/runtime/lifecycle/app.c
   src/runtime/lifecycle/app_entry.c
   src/runtime/lifecycle/app_input.c
+  src/runtime/lifecycle/app_loop.c
   src/runtime/lifecycle/assets.c
   src/runtime/lifecycle/config_store.c
   src/runtime/lifecycle/frame_clock.c
@@ -54,6 +55,7 @@ set(BONGO_CAT_RUNTIME_DIAGNOSTIC_SOURCES
   src/runtime/diagnostics/frame_audit.c
   src/runtime/diagnostics/frame_presentation_audit.c
   src/runtime/diagnostics/live2d_audit.c
+  src/runtime/diagnostics/live2d_pointer_audit.c
   src/runtime/diagnostics/live2d_audit_scenario.c
   src/runtime/diagnostics/live2d_viewer_audit.c
   src/runtime/diagnostics/live2d_viewer_timing.c
@@ -66,10 +68,12 @@ set(BONGO_CAT_RUNTIME_INPUT_SOURCES
   src/runtime/input/shortcuts.c)
 
 set(BONGO_CAT_RUNTIME_MODEL_SOURCES
+  src/runtime/model/model_behavior_cache.c
   src/runtime/model/model_behavior_state.c
   src/runtime/model/model_catalog_runtime.c
   src/runtime/model/model_catalog_builtins.c
   src/runtime/model/model_catalog_commit.c
+  src/runtime/model/model_catalog_remove.c
   src/runtime/model/model_catalog_refresh.c
   src/runtime/model/model_catalog_selection.c
   src/runtime/model/model_files.c
@@ -88,10 +92,12 @@ set(BONGO_CAT_RUNTIME_IMPORT_SOURCES
   src/runtime/model/import/model_import_digest.c
   src/runtime/model/import/model_import_digest_api.c
   src/runtime/model/import/model_import_digest_cache.c
+  src/runtime/model/import/model_import_digest_path.c
   src/runtime/model/import/model_import_discover.c
   src/runtime/model/import/model_import_manifest.c
   src/runtime/model/import/model_import_identity.c
   src/runtime/model/import/model_import_installed.c
+  src/runtime/model/import/model_import_install.c
   src/runtime/model/import/model_import_lock.c
   src/runtime/model/import/model_import_metadata.c
   src/runtime/model/import/model_import_package.c
@@ -146,11 +152,13 @@ set(BONGO_CAT_RUNTIME_SHELL_SOURCES
   src/runtime/shell/window_menu_behavior.c
   src/runtime/shell/window_menu_behavior_test.c
   src/runtime/shell/window_menu_preview.c
-  src/runtime/shell/window_wheel.c)
+  src/runtime/shell/window_wheel.c
+  src/runtime/shell/window_wheel_test.c)
 
 set(BONGO_CAT_UI_BACKEND_SOURCES
   src/ui/backend/nuklear_impl.c
   src/ui/backend/ui_backend.c
+  src/ui/backend/ui_backend_fonts.c
   src/ui/backend/ui_cursor.c
   src/ui/backend/ui_input.c
   src/ui/backend/ui_resize_cache.c
@@ -169,6 +177,7 @@ set(BONGO_CAT_UI_RENDERING_SOURCES
   src/ui/rendering/ui_paint.c
   src/ui/rendering/ui_paint_border.c
   src/ui/rendering/ui_paint_cache.c
+  src/ui/rendering/ui_paint_lifecycle.c
   src/ui/rendering/ui_paint_shell.c)
 
 set(BONGO_CAT_UI_THEME_SOURCES
@@ -196,6 +205,7 @@ set(BONGO_CAT_UI_PREFERENCES_SOURCES
   src/ui/preferences/preferences_import.c
   src/ui/preferences/preferences_import_dialog.c
   src/ui/preferences/preferences_import_progress.c
+  src/ui/preferences/preferences_import_worker.c
   src/ui/preferences/preferences_icons.c
   src/ui/preferences/preferences_language.c
   src/ui/preferences/preferences_lifecycle.c
@@ -207,11 +217,13 @@ set(BONGO_CAT_UI_PREFERENCES_SOURCES
   src/ui/preferences/preferences_model_section.c
   src/ui/preferences/preferences_model_watch.c
   src/ui/preferences/preferences_model_glyphs.c
+  src/ui/preferences/preferences_model_import.c
   src/ui/preferences/preferences_model_rename.c
   src/ui/preferences/preferences_notice.c
   src/ui/preferences/preferences_overlay.c
   src/ui/preferences/preferences_page_dispatch.c
   src/ui/preferences/preferences_pages.c
+  src/ui/preferences/preferences_present.c
   src/ui/preferences/preferences_render.c
   src/ui/preferences/preferences_row_icons.c
   src/ui/preferences/preferences_scale.c
