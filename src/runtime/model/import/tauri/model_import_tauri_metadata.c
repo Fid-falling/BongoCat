@@ -47,32 +47,29 @@ static bool read_window(yyjson_val *value, int *width, int *height) {
     return true;
 }
 
-static bool legacy_converter_canvas(
+static bool legacy_converter_double_scale(
     const BongoCatImportCandidate *candidate, int width, int height) {
     if (!candidate || !valid_canvas_size(width, height) ||
         width < 256 || height < 256) return false;
     char path[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_tauri_find_resource_directory(candidate, "left-keys",
             path, sizeof(path))) return false;
-    if (candidate->mode == BONGO_CAT_MODE_STANDARD && width == height &&
-        width >= 512)
-        return true;
-    if (!bongo_cat_tauri_find_resource_file(candidate, "cover.png", path,
-            sizeof(path))) return false;
-    int cover_width = 0, cover_height = 0;
-    return bongo_cat_image_info(path, &cover_width, &cover_height) &&
-        valid_canvas_size(cover_width, cover_height) &&
-        (cover_width != width || cover_height != height);
+    if (candidate->mode != BONGO_CAT_MODE_STANDARD) return true;
+    return width == height && width >= 512;
 }
 
-static void legacy_defaults(const BongoCatImportCandidate *candidate,
-    TauriMverCalibration *calibration) {
+static void mver_defaults(TauriMverCalibration *calibration) {
     calibration->l2d_correct = 1.1;
     calibration->l2d_offset_x = 0.0;
     calibration->l2d_offset_y = 0.0;
     calibration->window_width = 612;
     calibration->window_height = 352;
     calibration->mirror = false;
+}
+
+static void legacy_defaults(const BongoCatImportCandidate *candidate,
+    TauriMverCalibration *calibration) {
+    mver_defaults(calibration);
     char path[BONGO_CAT_PATH_CAP];
     const char *names[] = {"background.png", "cover.png"};
     for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {
@@ -87,10 +84,11 @@ static void legacy_defaults(const BongoCatImportCandidate *candidate,
         }
     }
     /* Converter packages before schemaVersion 1 omitted their Mver projection
-       calibration. Their model scale is approximately 2.0 across modes; the
-       old 1.1 fallback leaves the Live2D layer much smaller than its authored
-       background and makes the keyboard or desk appear duplicated. */
-    if (legacy_converter_canvas(candidate, calibration->window_width,
+       calibration. Keyboard/gamepad packages and the converter's square
+       standard profile use approximately 2.0. Non-square standard packages
+       retain Mver's 1.1 default; cover.png is only a cropped preview and must
+       not be used to infer runtime projection. */
+    if (legacy_converter_double_scale(candidate, calibration->window_width,
             calibration->window_height)) {
         calibration->l2d_correct = 2.0;
         if (candidate->mode == BONGO_CAT_MODE_STANDARD &&
@@ -103,10 +101,12 @@ bool bongo_cat_tauri_read_calibration(
     const BongoCatImportCandidate *candidate,
     TauriMverCalibration *calibration) {
     if (!candidate || !calibration) return false;
-    legacy_defaults(candidate, calibration);
     char path[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_tauri_find_package_file(candidate,
-            BONGO_CAT_TAURI_SOURCE_FILE, path, sizeof(path))) return true;
+            BONGO_CAT_TAURI_SOURCE_FILE, path, sizeof(path))) {
+        legacy_defaults(candidate, calibration);
+        return true;
+    }
     yyjson_doc *document = bongo_cat_json_read_file(path, 0, NULL);
     yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
     yyjson_val *schema = yyjson_obj_get(root, "schemaVersion");
@@ -118,6 +118,7 @@ bool bongo_cat_tauri_read_calibration(
         (!mode || strcmp(mode, bongo_cat_mode_name(candidate->mode)) == 0) &&
         yyjson_is_obj(decoration);
     if (valid) {
+        mver_defaults(calibration);
         yyjson_val *scale = yyjson_obj_get(decoration, "l2d_correct");
         if (finite_number(scale)) {
             double value = yyjson_get_num(scale);
@@ -131,7 +132,7 @@ bool bongo_cat_tauri_read_calibration(
         yyjson_val *mirror = yyjson_obj_get(decoration,
             "l2d_horizontal_flip");
         if (yyjson_is_bool(mirror)) calibration->mirror = yyjson_get_bool(mirror);
-    }
+    } else legacy_defaults(candidate, calibration);
     yyjson_doc_free(document);
     return true;
 }
