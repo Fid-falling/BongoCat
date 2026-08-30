@@ -8,7 +8,7 @@ $repositoryRoot = Split-Path $PSScriptRoot -Parent
 $cmakeLists = Get-Content -LiteralPath (
     Join-Path $repositoryRoot 'CMakeLists.txt') -Raw
 if ($cmakeLists -notmatch
-    '(?m)^project\(BongoCat VERSION ([0-9]+)\.([0-9]+)\.([0-9]+)\b') {
+    '(?m)^\s*set\(BONGO_CAT_VERSION\s+"?([0-9]+)\.([0-9]+)\.([0-9]+)') {
     throw 'Unable to read the BongoCat version from CMakeLists.txt.'
 }
 
