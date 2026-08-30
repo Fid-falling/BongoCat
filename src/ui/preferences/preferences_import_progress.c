@@ -1,8 +1,49 @@
 #include "preferences_import_internal.h"
 #include "model_import.h"
+#include "bongo_cat/path.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
+#include <string.h>
+
+void bongo_cat_preferences_import_record_failure(BongoCatImportJob *job,
+    const char *source) {
+    if (!job || job->failed_name_count >=
+        BONGO_CAT_IMPORT_FAILURE_NAME_CAP) return;
+    const char *name = bongo_cat_path_name(source);
+    if (!name || !name[0]) return;
+    snprintf(job->failed_names[job->failed_name_count++], BONGO_CAT_ID_CAP,
+        "%s", name);
+}
+
+void bongo_cat_preferences_import_merge_failures(BongoCatImportJob *job,
+    const BongoCatImportBatchStats *stats) {
+    if (!job || !stats) return;
+    for (size_t i = 0; i < stats->failure_name_count; ++i)
+        bongo_cat_preferences_import_record_failure(job,
+            stats->failure_names[i]);
+}
+
+static void remember_package(BongoCatImportJob *job, const char *id) {
+    if (!job || !id || !id[0]) return;
+    for (size_t i = 0; i < job->package_id_count; ++i)
+        if (!strcmp(job->package_ids[i], id)) return;
+    if (job->package_id_count >= BONGO_CAT_MODEL_CAP) return;
+    snprintf(job->package_ids[job->package_id_count++], BONGO_CAT_ID_CAP,
+        "%s", id);
+}
+
+void bongo_cat_preferences_import_receive(void *userdata,
+    const BongoCatImportReceipt *receipt) {
+    BongoCatImportProgressContext *progress = userdata;
+    BongoCatImportJob *job = progress->job;
+    if (receipt->count) remember_package(job, receipt->ids[0]);
+    job->resolved_count += receipt->count;
+    job->installed_count += receipt->installed_count;
+    job->result = BONGO_CAT_OK;
+    bongo_cat_preferences_import_report_progress(job, receipt,
+        ++progress->completed);
+}
 
 void bongo_cat_preferences_import_report_progress(BongoCatImportJob *job,
     const BongoCatImportReceipt *receipt, size_t completed) {

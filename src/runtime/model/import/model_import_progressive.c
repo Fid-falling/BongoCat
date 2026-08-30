@@ -93,49 +93,77 @@ static bool redundant_patch(const ProgressiveScan *scan,
     return true;
 }
 
+static void record_failure_name(BongoCatImportBatchStats *stats,
+    const char *source) {
+    if (!stats || stats->failure_name_count >=
+        BONGO_CAT_IMPORT_FAILURE_NAME_CAP) return;
+    const char *name = bongo_cat_path_name(source);
+    if (!name || !name[0]) return;
+    snprintf(stats->failure_names[stats->failure_name_count++],
+        BONGO_CAT_ID_CAP, "%s", name);
+}
+
 static BongoCatResult install_one(BongoCatImportSession *session,
     const char *source, BongoCatImportReceiptCallback callback,
-    void *userdata, BongoCatError *error) {
+    void *userdata, BongoCatImportBatchStats *stats, BongoCatError *error) {
     BongoCatImportReceipt receipt = {0};
     BongoCatResult result = bongo_cat_import_session_install(session, source,
         &receipt, error);
-    if (result == BONGO_CAT_OK && receipt.count && callback)
+    if (result == BONGO_CAT_OK) stats->succeeded_count++;
+    else {
+        stats->failed_count++;
+        record_failure_name(stats, source);
+    }
+    if (result == BONGO_CAT_OK && callback)
         callback(userdata, &receipt);
+    return result;
+}
+
+static BongoCatResult fail_source(BongoCatImportBatchStats *stats,
+    const char *source, BongoCatResult result) {
+    stats->failed_count++;
+    record_failure_name(stats, source);
     return result;
 }
 
 BongoCatResult bongo_cat_import_session_install_progressive(
     BongoCatImportSession *session, const char *source,
     BongoCatImportReceiptCallback callback, void *userdata,
-    BongoCatError *error) {
-    if (!session || !source) return BONGO_CAT_ERROR_ARGUMENT;
+    BongoCatImportBatchStats *stats, BongoCatError *error) {
+    if (!stats) return BONGO_CAT_ERROR_ARGUMENT;
+    *stats = (BongoCatImportBatchStats){0};
+    if (!session || !source)
+        return fail_source(stats, source, BONGO_CAT_ERROR_ARGUMENT);
     char directory[BONGO_CAT_PATH_CAP];
     BongoCatResult normalized = bongo_cat_import_source_directory(source,
         directory, sizeof(directory), error);
-    if (normalized != BONGO_CAT_OK) return normalized;
+    if (normalized != BONGO_CAT_OK)
+        return fail_source(stats, source, normalized);
 
     BongoCatImportDiscovery exact;
     BongoCatError exact_error = {0};
     int exact_result = discover_exact(directory, &exact, &exact_error);
     if (exact_result > 0)
-        return install_one(session, directory, callback, userdata, error);
+        return install_one(session, directory, callback, userdata, stats,
+            error);
     if (exact_result < 0) {
         if (error) *error = exact_error;
-        return exact_error.code ? exact_error.code : BONGO_CAT_ERROR_FORMAT;
+        return fail_source(stats, directory, exact_error.code
+            ? exact_error.code : BONGO_CAT_ERROR_FORMAT);
     }
 
     ProgressiveScan *scan = calloc(1, sizeof(*scan));
     if (!scan) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_MEMORY,
             "Cannot allocate progressive model import scan");
-        return BONGO_CAT_ERROR_MEMORY;
+        return fail_source(stats, directory, BONGO_CAT_ERROR_MEMORY);
     }
     BongoCatResult scanned = bongo_cat_import_scan(directory, collect_unit,
         scan, error);
     if (scanned != BONGO_CAT_OK || !scan->unit_count) {
         free(scan);
-        return scanned != BONGO_CAT_OK ? scanned : install_one(session,
-            directory, callback, userdata, error);
+        return scanned != BONGO_CAT_OK ? fail_source(stats, directory, scanned) :
+            install_one(session, directory, callback, userdata, stats, error);
     }
 
     BongoCatResult first_failure = BONGO_CAT_OK;
@@ -144,7 +172,7 @@ BongoCatResult bongo_cat_import_session_install_progressive(
         if (redundant_patch(scan, &scan->units[i])) continue;
         BongoCatError local = {0};
         BongoCatResult result = install_one(session, scan->units[i].source,
-            callback, userdata, &local);
+            callback, userdata, stats, &local);
         if (result != BONGO_CAT_OK && first_failure == BONGO_CAT_OK) {
             first_failure = result;
             first_error = local;

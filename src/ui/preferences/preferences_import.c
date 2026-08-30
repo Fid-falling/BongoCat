@@ -81,32 +81,6 @@ static BongoCatImportJob *copy_path(const char *path) {
     return path && path[0] ? copy_job(files) : NULL;
 }
 
-static void remember_package(BongoCatImportJob *job, const char *id) {
-    if (!job || !id || !id[0]) return;
-    for (size_t i = 0; i < job->package_id_count; ++i)
-        if (!strcmp(job->package_ids[i], id)) return;
-    if (job->package_id_count >= BONGO_CAT_MODEL_CAP) return;
-    snprintf(job->package_ids[job->package_id_count++], BONGO_CAT_ID_CAP,
-        "%s", id);
-}
-
-typedef struct ImportProgressContext {
-    BongoCatImportJob *job;
-    size_t completed;
-} ImportProgressContext;
-
-static void receive_import(void *userdata,
-    const BongoCatImportReceipt *receipt) {
-    ImportProgressContext *progress = userdata;
-    BongoCatImportJob *job = progress->job;
-    if (receipt->count) remember_package(job, receipt->ids[0]);
-    job->resolved_count += receipt->count;
-    job->installed_count += receipt->installed_count;
-    job->result = BONGO_CAT_OK;
-    bongo_cat_preferences_import_report_progress(job, receipt,
-        ++progress->completed);
-}
-
 static int SDLCALL import_worker(void *userdata) {
     BongoCatImportJob *job = userdata;
     if (!SDL_SetCurrentThreadPriority(SDL_THREAD_PRIORITY_LOW)) {
@@ -117,25 +91,41 @@ static int SDLCALL import_worker(void *userdata) {
     job->result = BONGO_CAT_ERROR_FORMAT;
     BongoCatImportSession *session = bongo_cat_import_session_create(
         job->models_root, &job->error);
-    if (!session) job->result = job->error.code ? job->error.code :
-        BONGO_CAT_ERROR_IO;
-    ImportProgressContext progress = {job, 0};
+    if (!session) {
+        job->result = job->error.code ? job->error.code : BONGO_CAT_ERROR_IO;
+        if (job->error.code == BONGO_CAT_OK) job->error.code = job->result;
+        job->failed_count = job->count;
+        for (size_t i = 0; i < job->count; ++i)
+            bongo_cat_preferences_import_record_failure(job, job->paths[i]);
+    }
+    BongoCatImportProgressContext progress = {job, 0};
     for (size_t i = 0; session && i < job->count; ++i) {
         size_t before = progress.completed;
+        BongoCatImportBatchStats stats = {0};
         BongoCatError error = {0};
         BongoCatResult result = bongo_cat_import_session_install_progressive(
-            session, job->paths[i], receive_import, &progress, &error);
-        if (result != BONGO_CAT_OK && !job->error.message[0]) {
+            session, job->paths[i], bongo_cat_preferences_import_receive,
+            &progress, &stats, &error);
+        job->succeeded_count += stats.succeeded_count;
+        job->failed_count += stats.failed_count;
+        bongo_cat_preferences_import_merge_failures(job, &stats);
+        if (result != BONGO_CAT_OK && job->error.code == BONGO_CAT_OK) {
             job->result = result;
             job->error = error;
+            if (job->error.code == BONGO_CAT_OK) job->error.code = result;
         }
-        if (progress.completed == before)
+        if (stats.failed_count) {
+            progress.completed += stats.failed_count;
+            bongo_cat_preferences_import_report_progress(job, NULL,
+                progress.completed);
+        } else if (progress.completed == before) {
             bongo_cat_preferences_import_report_progress(job, NULL,
                 ++progress.completed);
+        }
     }
     bongo_cat_import_session_destroy(session);
-    if (job->resolved_count) job->result = BONGO_CAT_OK;
-    if (!job->resolved_count && !job->error.message[0])
+    if (job->succeeded_count) job->result = BONGO_CAT_OK;
+    if (!job->succeeded_count && job->error.code == BONGO_CAT_OK)
         bongo_cat_error_set(&job->error, BONGO_CAT_ERROR_FORMAT,
             "No model could be imported");
     SDL_Event event = {0};
@@ -259,7 +249,9 @@ static void complete_job(BongoCatImportDialog *dialog, BongoCatApp *app,
     if (job->result == BONGO_CAT_OK && catalog_changed)
         bongo_cat_app_request_model_refresh(app);
     bongo_cat_preferences_import_complete(app, job->result, &job->error,
-        job->resolved_count, job->installed_count + restored_count);
+        job->resolved_count, job->installed_count + restored_count,
+        job->succeeded_count, job->failed_count, job->failed_names,
+        job->failed_name_count);
     free_job(job);
     release_dialog(dialog);
 }

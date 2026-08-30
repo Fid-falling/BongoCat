@@ -5,6 +5,7 @@
 #include "bongo_cat/model.h"
 
 #define BONGO_CAT_IMPORT_CANDIDATE_CAP 16
+#define BONGO_CAT_IMPORT_FAILURE_NAME_CAP 3
 #define BONGO_CAT_SKIN_CONFIG_FILE "bongocat.skin.json"
 
 typedef enum BongoCatImportFormat {
@@ -44,6 +45,13 @@ typedef struct BongoCatImportReceipt {
 
 typedef void (*BongoCatImportReceiptCallback)(void *userdata,
     const BongoCatImportReceipt *receipt);
+
+typedef struct BongoCatImportBatchStats {
+    size_t succeeded_count;
+    size_t failed_count;
+    size_t failure_name_count;
+    char failure_names[BONGO_CAT_IMPORT_FAILURE_NAME_CAP][BONGO_CAT_ID_CAP];
+} BongoCatImportBatchStats;
 
 typedef struct BongoCatPackageMetadata {
     char package_id[BONGO_CAT_ID_CAP];
@@ -160,6 +168,6 @@ BongoCatResult bongo_cat_import_session_install(
 BongoCatResult bongo_cat_import_session_install_progressive(
     BongoCatImportSession *session, const char *source,
     BongoCatImportReceiptCallback callback, void *userdata,
-    BongoCatError *error);
+    BongoCatImportBatchStats *stats, BongoCatError *error);
 
 #endif

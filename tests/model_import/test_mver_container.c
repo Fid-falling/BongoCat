@@ -159,11 +159,23 @@ void test_mver_container_discovery(void) {
     ProgressiveImportLog progressive = {0};
     BongoCatImportSession *session = bongo_cat_import_session_create(
         progressive_root, &error);
+    BongoCatImportBatchStats stats = {0};
     CHECK(session != NULL);
     CHECK(session && bongo_cat_import_session_install_progressive(session,
-        root, progressive_receipt, &progressive, &error) == BONGO_CAT_OK);
+        root, progressive_receipt, &progressive, &stats, &error) ==
+        BONGO_CAT_OK);
     CHECK(progressive.callbacks == 2 && progressive.resolved == 2 &&
         progressive.installed == 2);
+    CHECK(stats.succeeded_count == 2 && stats.failed_count == 0);
+    char missing_source[BONGO_CAT_PATH_CAP];
+    CHECK(child(missing_source, sizeof(missing_source), progressive_root,
+        "missing", false));
+    CHECK(bongo_cat_import_session_install_progressive(session,
+        missing_source, progressive_receipt, &progressive, &stats, &error) ==
+        BONGO_CAT_ERROR_ARGUMENT);
+    CHECK(stats.succeeded_count == 0 && stats.failed_count == 1 &&
+        stats.failure_name_count == 1 && strcmp(stats.failure_names[0],
+            "missing") == 0);
     bongo_cat_import_session_destroy(session);
 
     char models_root[BONGO_CAT_PATH_CAP], cache_root[BONGO_CAT_PATH_CAP];
