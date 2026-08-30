@@ -27,7 +27,7 @@
 
 
 > [!TIP]
-> The model featured in this demonstration is from [宇痕冫](https://www.bilibili.com/video/BV1ZVK56HECF).
+> The model featured in this demonstration is from [宇痕冫](https://space.bilibili.com/348616056).
 >
 > 🎁Looking for **free** models? Visit our official website: [bongocat.pet](https://bongocat.pet/models)
 
