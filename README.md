@@ -1,5 +1,8 @@
 
 
+
+
+
 <div align="center">
   <a href="https://bongocat.pet" target="_blank">
     <img src="https://github.com/user-attachments/assets/dd693432-8342-440b-8a92-c9f57a96ffb4" alt="Catime" width="249">
@@ -18,18 +21,15 @@
 
 <!-- Demo Video -->
 <div align="center" style="margin-bottom: 30px;">
-  <video src="https://github.com/user-attachments/assets/0025d878-1970-40f6-9b52-394f1fe14b6c
+  <video src="https://github.com/user-attachments/assets/75719230-9e49-4124-ae5a-8e35592c5d49
 " autoplay loop style="border-radius: 8px; max-width: 800px;"></video>
 </div>
 
 
-
-
-
-
-
 > [!TIP]
 > The model featured in this demonstration is from [宇痕冫](https://www.bilibili.com/video/BV1ZVK56HECF).
+>
+> 🎁Looking for **free** models? Visit our official website: [bongocat.pet](https://bongocat.pet/models)
 
 
 <p align="center">
