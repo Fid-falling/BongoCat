@@ -1,4 +1,7 @@
 #include "model_import.h"
+#include "../model_import_manifest.h"
+#include "model_import_mver.h"
+#include "model_import_path.h"
 #include "runtime.h"
 #include "bongo_cat/file.h"
 #include "bongo_cat/path.h"
@@ -31,16 +34,6 @@ static bool mver_shape(const char *image_root) {
     return false;
 }
 
-static bool parent_path(const char *path, char *parent, size_t capacity) {
-    size_t length = path ? strlen(path) : 0;
-    while (length && (path[length - 1] == '/' || path[length - 1] == '\\')) length--;
-    while (length && path[length - 1] != '/' && path[length - 1] != '\\') length--;
-    while (length > 1 && (path[length - 1] == '/' || path[length - 1] == '\\')) length--;
-    if (!length || length >= capacity) return false;
-    memcpy(parent, path, length); parent[length] = '\0';
-    return true;
-}
-
 bool bongo_cat_import_mver_config_path(const char *root,
     char *path, size_t capacity) {
     static const char *names[] = {BONGO_CAT_SKIN_CONFIG_FILE, "config.json"};
@@ -63,7 +56,8 @@ static bool find_package(const char *source, char *package, size_t capacity,
     for (int depth = 0; depth < 4; ++depth) {
         if (package_at(package, config, image_root)) return true;
         char parent[BONGO_CAT_PATH_CAP];
-        if (!parent_path(package, parent, sizeof(parent))) break;
+        if (!bongo_cat_import_parent_path(package, parent, sizeof(parent)))
+            break;
         snprintf(package, capacity, "%s", parent);
     }
     return false;

@@ -1,6 +1,9 @@
 #include "model_import.h"
 #include "model_import_mver_policy.h"
+#include "model_import_mver.h"
 #include "model_import_nearby_internal.h"
+#include "../model_import_path.h"
+#include "../tauri/model_import_tauri.h"
 #include "runtime.h"
 #include "bongo_cat/path.h"
 #include "bongo_cat/sha256.h"
@@ -41,20 +44,6 @@ void bongo_cat_import_nearby_shutdown(void) {
     SDL_DestroyMutex(mutex);
 }
 
-static bool parent_path(const char *path, char *parent, size_t capacity) {
-    size_t length = path ? strlen(path) : 0;
-    while (length && (path[length - 1] == '/' || path[length - 1] == '\\'))
-        length--;
-    while (length && path[length - 1] != '/' && path[length - 1] != '\\')
-        length--;
-    while (length > 1 && (path[length - 1] == '/' ||
-        path[length - 1] == '\\')) length--;
-    if (!length || length >= capacity) return false;
-    memcpy(parent, path, length);
-    parent[length] = '\0';
-    return true;
-}
-
 static bool existing_identity(const BongoCatModelCatalog *models,
     const char *identity, BongoCatModelMode mode,
     const BongoCatModelEntry *ignored) {
@@ -88,7 +77,7 @@ static void candidate_name(const char *source,
     if (value && candidate->format == BONGO_CAT_IMPORT_MVER_PATCH &&
         candidate->package_root[0] &&
         !strcmp(value, bongo_cat_path_name(candidate->package_root)) &&
-        parent_path(source, parent, sizeof(parent)))
+        bongo_cat_import_parent_path(source, parent, sizeof(parent)))
         value = bongo_cat_path_name(parent);
     snprintf(name, capacity, "%s", value && value[0] ? value : "Nearby model");
 }
@@ -256,7 +245,8 @@ BongoCatResult bongo_cat_import_nearby(BongoCatApp *app,
     BongoCatResult result = bongo_cat_import_nearby_root(app, root, error);
     if (result != BONGO_CAT_OK || app->models.count != before) return result;
     char parent[BONGO_CAT_PATH_CAP];
-    if (!parent_path(root, parent, sizeof(parent)) || !strcmp(parent, root))
+    if (!bongo_cat_import_parent_path(root, parent, sizeof(parent)) ||
+        !strcmp(parent, root))
         return BONGO_CAT_OK;
     if (error) *error = (BongoCatError){0};
     return bongo_cat_import_nearby_root(app, parent, error);

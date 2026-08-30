@@ -1,7 +1,7 @@
 #ifndef BONGO_CAT_MODEL_IMPORT_MVER_INTERNAL_H
 #define BONGO_CAT_MODEL_IMPORT_MVER_INTERNAL_H
 
-#include "model_import.h"
+#include "model_import_mver.h"
 
 typedef struct BongoCatMverKeyNames {
     const char *items[2];

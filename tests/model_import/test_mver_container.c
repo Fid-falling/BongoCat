@@ -99,6 +99,14 @@ void test_mver_container_discovery(void) {
     CHECK(selected_container.count == 3);
     size_t patch_count = 0;
     const BongoCatImportCandidate *contained_patch = NULL;
+    for (size_t i = 0; i < selected_container.count; ++i) {
+        if (selected_container.candidates[i].format ==
+            BONGO_CAT_IMPORT_TAURI) continue;
+        /* Each recursive candidate owns its package tree. The selected
+           container is only a discovery scope, never a copy source. */
+        CHECK(strcmp(selected_container.candidates[i].package_root,
+            root) != 0);
+    }
     for (size_t i = 0; i < selected_container.count; ++i)
         if (selected_container.candidates[i].format ==
             BONGO_CAT_IMPORT_MVER_PATCH) {

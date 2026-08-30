@@ -1,4 +1,4 @@
-#include "model_import_tauri_mver_internal.h"
+#include "model_import_tauri_internal.h"
 
 #include <SDL3/SDL.h>
 
@@ -16,7 +16,7 @@ static bool copy_resource_tree(const char *source, const char *target,
 static bool interface_resource(const char *name) {
     static const char *const files[] = {
         "cover.png", "background.png", "cat.png", "bg.png",
-        "mousebg.png", "tabletbg.png"
+        "mousebg.png", "tabletbg.png", BONGO_CAT_TAURI_SOURCE_FILE
     };
     if (SDL_strcasecmp(name, "left-keys") == 0 ||
         SDL_strcasecmp(name, "right-keys") == 0) return true;
@@ -51,7 +51,9 @@ static BongoCatPathVisit copy_resource_child(void *userdata,
 static BongoCatPathVisit copy_model_child(void *userdata,
     const char *dirname, const char *name) {
     TauriModelCopy *context = userdata;
-    if (!name || name[0] == '.') return BONGO_CAT_PATH_CONTINUE;
+    if (!name || name[0] == '.' || (context->depth == 0 &&
+            SDL_strcasecmp(name, BONGO_CAT_TAURI_SOURCE_FILE) == 0))
+        return BONGO_CAT_PATH_CONTINUE;
     char source[BONGO_CAT_PATH_CAP], target[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_join(source, sizeof(source), dirname, name) ||
         !bongo_cat_path_join(target, sizeof(target), context->target_root,

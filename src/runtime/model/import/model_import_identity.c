@@ -1,4 +1,5 @@
 #include "model_import.h"
+#include "model_import_path.h"
 #include "model_import_mver_policy.h"
 #include "bongo_cat/path.h"
 #include "bongo_cat/sha256.h"
@@ -35,21 +36,11 @@ static const char *source_root(const BongoCatImportCandidate *candidate) {
         candidate->patch_root[0] ? candidate->patch_root : candidate->package_root;
 }
 
-static bool parent_path(const char *path, char *parent, size_t capacity) {
-    size_t length = path ? strlen(path) : 0;
-    while (length && (path[length - 1] == '/' || path[length - 1] == '\\')) length--;
-    while (length && path[length - 1] != '/' && path[length - 1] != '\\') length--;
-    while (length && (path[length - 1] == '/' || path[length - 1] == '\\')) length--;
-    if (!length || length >= capacity) return false;
-    memcpy(parent, path, length); parent[length] = '\0';
-    return true;
-}
-
 static const char *display_source(const BongoCatImportCandidate *candidate,
     char parent[BONGO_CAT_PATH_CAP]) {
     const char *source = source_root(candidate);
     if (candidate->format == BONGO_CAT_IMPORT_MVER_PATCH &&
-        parent_path(source, parent, BONGO_CAT_PATH_CAP) &&
+        bongo_cat_import_parent_path(source, parent, BONGO_CAT_PATH_CAP) &&
         !strcmp(bongo_cat_path_name(source),
             bongo_cat_path_name(candidate->package_root))) return parent;
     return source;

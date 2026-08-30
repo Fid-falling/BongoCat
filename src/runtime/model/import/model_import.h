@@ -70,29 +70,9 @@ typedef BongoCatResult (*BongoCatImportVisitor)(void *userdata,
 
 typedef struct BongoCatApp BongoCatApp;
 
-bool bongo_cat_import_discover(const char *source, BongoCatImportDiscovery *discovery,
-    BongoCatError *error);
-bool bongo_cat_import_mver_config_path(const char *root,
-    char *path, size_t capacity);
-int bongo_cat_import_mver_discover(const char *source,
+/* Shared discovery and package preparation. */
+bool bongo_cat_import_discover(const char *source,
     BongoCatImportDiscovery *discovery, BongoCatError *error);
-int bongo_cat_import_mver_discover_exact(const char *source,
-    BongoCatImportDiscovery *discovery, BongoCatError *error);
-int bongo_cat_import_mver_patch_discover(const char *source,
-    BongoCatImportDiscovery *discovery, BongoCatError *error);
-int bongo_cat_import_mver_patch_discover_exact(const char *source,
-    BongoCatImportDiscovery *discovery, BongoCatError *error);
-int bongo_cat_import_tauri_discover_exact(const char *source,
-    BongoCatImportDiscovery *discovery, BongoCatError *error);
-bool bongo_cat_import_manifest_valid(const char *root, const char *setting,
-    BongoCatError *error);
-bool bongo_cat_import_tauri_add_candidate(BongoCatImportDiscovery *discovery,
-    const char *directory, const char *setting);
-bool bongo_cat_import_tauri_convert_to_mver(
-    const BongoCatImportCandidate *candidate, const char *target,
-    BongoCatImportCandidate *installed, BongoCatError *error);
-bool bongo_cat_import_mver_assets(const BongoCatImportCandidate *candidate,
-    const char *target, BongoCatError *error);
 bool bongo_cat_import_adapter_metadata(const BongoCatImportCandidate *candidate,
     const char *target, BongoCatError *error);
 bool bongo_cat_import_write_report(const BongoCatImportCandidate *candidate,
@@ -105,6 +85,8 @@ bool bongo_cat_import_prepare_storage(
     const BongoCatImportDiscovery *discovery, const char *target,
     BongoCatError *error);
 bool bongo_cat_import_authored_package(const char *directory);
+
+/* Content identity and package metadata. */
 bool bongo_cat_import_candidate_digest(const BongoCatImportCandidate *candidate,
     char output[65], BongoCatError *error);
 bool bongo_cat_import_candidate_inspect(const BongoCatImportCandidate *candidate,
@@ -131,6 +113,8 @@ bool bongo_cat_import_package_base_id(char *output, size_t capacity,
     const char *model_id);
 uint32_t bongo_cat_import_candidate_capabilities(
     const BongoCatImportCandidate *candidate);
+
+/* Runtime adapter and catalog integration. */
 void bongo_cat_import_describe_nearby_entry(BongoCatModelEntry *entry,
     const BongoCatImportCandidate *candidate, const char *id,
     const char *identity, const char *source_hash, const char *source,
@@ -139,6 +123,8 @@ void bongo_cat_import_apply_metadata(BongoCatApp *app, const char *model_id,
     const char *directory);
 bool bongo_cat_import_render_options(const char *directory,
     BongoCatLive2DRenderOptions *options);
+
+/* Recursive source scanning. */
 BongoCatResult bongo_cat_import_scan(const char *root,
     BongoCatImportVisitor visitor, void *userdata, BongoCatError *error);
 BongoCatResult bongo_cat_import_scan_budget(const char *root,
@@ -146,6 +132,8 @@ BongoCatResult bongo_cat_import_scan_budget(const char *root,
     BongoCatError *error);
 BongoCatResult bongo_cat_import_source_directory(const char *source,
     char *directory, size_t capacity, BongoCatError *error);
+
+/* Nearby and installed catalog discovery. */
 BongoCatResult bongo_cat_import_nearby_root(BongoCatApp *app,
     const char *root, BongoCatError *error);
 BongoCatResult bongo_cat_import_nearby_scan(BongoCatApp *app,
@@ -156,6 +144,8 @@ BongoCatResult bongo_cat_import_installed_models(BongoCatApp *app,
     const char *root, BongoCatError *error);
 BongoCatResult bongo_cat_import_installed_package(BongoCatApp *app,
     const char *root, const char *package_id, BongoCatError *error);
+
+/* Installation sessions and progressive batch import. */
 BongoCatResult bongo_cat_import_install(const char *source,
     const char *models_root, BongoCatImportReceipt *receipt,
     BongoCatError *error);

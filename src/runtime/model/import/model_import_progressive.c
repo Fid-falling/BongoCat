@@ -1,4 +1,6 @@
 #include "model_import.h"
+#include "mver/model_import_mver.h"
+#include "tauri/model_import_tauri.h"
 #include "bongo_cat/path.h"
 
 #include <stdio.h>

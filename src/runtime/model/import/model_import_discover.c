@@ -1,4 +1,6 @@
 #include "model_import.h"
+#include "mver/model_import_mver.h"
+#include "tauri/model_import_tauri.h"
 #include "bongo_cat/path.h"
 
 #include <stdio.h>
@@ -16,31 +18,6 @@ static void seed_source_name(const char *source,
     const char *name = bongo_cat_path_name(path);
     if (name && name[0]) snprintf(discovery->source_name,
         sizeof(discovery->source_name), "%s", name);
-}
-
-static bool suffix(const char *name, const char *ending) {
-    size_t a = name ? strlen(name) : 0, b = ending ? strlen(ending) : 0;
-    return a >= b && strcmp(name + a - b, ending) == 0;
-}
-
-static BongoCatPathVisit discover_item(void *userdata,
-    const char *dirname, const char *name) {
-    BongoCatImportDiscovery *discovery = userdata;
-    char path[BONGO_CAT_PATH_CAP];
-    if (!bongo_cat_path_join(path, sizeof(path), dirname, name))
-        return BONGO_CAT_PATH_FAILURE;
-    if (bongo_cat_path_is_file(path) && suffix(name, ".model3.json")) {
-        if (bongo_cat_import_manifest_valid(dirname, name, NULL) &&
-            !bongo_cat_import_tauri_add_candidate(discovery, dirname, name))
-            return BONGO_CAT_PATH_FAILURE;
-        return BONGO_CAT_PATH_CONTINUE;
-    }
-    if (!bongo_cat_path_is_dir(path) || discovery->depth >= 8 || name[0] == '.')
-        return BONGO_CAT_PATH_CONTINUE;
-    discovery->depth++;
-    bool ok = bongo_cat_path_enumerate(path, discover_item, discovery);
-    discovery->depth--;
-    return ok ? BONGO_CAT_PATH_CONTINUE : BONGO_CAT_PATH_FAILURE;
 }
 
 static int rank(const BongoCatImportCandidate *candidate) {
@@ -106,13 +83,9 @@ bool bongo_cat_import_discover(const char *source,
         &container, error);
     if (result != BONGO_CAT_OK) return false;
     if (discovery->count) {
-        char config[BONGO_CAT_PATH_CAP];
-        bool is_container = !bongo_cat_import_mver_config_path(source,
-            config, sizeof(config));
-        if (is_container) for (size_t i = 0; i < discovery->count; ++i)
-            if (discovery->candidates[i].format != BONGO_CAT_IMPORT_TAURI)
-                snprintf(discovery->candidates[i].package_root,
-                    sizeof(discovery->candidates[i].package_root), "%s", source);
+        /* Recursive discovery returns the owning package root on each
+           candidate. Re-rooting Mver candidates at the selected container
+           would copy unrelated sibling folders and break normalization. */
         qsort(discovery->candidates, discovery->count,
             sizeof(discovery->candidates[0]), compare_candidates);
         return true;
@@ -122,23 +95,14 @@ bool bongo_cat_import_discover(const char *source,
         return false;
     }
     if (error) *error = (BongoCatError){0};
-    if (!bongo_cat_path_enumerate(source, discover_item, discovery)) {
-        bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
-            discovery->ambiguous
-                ? "A model directory contains multiple model3 manifests"
-                : "Cannot scan model directory or it contains too many models");
-        return false;
-    }
-    if (!discovery->count) {
+    int recursive = bongo_cat_import_tauri_discover_recursive(source,
+        discovery, error);
+    if (recursive < 0) return false;
+    if (!recursive) {
         bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
             "Selected directory contains no valid Live2D model3 JSON");
         return false;
     }
-    for (size_t i = 0; i < discovery->count; ++i)
-        if (discovery->candidates[i].format == BONGO_CAT_IMPORT_TAURI &&
-            !discovery->candidates[i].package_root[0])
-            snprintf(discovery->candidates[i].package_root,
-                sizeof(discovery->candidates[i].package_root), "%s", source);
     qsort(discovery->candidates, discovery->count,
         sizeof(discovery->candidates[0]), compare_candidates);
     return true;

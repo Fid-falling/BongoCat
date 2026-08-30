@@ -1,5 +1,6 @@
 #include "model_import.h"
 #include "model_import_mver_internal.h"
+#include "tauri/model_import_tauri.h"
 #include "model_storage.h"
 #include "runtime.h"
 #include "test_mver_import_internal.h"
@@ -110,7 +111,7 @@ void test_tauri_portable(void) {
             24 &&
         yyjson_get_int(yyjson_arr_get(window_size, 0)) == expected_width &&
         yyjson_get_int(yyjson_arr_get(window_size, 1)) == expected_height &&
-        yyjson_is_num(l2d_correct) && yyjson_get_num(l2d_correct) == 1.0);
+        yyjson_is_num(l2d_correct) && yyjson_get_num(l2d_correct) == 1.1);
     yyjson_doc_free(normalized);
     CHECK(child(path, sizeof(path), package,
         "img/keyboard/cat_model/cat.model3.json", false) &&
@@ -169,6 +170,19 @@ void test_tauri_portable(void) {
     };
     check_portable_images(portable_root, standard_runtime,
         sizeof(standard_runtime) / sizeof(standard_runtime[0]));
+    CHECK(child(path, sizeof(path), portable_root, "config.json", false));
+    yyjson_doc *standard_config = bongo_cat_json_read_file(path, 0, NULL);
+    yyjson_val *standard_root = standard_config
+        ? yyjson_doc_get_root(standard_config) : NULL;
+    yyjson_val *standard_decoration = yyjson_obj_get(standard_root,
+        "decoration");
+    yyjson_val *standard_l2d_correct = yyjson_obj_get(standard_decoration,
+        "l2d_correct");
+    CHECK(yyjson_get_int(yyjson_obj_get(standard_root, "mode")) == 1 &&
+        yyjson_is_arr(yyjson_obj_get(yyjson_obj_get(standard_root,
+            "standard"), "hand")) && yyjson_is_num(standard_l2d_correct) &&
+        yyjson_get_num(standard_l2d_correct) == 1.1);
+    yyjson_doc_free(standard_config);
     CHECK(child(path, sizeof(path), portable_root, "img/standard/bg.png",
         false) && !bongo_cat_path_is_file(path));
     char adapter_root[BONGO_CAT_PATH_CAP];

@@ -87,6 +87,7 @@ static bool profile_matches(const StockLive2DProfile *profile,
 bool bongo_cat_import_mver_stock_model(
     const BongoCatImportCandidate *candidate,
     BongoCatImportDigestCache *cache) {
+    if (!candidate) return false;
     /* Mver skins commonly retain these runtime models while replacing only
        mode input images. Match the model's rendered core independently from
        those surrounding images so the bundled model cannot become a variant. */

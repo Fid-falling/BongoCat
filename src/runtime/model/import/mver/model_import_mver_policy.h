@@ -1,7 +1,7 @@
 #ifndef BONGO_CAT_MODEL_IMPORT_MVER_POLICY_H
 #define BONGO_CAT_MODEL_IMPORT_MVER_POLICY_H
 
-#include "model_import.h"
+#include "model_import_mver.h"
 
 bool bongo_cat_import_mver_stock_model(
     const BongoCatImportCandidate *candidate,

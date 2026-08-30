@@ -1,5 +1,5 @@
 #include "bongo_cat/model.h"
-#include "model_import.h"
+#include "model_import_manifest.h"
 
 #include <SDL3/SDL_log.h>
 #include <stdlib.h>

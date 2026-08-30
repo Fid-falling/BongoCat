@@ -1,106 +1,8 @@
-#include "model_import.h"
-#include "runtime.h"
-#include "bongo_cat/file.h"
-#include "bongo_cat/image.h"
-#include "bongo_cat/path.h"
+#include "model_import_tauri_internal.h"
 
+#include <SDL3/SDL.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <yyjson.h>
-
-static bool safe_reference(const char *value) {
-    if (!value || !value[0] || value[0] == '/' || value[0] == '\\' ||
-        strchr(value, ':')) return false;
-    const char *part = value;
-    while (*part) {
-        while (*part == '/' || *part == '\\') part++;
-        if (part[0] == '.' && part[1] == '.' &&
-            (!part[2] || part[2] == '/' || part[2] == '\\')) return false;
-        part = strpbrk(part, "/\\");
-        if (!part) break;
-    }
-    return true;
-}
-static bool referenced_file(const char *root, const char *relative) {
-    char path[BONGO_CAT_PATH_CAP];
-    return safe_reference(relative) &&
-        bongo_cat_path_join(path, sizeof(path), root, relative) && bongo_cat_path_is_file(path);
-}
-
-static bool referenced_texture(const char *root, const char *relative) {
-    char path[BONGO_CAT_PATH_CAP];
-    if (!safe_reference(relative) ||
-        !bongo_cat_path_join(path, sizeof(path), root, relative)) return false;
-    return bongo_cat_image_info(path, NULL, NULL);
-}
-
-static bool optional_reference(const char *root, yyjson_val *refs,
-    const char *name) {
-    yyjson_val *value = yyjson_obj_get(refs, name);
-    if (!value) return true;
-    const char *relative = yyjson_get_str(value);
-    return relative && referenced_file(root, relative);
-}
-
-static bool behavior_references(const char *root, yyjson_val *refs) {
-    yyjson_val *expressions = yyjson_obj_get(refs, "Expressions");
-    if (expressions && !yyjson_is_arr(expressions)) return false;
-    size_t index, count; yyjson_val *item;
-    yyjson_arr_foreach(expressions, index, count, item)
-        if (!referenced_file(root, yyjson_get_str(yyjson_obj_get(item, "File"))))
-            return false;
-    yyjson_val *motions = yyjson_obj_get(refs, "Motions");
-    if (motions && !yyjson_is_obj(motions)) return false;
-    size_t group_index, group_count; yyjson_val *key, *group;
-    yyjson_obj_foreach(motions, group_index, group_count, key, group) {
-        if (!yyjson_is_arr(group)) return false;
-        yyjson_arr_foreach(group, index, count, item) {
-            if (!referenced_file(root, yyjson_get_str(yyjson_obj_get(item, "File"))))
-                return false;
-            const char *sound = yyjson_get_str(yyjson_obj_get(item, "Sound"));
-            if (sound && !safe_reference(sound)) return false;
-        }
-    }
-    return true;
-}
-bool bongo_cat_import_manifest_valid(const char *root, const char *setting,
-    BongoCatError *error) {
-    char path[BONGO_CAT_PATH_CAP];
-    if (!bongo_cat_path_join(path, sizeof(path), root, setting)) return false;
-    FILE *file = bongo_cat_file_open(path, "rb");
-    yyjson_doc *document = file ? yyjson_read_fp(file, 0, NULL, NULL) : NULL;
-    if (file) fclose(file);
-    yyjson_val *manifest = document ? yyjson_doc_get_root(document) : NULL;
-    yyjson_val *refs = yyjson_is_obj(manifest)
-        ? yyjson_obj_get(manifest, "FileReferences") : NULL;
-    const char *moc = yyjson_get_str(yyjson_obj_get(refs, "Moc"));
-    yyjson_val *textures = yyjson_obj_get(refs, "Textures");
-    bool valid = yyjson_get_int(yyjson_obj_get(manifest, "Version")) == 3 &&
-        yyjson_is_obj(refs) && referenced_file(root, moc) && yyjson_is_arr(textures) &&
-        yyjson_arr_size(textures) > 0;
-    size_t index, maximum; yyjson_val *texture;
-    yyjson_arr_foreach(textures, index, maximum, texture)
-        valid = valid && referenced_texture(root, yyjson_get_str(texture));
-    valid = valid && optional_reference(root, refs, "Physics") &&
-        optional_reference(root, refs, "Pose") &&
-        optional_reference(root, refs, "DisplayInfo") && behavior_references(root, refs);
-    yyjson_doc_free(document);
-    if (!valid && error) bongo_cat_error_set(error, BONGO_CAT_ERROR_FORMAT,
-        "Model manifest or referenced assets are invalid: %s", path);
-    return valid;
-}
-
-static bool path_parent(const char *path, char *parent, size_t capacity) {
-    size_t length = path ? strlen(path) : 0;
-    while (length && (path[length - 1] == '/' || path[length - 1] == '\\')) length--;
-    while (length && path[length - 1] != '/' && path[length - 1] != '\\') length--;
-    while (length > 1 && (path[length - 1] == '/' || path[length - 1] == '\\')) length--;
-    if (!length || length >= capacity) return false;
-    memcpy(parent, path, length);
-    parent[length] = '\0';
-    return true;
-}
 
 static bool ascii_contains_ci(const char *value, const char *needle) {
     if (!value || !needle || !needle[0]) return false;
@@ -159,14 +61,18 @@ static bool has_preview_assets(const char *directory) {
         "mousebg.png", "tabletbg.png"};
     for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {
         char path[BONGO_CAT_PATH_CAP];
-        if (!bongo_cat_path_join(path, sizeof(path), directory, names[i])) continue;
-        if (bongo_cat_path_is_file(path) || bongo_cat_path_is_dir(path)) return true;
+        if (!bongo_cat_path_join(path, sizeof(path), directory, names[i]))
+            continue;
+        if (bongo_cat_path_is_file(path) || bongo_cat_path_is_dir(path))
+            return true;
     }
     return false;
 }
 
 static bool has_cover_asset(const char *directory) {
-    const char *names[] = {"resources/cover.png", "cover.png", "cat.png", "bg.png"};
+    const char *names[] = {
+        "resources/cover.png", "cover.png", "cat.png", "bg.png"
+    };
     for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {
         char path[BONGO_CAT_PATH_CAP];
         if (bongo_cat_path_join(path, sizeof(path), directory, names[i]) &&
@@ -249,19 +155,24 @@ bool bongo_cat_import_tauri_add_candidate(BongoCatImportDiscovery *discovery,
     if (discovery->count >= BONGO_CAT_IMPORT_CANDIDATE_CAP) return false;
     for (size_t i = 0; i < discovery->count; ++i)
         if (strcmp(discovery->candidates[i].directory, directory) == 0) {
-            if (strcmp(discovery->candidates[i].setting, setting) == 0) return true;
+            if (strcmp(discovery->candidates[i].setting, setting) == 0)
+                return true;
             discovery->ambiguous = true;
             return false;
         }
-    BongoCatImportCandidate *candidate = &discovery->candidates[discovery->count++];
-    snprintf(candidate->directory, sizeof(candidate->directory), "%s", directory);
+    BongoCatImportCandidate *candidate =
+        &discovery->candidates[discovery->count++];
+    snprintf(candidate->directory, sizeof(candidate->directory), "%s",
+        directory);
     snprintf(candidate->setting, sizeof(candidate->setting), "%s", setting);
     snprintf(candidate->assets, sizeof(candidate->assets), "%s", directory);
-    snprintf(candidate->package_root, sizeof(candidate->package_root), "%s", directory);
+    snprintf(candidate->package_root, sizeof(candidate->package_root), "%s",
+        directory);
     candidate->format = BONGO_CAT_IMPORT_TAURI;
     char parent[BONGO_CAT_PATH_CAP];
     if ((!has_cover_asset(directory) || !has_background_asset(directory)) &&
-        path_parent(directory, parent, sizeof(parent)) && has_preview_assets(parent))
+        bongo_cat_import_parent_path(directory, parent, sizeof(parent)) &&
+        has_preview_assets(parent))
         snprintf(candidate->assets, sizeof(candidate->assets), "%s", parent);
     if (!tauri_resource_mode(candidate->directory, candidate->assets,
             &candidate->mode, &candidate->gamepad_buttons)) {

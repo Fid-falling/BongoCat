@@ -1,6 +1,7 @@
 #include "test_mver_support.h"
 
 #include "model_import.h"
+#include "model_import_mver.h"
 #include "model_storage.h"
 #include "runtime.h"
 #include "bongo_cat/path.h"

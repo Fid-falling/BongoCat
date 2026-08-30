@@ -82,30 +82,30 @@ set(BONGO_CAT_RUNTIME_MODEL_SOURCES
   src/runtime/model/model_update.c)
 
 set(BONGO_CAT_RUNTIME_IMPORT_SOURCES
-  src/runtime/model/import/model_import.c
+  # Shared import workflow.
   src/runtime/model/import/model_import_app.c
   src/runtime/model/import/model_import_adapter.c
   src/runtime/model/import/model_import_digest.c
   src/runtime/model/import/model_import_digest_api.c
   src/runtime/model/import/model_import_digest_cache.c
   src/runtime/model/import/model_import_discover.c
-  src/runtime/model/import/model_import_discovery.c
-  src/runtime/model/import/model_import_format.c
+  src/runtime/model/import/model_import_manifest.c
   src/runtime/model/import/model_import_identity.c
   src/runtime/model/import/model_import_installed.c
   src/runtime/model/import/model_import_metadata.c
   src/runtime/model/import/model_import_package.c
   src/runtime/model/import/model_import_package_index.c
+  src/runtime/model/import/model_import_path.c
   src/runtime/model/import/model_import_progressive.c
   src/runtime/model/import/model_import_report.c
   src/runtime/model/import/model_import_scan.c
+  src/runtime/model/import/model_import_session.c
   src/runtime/model/import/model_import_source.c
-  src/runtime/model/import/model_import_tauri.c
-  src/runtime/model/import/model_import_tauri_mver.c
-  src/runtime/model/import/model_import_tauri_mver_keys.c
-  src/runtime/model/import/model_import_tauri_mver_tree.c
-  src/runtime/model/import/mver/model_import_mver.c
+
+  # Mver is the canonical package and runtime-adapter format.
+  src/runtime/model/import/mver/model_import_mver_assets.c
   src/runtime/model/import/mver/model_import_mver_copy.c
+  src/runtime/model/import/mver/model_import_mver_discovery.c
   src/runtime/model/import/mver/model_import_mver_effect.c
   src/runtime/model/import/mver/model_import_mver_image.c
   src/runtime/model/import/mver/model_import_mver_labels.c
@@ -114,6 +114,19 @@ set(BONGO_CAT_RUNTIME_IMPORT_SOURCES
   src/runtime/model/import/mver/model_import_mver_patch.c
   src/runtime/model/import/mver/model_import_mver_policy.c
   src/runtime/model/import/mver/model_import_mver_shortcut.c
+
+  # Tauri packages are converted to canonical Mver packages before loading.
+  src/runtime/model/import/tauri/model_import_tauri_candidate.c
+  src/runtime/model/import/tauri/model_import_tauri_config.c
+  src/runtime/model/import/tauri/model_import_tauri_convert.c
+  src/runtime/model/import/tauri/model_import_tauri_discovery.c
+  src/runtime/model/import/tauri/model_import_tauri_images.c
+  src/runtime/model/import/tauri/model_import_tauri_keys.c
+  src/runtime/model/import/tauri/model_import_tauri_metadata.c
+  src/runtime/model/import/tauri/model_import_tauri_resources.c
+  src/runtime/model/import/tauri/model_import_tauri_tree.c
+
+  # Nearby discovery builds adapters without installing source packages.
   src/runtime/model/import/nearby/model_import_nearby.c
   src/runtime/model/import/nearby/model_import_nearby_cache.c
   src/runtime/model/import/nearby/model_import_nearby_signature.c)

@@ -215,11 +215,11 @@ static bool stamp_equal(const DigestStamp *value, uint64_t sum, uint64_t exclusi
 }
 
 static bool candidate_placeholder(const BongoCatImportCandidate *candidate,
-    const DigestStamp *content, const DigestStamp *overrides,
+    const DigestStamp *overrides,
     BongoCatImportDigestCache *cache) {
-    /* These fingerprints are the stock mode and input-image templates shipped
-       by the Mver 0.1.6 runtime; package configuration is intentionally not
-       part of the placeholder decision. */
+    /* Identify bundled runtime templates by their rendered Live2D core. Do
+       not use aggregate asset stamps here: older releases shipped a popular
+       authored skin with the same file counts and byte totals. */
     if (candidate->format == BONGO_CAT_IMPORT_TAURI) return false;
     if (bongo_cat_import_mver_stock_model(candidate, cache)) return true;
     if (candidate->format == BONGO_CAT_IMPORT_MVER_PATCH) {
@@ -230,14 +230,7 @@ static bool candidate_placeholder(const BongoCatImportCandidate *candidate,
             stamp_equal(overrides, 0xe35c6e634128d62bull,
                 0x17e2f6d0ad5746bfull, 1297880ull, 12ull);
     }
-    if (candidate->mode == BONGO_CAT_MODE_STANDARD)
-        return stamp_equal(content, 0x354b60da1c319aa4ull,
-            0x9c9cfce9a7c63fe4ull, 38273435ull, 153ull);
-    if (candidate->mode == BONGO_CAT_MODE_KEYBOARD)
-        return stamp_equal(content, 0x65afe356f5b20130ull,
-            0x45cc631ac72ef8c6ull, 1005234ull, 35ull);
-    return stamp_equal(content, 0x91e8cfcd07fb9ae8ull,
-        0x83fd63c53a241538ull, 1711338ull, 51ull);
+    return false;
 }
 
 bool bongo_cat_import_candidate_inspect_cached(
@@ -287,7 +280,6 @@ bool bongo_cat_import_candidate_inspect_cached(
     if (length < 0 || (size_t)length >= sizeof(summary)) return false;
     bongo_cat_sha256_bytes(summary, (size_t)length, output);
     if (placeholder)
-        *placeholder = candidate_placeholder(candidate, &content, &overrides,
-            cache);
+        *placeholder = candidate_placeholder(candidate, &overrides, cache);
     return true;
 }
