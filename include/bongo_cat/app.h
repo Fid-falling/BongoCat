@@ -197,6 +197,7 @@ void bongo_cat_app_rescan_models(BongoCatApp *app);
 void bongo_cat_app_refresh_installed_models(BongoCatApp *app);
 void bongo_cat_app_refresh_nearby_models(BongoCatApp *app);
 void bongo_cat_app_request_model_refresh(BongoCatApp *app);
+bool bongo_cat_app_model_refresh_busy(const BongoCatApp *app);
 void bongo_cat_app_request_model_package_refresh(BongoCatApp *app,
     const char *package_id);
 void bongo_cat_app_request_nearby_model_refresh(BongoCatApp *app);

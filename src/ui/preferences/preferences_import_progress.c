@@ -1,4 +1,5 @@
 #include "preferences_import_internal.h"
+#include "preferences_model_glyphs.h"
 #include "model_import.h"
 #include "bongo_cat/path.h"
 
@@ -24,33 +25,38 @@ void bongo_cat_preferences_import_merge_failures(BongoCatImportJob *job,
             stats->failure_names[i]);
 }
 
-static void remember_package(BongoCatImportJob *job, const char *id) {
-    if (!job || !id || !id[0]) return;
+static size_t remember_package(BongoCatImportJob *job, const char *id) {
+    if (!job || !id || !id[0]) return BONGO_CAT_MODEL_CAP;
     for (size_t i = 0; i < job->package_id_count; ++i)
-        if (!strcmp(job->package_ids[i], id)) return;
-    if (job->package_id_count >= BONGO_CAT_MODEL_CAP) return;
-    snprintf(job->package_ids[job->package_id_count++], BONGO_CAT_ID_CAP,
-        "%s", id);
+        if (!strcmp(job->package_ids[i], id)) return i;
+    if (job->package_id_count >= BONGO_CAT_MODEL_CAP)
+        return BONGO_CAT_MODEL_CAP;
+    size_t index = job->package_id_count++;
+    snprintf(job->package_ids[index], BONGO_CAT_ID_CAP, "%s", id);
+    return index;
 }
 
 void bongo_cat_preferences_import_receive(void *userdata,
     const BongoCatImportReceipt *receipt) {
     BongoCatImportProgressContext *progress = userdata;
     BongoCatImportJob *job = progress->job;
-    if (receipt->count) remember_package(job, receipt->ids[0]);
+    size_t package_index = receipt->count
+        ? remember_package(job, receipt->ids[0]) : BONGO_CAT_MODEL_CAP;
     job->resolved_count += receipt->count;
     job->installed_count += receipt->installed_count;
     job->result = BONGO_CAT_OK;
-    bongo_cat_preferences_import_report_progress(job, receipt,
+    bongo_cat_preferences_import_report_progress(job, receipt, package_index,
         ++progress->completed);
 }
 
 void bongo_cat_preferences_import_report_progress(BongoCatImportJob *job,
-    const BongoCatImportReceipt *receipt, size_t completed) {
+    const BongoCatImportReceipt *receipt, size_t package_index,
+    size_t completed) {
     BongoCatImportProgress *progress = receipt && receipt->count
         ? SDL_calloc(1, sizeof(*progress)) : NULL;
     if (progress) {
         progress->job = job;
+        progress->package_index = package_index;
         progress->installed_count = receipt->installed_count;
         bongo_cat_import_package_base_id(progress->package_id,
             sizeof(progress->package_id), receipt->ids[0]);
@@ -92,8 +98,15 @@ bool bongo_cat_preferences_import_progress_event(
             &app->settings, progress->package_id);
         if (restored) progress->job->restored_count++;
         if (progress->installed_count || restored)
+            bongo_cat_preferences_model_glyphs_note(app->preferences,
+                progress->package_id);
+        if (progress->installed_count || restored) {
+            if (progress->package_index < BONGO_CAT_MODEL_CAP)
+                progress->job->package_refresh_requested[
+                    progress->package_index] = true;
             bongo_cat_app_request_model_package_refresh(app,
                 progress->package_id);
+        }
     }
     SDL_free(progress);
     return true;

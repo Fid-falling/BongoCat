@@ -240,6 +240,7 @@
     "select": "Sélectionner",
     "selected": "Sélectionné",
     "import": "Importer",
+    "importing": "Importation...",
     "builtIn": "intégré"
   }
 }

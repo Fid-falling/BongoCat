@@ -240,6 +240,7 @@
     "select": "選擇",
     "selected": "已選擇",
     "import": "匯入",
+    "importing": "匯入中...",
     "builtIn": "內建"
   }
 }

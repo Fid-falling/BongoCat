@@ -155,11 +155,13 @@ static void draw_cover(BongoCatPreferences *value,
 static void draw_actions(BongoCatPreferences *value,
     struct nk_context *context, struct nk_command_buffer *canvas,
     struct nk_rect bounds, const BongoCatModelEntry *entry,
-    BongoCatUIPalette p, bool selected, bool primary, bool *action_hover) {
+    BongoCatUIPalette p, bool selected, bool primary, bool storage_busy,
+    bool *action_hover) {
     struct nk_rect actions = nk_rect(bounds.x + 1, bounds.y + bounds.h - 39,
         bounds.w - 2, 38);
     nk_fill_rect(canvas, actions, 0, p.field);
     bool deletable = !entry->preset && !entry->managed;
+    bool delete_enabled = deletable && !storage_busy;
     float width = actions.w / (deletable ? 3.0f : 2.0f);
     struct nk_rect items[3] = {
         nk_rect(actions.x, actions.y, width, actions.h),
@@ -173,7 +175,7 @@ static void draw_actions(BongoCatPreferences *value,
         deletable && nk_input_is_mouse_hovering_rect(
             &context->input, items[2])};
     bool hover[3] = {behavior_enabled && region_hover[0],
-        region_hover[1], region_hover[2]};
+        region_hover[1], delete_enabled && region_hover[2]};
     for (int i = 1; i < (deletable ? 3 : 2); ++i)
         nk_stroke_line(canvas, items[i].x, items[i].y + 10,
             items[i].x, items[i].y + items[i].h - 10, 1, p.border_subtle);
@@ -184,7 +186,7 @@ static void draw_actions(BongoCatPreferences *value,
     action_icon(value, canvas, items[1], BONGO_CAT_UI_ICON_FOLDER,
         hover[1] ? p.pink : p.muted);
     if (deletable) action_icon(value, canvas, items[2], BONGO_CAT_UI_ICON_TRASH,
-        hover[2] ? p.danger : p.muted);
+        hover[2] ? p.danger : delete_enabled ? p.muted : p.border_subtle);
     *action_hover = region_hover[0] || region_hover[1] || region_hover[2];
     if (hover[0] && nk_input_is_mouse_click_in_rect(&context->input,
         NK_BUTTON_LEFT, items[0])) {
@@ -211,7 +213,8 @@ static void draw_selection_badge(BongoCatPreferences *value,
 }
 
 void bongo_cat_preferences_model_card(BongoCatPreferences *value,
-    struct nk_context *context, const BongoCatModelEntry *entry) {
+    struct nk_context *context, const BongoCatModelEntry *entry,
+    bool storage_busy) {
     BongoCatApp *app = value->app;
     bool selected = bongo_cat_app_model_active(app, entry->id);
     bool primary = !strcmp(entry->id, app->session.active_model_id);
@@ -257,7 +260,7 @@ void bongo_cat_preferences_model_card(BongoCatPreferences *value,
         context, canvas, entry, name_bounds, p);
     bool action_hover = false;
     draw_actions(value, context, canvas, bounds, entry, p, selected, primary,
-        &action_hover);
+        storage_busy, &action_hover);
     float outline_width = 1.0f + selection_amount;
     struct nk_rect outline = bongo_cat_preferences_model_card_outline_bounds(
         bounds, outline_width);

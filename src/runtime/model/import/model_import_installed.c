@@ -1,4 +1,5 @@
 #include "model_import.h"
+#include "model_import_lock.h"
 #include "model_import_mver_policy.h"
 #include "model_import_nearby_internal.h"
 #include "runtime.h"
@@ -237,7 +238,7 @@ BongoCatResult bongo_cat_import_installed_package(BongoCatApp *app,
     }
     BongoCatImportDiscovery *discovery = calloc(1, sizeof(*discovery));
     if (!discovery) return BONGO_CAT_ERROR_MEMORY;
-    bongo_cat_import_model_scan_lock();
+    bongo_cat_import_storage_lock();
     bool found = bongo_cat_import_discover(directory, discovery, error);
     InstalledModelScan scan = {app, cache_root, error, BONGO_CAT_OK};
     if (found) {
@@ -246,7 +247,7 @@ BongoCatResult bongo_cat_import_installed_package(BongoCatApp *app,
             scan.result = error && error->code ? error->code :
                 BONGO_CAT_ERROR_IO;
     }
-    bongo_cat_import_model_scan_unlock();
+    bongo_cat_import_storage_unlock();
     free(discovery);
     if (!found && scan.result == BONGO_CAT_OK)
         scan.result = error && error->code ? error->code :
@@ -261,9 +262,9 @@ BongoCatResult bongo_cat_import_installed_models(BongoCatApp *app,
     char cache_root[BONGO_CAT_PATH_CAP];
     if (!installed_cache_root(app, cache_root, error)) return BONGO_CAT_ERROR_IO;
     InstalledModelScan scan = {app, cache_root, error, BONGO_CAT_OK};
-    bongo_cat_import_model_scan_lock();
+    bongo_cat_import_storage_lock();
     bool ok = bongo_cat_path_enumerate(root, scan_package, &scan);
-    bongo_cat_import_model_scan_unlock();
+    bongo_cat_import_storage_unlock();
     if (!ok && scan.result == BONGO_CAT_OK) scan.result = BONGO_CAT_ERROR_IO;
     return scan.result;
 }

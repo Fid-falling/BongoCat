@@ -1,4 +1,6 @@
 #include "model_import.h"
+#include "model_import_lock.h"
+#include "model_import_probe.h"
 #include "model_import_mver_policy.h"
 #include "model_import_mver.h"
 #include "model_import_nearby_internal.h"
@@ -13,36 +15,6 @@
 #include <string.h>
 
 #define NEARBY_SCAN_BUDGET_NS 500000000ull
-
-static SDL_InitState nearby_scan_lock_init;
-static SDL_Mutex *nearby_scan_lock;
-
-static SDL_Mutex *scan_mutex(void) {
-    if (SDL_ShouldInit(&nearby_scan_lock_init)) {
-        nearby_scan_lock = SDL_CreateMutex();
-        SDL_SetInitialized(&nearby_scan_lock_init,
-            nearby_scan_lock != NULL);
-    }
-    return nearby_scan_lock;
-}
-
-void bongo_cat_import_model_scan_lock(void) {
-    SDL_Mutex *mutex = scan_mutex();
-    if (mutex) SDL_LockMutex(mutex);
-}
-
-void bongo_cat_import_model_scan_unlock(void) {
-    SDL_Mutex *mutex = nearby_scan_lock;
-    if (mutex) SDL_UnlockMutex(mutex);
-}
-
-void bongo_cat_import_nearby_shutdown(void) {
-    if (!SDL_ShouldQuit(&nearby_scan_lock_init)) return;
-    SDL_Mutex *mutex = nearby_scan_lock;
-    nearby_scan_lock = NULL;
-    SDL_SetInitialized(&nearby_scan_lock_init, false);
-    SDL_DestroyMutex(mutex);
-}
 
 static bool existing_identity(const BongoCatModelCatalog *models,
     const char *identity, BongoCatModelMode mode,
@@ -167,16 +139,15 @@ static BongoCatResult add_scanned(void *userdata, const char *source,
 
 static int discover_direct(const char *root, bool bounded,
     BongoCatImportDiscovery *discovery, BongoCatError *error) {
-    int found = bounded
-        ? bongo_cat_import_mver_discover_exact(root, discovery, error)
-        : bongo_cat_import_mver_discover(root, discovery, error);
+    if (bounded) return bongo_cat_import_probe_exact(root, discovery,
+        NULL, BONGO_CAT_IMPORT_PROBE_FALLBACK, false, error);
+    /* An explicit nearby root uses broad Mver lookup so selecting an inner
+       authored folder still resolves to its canonical package root. */
+    int found = bongo_cat_import_mver_discover(root, discovery, error);
     if (found <= 0) {
         memset(discovery, 0, sizeof(*discovery));
         if (error) *error = (BongoCatError){0};
-        found = bounded
-            ? bongo_cat_import_mver_patch_discover_exact(root,
-                discovery, error)
-            : bongo_cat_import_mver_patch_discover(root, discovery, error);
+        found = bongo_cat_import_mver_patch_discover(root, discovery, error);
     }
     if (found <= 0) {
         memset(discovery, 0, sizeof(*discovery));
@@ -222,9 +193,9 @@ static BongoCatResult import_root_unlocked(BongoCatApp *app, const char *root,
 
 static BongoCatResult import_root(BongoCatApp *app, const char *root,
     bool bounded, BongoCatError *error) {
-    bongo_cat_import_model_scan_lock();
+    bongo_cat_import_storage_lock();
     BongoCatResult result = import_root_unlocked(app, root, bounded, error);
-    bongo_cat_import_model_scan_unlock();
+    bongo_cat_import_storage_unlock();
     return result;
 }
 

@@ -1,4 +1,5 @@
 #include "model_import.h"
+#include "model_import_lock.h"
 #include "model_storage.h"
 #include "runtime.h"
 #include "bongo_cat/path.h"
@@ -10,10 +11,12 @@ static void remove_receipt(const char *models_root,
     const BongoCatImportReceipt *receipt) {
     char path[BONGO_CAT_PATH_CAP];
     if (!receipt || !models_root) return;
+    bongo_cat_import_storage_lock();
     for (size_t i = 0; i < receipt->count; ++i)
         if (receipt->installed[i] &&
             bongo_cat_path_join(path, sizeof(path), models_root, receipt->ids[i]))
             bongo_cat_model_remove_tree(path, NULL);
+    bongo_cat_import_storage_unlock();
 }
 #endif
 

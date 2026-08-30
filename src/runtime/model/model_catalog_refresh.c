@@ -31,10 +31,11 @@ struct BongoCatModelRefresh {
     Uint32 event_type;
     uint64_t revision;
     bool busy;
-    bool rerun;
     bool active_nearby;
+    bool rerun_full;
     bool rerun_nearby;
-    char rerun_package_id[BONGO_CAT_ID_CAP];
+    size_t pending_package_count;
+    char pending_packages[BONGO_CAT_MODEL_CAP][BONGO_CAT_ID_CAP];
 };
 
 static BongoCatModelRefresh *create_refresh(void) {
@@ -120,10 +121,7 @@ static bool start_refresh(BongoCatApp *app, bool include_nearby,
     memcpy(job->removed_models, app->settings.removed_models,
         job->removed_model_count * sizeof(job->removed_models[0]));
     refresh->busy = true;
-    refresh->rerun = false;
     refresh->active_nearby = include_nearby;
-    refresh->rerun_nearby = false;
-    refresh->rerun_package_id[0] = '\0';
     refresh->worker = SDL_CreateThread(refresh_worker,
         BONGO_CAT_SLUG "-model-catalog", job);
     if (refresh->worker) return true;
@@ -143,15 +141,23 @@ static void request_refresh(BongoCatApp *app, bool include_nearby,
         return;
     }
     if (refresh->busy) {
-        if (!refresh->rerun)
-            snprintf(refresh->rerun_package_id,
-                sizeof(refresh->rerun_package_id), "%s",
-                package_id ? package_id : "");
-        else if (!package_id || !refresh->rerun_package_id[0] ||
-            strcmp(refresh->rerun_package_id, package_id))
-            refresh->rerun_package_id[0] = '\0';
-        refresh->rerun = true;
-        refresh->rerun_nearby = refresh->rerun_nearby || include_nearby;
+        if (!package_id || include_nearby) {
+            refresh->rerun_full = true;
+            refresh->rerun_nearby = refresh->rerun_nearby || include_nearby;
+            refresh->pending_package_count = 0;
+            return;
+        }
+        if (refresh->rerun_full) return;
+        for (size_t i = 0; i < refresh->pending_package_count; ++i)
+            if (!strcmp(refresh->pending_packages[i], package_id)) return;
+        if (refresh->pending_package_count < BONGO_CAT_MODEL_CAP)
+            snprintf(refresh->pending_packages[
+                refresh->pending_package_count++], BONGO_CAT_ID_CAP,
+                "%s", package_id);
+        else {
+            refresh->rerun_full = true;
+            refresh->pending_package_count = 0;
+        }
         return;
     }
     if (!start_refresh(app, include_nearby, package_id))
@@ -161,6 +167,10 @@ static void request_refresh(BongoCatApp *app, bool include_nearby,
 
 void bongo_cat_app_request_model_refresh(BongoCatApp *app) {
     request_refresh(app, false, NULL);
+}
+
+bool bongo_cat_app_model_refresh_busy(const BongoCatApp *app) {
+    return app && app->model_refresh && app->model_refresh->busy;
 }
 
 void bongo_cat_app_request_model_package_refresh(BongoCatApp *app,
@@ -179,10 +189,10 @@ void bongo_cat_model_refresh_invalidate(BongoCatApp *app) {
     if (!refresh) return;
     refresh->revision++;
     if (refresh->busy) {
-        refresh->rerun = true;
+        refresh->rerun_full = true;
         refresh->rerun_nearby = refresh->rerun_nearby ||
             refresh->active_nearby;
-        refresh->rerun_package_id[0] = '\0';
+        refresh->pending_package_count = 0;
     }
 }
 
@@ -217,15 +227,27 @@ void bongo_cat_model_refresh_update(BongoCatApp *app) {
             "Background model refresh failed: %s",
             job->error.message[0] ? job->error.message : "not enough memory");
     free(job);
-    bool rerun = refresh->rerun;
+    bool rerun_full = refresh->rerun_full;
     bool include_nearby = refresh->rerun_nearby;
     char package_id[BONGO_CAT_ID_CAP];
-    snprintf(package_id, sizeof(package_id), "%s",
-        refresh->rerun_package_id);
-    if (rerun && !start_refresh(app, include_nearby,
+    package_id[0] = '\0';
+    if (rerun_full) {
+        refresh->rerun_full = false;
+        refresh->rerun_nearby = false;
+        refresh->pending_package_count = 0;
+    } else if (refresh->pending_package_count) {
+        snprintf(package_id, sizeof(package_id), "%s",
+            refresh->pending_packages[0]);
+        memmove(refresh->pending_packages, refresh->pending_packages + 1,
+            (refresh->pending_package_count - 1) *
+                sizeof(refresh->pending_packages[0]));
+        --refresh->pending_package_count;
+    }
+    if ((rerun_full || package_id[0]) && !start_refresh(app, include_nearby,
             package_id[0] ? package_id : NULL))
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
             "Cannot restart background model refresh: %s", SDL_GetError());
+    bongo_cat_preferences_invalidate(app->preferences);
 }
 
 bool bongo_cat_model_refresh_event(BongoCatApp *app,

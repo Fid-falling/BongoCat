@@ -2,6 +2,12 @@
 #include "bongo_cat/path.h"
 
 #include <stdio.h>
+#include <stdlib.h>
+
+typedef struct TauriConversionWorkspace {
+    TauriKeyFiles left;
+    TauriKeyFiles right;
+} TauriConversionWorkspace;
 
 static bool create_target_tree(const char *target, BongoCatModelMode mode,
     char *mode_root, size_t mode_capacity, char *model_root,
@@ -26,22 +32,32 @@ bool bongo_cat_import_tauri_convert_to_mver(
             sizeof(mode_root), model_root, sizeof(model_root)) ||
         !bongo_cat_tauri_copy_model_tree(candidate->directory, model_root, 0,
             error)) return false;
+    TauriConversionWorkspace *work = calloc(1, sizeof(*work));
+    if (!work) {
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_MEMORY,
+            "Cannot allocate Tauri conversion workspace");
+        return false;
+    }
     char resource_directory[BONGO_CAT_PATH_CAP];
-    TauriKeyFiles left, right;
     if (!bongo_cat_tauri_resource_root(candidate, resource_directory,
             sizeof(resource_directory)) ||
         !bongo_cat_tauri_copy_input_images(candidate, resource_directory,
-            mode_root, &left, &right, error))
+            mode_root, &work->left, &work->right, error)) {
+        free(work);
         return false;
+    }
     TauriMverCalibration calibration;
     char config[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_tauri_read_calibration(candidate, &calibration) ||
         !bongo_cat_path_join(config, sizeof(config), target, "config.json") ||
-        !bongo_cat_tauri_write_config(config, candidate->mode, &left, &right,
-            &calibration, error) ||
+        !bongo_cat_tauri_write_config(config, candidate->mode, &work->left,
+            &work->right, &calibration, error) ||
         !bongo_cat_tauri_copy_preview(candidate, mode_root, error) ||
-        !bongo_cat_tauri_copy_runtime_images(candidate, mode_root, error))
+        !bongo_cat_tauri_copy_runtime_images(candidate, mode_root, error)) {
+        free(work);
         return false;
+    }
+    free(work);
     *installed = *candidate;
     snprintf(installed->directory, sizeof(installed->directory), "%s",
         model_root);

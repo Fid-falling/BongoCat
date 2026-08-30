@@ -7,6 +7,11 @@ bool bongo_cat_ui_font_upload_atlas(BongoCatUIBackend *ui) {
     const void *pixels = nk_font_atlas_bake(&ui->atlas, &width, &height,
         NK_FONT_ATLAS_ALPHA8);
     if (!pixels || width < 1 || height < 1) return false;
+    SDL_Window *window = SDL_GL_GetCurrentWindow();
+    SDL_GLContext context = SDL_GL_GetCurrentContext();
+    SDL_Log("Preferences font atlas upload starting: %dx%d window=%u "
+        "context=%p", width, height,
+        window ? (unsigned)SDL_GetWindowID(window) : 0, (void *)context);
     GLint maximum = 0;
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maximum);
     if (width > maximum || height > maximum) {
@@ -44,5 +49,7 @@ bool bongo_cat_ui_font_upload_atlas(BongoCatUIBackend *ui) {
     }
     nk_font_atlas_end(&ui->atlas, nk_handle_id((int)ui->font_texture),
         &ui->null_texture);
+    SDL_Log("Preferences font atlas upload completed: texture=%u size=%dx%d",
+        ui->font_texture, width, height);
     return true;
 }

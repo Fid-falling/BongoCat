@@ -11,7 +11,8 @@ bool bongo_cat_preferences_model_import_card(BongoCatPreferences *value,
 bool bongo_cat_preferences_model_section(BongoCatPreferences *value,
     struct nk_context *context);
 void bongo_cat_preferences_model_card(BongoCatPreferences *value,
-    struct nk_context *context, const BongoCatModelEntry *entry);
+    struct nk_context *context, const BongoCatModelEntry *entry,
+    bool storage_busy);
 void bongo_cat_preferences_model_select(BongoCatPreferences *value,
     const BongoCatModelEntry *entry);
 

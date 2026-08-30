@@ -1,4 +1,5 @@
 #include "preferences_state.h"
+#include "preferences_model_glyphs.h"
 #include "preferences_text_edit.h"
 
 #include <SDL3/SDL.h>
@@ -20,6 +21,11 @@ bool bongo_cat_preferences_model_name_draw(BongoCatPreferences *value,
     }
     const char *shown = renaming ? session->text :
         bongo_cat_model_name(&value->app->settings, entry);
+    if (!renaming && value->import_render_active &&
+        value->font_reload_pending &&
+        !bongo_cat_preferences_model_glyphs_ready(value, shown))
+        shown = bongo_cat_i18n_get(value->app->i18n, "native.importing",
+            "Importing...");
     struct nk_rect text_bounds = nk_rect(bounds.x + 5,
         bounds.y + 3, bounds.w - 10, 22);
     if (renaming && session->select_all)

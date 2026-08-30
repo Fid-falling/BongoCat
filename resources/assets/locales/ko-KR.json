@@ -240,6 +240,7 @@
     "select": "선택",
     "selected": "선택됨",
     "import": "가져오기",
+    "importing": "가져오는 중...",
     "builtIn": "내장"
   }
 }

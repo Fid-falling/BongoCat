@@ -236,9 +236,16 @@ void bongo_cat_preferences_render(BongoCatPreferences *value) {
             "Preferences GL context could not be activated: %s", SDL_GetError());
         return;
     }
-    value->render_retry_ns = 0; bongo_cat_preferences_refresh_raster(value);
-    bongo_cat_preferences_reload_language(value);
-    if (value->font_reload_pending) {
+    value->render_retry_ns = 0;
+    bool importing = bongo_cat_preferences_import_status(
+        value->import_dialog, NULL, NULL, NULL);
+    value->import_render_active = importing;
+    bool refreshing_models = bongo_cat_app_model_refresh_busy(value->app);
+    if (!importing && !refreshing_models) {
+        bongo_cat_preferences_refresh_raster(value);
+        bongo_cat_preferences_reload_language(value);
+    }
+    if (value->font_reload_pending && !importing && !refreshing_models) {
         if (value->font_reload_defer_once) {
             value->font_reload_defer_once = false;
             value->render_dirty = true;
@@ -274,7 +281,6 @@ void bongo_cat_preferences_render(BongoCatPreferences *value) {
             "Preferences frame presentation failed: %s", SDL_GetError());
     } else bongo_cat_memory_policy_ui_frame_presented();
     bongo_cat_preferences_record_frame(value);
-    bool importing = bongo_cat_preferences_import_status(value->import_dialog, NULL, NULL, NULL);
     if (value->shortcut_recording || value->model_load_visual_active || importing ||
         bongo_cat_pref_controls_animating(&value->ui.context) ||
         bongo_cat_ui_animations_active(&value->ui.context))

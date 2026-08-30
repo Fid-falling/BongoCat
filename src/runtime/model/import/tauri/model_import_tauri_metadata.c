@@ -11,6 +11,10 @@ static bool finite_number(yyjson_val *value) {
     return yyjson_is_num(value) && isfinite(yyjson_get_num(value));
 }
 
+static bool valid_canvas_size(int width, int height) {
+    return width >= 64 && width <= 8192 && height >= 64 && height <= 8192;
+}
+
 static bool read_offset(yyjson_val *value, double *x, double *y) {
     if (!yyjson_is_arr(value) || yyjson_arr_size(value) < 2 ||
         !finite_number(yyjson_arr_get(value, 0)) ||
@@ -43,6 +47,24 @@ static bool read_window(yyjson_val *value, int *width, int *height) {
     return true;
 }
 
+static bool legacy_converter_canvas(
+    const BongoCatImportCandidate *candidate, int width, int height) {
+    if (!candidate || !valid_canvas_size(width, height) ||
+        width < 256 || height < 256) return false;
+    char path[BONGO_CAT_PATH_CAP];
+    if (!bongo_cat_tauri_find_resource_directory(candidate, "left-keys",
+            path, sizeof(path))) return false;
+    if (candidate->mode == BONGO_CAT_MODE_STANDARD && width == height &&
+        width >= 512)
+        return true;
+    if (!bongo_cat_tauri_find_resource_file(candidate, "cover.png", path,
+            sizeof(path))) return false;
+    int cover_width = 0, cover_height = 0;
+    return bongo_cat_image_info(path, &cover_width, &cover_height) &&
+        valid_canvas_size(cover_width, cover_height) &&
+        (cover_width != width || cover_height != height);
+}
+
 static void legacy_defaults(const BongoCatImportCandidate *candidate,
     TauriMverCalibration *calibration) {
     calibration->l2d_correct = 1.1;
@@ -57,22 +79,23 @@ static void legacy_defaults(const BongoCatImportCandidate *candidate,
         if (!bongo_cat_tauri_find_resource_file(candidate, names[i], path,
                 sizeof(path))) continue;
         int width = 0, height = 0;
-        if (bongo_cat_image_info(path, &width, &height) && width > 0 &&
-            height > 0) {
+        if (bongo_cat_image_info(path, &width, &height) &&
+            valid_canvas_size(width, height)) {
             calibration->window_width = width;
             calibration->window_height = height;
             break;
         }
     }
-    /* Converter packages before schemaVersion 1 had no Mver calibration.
-       Its square standard canvas matches the 0.1.6 standard profile. */
-    if (candidate && candidate->mode == BONGO_CAT_MODE_STANDARD &&
-        bongo_cat_tauri_find_resource_directory(candidate, "left-keys", path,
-            sizeof(path)) &&
-        calibration->window_width == calibration->window_height &&
-        calibration->window_width >= 512) {
+    /* Converter packages before schemaVersion 1 omitted their Mver projection
+       calibration. Their model scale is approximately 2.0 across modes; the
+       old 1.1 fallback leaves the Live2D layer much smaller than its authored
+       background and makes the keyboard or desk appear duplicated. */
+    if (legacy_converter_canvas(candidate, calibration->window_width,
+            calibration->window_height)) {
         calibration->l2d_correct = 2.0;
-        calibration->l2d_offset_y = -0.005;
+        if (candidate->mode == BONGO_CAT_MODE_STANDARD &&
+            calibration->window_width == calibration->window_height)
+            calibration->l2d_offset_y = -0.005;
     }
 }
 

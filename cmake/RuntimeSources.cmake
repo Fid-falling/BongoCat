@@ -92,10 +92,12 @@ set(BONGO_CAT_RUNTIME_IMPORT_SOURCES
   src/runtime/model/import/model_import_manifest.c
   src/runtime/model/import/model_import_identity.c
   src/runtime/model/import/model_import_installed.c
+  src/runtime/model/import/model_import_lock.c
   src/runtime/model/import/model_import_metadata.c
   src/runtime/model/import/model_import_package.c
   src/runtime/model/import/model_import_package_index.c
   src/runtime/model/import/model_import_path.c
+  src/runtime/model/import/model_import_probe.c
   src/runtime/model/import/model_import_progressive.c
   src/runtime/model/import/model_import_report.c
   src/runtime/model/import/model_import_scan.c

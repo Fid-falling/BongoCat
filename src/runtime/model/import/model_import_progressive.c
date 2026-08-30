@@ -1,8 +1,8 @@
 #include "model_import.h"
-#include "mver/model_import_mver.h"
-#include "tauri/model_import_tauri.h"
+#include "model_import_probe.h"
 #include "bongo_cat/path.h"
 
+#include <SDL3/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,19 +25,6 @@ typedef struct ProgressiveScan {
     size_t base_count;
     size_t model_count;
 } ProgressiveScan;
-
-static int discover_exact(const char *source,
-    BongoCatImportDiscovery *discovery, BongoCatError *error) {
-    memset(discovery, 0, sizeof(*discovery));
-    int found = bongo_cat_import_mver_discover_exact(source, discovery, error);
-    if (found) return found;
-    memset(discovery, 0, sizeof(*discovery));
-    found = bongo_cat_import_mver_patch_discover_exact(source, discovery,
-        error);
-    if (found) return found;
-    memset(discovery, 0, sizeof(*discovery));
-    return bongo_cat_import_tauri_discover_exact(source, discovery, error);
-}
 
 static BongoCatResult collect_unit(void *userdata, const char *source,
     BongoCatImportDiscovery *discovery, BongoCatError *error) {
@@ -86,13 +73,16 @@ static bool has_base(const ProgressiveScan *scan,
 static bool redundant_patch(const ProgressiveScan *scan,
     const ProgressiveUnit *unit) {
     if (!unit->patch_only) return false;
-    BongoCatImportDiscovery discovery;
+    BongoCatImportDiscovery *discovery = calloc(1, sizeof(*discovery));
+    if (!discovery) return false;
     BongoCatError ignored = {0};
-    if (discover_exact(unit->source, &discovery, &ignored) <= 0 ||
-        !discovery.count) return false;
-    for (size_t i = 0; i < discovery.count; ++i)
-        if (!has_base(scan, &discovery.candidates[i])) return false;
-    return true;
+    bool redundant = bongo_cat_import_probe_exact(unit->source, discovery,
+        NULL, BONGO_CAT_IMPORT_PROBE_STRICT, false, &ignored) > 0 &&
+        discovery->count > 0;
+    for (size_t i = 0; redundant && i < discovery->count; ++i)
+        if (!has_base(scan, &discovery->candidates[i])) redundant = false;
+    free(discovery);
+    return redundant;
 }
 
 static void record_failure_name(BongoCatImportBatchStats *stats,
@@ -109,6 +99,8 @@ static BongoCatResult install_one(BongoCatImportSession *session,
     const char *source, BongoCatImportReceiptCallback callback,
     void *userdata, BongoCatImportBatchStats *stats, BongoCatError *error) {
     BongoCatImportReceipt receipt = {0};
+    uint64_t started = SDL_GetTicksNS();
+    SDL_Log("[runtime] Model import unit started: path=%s", source);
     BongoCatResult result = bongo_cat_import_session_install(session, source,
         &receipt, error);
     if (result == BONGO_CAT_OK) stats->succeeded_count++;
@@ -118,6 +110,11 @@ static BongoCatResult install_one(BongoCatImportSession *session,
     }
     if (result == BONGO_CAT_OK && callback)
         callback(userdata, &receipt);
+    SDL_Log("[runtime] Model import unit completed: result=%d variants=%llu "
+        "installed=%llu elapsed_ms=%.1f path=%s", (int)result,
+        (unsigned long long)receipt.count,
+        (unsigned long long)receipt.installed_count,
+        (SDL_GetTicksNS() - started) / 1000000.0, source);
     return result;
 }
 
@@ -142,12 +139,24 @@ BongoCatResult bongo_cat_import_session_install_progressive(
     if (normalized != BONGO_CAT_OK)
         return fail_source(stats, source, normalized);
 
-    BongoCatImportDiscovery exact;
+    SDL_Log("[runtime] Model import progressive discovery started: path=%s",
+        directory);
+    BongoCatImportDiscovery *exact = calloc(1, sizeof(*exact));
+    if (!exact) {
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_MEMORY,
+            "Cannot allocate exact model discovery workspace");
+        return fail_source(stats, directory, BONGO_CAT_ERROR_MEMORY);
+    }
     BongoCatError exact_error = {0};
-    int exact_result = discover_exact(directory, &exact, &exact_error);
-    if (exact_result > 0)
+    int exact_result = bongo_cat_import_probe_exact(directory, exact, NULL,
+        BONGO_CAT_IMPORT_PROBE_STRICT, true, &exact_error);
+    free(exact);
+    if (exact_result > 0) {
+        SDL_Log("[runtime] Model import progressive discovery selected exact "
+            "package: path=%s", directory);
         return install_one(session, directory, callback, userdata, stats,
             error);
+    }
     if (exact_result < 0) {
         if (error) *error = exact_error;
         return fail_source(stats, directory, exact_error.code
@@ -160,8 +169,16 @@ BongoCatResult bongo_cat_import_session_install_progressive(
             "Cannot allocate progressive model import scan");
         return fail_source(stats, directory, BONGO_CAT_ERROR_MEMORY);
     }
-    BongoCatResult scanned = bongo_cat_import_scan(directory, collect_unit,
-        scan, error);
+    uint64_t scan_started = SDL_GetTicksNS();
+    SDL_Log("[runtime] Model import container scan started: path=%s",
+        directory);
+    BongoCatResult scanned = bongo_cat_import_scan_diagnostic(directory,
+        collect_unit, scan, error);
+    SDL_Log("[runtime] Model import container scan completed: result=%d "
+        "units=%llu variants=%llu elapsed_ms=%.1f path=%s", (int)scanned,
+        (unsigned long long)scan->unit_count,
+        (unsigned long long)scan->model_count,
+        (SDL_GetTicksNS() - scan_started) / 1000000.0, directory);
     if (scanned != BONGO_CAT_OK || !scan->unit_count) {
         free(scan);
         return scanned != BONGO_CAT_OK ? fail_source(stats, directory, scanned) :

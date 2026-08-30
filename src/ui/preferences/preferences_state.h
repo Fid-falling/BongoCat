@@ -49,11 +49,14 @@ struct BongoCatPreferences {
     bool input_active;
     bool import_requested;
     bool import_drop_active;
+    bool import_render_active;
     BongoCatImportDialog *import_dialog;
     bool frame_checked;
     bool render_dirty;
     bool font_reload_pending;
     bool font_reload_defer_once;
+    size_t pending_import_name_count;
+    char pending_import_names[BONGO_CAT_MODEL_CAP][BONGO_CAT_ID_CAP];
     bool model_glyphs_loaded;
     bool model_directory_watch_active;
     bool model_directory_watch_known;

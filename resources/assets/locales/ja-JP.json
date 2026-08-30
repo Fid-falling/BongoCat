@@ -240,6 +240,7 @@
     "select": "選択",
     "selected": "選択済み",
     "import": "インポート",
+    "importing": "インポート中...",
     "builtIn": "内蔵"
   }
 }

@@ -9,6 +9,7 @@ typedef struct BongoCatImportJob {
     char **paths;
     char models_root[BONGO_CAT_PATH_CAP];
     char package_ids[BONGO_CAT_MODEL_CAP][BONGO_CAT_ID_CAP];
+    bool package_refresh_requested[BONGO_CAT_MODEL_CAP];
     size_t package_id_count;
     size_t resolved_count;
     size_t installed_count;
@@ -30,6 +31,7 @@ typedef struct BongoCatImportProgressContext {
 typedef struct BongoCatImportProgress {
     BongoCatImportJob *job;
     char package_id[BONGO_CAT_ID_CAP];
+    size_t package_index;
     size_t installed_count;
 } BongoCatImportProgress;
 
@@ -55,7 +57,8 @@ struct BongoCatImportDialog {
 };
 
 void bongo_cat_preferences_import_report_progress(BongoCatImportJob *job,
-    const BongoCatImportReceipt *receipt, size_t completed);
+    const BongoCatImportReceipt *receipt, size_t package_index,
+    size_t completed);
 void bongo_cat_preferences_import_receive(void *userdata,
     const BongoCatImportReceipt *receipt);
 void bongo_cat_preferences_import_record_failure(BongoCatImportJob *job,

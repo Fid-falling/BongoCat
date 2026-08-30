@@ -63,7 +63,10 @@ bool bongo_cat_preferences_reload_fonts(BongoCatPreferences *value) {
     BongoCatPreferenceFonts fonts;
     bongo_cat_preferences_fonts_resolve(value, &fonts);
     bool reloaded = reload(value, &fonts, value->ui.raster_scale);
-    if (reloaded) value->font_reload_pending = false;
+    if (reloaded) {
+        value->font_reload_pending = false;
+        bongo_cat_preferences_model_glyphs_clear_pending(value);
+    }
     return reloaded;
 }
 

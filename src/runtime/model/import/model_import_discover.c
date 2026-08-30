@@ -64,6 +64,9 @@ bool bongo_cat_import_discover(const char *source,
     BongoCatImportDiscovery *discovery, BongoCatError *error) {
     memset(discovery, 0, sizeof(*discovery));
     seed_source_name(source, discovery);
+    /* Broad package discovery intentionally stays separate from exact probe
+       dispatch: Mver may be selected from one of its authored subfolders,
+       while Tauri conversion starts only from an owning package root. */
     int mver = bongo_cat_import_mver_discover(source, discovery, error);
     if (mver > 0) return true;
     if (mver < 0) return false;

@@ -114,21 +114,15 @@ static bool copy_keys(const BongoCatImportCandidate *candidate,
     return true;
 }
 
-static bool ensure_key(const BongoCatImportCandidate *candidate,
-    const char *mode_root, const char *target_group, int fallback_code,
-    TauriKeyFiles *files, BongoCatError *error) {
+static bool ensure_key(const char *mode_root, const char *target_group,
+    int fallback_code, TauriKeyFiles *files, BongoCatError *error) {
     if (files->count) return true;
-    char source[BONGO_CAT_PATH_CAP];
-    bool have_source = bongo_cat_tauri_find_resource_file(candidate,
-        "cover.png", source, sizeof(source)) ||
-        bongo_cat_tauri_find_resource_file(candidate, "background.png",
-            source, sizeof(source));
     char group[BONGO_CAT_PATH_CAP], target[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_join(group, sizeof(group), mode_root, target_group) ||
         !bongo_cat_path_create_directory(group) ||
         !bongo_cat_path_join(target, sizeof(target), group, "0.png") ||
-        !bongo_cat_tauri_copy_image_or_placeholder(
-            have_source ? source : NULL, target, error)) return false;
+        !bongo_cat_tauri_copy_image_or_placeholder(NULL, target, error))
+        return false;
     files->values[0].code = fallback_code;
     files->count = 1;
     return true;
@@ -143,15 +137,14 @@ bool bongo_cat_tauri_copy_input_images(
     if (candidate->mode == BONGO_CAT_MODE_STANDARD) {
         return copy_keys(candidate, resource_directory,
             mode_root, "left-keys", "hand", left, error) &&
-            ensure_key(candidate, mode_root, "hand", 65,
-                left, error);
+            ensure_key(mode_root, "hand", 65, left, error);
     }
     return copy_keys(candidate, resource_directory, mode_root,
         "left-keys", "lefthand", left, error) &&
         copy_keys(candidate, resource_directory, mode_root,
             "right-keys", "righthand", right, error) &&
-        ensure_key(candidate, mode_root, "lefthand",
+        ensure_key(mode_root, "lefthand",
             candidate->mode == BONGO_CAT_MODE_GAMEPAD ? 0 : 65, left, error) &&
-        ensure_key(candidate, mode_root, "righthand",
+        ensure_key(mode_root, "righthand",
             candidate->mode == BONGO_CAT_MODE_GAMEPAD ? 1 : 65, right, error);
 }

@@ -110,6 +110,12 @@ static void begin_log(BongoCatApp *app) {
     runtime_log_path[0] = '\0';
     bongo_cat_path_join(runtime_log_path, sizeof(runtime_log_path),
         app->log_root, "BongoCat.log");
+    /* The primary process owns the session log. Secondary pets append to it
+       instead of erasing diagnostics already written by the primary. */
+    if (runtime_log_path[0] && !app->secondary_pet) {
+        FILE *fresh_log = bongo_cat_file_open(runtime_log_path, "wb");
+        if (fresh_log) fclose(fresh_log);
+    }
     set_log_source(app);
     bool stage_paths_ready = bongo_cat_path_join(stage_path,
         sizeof(stage_path), app->state_root, "startup-stage.txt") &&

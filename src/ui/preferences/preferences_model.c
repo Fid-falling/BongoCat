@@ -251,13 +251,14 @@ static int preset_model_order(const BongoCatModelEntry *entry) {
 }
 
 static void draw_models(BongoCatPreferences *value,
-    struct nk_context *context, bool managed) {
+    struct nk_context *context, bool managed, bool storage_busy) {
     for (int order = 0; order <= 3; ++order) {
         for (size_t i = 0; i < value->app->models.count; ++i) {
             const BongoCatModelEntry *entry = &value->app->models.entries[i];
             if (entry->managed != managed || preset_model_order(entry) != order)
                 continue;
-            bongo_cat_preferences_model_card(value, context, entry);
+            bongo_cat_preferences_model_card(value, context, entry,
+                storage_busy);
         }
     }
 }
@@ -284,12 +285,15 @@ void bongo_cat_preferences_page_model(BongoCatPreferences *value,
     nk_layout_row_dynamic(context, MODEL_CARD_HEIGHT, columns);
     if (bongo_cat_preferences_model_import_card(value, context))
         bongo_cat_preferences_request_model_import(app->preferences);
-    draw_models(value, context, false);
+    bool storage_busy = bongo_cat_preferences_import_status(
+        value->import_dialog, NULL, NULL, NULL) ||
+        bongo_cat_app_model_refresh_busy(app);
+    draw_models(value, context, false, storage_busy);
     if (model_count(value, true)) {
         bongo_cat_pref_section(context,
             tr(app, "pages.preference.model.nearbyTitle", "Nearby models"));
         nk_layout_row_dynamic(context, MODEL_CARD_HEIGHT, columns);
-        draw_models(value, context, true);
+        draw_models(value, context, true, storage_busy);
     }
     context->style.window.spacing = old_spacing;
     bongo_cat_preferences_model_covers_prune(app);
