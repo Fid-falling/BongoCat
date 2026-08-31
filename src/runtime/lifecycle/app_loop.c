@@ -1,4 +1,5 @@
 #include "runtime.h"
+#include "model_cover.h"
 #include "bongo_cat/overlay.h"
 #include "bongo_cat/preferences.h"
 #include "bongo_cat/tray.h"
@@ -63,7 +64,7 @@ static bool render(BongoCatApp *app, bool present) {
     bongo_cat_overlay_draw_effect(app->overlay, app->settings.model.mirror);
     bongo_cat_overlay_draw_pointer_after_keys(app->overlay);
     glViewport(0, 0, width, height);
-    bongo_cat_frame_capture_pending(app, width, height);
+    bongo_cat_model_cover_capture(app, width, height);
     if (!present) {
         app->dirty = true;
         return true;
@@ -92,9 +93,16 @@ void bongo_cat_app_render_now(BongoCatApp *app) {
         render(app, true);
 }
 
-bool bongo_cat_app_capture_pending_frame(BongoCatApp *app) {
-    return app && app->window && app->pending_model_cover_path[0] &&
-        !app->window_minimized && render(app, false);
+bool bongo_cat_app_capture_pending_model_cover(BongoCatApp *app) {
+    if (!app || !app->window || !bongo_cat_model_cover_pending(app)) return false;
+    if (app->window_minimized) {
+        SDL_Log("Pending model cover deferred while window is minimized: %s",
+            bongo_cat_model_cover_pending_path(app));
+        return false;
+    }
+    SDL_Log("Capturing pending model cover: visible=%d path=%s",
+        app->session.window.visible, bongo_cat_model_cover_pending_path(app));
+    return render(app, false);
 }
 
 static void take_instance_wake(BongoCatApp *app) {
@@ -148,6 +156,7 @@ void bongo_cat_app_loop(BongoCatApp *app) {
             app->last_frame_ns = now;
             bongo_cat_memory_policy_idle();
         }
+        bongo_cat_app_capture_pending_model_cover(app);
         if (app->session.window.visible && !app->window_minimized && app->dirty)
             render(app, true);
         bongo_cat_preferences_render(app->preferences);

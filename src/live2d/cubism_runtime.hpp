@@ -15,7 +15,6 @@ struct BongoCatLive2D {
     unsigned retired_count = 0;
     int width = 612;
     int height = 354;
-    bool cover_runtime = false;
 };
 
 #endif

@@ -18,6 +18,8 @@ typedef struct BongoCatMultiPetRuntime BongoCatMultiPetRuntime;
 typedef struct BongoCatModelRefresh BongoCatModelRefresh;
 typedef struct BongoCatUpdateService BongoCatUpdateService;
 
+#define BONGO_CAT_MODEL_COVER_PENDING_CAP 8
+
 typedef struct BongoCatApp {
     BongoCatSettings settings;
     BongoCatSessionState session;
@@ -67,7 +69,9 @@ typedef struct BongoCatApp {
     char smoke_runtime_model[BONGO_CAT_ID_CAP];
     char smoke_live2d_scenario[BONGO_CAT_ID_CAP];
     char smoke_viewer_trace[BONGO_CAT_PATH_CAP];
-    char pending_model_cover_path[BONGO_CAT_PATH_CAP];
+    char pending_model_cover_ids[BONGO_CAT_MODEL_COVER_PENDING_CAP][BONGO_CAT_ID_CAP];
+    char pending_model_cover_paths[BONGO_CAT_MODEL_COVER_PENDING_CAP][BONGO_CAT_PATH_CAP];
+    size_t pending_model_cover_count;
     char loaded_model[BONGO_CAT_ID_CAP];
     char loading_model[BONGO_CAT_ID_CAP];
     BongoCatModelMode loaded_mode;

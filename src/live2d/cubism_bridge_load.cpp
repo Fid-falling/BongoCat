@@ -54,8 +54,8 @@ extern "C" BongoCatResult bongo_cat_live2d_load(BongoCatLive2D *runtime,
         }
         GLenum ready_error = glGetError();
         SDL_Log("[runtime] Live2D resource handoff: stage=replacement-ready "
-            "cover=%d new_textures=%zu previous_textures=%zu current_window=%p "
-            "current_context=%p gl_error=0x%x", runtime->cover_runtime,
+            "new_textures=%zu previous_textures=%zu current_window=%p "
+            "current_context=%p gl_error=0x%x",
             model->texture_count(), previous ? previous->texture_count() : 0,
             (void *)SDL_GL_GetCurrentWindow(),
             (void *)SDL_GL_GetCurrentContext(), (unsigned)ready_error);
@@ -63,14 +63,14 @@ extern "C" BongoCatResult bongo_cat_live2d_load(BongoCatLive2D *runtime,
         runtime->model = model;
         retire_previous(runtime, previous);
         SDL_Log("[runtime] Live2D resource handoff: stage=retirement-queued "
-            "cover=%d previous=%d previous_textures=%zu queue=%u frames=%u",
-            runtime->cover_runtime, previous != nullptr,
+            "previous=%d previous_textures=%zu queue=%u frames=%u",
+            previous != nullptr,
             previous ? previous->texture_count() : 0, runtime->retired_count,
             previous ? 3u : 0u);
         GLenum retired_error = glGetError();
-        SDL_Log("[runtime] Live2D resource handoff: stage=complete cover=%d "
+        SDL_Log("[runtime] Live2D resource handoff: stage=complete "
             "new_textures=%zu current_window=%p current_context=%p gl_error=0x%x",
-            runtime->cover_runtime, model->texture_count(),
+            model->texture_count(),
             (void *)SDL_GL_GetCurrentWindow(),
             (void *)SDL_GL_GetCurrentContext(), (unsigned)retired_error);
         return BONGO_CAT_OK;

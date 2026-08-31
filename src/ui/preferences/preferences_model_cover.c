@@ -31,6 +31,36 @@ void bongo_cat_preferences_model_cover_cache_clear(BongoCatApp *app) {
     }
 }
 
+bool bongo_cat_preferences_model_cover_reload(BongoCatApp *app,
+    const char *path) {
+    if (!app || !path || !path[0]) return false;
+    for (size_t i = 0; i < BONGO_CAT_MODEL_CAP; ++i) {
+        ModelCoverSlot *slot = &cover_cache[i];
+        if (!slot->image.texture || slot->app != app ||
+            strcmp(slot->path, path) != 0) continue;
+        int width = 0, height = 0;
+        BongoCatError ignored = {0};
+        unsigned int texture = bongo_cat_image_texture_thumbnail(path,
+            slot->requested_width, slot->requested_height, &width, &height,
+            &ignored);
+        if (!texture) {
+            SDL_LogWarn(SDL_LOG_CATEGORY_RENDER,
+                "Model cover cache reload failed: %s", path);
+            return false;
+        }
+        unsigned int previous = slot->image.texture;
+        slot->image.texture = texture;
+        slot->image.width = width;
+        slot->image.height = height;
+        slot->generation = cover_generation;
+        glDeleteTextures(1, &previous);
+        SDL_Log("Model cover cache reloaded: %s (%dx%d)", path,
+            width, height);
+        return true;
+    }
+    return true;
+}
+
 void bongo_cat_preferences_model_cache_clear(BongoCatApp *app) {
     bongo_cat_preferences_remove_dialog_clear(app);
     bongo_cat_preferences_model_cover_cache_clear(app);
@@ -56,7 +86,16 @@ const BongoCatModelCover *bongo_cat_preferences_model_cover(
     int pixel_width, int pixel_height) {
     char path[BONGO_CAT_PATH_CAP];
     if (!bongo_cat_path_join(path, sizeof(path), entry->adapter_directory,
-        "resources/cover.png") || !bongo_cat_path_is_file(path)) return NULL;
+        "resources/cover.png")) return NULL;
+    if (!bongo_cat_path_is_file(path)) {
+        static char last_missing[BONGO_CAT_PATH_CAP];
+        if (strcmp(last_missing, path)) {
+            snprintf(last_missing, sizeof(last_missing), "%s", path);
+            SDL_Log("Model cover unavailable: id=%s path=%s",
+                entry->id, path);
+        }
+        return NULL;
+    }
     ModelCoverSlot *empty = NULL;
     for (size_t i = 0; i < BONGO_CAT_MODEL_CAP; ++i) {
         ModelCoverSlot *slot = &cover_cache[i];

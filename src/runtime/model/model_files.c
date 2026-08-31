@@ -1,6 +1,7 @@
 #include "runtime.h"
 #include "model_import.h"
 #include "model_behavior_cache.h"
+#include "model_cover.h"
 #include "model_geometry.h"
 #include "bongo_cat/audio.h"
 #include "bongo_cat/overlay.h"
@@ -121,6 +122,8 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     }
     bongo_cat_app_capture_behavior_state(app);
     bool replacing_model = app->loaded_model[0] != '\0';
+    if (replacing_model)
+        bongo_cat_model_cover_capture_before_switch(app);
     BongoCatError optional = {0};
     BongoCatBehaviorCatalog *behaviors = calloc(1, sizeof(*behaviors));
     if (!behaviors) {
@@ -240,6 +243,7 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     commit_model(app, entry, true, replacing_model);
     bongo_cat_app_reapply_input(app);
     bongo_cat_app_apply_mouse(app);
+    bongo_cat_model_cover_schedule(app, entry);
     /* Do not leave the previous frame cropped during the UI completion pass. */
     if (replacing_model) bongo_cat_app_render_now(app);
     if (restore_context && previous_window && previous_context &&

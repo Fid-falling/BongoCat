@@ -8,14 +8,13 @@ struct BongoCatLive2D {
     int width;
     int height;
     bool loaded;
-    bool cover_runtime;
 };
 
 static BongoCatLive2D *create_runtime(const char *asset_root,
-    bool cover_runtime, BongoCatError *error) {
+    BongoCatError *error) {
     static bool warning_logged;
     (void)asset_root;
-    if (!cover_runtime && !warning_logged) {
+    if (!warning_logged) {
         warning_logged = true;
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
             "Cubism SDK unavailable: diagnostic backend active; Live2D "
@@ -24,18 +23,12 @@ static BongoCatLive2D *create_runtime(const char *asset_root,
     }
     BongoCatLive2D *value = calloc(1, sizeof(*value));
     if (!value) bongo_cat_error_set(error, BONGO_CAT_ERROR_MEMORY, "Cannot allocate Live2D runtime");
-    else value->cover_runtime = cover_runtime;
     return value;
 }
 
 BongoCatLive2D *bongo_cat_live2d_create(const char *asset_root,
     BongoCatError *error) {
-    return create_runtime(asset_root, false, error);
-}
-
-BongoCatLive2D *bongo_cat_live2d_create_cover_runtime(
-    const char *asset_root, BongoCatError *error) {
-    return create_runtime(asset_root, true, error);
+    return create_runtime(asset_root, error);
 }
 
 void bongo_cat_live2d_destroy(BongoCatLive2D *live2d) { free(live2d); }
@@ -154,10 +147,6 @@ bool bongo_cat_live2d_set_expression(BongoCatLive2D *value, int index) {
 }
 int bongo_cat_live2d_expression(const BongoCatLive2D *value) {
     (void)value; return -1;
-}
-bool bongo_cat_live2d_prepare_cover(BongoCatLive2D *value) {
-    if (!value || !value->cover_runtime) return false;
-    return false;
 }
 bool bongo_cat_live2d_visual_state(const BongoCatLive2D *value,
     BongoCatLive2DVisualState *state) {
