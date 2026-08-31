@@ -63,252 +63,138 @@ only; it does not relicense the BongoCat source code or native runtime.
 
 ## Technical Architecture
 
-> The current native version is built on C/C++, SDL3, and OpenGL. The diagram below may look a little complicated, but it’s actually not difficult to understand.
+> The current native version is built on C/C++, SDL3, and OpenGL. The diagram below focuses on the runtime data flow; build and packaging details live in CMake.
 
 ### Runtime ownership and frame scheduling
 
-The native runtime is intentionally split at ownership boundaries:
+Each process owns one `BongoCatApp` and one main-thread event and render loop.
+Platform listeners stop at the input boundary:
 
 ```text
-Platform input listeners
+Platform listeners
 (keyboard / pointer)
             |
             v
   C11 input state
-  (atomic edge queue + coalesced pointer path)
+  (atomic edge queue + coalesced pointer position)
             |
             v
-     main-thread application <----- SDL3 events
+  main-thread application <----- SDL3 events
             |
             v
   model parameters, overlay, and UI state
             |
             v
-  Cubism update -> OpenGL composition -> platform presentation
+  model update -> OpenGL composition -> platform presentation
 ```
 
-Platform input listeners never manipulate a model directly. Windows low-level
-hooks, the macOS Quartz event tap, and Linux XInput2 publish timestamped
-keyboard and mouse-button transitions to application-owned input state. On
-Windows, DirectInput is sampled through the platform pointer interface when an
-imported model requests relative movement; SDL3 gamepad events are normalized
-on the main thread. Pointer coordinates use a separate atomic coalescing path,
-so high-frequency motion does not displace the bounded queue used for key and
-button edges.
+The Windows low-level hooks, macOS Quartz event tap, and Linux XInput2 listener
+run outside the main loop. They publish timestamped key and mouse-button edges
+to the bounded atomic queue and publish pointer coordinates through a separate
+coalescing slot; a successful publish pushes a native SDL wake event. This
+keeps high-frequency motion from displacing ordered key and button edges. On
+Windows, DirectInput is used only through the platform pointer interface when a
+model requests relative movement. SDL3 window, preferences, and gamepad events
+are handled on the main thread, where gamepad events are normalized before they
+reach model parameters or shortcuts. No platform listener calls Live2D,
+overlay, or UI code directly.
 
-Each loop iteration waits for SDL or native wakeups, the next scheduler
-deadline, or pending UI/window work. It then drains queued events and release
-recovery, applies input-derived parameters and overlay state, and advances the
-model with elapsed time. In the normal pet-window path, a frame is presented
-when the application is marked dirty; explicit preview, resize, and capture
-operations may request additional renders. Presentation is platform-specific:
-`SDL_GL_SwapWindow` is used on macOS and Linux, and on Windows when layered
-presentation is inactive; active Windows layered presentation uses
-`UpdateLayeredWindow`.
+`bongo_cat_app_run` handles update-shutdown and secondary-process arguments,
+enforces single-instance ownership for the primary process, allocates the
+application state, runs initialization, enters `bongo_cat_app_loop`, and then
+flushes state and destroys resources in a defined order. Initialization loads
+configuration and storage paths, locates assets, creates the SDL/OpenGL pet
+window, initializes the platform backend, creates the Live2D, overlay, and
+audio services, scans the built-in/installed/nearby model sources, and loads a
+usable model. `BongoCatApp` owns settings, session state, model and behavior
+catalogs, platform handles, and runtime service handles.
 
-The scheduler does not require a fixed simulation step. With Cubism enabled,
-the next model update is derived from the configured maximum FPS (defaulting to
-60 FPS), and the runtime receives the elapsed time since the previous update.
-Elapsed gaps are capped at 250 ms and subdivided into at most eight substeps
-for stability. If an update produces no visual change, the normal pet window
-is not presented again unless another state transition requests a render.
+Installed model packages use Mver as the canonical format. The import workflow
+resolves a selected file or directory, discovers and validates candidates,
+fingerprints package identity, converts Tauri sources to Mver, applies image
+patches, and commits the normalized package under `models_root`. It then
+generates the runtime adapter and refreshes the catalogs. Nearby sources are
+discovered without installing their source tree; their adapters and inspection
+results are cached outside `models_root` under `cache_root`.
 
-The C runtime calls the C ABI declared in `include/bongo_cat/model.h`, whose
-bridge and model implementation live in `src/live2d`. When the Cubism SDK is
-enabled, that implementation is C++17 because the SDK exposes a C++ API; the
-rest of the native C sources use C11. Cubism SDK types stay behind opaque C
-handles and C-compatible structures, while `src/live2d/live2d_stub.c` provides
+Each main-loop iteration waits for SDL/native wakeups or the earliest pending
+frame, UI, animation, or pointer-hit deadline (with a maximum wait of 250 ms).
+It dispatches queued SDL events, drains the atomic input queue and release
+recovery, updates window and model-refresh state, and applies input-derived
+parameters. With Cubism enabled, the model deadline follows
+`settings.model.max_fps` (60 FPS by default); diagnostic builds use a 100 ms
+fallback interval. The elapsed model time is capped at 250 ms and split into up
+to eight substeps, targeting no more than 1/30 s per substep.
+
+The normal pet path renders only when the window is visible, not minimized, and
+marked dirty. A frame clears the background, draws the model, and composites
+pointer, key, and effect overlays before calling the platform presenter.
+Preview operations can request immediate renders, while capture renders may
+skip presentation. macOS and Linux swap the SDL OpenGL window directly.
+Windows swaps directly when layered presentation is inactive and otherwise
+reads back the frame for `UpdateLayeredWindow`. The preferences UI owns a
+separate SDL/OpenGL window and is rendered and presented independently from
+the pet window.
+
+The C runtime calls the ABI declared in `include/bongo_cat/model.h`. The Live2D
+bridge and Cubism implementation live in `src/live2d` and use C++17 only when
+the Cubism SDK is enabled; the rest of the native runtime uses C11. Cubism
+types remain behind opaque C handles, while `src/live2d/live2d_stub.c` provides
 the diagnostic backend when the SDK is unavailable.
 
 
 ```mermaid
-%%{init: {"flowchart": {"curve": "catmullRom", "htmlLabels": true, "nodeSpacing": 24, "rankSpacing": 38}}}%%
 flowchart TB
-  User(["User Input<br/>Keyboard / Mouse / Gamepad"])
-  ModelSources(["External Model Sources<br/>Standalone .model3.json / Mver package / Mver image patch"])
-  Desktop(["Desktop Output<br/>Transparent pet window / Preferences window"])
+  Input(["Keyboard / mouse / gamepad"])
+  BuiltIn(["Built-in model assets"])
+  Sources(["External model sources<br/>Mver, Tauri, .model3.json, image patches"])
+  Desktop(["Pet window and preferences window"])
 
-  subgraph Platform["Platform Backends"]
-    direction LR
-    Win["Windows<br/>Win32 hooks / DirectInput / layered-window support"]
-    Mac["macOS<br/>Cocoa / ApplicationServices / Quartz event tap"]
-    Linux["Linux<br/>X11 / XInput2 / XFixes"]
-  end
-
-  subgraph Native["BongoCat Native Runtime"]
+  subgraph Runtime["BongoCat native runtime"]
     direction TB
+    Entry["src/main.c<br/>bongo_cat_app_run"]
+    Startup["Startup and initialization<br/>configuration, storage, window, platform"]
+    Loop["SDL3 main loop<br/>wait, dispatch, update, render"]
+    Shutdown["Shutdown<br/>flush state, stop services, release resources"]
+    InputQueue[("Atomic input state<br/>edge queue and coalesced pointer position")]
+    InputDispatch["Input dispatch<br/>shortcuts, pointer mapping, model parameters"]
+    State[("BongoCatApp state<br/>settings, session, catalogs, runtime handles")]
+    Import["Model discovery and import<br/>validate, normalize to Mver, install/cache"]
+    Catalog[("Model and behavior catalogs")]
+    Live2D["Live2D C ABI<br/>Cubism SDK or diagnostic stub"]
+    Overlay["Overlay and audio"]
+    Preferences["Preferences and desktop shell<br/>Nuklear UI, tray, window actions"]
+    Compose["OpenGL frame composition"]
+    Present["Platform presentation"]
 
-    subgraph Orchestration["Runtime Orchestration / C11"]
-      direction LR
-      Entry["Process Entry<br/>src/main.c calls bongo_cat_app_run"]
-      Lifecycle["Application Lifecycle<br/>startup / storage paths / configuration / shutdown"]
-      EventLoop["SDL3 Event and Frame Loop<br/>wait / dispatch / drain input / update / render"]
-      AppState[("BongoCatApp State<br/>settings / session / catalogs / platform and runtime state")]
-
-      Entry --> Lifecycle --> EventLoop
-      Lifecycle <--> AppState
-      EventLoop <--> AppState
-    end
-
-    subgraph InputShell["Input and Desktop Shell"]
-      direction LR
-      GlobalInput["Global Keyboard and Pointer Capture<br/>Win32 hooks / Quartz event tap / XInput2"]
-      InputQueue[("Atomic Input State<br/>ordered edge queue / release-edge recovery / coalesced pointer position")]
-      Gamepad["SDL3 Gamepad Events<br/>active-device selection / buttons / axes"]
-      InputMap["Input Dispatch<br/>shortcuts / model parameters / pointer mapping"]
-      Shell["Desktop Shell<br/>window / tray / context menu / drag and resize / click-through / multi-pet coordination"]
-
-      GlobalInput --> InputQueue --> InputMap
-      Gamepad --> InputMap
-      EventLoop --> Shell
-      EventLoop --> InputMap
-      InputMap --> AppState
-      Shell --> AppState
-    end
-
-    subgraph ModelPipeline["Model Discovery, Adaptation, and Cataloging"]
-      direction LR
-      BuiltIn["Built-in Models<br/>resources/assets/models"]
-      Discover["Source Discovery<br/>standalone model3 / Mver package / image patch"]
-      Validate["Validation and Identity<br/>manifest references / bounded paths / SHA-256 digest / metadata"]
-      Adapt["Runtime Adapter Generation<br/>preview assets / input overlays / projection and binding metadata"]
-      Installed[("Installed Packages<br/>models_root / directly copyable Mver trees")]
-      Nearby[("Runtime Adapters<br/>generated outside models_root / cache_root/model-adapters")]
-      Catalog["Model and Behavior Catalogs<br/>models / motions / expressions / sounds / effects"]
-
-      Discover --> Validate --> Adapt
-      Adapt --> Installed --> Catalog
-      Adapt --> Nearby --> Catalog
-      BuiltIn --> Catalog
-      Catalog --> AppState
-    end
-
-    subgraph Presentation["Animation, Composition, and UI"]
-      direction LR
-      Live2DBridge["C ABI / C++17 Bridge"]
-      Cubism["Live2D Cubism Runtime<br/>model / motion / expression / physics / pose / parameter overrides"]
-      Images["Image Pipeline<br/>stb decode and resize / alpha masks and mipmaps / OpenGL texture upload"]
-      Overlay["Input Overlay Runtime<br/>background / pointer / key images / effects"]
-      Audio["Audio Playback<br/>miniaudio engine / asynchronous file decoding"]
-      Composite["OpenGL Frame Composition<br/>clear and background / Live2D model / pointer, keys, and effects"]
-      Preferences["Nuklear Preferences UI<br/>Catime theme / localization / settings / model management"]
-      Present["Platform Presentation<br/>Windows: UpdateLayeredWindow or GL swap<br/>macOS and Linux: SDL_GL_SwapWindow"]
-
-      Live2DBridge --> Cubism
-      Cubism --> Composite --> Present
-      Images --> Cubism
-      Images --> Overlay --> Composite
-      AppState <--> Preferences
-    end
-
-    EventLoop --> Live2DBridge
-    EventLoop --> Composite
-    EventLoop --> Preferences
-    AppState --> Live2DBridge
-    AppState --> Composite
-    InputMap --> Live2DBridge
-    InputMap --> Overlay
-    InputMap --> Audio
-    Catalog --> Live2DBridge
-    Catalog --> Overlay
-    Catalog --> Audio
-    Shell --> Preferences
+    Entry --> Startup --> Loop
+    Loop --> Shutdown
+    Loop --> InputDispatch --> State
+    Loop <--> State
+    State --> Live2D
+    State --> Overlay
+    State <--> Preferences
+    Loop --> Preferences
+    Catalog --> State
+    State --> Compose
+    Live2D --> Compose
+    Overlay --> Compose
+    Compose --> Present
+    Loop --> Compose
   end
 
-  subgraph Dependencies["Native Dependencies"]
+  subgraph Platform["Platform backends"]
     direction LR
-    SDL["SDL3"]
-    OpenGL["OpenGL"]
-    GLEW["GLEW<br/>Cubism OpenGL function loading"]
-    CubismSDK["Live2D Cubism SDK"]
-    YYJSON["yyjson"]
-    STB["stb_image / stb_image_resize2 / stb_image_write"]
-    Miniaudio["miniaudio"]
-    Nuklear["Nuklear"]
+    Global["Global keyboard / pointer capture<br/>Windows, macOS, Linux"]
+    SDL["SDL3 events<br/>window and gamepad events"]
   end
 
-  subgraph Toolchain["Build, Verification, and Distribution"]
-    direction LR
-    CMake["CMake<br/>pinned dependencies / platform sources / asset staging and embedding"]
-    CTest["CTest<br/>core / i18n / UI / app state / model import / motion state / Windows capture"]
-    Audits["Static and Runtime Checks<br/>line policy / platform API allowlist / smoke and visual audits"]
-    Packaging["Distribution<br/>Windows ZIP and NSIS / macOS ZIP / Linux TGZ / Microsoft Store MSIX"]
-
-    CMake --> CTest
-    CMake --> Audits
-    CMake --> Packaging
-  end
-
-  User --> GlobalInput
-  User --> Gamepad
-  User --> Shell
-  ModelSources --> Discover
-
-  Win --> GlobalInput
-  Mac --> GlobalInput
-  Linux --> GlobalInput
-  Win --> Shell
-  Mac --> Shell
-  Linux --> Shell
-  Win --> Present
-  Mac --> Present
-  Linux --> Present
-
+  Input --> Global --> InputQueue --> InputDispatch
+  Input --> SDL --> Loop
+  BuiltIn --> Catalog
+  Sources --> Import --> Catalog
   Present --> Desktop
   Preferences --> Desktop
-
-  SDL -.-> EventLoop
-  SDL -.-> Gamepad
-  SDL -.-> Shell
-  SDL -.-> Present
-  OpenGL -.-> Cubism
-  OpenGL -.-> Composite
-  OpenGL -.-> Preferences
-  GLEW -.-> Cubism
-  CubismSDK -.-> Cubism
-  YYJSON -.-> Lifecycle
-  YYJSON -.-> Validate
-  STB -.-> Images
-  Miniaudio -.-> Audio
-  Nuklear -.-> Preferences
-
-  CMake -.-> Entry
-  CTest -.-> AppState
-  CTest -.-> Preferences
-  CTest -.-> Live2DBridge
-  CTest -.-> Present
-  Audits -.-> EventLoop
-  Audits -.-> GlobalInput
-  Audits -.-> Composite
-
-  classDef external fill:#fff4cc,stroke:#b7791f,color:#3d2b00,stroke-width:1.5px
-  classDef platform fill:#e8f1ff,stroke:#4a78b8,color:#14263d,stroke-width:1.5px
-  classDef runtime fill:#ffe8f0,stroke:#d95f8d,color:#3d1725,stroke-width:1.5px
-  classDef state fill:#f3eaff,stroke:#8a63c7,color:#2c1b46,stroke-width:1.5px
-  classDef input fill:#e7f8ff,stroke:#3f8eaa,color:#12323d,stroke-width:1.5px
-  classDef model fill:#eaf8e8,stroke:#57945a,color:#18361a,stroke-width:1.5px
-  classDef render fill:#f3ecff,stroke:#8064b3,color:#281b40,stroke-width:1.5px
-  classDef dependency fill:#f4f4f5,stroke:#71717a,color:#27272a,stroke-width:1.2px
-  classDef tooling fill:#fff0dd,stroke:#c47b2c,color:#42270d,stroke-width:1.5px
-
-  class User,ModelSources,Desktop external
-  class Win,Mac,Linux platform
-  class Entry,Lifecycle,EventLoop runtime
-  class AppState,InputQueue,Installed,Nearby state
-  class GlobalInput,Gamepad,InputMap,Shell input
-  class BuiltIn,Discover,Validate,Adapt,Catalog model
-  class Live2DBridge,Cubism,Images,Overlay,Audio,Composite,Preferences,Present render
-  class SDL,OpenGL,GLEW,CubismSDK,YYJSON,STB,Miniaudio,Nuklear dependency
-  class CMake,CTest,Audits,Packaging tooling
-
-  style Native fill:#fffafd,stroke:#d95f8d,stroke-width:2px
-  style Platform fill:#f8fbff,stroke:#7da1cf,stroke-width:1.5px
-  style Orchestration fill:#fff7fa,stroke:#ed9eb8,stroke-width:1px
-  style InputShell fill:#f5fcff,stroke:#86bfd3,stroke-width:1px
-  style ModelPipeline fill:#f7fcf5,stroke:#91bd8f,stroke-width:1px
-  style Presentation fill:#faf7ff,stroke:#ad98cf,stroke-width:1px
-  style Dependencies fill:#fafafa,stroke:#a1a1aa,stroke-width:1px
-  style Toolchain fill:#fffaf3,stroke:#dda866,stroke-width:1.5px
 ```
 
 # Here are a few things you might be curious about:
@@ -336,4 +222,3 @@ By vladelaina\
 Made with ❤️ & ⌨️
 
 </div>
-
