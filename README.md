@@ -46,6 +46,112 @@
 
   Download the latest release from [GitHub Releases](https://github.com/vladelaina/BongoCat/releases/latest).
 
+## Build From Source
+
+BongoCat uses CMake and requires a C11 compiler, a C++17 compiler, CMake 3.24
+or newer, and desktop OpenGL development files. SDL3, yyjson, stb, miniaudio,
+and Nuklear are downloaded at configure time by default, so the first
+configuration needs network access.
+
+Run the commands below from the project root (the directory containing
+`CMakeLists.txt`).
+
+### Platform prerequisites
+
+- **Windows:** Visual Studio 2022 with the Desktop C++ workload and CMake.
+  Use the MSVC generator; MinGW can build the diagnostic backend but is not
+  supported for the Cubism SDK.
+- **macOS:** Xcode Command Line Tools, CMake, and Ninja. Select an architecture
+  with `CMAKE_OSX_ARCHITECTURES` when it differs from the host default.
+- **Linux (Debian/Ubuntu):** GCC or Clang, Ninja, and the OpenGL/X11 headers:
+
+  ```bash
+  sudo apt-get update
+  sudo apt-get install -y build-essential cmake ninja-build \
+    libgl1-mesa-dev libx11-dev libxi-dev libxfixes-dev
+  ```
+
+### Configure and build
+
+On Linux and macOS, use a single-configuration generator such as Ninja:
+
+```bash
+cmake -S . -B build -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBONGO_CAT_FETCH_DEPS=ON
+cmake --build build --parallel
+```
+
+On Windows, run from a Visual Studio 2022 developer shell (or another shell
+where MSVC is available):
+
+```powershell
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
+  -DBONGO_CAT_FETCH_DEPS=ON
+cmake --build build --config Release --parallel
+```
+
+The executable is written to `build/BongoCat` on Linux, to
+`build/BongoCat.app/Contents/MacOS/BongoCat` on macOS, and to
+`build/Release/BongoCat.exe` for Visual Studio builds.
+
+### Tests
+
+CTest targets are enabled by default. Run them after building:
+
+```bash
+ctest --test-dir build --output-on-failure
+```
+
+For a multi-configuration generator such as Visual Studio, select the build
+configuration explicitly:
+
+```powershell
+ctest --test-dir build -C Release --output-on-failure
+```
+
+### Live2D / Cubism SDK (optional)
+
+If the Cubism SDK is not present, CMake emits a warning and builds the
+diagnostic backend. This backend is intended for startup and platform
+diagnostics; it does not provide Live2D model rendering. To build the full
+runtime, install a compatible Cubism SDK for Native and either place it at
+`vendor/CubismSdkForNative` or pass its location explicitly:
+
+```bash
+cmake -S . -B build -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBONGO_CAT_CUBISM_SDK=/path/to/CubismSdkForNative \
+  -DBONGO_CAT_REQUIRE_CUBISM=ON
+```
+
+The SDK must contain its Core library, Framework sources, and the OpenGL GLEW
+third-party tree in the layout expected by `cmake/Cubism.cmake`. Windows
+Cubism builds require Visual Studio 2022. `BONGO_CAT_REQUIRE_CUBISM=ON` makes
+configuration fail instead of silently selecting the diagnostic backend.
+
+### CMake options
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `BONGO_CAT_FETCH_DEPS` | `ON` | Download the pinned third-party dependencies with CMake `FetchContent`. Set `OFF` only when SDL3, yyjson, stb, miniaudio, and Nuklear are already available to CMake. |
+| `BONGO_CAT_CUBISM_SDK` | `vendor/CubismSdkForNative` | Path to the Cubism SDK for Native. |
+| `BONGO_CAT_REQUIRE_CUBISM` | `OFF` | Fail configuration when a usable Cubism SDK is unavailable. |
+| `BONGO_CAT_WARNINGS_AS_ERRORS` | `OFF` | Treat native compiler warnings as errors. |
+
+For an offline build with `BONGO_CAT_FETCH_DEPS=OFF`, provide CMake package
+configurations for SDL3 (including `SDL3-static`) and yyjson, plus the include
+directories for stb, Nuklear, and miniaudio when they are not discoverable:
+
+```bash
+cmake -S . -B build -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBONGO_CAT_FETCH_DEPS=OFF \
+  -DBONGO_CAT_STB_INCLUDE_DIR=/path/to/stb \
+  -DBONGO_CAT_NUKLEAR_INCLUDE_DIR=/path/to/nuklear \
+  -DBONGO_CAT_MINIAUDIO_INCLUDE_DIR=/path/to/miniaudio
+```
+
 ## Project Status
 
 
