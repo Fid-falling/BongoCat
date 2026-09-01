@@ -21,7 +21,7 @@ BEGIN
   BEGIN
     BLOCK "040904b0"
     BEGIN
-      VALUE "CompanyName", "BongoCat\0"
+      VALUE "CompanyName", "vladelaina\0"
       VALUE "FileDescription", "@PROJECT_DESCRIPTION@\0"
       VALUE "FileVersion", "@PROJECT_VERSION@\0"
       VALUE "InternalName", "BongoCat\0"
