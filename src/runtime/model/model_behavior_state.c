@@ -86,6 +86,19 @@ void bongo_cat_app_capture_behavior_state(BongoCatApp *app) {
     }
 }
 
+size_t bongo_cat_app_saved_behavior_count(const BongoCatApp *app,
+    const char *model_id) {
+    if (!app || !model_id) return 0;
+    size_t limit = app->session.active_behavior_count;
+    if (limit > BONGO_CAT_BEHAVIOR_BINDING_CAP)
+        limit = BONGO_CAT_BEHAVIOR_BINDING_CAP;
+    size_t count = 0;
+    for (size_t i = 0; i < limit; ++i)
+        if (strcmp(app->session.active_behaviors[i].model_id, model_id) == 0)
+            count++;
+    return count;
+}
+
 static const BongoCatBehaviorEntry *find_behavior(const BongoCatApp *app,
     const char *id) {
     for (size_t i = 0; i < app->behaviors.count; ++i)

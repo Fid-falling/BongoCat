@@ -36,19 +36,6 @@ static void request_model_frame(BongoCatApp *app, bool reveal) {
     app->dirty = true;
 }
 
-static size_t saved_behavior_count(const BongoCatApp *app,
-    const char *model_id) {
-    if (!app || !model_id) return 0;
-    size_t limit = app->session.active_behavior_count;
-    if (limit > BONGO_CAT_BEHAVIOR_BINDING_CAP)
-        limit = BONGO_CAT_BEHAVIOR_BINDING_CAP;
-    size_t count = 0;
-    for (size_t i = 0; i < limit; ++i)
-        if (strcmp(app->session.active_behaviors[i].model_id, model_id) == 0)
-            count++;
-    return count;
-}
-
 static void model_runtime_stage(BongoCatApp *app, const char *stage,
     const BongoCatModelEntry *entry) {
     char state[BONGO_CAT_ID_CAP + 32];
@@ -242,7 +229,7 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
         bongo_cat_overlay_clear(app->overlay);
     }
     snprintf(app->loaded_model, sizeof(app->loaded_model), "%s", entry->id);
-    size_t saved_behaviors = saved_behavior_count(app, entry->id);
+    size_t saved_behaviors = bongo_cat_app_saved_behavior_count(app, entry->id);
     bongo_cat_app_restore_behavior_state(app, entry->id);
     SDL_Log("[runtime] Behavior restore summary: model=%s saved=%zu "
         "motions=%zu expression=%d", entry->id, saved_behaviors,

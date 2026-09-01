@@ -194,6 +194,8 @@ bool bongo_cat_app_run_behavior(BongoCatApp *app,
     const BongoCatBehaviorEntry *behavior);
 size_t bongo_cat_app_selected_motion_count(const BongoCatApp *app);
 void bongo_cat_app_capture_behavior_state(BongoCatApp *app);
+size_t bongo_cat_app_saved_behavior_count(const BongoCatApp *app,
+    const char *model_id);
 void bongo_cat_app_forget_behavior_state(BongoCatApp *app,
     const char *model_id);
 void bongo_cat_app_restore_behavior_state(BongoCatApp *app,
