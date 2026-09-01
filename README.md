@@ -305,6 +305,15 @@ flowchart TB
 
 ## ❓ FAQ
 
+### 🔒 Does BongoCat record my keyboard or mouse input?
+
+No. BongoCat processes keyboard and mouse input locally to drive animations
+and shortcuts. It does not record or upload your keystrokes, mouse actions, or
+other interaction data. Configuration is stored locally as well, and the app
+contains no ads, analytics tools, or user-tracking code. When an update check
+is performed, it only requests public release metadata; it does not send input,
+configuration, or usage data.
+
 ### 🖼️ Why OpenGL instead of Vulkan?
 
 We chose OpenGL not because Vulkan is bad, but because BongoCat does not need
