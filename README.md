@@ -340,11 +340,13 @@ we need.
 
 
 ## 🙏 Special Thanks
+> [!TIP]
+> Every step BongoCat takes is powered by the spirit of open source. We sincerely thank all our community contributors for their selfless contributions (listed below in chronological order by contribution date). It is your support that makes desktop companionship more free and genuine.❤️‍🔥
 
-<a href="https://openomy.com/vladelaina/BongoCat" target="_blank" style="display: block; width: 100%;" align="center">
-  <img src="https://openomy.com/svg?repo=vladelaina/BongoCat&chart=bubble" alt="Contribution Leaderboard" style="display: block; width: 100%;" />
+
+<a href="https://bongocat.pet">
+    <img src="https://bongocat.pet/co" />
 </a>
-
 
 
 
