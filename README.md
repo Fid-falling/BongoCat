@@ -326,6 +326,12 @@ users. For BongoCat's current workload, OpenGL keeps the renderer smaller,
 easier to debug, and easier to maintain while still delivering the performance
 we need.
 
+
+
+## Project Status
+![Alt](https://repobeats.axiom.co/api/embed/74334755a589dea40c5d31f8d2bcdc6c2bd39d87.svg "Repobeats analytics image")
+
+
 ## 🙏 Special Thanks
 
 <a href="https://openomy.com/vladelaina/BongoCat" target="_blank" style="display: block; width: 100%;" align="center">
