@@ -38,6 +38,11 @@
 >
 > 🎁Looking for **free** models? Visit our official website: [bongocat.pet](https://bongocat.pet/models)
 
+<p align="center">
+  <a href="https://bongocat.pet/models">
+    <img height="1080" src="https://github.com/user-attachments/assets/dedd83ca-742a-4f8c-a64a-69e659fca564" />
+  </a>
+</p>
 
 <p align="center">
     <img src="https://count.getloli.com/@bongocat?name=bongocat&theme=booru-qualityhentais&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto" width="400">
