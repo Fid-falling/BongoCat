@@ -53,7 +53,17 @@ Desktop.ini
 # Local reference files
 /.reference/
 
-/docs/
+/docs/*
+!/docs/
+!/docs/README.zh-CN.md
+!/docs/README.zh-Hant.md
+!/docs/README.fr-FR.md
+!/docs/README.de-DE.md
+!/docs/README.ja-JP.md
+!/docs/README.ko-KR.md
+!/docs/README.pt-BR.md
+!/docs/README.ru-RU.md
+!/docs/README.es-ES.md
 
 # Local Windows audit tools
 /cmake/*.ps1
