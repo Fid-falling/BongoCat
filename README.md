@@ -303,12 +303,19 @@ flowchart TB
   Preferences --> Desktop
 ```
 
-# Here are a few things you might be curious about:
+## FAQ
 
-1. Why OpenGL instead of Vulkan
+### Why OpenGL instead of Vulkan?
 
-
-
+We chose OpenGL not because Vulkan is bad, but because BongoCat does not need
+that level of complexity. The app mainly renders one Live2D model, a few UI
+layers, and a transparent desktop window. OpenGL already handles that
+comfortably, and it works naturally with SDL3 and Cubism's OpenGL renderer.
+Moving to Vulkan would mean maintaining much more rendering and synchronization
+code across three desktop platforms, without a noticeable improvement for
+users. For BongoCat's current workload, OpenGL keeps the renderer smaller,
+easier to debug, and easier to maintain while still delivering the performance
+we need.
 
 ## Special Thanks❤️
 
