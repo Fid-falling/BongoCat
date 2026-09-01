@@ -46,7 +46,7 @@
 
   Download the latest release from [GitHub Releases](https://github.com/vladelaina/BongoCat/releases/latest).
 
-## Build From Source
+## 🛠️ Build From Source
 
 BongoCat uses CMake and requires a C11 compiler, a C++17 compiler, CMake 3.24
 or newer, and desktop OpenGL development files. SDL3, yyjson, stb, miniaudio,
@@ -56,7 +56,7 @@ configuration needs network access.
 Run the commands below from the project root (the directory containing
 `CMakeLists.txt`).
 
-### Platform prerequisites
+### 📋 Platform Prerequisites
 
 - **Windows:** Visual Studio 2022 with the Desktop C++ workload and CMake.
   Use the MSVC generator; MinGW can build the diagnostic backend but is not
@@ -71,7 +71,7 @@ Run the commands below from the project root (the directory containing
     libgl1-mesa-dev libx11-dev libxi-dev libxfixes-dev
   ```
 
-### Configure and build
+### 🔧 Configure and Build
 
 On Linux and macOS, use a single-configuration generator such as Ninja:
 
@@ -95,7 +95,7 @@ The executable is written to `build/BongoCat` on Linux, to
 `build/BongoCat.app/Contents/MacOS/BongoCat` on macOS, and to
 `build/Release/BongoCat.exe` for Visual Studio builds.
 
-### Tests
+### 🧪 Tests
 
 CTest targets are enabled by default. Run them after building:
 
@@ -110,7 +110,7 @@ configuration explicitly:
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-### Live2D / Cubism SDK (optional)
+### 🎭 Live2D / Cubism SDK (Optional)
 
 If the Cubism SDK is not present, CMake emits a warning and builds the
 diagnostic backend. This backend is intended for startup and platform
@@ -130,7 +130,7 @@ third-party tree in the layout expected by `cmake/Cubism.cmake`. Windows
 Cubism builds require Visual Studio 2022. `BONGO_CAT_REQUIRE_CUBISM=ON` makes
 configuration fail instead of silently selecting the diagnostic backend.
 
-### CMake options
+### ⚙️ CMake Options
 
 | Option | Default | Description |
 | --- | --- | --- |
@@ -152,10 +152,10 @@ cmake -S . -B build -G Ninja \
   -DBONGO_CAT_MINIAUDIO_INCLUDE_DIR=/path/to/miniaudio
 ```
 
-## Project Status
+## 📌 Project Status
 
 
-## License
+## 📜 License
 
 The BongoCat source code and native runtime are licensed under
 [AGPL-3.0-only](LICENSE).
@@ -167,11 +167,11 @@ That MIT license applies to the model assets and their accompanying artwork
 only; it does not relicense the BongoCat source code or native runtime.
 
 
-## Technical Architecture
+## 🧭 Technical Architecture
 
 > The current native version is built on C/C++, SDL3, and OpenGL. The diagram below focuses on the runtime data flow; build and packaging details live in CMake.
 
-### Runtime ownership and frame scheduling
+### 🔄 Runtime Ownership and Frame Scheduling
 
 Each process owns one `BongoCatApp` and one main-thread event and render loop.
 Platform listeners stop at the input boundary:
@@ -303,9 +303,9 @@ flowchart TB
   Preferences --> Desktop
 ```
 
-## FAQ
+## ❓ FAQ
 
-### Why OpenGL instead of Vulkan?
+### 🖼️ Why OpenGL instead of Vulkan?
 
 We chose OpenGL not because Vulkan is bad, but because BongoCat does not need
 that level of complexity. The app mainly renders one Live2D model, a few UI
@@ -317,7 +317,7 @@ users. For BongoCat's current workload, OpenGL keeps the renderer smaller,
 easier to debug, and easier to maintain while still delivering the performance
 we need.
 
-## Special Thanks❤️
+## 🙏 Special Thanks
 
 <a href="https://openomy.com/vladelaina/BongoCat" target="_blank" style="display: block; width: 100%;" align="center">
   <img src="https://openomy.com/svg?repo=vladelaina/BongoCat&chart=bubble" alt="Contribution Leaderboard" style="display: block; width: 100%;" />
