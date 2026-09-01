@@ -65,6 +65,7 @@ bool NativeModel::update(float delta_seconds) {
     expire_motion_runs();
     save_parameters();
     _updateScheduler.OnLateUpdate(_model, delta_seconds);
+    expression_frame_pending_ = false;
     expire_expression_fade();
     apply_parameter_overrides();
     _opacity = _model->GetModelOpacity();
@@ -154,6 +155,16 @@ void NativeModel::prepare_viewer_audit() {
         _model->SetParameterValue(i, _model->GetParameterDefaultValue(i));
     }
     save_parameters();
+}
+
+bool NativeModel::prepare_cover_capture() {
+    if (!_model) return false;
+    settle_pending_expression_for_cover();
+    apply_parameter_overrides();
+    /* Persistent motions are already stored in the Cubism baseline. Updating
+       drawables does not advance idle motion, physics, breathing, or blinking. */
+    _model->Update();
+    return true;
 }
 
 bool NativeModel::set_parameter(const char *id, float value) {

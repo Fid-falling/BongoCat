@@ -1,5 +1,4 @@
 #include "model_import.h"
-#include "../model_cover_paths.h"
 #include "mver/model_import_mver.h"
 #include "model_storage.h"
 #include "runtime.h"
@@ -47,24 +46,6 @@ static bool preview_file_exists(const char *directory, const char *name) {
         bongo_cat_path_is_file(path);
 }
 
-static void mark_preview_fallback(const char *resources) {
-    char path[BONGO_CAT_PATH_CAP];
-    if (!bongo_cat_path_join(path, sizeof(path), resources,
-        BONGO_CAT_MODEL_COVER_FALLBACK_NAME)) return;
-    FILE *file = bongo_cat_file_open(path, "wb");
-    if (file) fclose(file);
-}
-
-static void clear_preview_markers(const char *resources) {
-    char path[BONGO_CAT_PATH_CAP];
-    if (bongo_cat_path_join(path, sizeof(path), resources,
-            BONGO_CAT_MODEL_COVER_FALLBACK_NAME))
-        bongo_cat_file_remove(path);
-    if (bongo_cat_path_join(path, sizeof(path), resources,
-            BONGO_CAT_MODEL_COVER_GENERATED_NAME))
-        bongo_cat_file_remove(path);
-}
-
 static bool copy_preview(const BongoCatImportCandidate *candidate,
     const char *target, BongoCatError *error) {
     char source_resources[BONGO_CAT_PATH_CAP], target_resources[BONGO_CAT_PATH_CAP];
@@ -84,16 +65,12 @@ static bool copy_preview(const BongoCatImportCandidate *candidate,
         "cover.png", "cat.png", "bg.png", "mousebg.png", "tabletbg.png"};
     const char *backgrounds[] = {
         "background.png", "bg.png", "mousebg.png", "tabletbg.png"};
-    bool authored_cover = preview_file_exists(source_resources, "cover.png") ||
-        preview_file_exists(candidate->assets, "cover.png");
     bool ok = (preview_file_exists(target_resources, "cover.png") ||
         copy_preview_file(source_resources, candidate->assets, covers, 5,
             target_resources, "cover.png")) &&
         (preview_file_exists(target_resources, "background.png") ||
         copy_preview_file(source_resources, candidate->assets, backgrounds, 4,
             target_resources, "background.png"));
-    if (ok && !authored_cover) mark_preview_fallback(target_resources);
-    else if (ok) clear_preview_markers(target_resources);
     if (!ok) bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
         "Cannot copy model preview assets: %s", SDL_GetError());
     return ok;

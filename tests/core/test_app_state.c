@@ -149,6 +149,7 @@ static void check_behavior_state(BongoCatApp *app) {
     active_motions[1] = true;
     active_motions[2] = true;
     active_expression = 3;
+    CHECK(bongo_cat_app_selected_motion_count(app) == 2);
     bongo_cat_app_capture_behavior_state(app);
     CHECK(app->session.active_behavior_count == 3);
     CHECK(strcmp(app->session.active_behaviors[0].model_id,
@@ -164,6 +165,7 @@ static void check_behavior_state(BongoCatApp *app) {
     bongo_cat_app_restore_behavior_state(app, "model-a");
     CHECK(active_motions[1]);
     CHECK(!active_motions[2]);
+    CHECK(bongo_cat_app_selected_motion_count(app) == 1);
     CHECK(active_expression == 3);
     CHECK(restored_motion_count == 1);
 

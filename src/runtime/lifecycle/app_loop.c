@@ -50,6 +50,9 @@ static bool render(BongoCatApp *app, bool present) {
         glViewport(content_x, content_y, content_width, content_height);
     bongo_cat_overlay_draw_background(app->overlay,
         app->settings.model.mirror);
+    bool cover_requested = !present && bongo_cat_model_cover_pending(app);
+    bool cover_ready = !cover_requested ||
+        bongo_cat_live2d_prepare_cover_capture(app->live2d);
     glViewport(0, 0, width, height);
     bongo_cat_live2d_set_mirror(app->live2d, app->settings.model.mirror);
     bongo_cat_live2d_draw(app->live2d);
@@ -64,10 +67,20 @@ static bool render(BongoCatApp *app, bool present) {
     bongo_cat_overlay_draw_effect(app->overlay, app->settings.model.mirror);
     bongo_cat_overlay_draw_pointer_after_keys(app->overlay);
     glViewport(0, 0, width, height);
-    bongo_cat_model_cover_capture(app, width, height);
+    bool cover_handled = true;
+    if (cover_requested) {
+        if (!cover_ready) {
+            bongo_cat_model_cover_defer(app, "model-state-preparation");
+            cover_handled = false;
+        } else if (!bongo_cat_model_cover_capture(app, width, height)) {
+            bongo_cat_model_cover_defer(app, "framebuffer-capture");
+            cover_handled = false;
+        }
+    }
+    if (cover_requested) app->dirty = true;
     if (!present) {
         app->dirty = true;
-        return true;
+        return cover_handled;
     }
     bongo_cat_frame_audit(app, width, height);
     bongo_cat_window_capture_pointer_hit(app);
@@ -95,14 +108,33 @@ void bongo_cat_app_render_now(BongoCatApp *app) {
 
 bool bongo_cat_app_capture_pending_model_cover(BongoCatApp *app) {
     if (!app || !app->window || !bongo_cat_model_cover_pending(app)) return false;
+    uint64_t now = SDL_GetTicksNS();
+    if (!bongo_cat_model_cover_capture_due(app, now)) return false;
     if (app->window_minimized) {
         SDL_Log("Pending model cover deferred while window is minimized: %s",
             bongo_cat_model_cover_pending_path(app));
+        bongo_cat_model_cover_defer(app, "window-minimized");
         return false;
     }
-    SDL_Log("Capturing pending model cover: visible=%d path=%s",
-        app->session.window.visible, bongo_cat_model_cover_pending_path(app));
-    return render(app, false);
+    SDL_Log("[runtime] Capturing pending model cover: model=%s loading=%s "
+        "visible=%d dirty=%d motions=%zu expression=%d path=%s",
+        app->loaded_model,
+        app->loading_model[0] ? app->loading_model : "none",
+        app->session.window.visible, app->dirty,
+        bongo_cat_app_selected_motion_count(app),
+        bongo_cat_live2d_expression(app->live2d),
+        bongo_cat_model_cover_pending_path(app));
+    SDL_Window *previous_window = SDL_GL_GetCurrentWindow();
+    SDL_GLContext previous_context = SDL_GL_GetCurrentContext();
+    bool restore_context = previous_window && previous_context &&
+        (previous_window != app->window || previous_context != app->gl_context);
+    bool captured = render(app, false);
+    if (restore_context &&
+        !SDL_GL_MakeCurrent(previous_window, previous_context))
+        SDL_LogError(SDL_LOG_CATEGORY_VIDEO,
+            "Cannot restore the OpenGL context after model cover capture: %s",
+            SDL_GetError());
+    return captured;
 }
 
 static void take_instance_wake(BongoCatApp *app) {

@@ -54,10 +54,14 @@ bool bongo_cat_preferences_model_cover_reload(BongoCatApp *app,
         slot->image.height = height;
         slot->generation = cover_generation;
         glDeleteTextures(1, &previous);
+        if (app->preferences)
+            bongo_cat_preferences_invalidate(app->preferences);
         SDL_Log("Model cover cache reloaded: %s (%dx%d)", path,
             width, height);
         return true;
     }
+    if (app->preferences)
+        bongo_cat_preferences_invalidate(app->preferences);
     return true;
 }
 

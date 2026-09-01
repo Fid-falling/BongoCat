@@ -17,6 +17,20 @@ static bool behavior_active(const BongoCatApp *app,
         entry->index == expression;
 }
 
+size_t bongo_cat_app_selected_motion_count(const BongoCatApp *app) {
+    if (!app || !app->live2d) return 0;
+    size_t count = 0;
+    for (size_t i = 0; i < app->behaviors.count; ++i) {
+        const BongoCatBehaviorEntry *entry = &app->behaviors.entries[i];
+        if (entry->kind == BONGO_CAT_BEHAVIOR_MOTION &&
+            bongo_cat_live2d_motion_visible(app->live2d,
+                entry->group, entry->index) &&
+            bongo_cat_live2d_motion_selected(app->live2d,
+                entry->group, entry->index)) count++;
+    }
+    return count;
+}
+
 static void remove_model_state(BongoCatSessionState *session,
     const char *model_id) {
     size_t count = session->active_behavior_count;

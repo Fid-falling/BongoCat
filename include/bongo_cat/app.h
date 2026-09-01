@@ -71,6 +71,8 @@ typedef struct BongoCatApp {
     char smoke_viewer_trace[BONGO_CAT_PATH_CAP];
     char pending_model_cover_ids[BONGO_CAT_MODEL_COVER_PENDING_CAP][BONGO_CAT_ID_CAP];
     char pending_model_cover_paths[BONGO_CAT_MODEL_COVER_PENDING_CAP][BONGO_CAT_PATH_CAP];
+    uint64_t pending_model_cover_retry_ns[BONGO_CAT_MODEL_COVER_PENDING_CAP];
+    unsigned pending_model_cover_attempts[BONGO_CAT_MODEL_COVER_PENDING_CAP];
     size_t pending_model_cover_count;
     char loaded_model[BONGO_CAT_ID_CAP];
     char loading_model[BONGO_CAT_ID_CAP];
@@ -190,6 +192,7 @@ bool bongo_cat_app_set_model_active(BongoCatApp *app, const char *id,
 void bongo_cat_app_set_multiple_pets(BongoCatApp *app, bool enabled);
 bool bongo_cat_app_run_behavior(BongoCatApp *app,
     const BongoCatBehaviorEntry *behavior);
+size_t bongo_cat_app_selected_motion_count(const BongoCatApp *app);
 void bongo_cat_app_capture_behavior_state(BongoCatApp *app);
 void bongo_cat_app_forget_behavior_state(BongoCatApp *app,
     const char *model_id);

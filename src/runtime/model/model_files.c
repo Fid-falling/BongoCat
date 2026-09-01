@@ -36,6 +36,19 @@ static void request_model_frame(BongoCatApp *app, bool reveal) {
     app->dirty = true;
 }
 
+static size_t saved_behavior_count(const BongoCatApp *app,
+    const char *model_id) {
+    if (!app || !model_id) return 0;
+    size_t limit = app->session.active_behavior_count;
+    if (limit > BONGO_CAT_BEHAVIOR_BINDING_CAP)
+        limit = BONGO_CAT_BEHAVIOR_BINDING_CAP;
+    size_t count = 0;
+    for (size_t i = 0; i < limit; ++i)
+        if (strcmp(app->session.active_behaviors[i].model_id, model_id) == 0)
+            count++;
+    return count;
+}
+
 static void model_runtime_stage(BongoCatApp *app, const char *stage,
     const BongoCatModelEntry *entry) {
     char state[BONGO_CAT_ID_CAP + 32];
@@ -229,7 +242,13 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
         bongo_cat_overlay_clear(app->overlay);
     }
     snprintf(app->loaded_model, sizeof(app->loaded_model), "%s", entry->id);
+    size_t saved_behaviors = saved_behavior_count(app, entry->id);
     bongo_cat_app_restore_behavior_state(app, entry->id);
+    SDL_Log("[runtime] Behavior restore summary: model=%s saved=%zu "
+        "motions=%zu expression=%d", entry->id, saved_behaviors,
+        bongo_cat_app_selected_motion_count(app),
+        bongo_cat_live2d_expression(app->live2d));
+    bongo_cat_model_cover_schedule(app, entry);
     bongo_cat_random_expression_reset(app);
     app->pointer_known = false;
     bool geometry_changed = bongo_cat_model_apply_aspect(app, &render_options,
@@ -243,7 +262,13 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     commit_model(app, entry, true, replacing_model);
     bongo_cat_app_reapply_input(app);
     bongo_cat_app_apply_mouse(app);
-    bongo_cat_model_cover_schedule(app, entry);
+    SDL_Log("[runtime] Model cover load phase: id=%s phase=%s",
+        entry->id, replacing_model ? "switch" : "startup");
+    /* Finish the handoff before the independent readback so startup and model
+       switches both capture the restored state, never the initial state. */
+    app->loading_model[0] = '\0';
+    app->model_load_runtime_stage = 0;
+    bongo_cat_app_capture_pending_model_cover(app);
     /* Do not leave the previous frame cropped during the UI completion pass. */
     if (replacing_model) bongo_cat_app_render_now(app);
     if (restore_context && previous_window && previous_context &&
@@ -258,8 +283,6 @@ bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
         (void *)SDL_GL_GetCurrentWindow(), (void *)SDL_GL_GetCurrentContext(),
         (unsigned)glGetError());
     model_runtime_stage(app, "completed", entry);
-    app->loading_model[0] = '\0';
-    app->model_load_runtime_stage = 0;
     model_running_stage(app, entry->id);
     return true;
 }

@@ -100,6 +100,9 @@ void bongo_cat_live2d_set_dragging(BongoCatLive2D *live2d, float x, float y) {
 void bongo_cat_live2d_set_centered_dragging(BongoCatLive2D *live2d,
     float x, float y) { (void)live2d; (void)x; (void)y; }
 void bongo_cat_live2d_prepare_viewer_audit(BongoCatLive2D *live2d) { (void)live2d; }
+bool bongo_cat_live2d_prepare_cover_capture(BongoCatLive2D *live2d) {
+    return live2d && live2d->loaded;
+}
 bool bongo_cat_live2d_set_parameter(BongoCatLive2D *live2d, const char *id, float value) {
     (void)live2d; (void)id; (void)value; return false;
 }

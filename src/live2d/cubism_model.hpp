@@ -44,6 +44,7 @@ public:
     void set_render_options(const BongoCatLive2DRenderOptions &options);
     void set_dragging(float x, float y, bool angle_z = false);
     void prepare_viewer_audit();
+    bool prepare_cover_capture();
     bool set_parameter(const char *id, float value);
     bool parameter(const char *id, float *minimum, float *maximum, float *value);
     bool start_motion(const char *group, int index);
@@ -119,6 +120,7 @@ private:
     void expire_motion_runs();
     void clear_motion_runs();
     void expire_expression_fade();
+    void settle_pending_expression_for_cover();
     void capture_parameter_baseline();
     void save_parameters();
     void add_parameter_override_updater();
@@ -165,6 +167,7 @@ private:
     int viewport_height_ = 354;
     int expression_index_ = -1;
     bool expression_clearing_ = false;
+    bool expression_frame_pending_ = false;
     BongoCatLive2DFrame frame_{};
     BongoCatLive2DVisualState visual_state_{};
     bool visual_state_ready_ = false;
