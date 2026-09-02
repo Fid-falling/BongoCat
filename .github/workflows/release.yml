@@ -68,7 +68,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             cmake ninja-build libgl1-mesa-dev libx11-dev libxi-dev \
-            libxfixes-dev
+            libxfixes-dev libcurl4-openssl-dev
 
       - name: Configure Windows release
         if: runner.os == 'Windows'

@@ -160,20 +160,4 @@ void bongo_cat_update_http_cancel(BongoCatUpdateService *service) {
     if (session) WinHttpCloseHandle(session);
 }
 
-#else
-
-BongoCatUpdateFetchResult bongo_cat_update_http_fetch(
-    BongoCatUpdateService *service, char **response, char *error,
-    size_t error_capacity) {
-    (void)service;
-    *response = NULL;
-    snprintf(error, error_capacity,
-        "Automatic updates are not available on this platform yet");
-    return BONGO_CAT_UPDATE_FETCH_UNSUPPORTED;
-}
-
-void bongo_cat_update_http_cancel(BongoCatUpdateService *service) {
-    (void)service;
-}
-
 #endif

@@ -67,7 +67,7 @@ BongoCat 使用 CMake，需要 C11 編譯器、C++17 編譯器、CMake 3.24 或�
   ```bash
   sudo apt-get update
   sudo apt-get install -y build-essential cmake ninja-build \
-    libgl1-mesa-dev libx11-dev libxi-dev libxfixes-dev
+    libgl1-mesa-dev libx11-dev libxi-dev libxfixes-dev libcurl4-openssl-dev
   ```
 
 ### 🔧 配置與建置

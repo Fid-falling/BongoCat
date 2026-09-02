@@ -27,6 +27,7 @@ if(WIN32)
     dinput8 dxguid dwmapi ole32 shell32 user32 uuid windowscodecs advapi32
     winhttp)
 elseif(APPLE)
+  find_package(CURL REQUIRED)
   enable_language(OBJC)
   target_sources(bongo_cat_runtime PRIVATE
     src/platform/macos/macos.m
@@ -36,8 +37,9 @@ elseif(APPLE)
     src/platform/macos/macos_menu.m
     src/platform/macos/macos_tray.m)
   target_link_libraries(bongo_cat_runtime PRIVATE "-framework Cocoa"
-    "-framework ApplicationServices")
+    "-framework ApplicationServices" CURL::libcurl)
 else()
+  find_package(CURL REQUIRED)
   find_package(X11 REQUIRED)
   if(NOT TARGET X11::Xi OR NOT TARGET X11::Xfixes)
     message(FATAL_ERROR
@@ -48,6 +50,6 @@ else()
     src/platform/linux/linux_menu.c
     src/platform/linux/linux_x11.c)
   target_link_libraries(bongo_cat_runtime PRIVATE
-    X11::X11 X11::Xi X11::Xfixes m)
+    X11::X11 X11::Xi X11::Xfixes m CURL::libcurl)
   target_link_libraries(bongo_cat_core PRIVATE m)
 endif()

@@ -42,7 +42,7 @@ BongoCat은 CMake를 사용하며, C11 컴파일러, C++17 컴파일러, CMake 3
   ```bash
   sudo apt-get update
   sudo apt-get install -y build-essential cmake ninja-build \
-    libgl1-mesa-dev libx11-dev libxi-dev libxfixes-dev
+    libgl1-mesa-dev libx11-dev libxi-dev libxfixes-dev libcurl4-openssl-dev
   ```
 
 ### 🔧 구성 및 빌드

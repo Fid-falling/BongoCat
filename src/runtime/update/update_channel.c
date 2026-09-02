@@ -58,10 +58,37 @@ const char *bongo_cat_update_platform_asset(void) {
 
 #else
 
-bool bongo_cat_update_platform_supported(void) { return false; }
+/* Unix packages are published as a single archive for each architecture.
+ * They do not have an installer registration to inspect, but they can still
+ * use the release API and open the matching archive when an update exists. */
+bool bongo_cat_update_platform_supported(void) {
+#if defined(__APPLE__)
+#if defined(__aarch64__) || defined(__arm64__) || defined(__x86_64__)
+    return true;
+#else
+    return false;
+#endif
+#elif defined(__linux__) && (defined(__x86_64__) || defined(__amd64__))
+    return true;
+#else
+    return false;
+#endif
+}
 bool bongo_cat_update_platform_store(void) { return false; }
 bool bongo_cat_update_platform_installed(void) { return false; }
-const char *bongo_cat_update_platform_asset(void) { return "unsupported"; }
+const char *bongo_cat_update_platform_asset(void) {
+#if defined(__APPLE__)
+#if defined(__aarch64__) || defined(__arm64__)
+    return "macos-arm64";
+#else
+    return "macos-x64";
+#endif
+#elif defined(__x86_64__) || defined(__amd64__)
+    return "linux-x64";
+#else
+    return "unsupported";
+#endif
+}
 
 #endif
 

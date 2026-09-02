@@ -49,6 +49,7 @@ set(BONGO_CAT_RUNTIME_LIFECYCLE_SOURCES
 set(BONGO_CAT_RUNTIME_UPDATE_SOURCES
   src/runtime/update/update_channel.c
   src/runtime/update/update_http.c
+  src/runtime/update/update_http_unix.c
   src/runtime/update/update_service.c)
 
 set(BONGO_CAT_RUNTIME_DIAGNOSTIC_SOURCES
