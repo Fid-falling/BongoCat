@@ -79,6 +79,13 @@ static void draw_update(BongoCatPreferences *value,
     if (p.effects) bongo_cat_ui_paint_shadow(context, bounds, 10,
         0, 4, 14, 0, nk_rgba(p.accent.r, p.accent.g, p.accent.b, 89));
     nk_fill_rect(canvas, bounds, 10, p.accent);
+    if (snapshot->status == BONGO_CAT_UPDATE_AVAILABLE ||
+            (snapshot->status == BONGO_CAT_UPDATE_ERROR &&
+                snapshot->release.version[0])) {
+        /* Mark the actionable update without obscuring its label. */
+        nk_fill_circle(canvas, nk_rect(bounds.x + bounds.w - 9.0f,
+            bounds.y + 5.0f, 6.0f, 6.0f), p.danger);
+    }
     float content_x = bounds.x + (bounds.w - content_width) * .5f;
     bongo_cat_preferences_icon_draw(value, canvas, BONGO_CAT_UI_ICON_SYNC,
         nk_rect(content_x, bounds.y + 10, 16, 16), nk_rgb(255, 255, 255));
@@ -89,12 +96,24 @@ static void draw_update(BongoCatPreferences *value,
     if (hit(context, bounds)) {
         if (snapshot->status == BONGO_CAT_UPDATE_CHECKING) return;
         if (snapshot->status == BONGO_CAT_UPDATE_AVAILABLE ||
-            snapshot->status == BONGO_CAT_UPDATE_STORE ||
+                (snapshot->status == BONGO_CAT_UPDATE_ERROR &&
+                    snapshot->release.version[0])) {
+            if (!bongo_cat_update_refresh_and_open(value->app->update))
+                bongo_cat_preferences_notice_show(value->app, tr(value,
+                    "native.support.updateFailed",
+                    "Unable to check for updates"), true);
+        } else if (snapshot->status == BONGO_CAT_UPDATE_STORE ||
             snapshot->status == BONGO_CAT_UPDATE_UNSUPPORTED) {
             if (!bongo_cat_update_open(value->app->update))
-                bongo_cat_preferences_notice_show(value->app, tr(value,
-                    "native.support.openUpdateFailed",
-                    "Unable to open the update page"), true);
+                {
+                    char detail[384];
+                    const char *reason = SDL_GetError();
+                    snprintf(detail, sizeof(detail), "%s: %s", tr(value,
+                        "native.support.openUpdateFailed",
+                        "Unable to open the update page"),
+                        reason && reason[0] ? reason : "system rejected the URL");
+                    bongo_cat_preferences_notice_show(value->app, detail, true);
+                }
         } else if (!bongo_cat_update_check(value->app->update, true)) {
             bongo_cat_preferences_notice_show(value->app, tr(value,
                 "native.support.updateFailed",
@@ -110,9 +129,17 @@ static const char *update_label(BongoCatPreferences *value,
         return tr(value, "native.support.checkingUpdate", "Checking...");
     case BONGO_CAT_UPDATE_AVAILABLE:
         snprintf(buffer, capacity, tr(value,
-            "native.support.downloadUpdate", "Download v%s"),
+            "native.support.downloadUpdate", "Update to v%s"),
             snapshot->release.version);
         return buffer;
+    case BONGO_CAT_UPDATE_ERROR:
+        if (snapshot->release.version[0]) {
+            snprintf(buffer, capacity, tr(value,
+                "native.support.downloadUpdate", "Update to v%s"),
+                snapshot->release.version);
+            return buffer;
+        }
+        return tr(value, "native.support.checkUpdate", "Check for updates");
     case BONGO_CAT_UPDATE_STORE:
         return tr(value, "native.support.openStore", "Open Microsoft Store");
     case BONGO_CAT_UPDATE_UNSUPPORTED:

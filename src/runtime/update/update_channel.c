@@ -1,4 +1,10 @@
 #include "update_internal.h"
+#include "bongo_cat/i18n.h"
+#include "preferences_notice.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #ifdef _WIN32
 #include "windows_package.h"
@@ -58,3 +64,42 @@ bool bongo_cat_update_platform_installed(void) { return false; }
 const char *bongo_cat_update_platform_asset(void) { return "unsupported"; }
 
 #endif
+
+static const char *tr(BongoCatUpdateService *service, const char *key,
+    const char *fallback) {
+    return bongo_cat_i18n_get(service->app->i18n, key, fallback);
+}
+
+void bongo_cat_update_show_completion(BongoCatUpdateService *service) {
+    BongoCatUpdateSnapshot snapshot;
+    bongo_cat_update_snapshot(service, &snapshot);
+    char message[192];
+    if (snapshot.status == BONGO_CAT_UPDATE_CURRENT) {
+        snprintf(message, sizeof(message), "%s v%s", tr(service,
+            "native.support.latest", "Already up to date"), BONGO_CAT_VERSION);
+        bongo_cat_preferences_notice_show(service->app, message, false);
+    } else if (snapshot.status == BONGO_CAT_UPDATE_AVAILABLE) {
+        snprintf(message, sizeof(message), "%s v%s", tr(service,
+            "native.support.updateAvailable", "New version available:"),
+            snapshot.release.version);
+        bongo_cat_preferences_notice_show(service->app, message, false);
+    } else if (snapshot.status == BONGO_CAT_UPDATE_ERROR) {
+        char detail[384], status_text[16];
+        static const char prefix[] = "GitHub returned HTTP status ";
+        const char *value = snapshot.error + sizeof(prefix) - 1;
+        char *end = NULL;
+        unsigned long status = strncmp(snapshot.error, prefix,
+            sizeof(prefix) - 1) == 0 ? strtoul(value, &end, 10) : 0;
+        if (status && end && !*end) {
+            snprintf(status_text, sizeof(status_text), "%lu", status);
+            snprintf(detail, sizeof(detail), tr(service,
+                "native.support.updateHttpFailed",
+                "GitHub returned HTTP status %s"), status_text);
+        } else snprintf(detail, sizeof(detail), "%s", snapshot.error[0] ?
+            snapshot.error : tr(service, "native.support.updateFailed",
+                "Unable to check for updates"));
+        bongo_cat_preferences_notice_show(service->app, detail, true);
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+            "Update check failed: %s", snapshot.error);
+    }
+}

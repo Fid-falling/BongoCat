@@ -9,6 +9,7 @@
 #include "ui_paint.h"
 #include "bongo_cat/memory_policy.h"
 #include "bongo_cat/tray.h"
+#include "update_service.h"
 #include <SDL3/SDL_opengl.h>
 #include <math.h>
 #include <stdio.h>
@@ -83,8 +84,13 @@ static bool draw_shell(BongoCatPreferences *value, struct nk_context *context,
     if (title_clicked && !SDL_OpenURL("https://bongocat.pet"))
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Cannot open website: %s", SDL_GetError());
     bongo_cat_ui_set_icons(draw_icon, value);
+    BongoCatUpdateSnapshot update_snapshot;
+    bongo_cat_update_snapshot(value->app->update, &update_snapshot);
+    bool about_badge = update_snapshot.status == BONGO_CAT_UPDATE_AVAILABLE ||
+        (update_snapshot.status == BONGO_CAT_UPDATE_ERROR &&
+            update_snapshot.release.version[0]);
     bongo_cat_ui_tabs(context, menus, menu_icons, 4, &value->page,
-        !modal, dark, interior_height,
+        !modal, dark, interior_height, about_badge,
         draw_icon, value);
     if (!value->page_seen) {
         value->page_seen = true; value->last_page = value->page;

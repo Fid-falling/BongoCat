@@ -5,6 +5,7 @@ param(
     [ValidateRange(1, 64)]
     [int]$Jobs = 2,
     [switch]$RequireCubism,
+    [switch]$Package,
     [switch]$Clean
 )
 
@@ -54,6 +55,45 @@ if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
+if ($Package) {
+    $makensis = Get-Command makensis.exe -ErrorAction SilentlyContinue
+    if (-not $makensis) {
+        $nsisCandidates = @()
+        foreach ($programFiles in @(${env:ProgramFiles(x86)}, $env:ProgramFiles)) {
+            if ($programFiles) {
+                $nsisCandidates += Join-Path $programFiles 'NSIS\makensis.exe'
+                $nsisCandidates += Join-Path $programFiles 'NSIS\Bin\makensis.exe'
+            }
+        }
+        $uninstallKeys = @(
+            'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*',
+            'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*',
+            'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*')
+        foreach ($key in $uninstallKeys) {
+            Get-ItemProperty -Path $key -Name InstallLocation `
+                -ErrorAction SilentlyContinue | ForEach-Object {
+                    if ($_.InstallLocation) {
+                        $nsisCandidates += Join-Path $_.InstallLocation 'makensis.exe'
+                        $nsisCandidates += Join-Path $_.InstallLocation 'Bin\makensis.exe'
+                    }
+                }
+        }
+        $nsisPath = $nsisCandidates |
+            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+            Select-Object -First 1
+        if ($nsisPath) {
+            $env:Path = "$(Split-Path $nsisPath -Parent);$env:Path"
+            $makensis = Get-Command makensis.exe -ErrorAction SilentlyContinue
+        }
+    }
+    if (-not $makensis) {
+        Write-Host 'Package build requires NSIS (makensis.exe), but it was not found.'
+        Write-Host 'Install NSIS from https://nsis.sourceforge.io/Download and run again.'
+        Write-Host 'The normal application build does not require NSIS.'
+        exit 1
+    }
+}
+
 if ($Clean -and (Test-Path -LiteralPath $BuildDir)) {
     $rootPrefix = $root.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
     $insideRoot = $BuildDir.StartsWith($rootPrefix,
@@ -62,8 +102,33 @@ if ($Clean -and (Test-Path -LiteralPath $BuildDir)) {
         Write-Host "Refusing to clean unexpected directory: $BuildDir"
         exit 1
     }
-    Write-BuildProgress 2 'Cleaning previous build...'
-    Remove-Item -LiteralPath $BuildDir -Recurse -Force
+    Write-BuildProgress 2 'Cleaning previous build artifacts...'
+    $depsPath = Join-Path $BuildDir '_deps'
+    $preservedDeps = Join-Path (Split-Path $BuildDir -Parent) (
+        '.bongocat-deps-' + [Guid]::NewGuid().ToString('N'))
+    $hasDeps = Test-Path -LiteralPath $depsPath
+    try {
+        if ($hasDeps) {
+            Move-Item -LiteralPath $depsPath -Destination $preservedDeps `
+                -Force -ErrorAction Stop
+        }
+        Remove-Item -LiteralPath $BuildDir -Recurse -Force -ErrorAction Stop
+        New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
+        if ($hasDeps) {
+            Move-Item -LiteralPath $preservedDeps `
+                -Destination (Join-Path $BuildDir '_deps') -Force `
+                -ErrorAction Stop
+        }
+    } catch {
+        if ($hasDeps -and (Test-Path -LiteralPath $preservedDeps) -and
+            -not (Test-Path -LiteralPath $depsPath)) {
+            New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
+            Move-Item -LiteralPath $preservedDeps -Destination $depsPath `
+                -Force -ErrorAction SilentlyContinue
+        }
+        Write-Host "Cleaning failed: $($_.Exception.Message)"
+        exit 1
+    }
 }
 
 New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
@@ -167,4 +232,37 @@ Write-BuildProgress 100 'Build complete.' -NewLine
 Write-Host ("Build time: {0:mm\:ss}" -f $elapsedTotal)
 Write-Host "Output: $output"
 Write-Host "Logs: $buildLog"
+
+if ($Package) {
+    Write-Host ''
+    Write-Host 'Building versioned portable and installer packages...'
+    $packageArgs = @('--build', $BuildDir, '--config', $Configuration,
+        '--target', 'package-portable', 'package-installer', '--parallel', $Jobs)
+    & cmake @packageArgs
+    $packageStatus = $LASTEXITCODE
+    if ($packageStatus -ne 0) {
+        Write-Host 'Package generation failed.'
+        Write-Host 'Ensure NSIS is installed and available in PATH for the installer.'
+        Write-Host "CPack configuration: $(Join-Path $BuildDir 'CPackConfig.cmake')"
+        exit $packageStatus
+    }
+    $packageNameFile = Join-Path $BuildDir 'bongocat-package-name.txt'
+    if (-not (Test-Path -LiteralPath $packageNameFile)) {
+        Write-Host "Package name file was not produced: $packageNameFile"
+        exit 1
+    }
+    $packageName = (Get-Content -LiteralPath $packageNameFile -Raw).Trim()
+    $packageDist = Join-Path $BuildDir 'dist'
+    $portable = Join-Path $packageDist "$packageName-portable.exe"
+    $installer = Join-Path $packageDist "$packageName-setup.exe"
+    if (-not (Test-Path -LiteralPath $portable) -or
+        -not (Test-Path -LiteralPath $installer)) {
+        Write-Host 'Package generation completed without both expected files.'
+        Write-Host "Expected portable: $portable"
+        Write-Host "Expected installer: $installer"
+        exit 1
+    }
+    Write-Host "Portable package: $portable"
+    Write-Host "Installer package: $installer"
+}
 exit 0

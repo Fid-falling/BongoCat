@@ -127,6 +127,7 @@ typedef struct BongoCatSessionState {
     char active_model_id[BONGO_CAT_ID_CAP];
     int last_update_check_day;
     char last_update_check_version[BONGO_CAT_UPDATE_VERSION_CAP];
+    char available_update_version[BONGO_CAT_UPDATE_VERSION_CAP];
     char additional_model_ids[BONGO_CAT_ADDITIONAL_MODEL_CAP][BONGO_CAT_ID_CAP];
     size_t additional_model_count;
     BongoCatActiveBehavior active_behaviors[BONGO_CAT_BEHAVIOR_BINDING_CAP];
