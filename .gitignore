@@ -69,3 +69,8 @@ Desktop.ini
 # Local Windows audit tools
 /cmake/*.ps1
 !/cmake/RunCubismViewerBlindTest.ps1
+
+# Local diagnostic test state
+/.diagnostic-session/
+/.diagnostic-storage/
+/.diagnostic-storage-morning/
