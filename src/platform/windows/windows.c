@@ -16,8 +16,26 @@ static HWND native_window(BongoCatPlatform *platform) {
         SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
 }
 
+static bool SDLCALL windows_message_hook(void *userdata, MSG *message) {
+    (void)userdata;
+    if (!message || !message->hwnd) return true;
+    /* The capture handler filters by its per-window properties. Returning
+       false only consumes the refresh/timer messages that it owns. */
+    return !bongo_cat_windows_capture_handle_message(message->hwnd,
+        message->message, message->wParam);
+}
+
 void bongo_cat_platform_configure_preferences_window(SDL_Window *window) {
-    (void)window;
+    if (!window) return;
+    HWND handle = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window),
+        SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
+    bool transparent = (SDL_GetWindowFlags(window) &
+        SDL_WINDOW_TRANSPARENT) != 0;
+    bongo_cat_windows_capture_mark_transparent(handle, transparent);
+    if (transparent) {
+        bongo_cat_windows_capture_install_transparency_handler(handle);
+        bongo_cat_windows_capture_restore_transparency(handle);
+    }
 }
 
 BongoCatResult bongo_cat_platform_init(BongoCatPlatform *platform, SDL_Window *window,
@@ -49,6 +67,9 @@ BongoCatResult bongo_cat_platform_init(BongoCatPlatform *platform, SDL_Window *w
     SetWindowTextW(hwnd, bongo_cat_windows_instance_title());
     bongo_cat_windows_borderless_install(hwnd);
     bongo_cat_windows_capture_configure(hwnd);
+    bongo_cat_windows_capture_mark_transparent(hwnd,
+        (SDL_GetWindowFlags(window) & SDL_WINDOW_TRANSPARENT) != 0);
+    SDL_SetWindowsMessageHook(windows_message_hook, NULL);
     if (!SDL_SetWindowResizable(window, true)) {
         SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
             "Borderless resize is unavailable: %s", SDL_GetError());
@@ -65,6 +86,7 @@ void bongo_cat_platform_shutdown(BongoCatPlatform *platform) {
     bongo_cat_windows_direct_input_destroy(platform);
     bongo_cat_windows_input_stop(platform);
     bongo_cat_windows_layered_destroy(platform);
+    SDL_SetWindowsMessageHook(NULL, NULL);
 }
 
 static HWND desktop_anchor(void) {

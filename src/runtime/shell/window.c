@@ -156,6 +156,10 @@ bool bongo_cat_window_event(BongoCatApp *app, const SDL_Event *event) {
         if (event->type != SDL_EVENT_WINDOW_EXPOSED)
             app->window_minimized = false;
         bongo_cat_app_reset_pointer_tracking(app);
+        /* DWM can discard the transparent redirection surface after an
+           Explorer/display refresh. Repaint even when the model is idle so
+           the restored alpha surface is submitted immediately. */
+        app->dirty = true;
     }
     if (event->type == SDL_EVENT_WINDOW_FOCUS_GAINED ||
         event->type == SDL_EVENT_WINDOW_FOCUS_LOST) {

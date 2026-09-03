@@ -9,11 +9,44 @@
 
 static UINT taskbar_created_message;
 static UINT capture_refresh_message;
+static const wchar_t capture_property[] = L"BongoCat.CaptureWindow";
+static const wchar_t transparent_property[] = L"BongoCat.TransparentWindow";
+static const wchar_t transparency_proc_property[] =
+    L"BongoCat.TransparentWindowProc";
 static bool removal_warning_emitted;
 static bool style_warning_emitted;
 static bool transparency_warning_emitted;
 static bool environment_logged;
 #define BONGO_CAT_CAPTURE_REFRESH_TIMER ((UINT_PTR)0xBC51)
+
+static bool has_property(HWND window, const wchar_t *name) {
+    return window && name && GetPropW(window, name) != NULL;
+}
+
+void bongo_cat_windows_capture_mark_transparent(HWND window, bool enabled) {
+    if (!window) return;
+    if (enabled) SetPropW(window, transparent_property, (HANDLE)1);
+    else RemovePropW(window, transparent_property);
+}
+
+static LRESULT CALLBACK transparency_window_proc(HWND window, UINT message,
+    WPARAM wparam, LPARAM lparam) {
+    if (bongo_cat_windows_capture_handle_message(window, message, wparam))
+        return 0;
+    WNDPROC original = (WNDPROC)GetPropW(window, transparency_proc_property);
+    return CallWindowProcW(original ? original : DefWindowProcW, window,
+        message, wparam, lparam);
+}
+
+void bongo_cat_windows_capture_install_transparency_handler(HWND window) {
+    if (!window || GetPropW(window, transparency_proc_property)) return;
+    WNDPROC original = (WNDPROC)GetWindowLongPtrW(window, GWLP_WNDPROC);
+    if (!original || !SetPropW(window, transparency_proc_property,
+        (HANDLE)original)) return;
+    if (!SetWindowLongPtrW(window, GWLP_WNDPROC,
+        (LONG_PTR)transparency_window_proc))
+        RemovePropW(window, transparency_proc_property);
+}
 
 static bool read_extended_style(HWND window, LONG_PTR *style) {
     SetLastError(ERROR_SUCCESS);
@@ -70,6 +103,16 @@ bool bongo_cat_windows_capture_restore_transparency(HWND window) {
             (unsigned long)result);
     }
     return SUCCEEDED(result);
+}
+
+static void repair_transparency(HWND window) {
+    if (!has_property(window, transparent_property)) return;
+    if (bongo_cat_windows_capture_restore_transparency(window)) {
+        /* A composition reset does not necessarily produce a paint message.
+           Invalidate the surface so the alpha-aware back buffer is presented
+           again (and, on Windows, the layered proxy is rebuilt). */
+        InvalidateRect(window, NULL, FALSE);
+    }
 }
 
 static void log_environment(HWND window) {
@@ -140,6 +183,7 @@ static void schedule_refresh(HWND window) {
 bool bongo_cat_windows_capture_configure(HWND window) {
     if (!window || !IsWindow(window)) return false;
     register_messages();
+    SetPropW(window, capture_property, (HANDLE)1);
     LONG_PTR style = 0;
     if (!read_extended_style(window, &style)) {
         if (!style_warning_emitted) {
@@ -194,18 +238,34 @@ bool bongo_cat_windows_capture_configure(HWND window) {
 bool bongo_cat_windows_capture_handle_message(
     HWND window, UINT message, WPARAM wparam) {
     register_messages();
+    if ((message == WM_DWMCOMPOSITIONCHANGED || message == WM_DISPLAYCHANGE) &&
+        has_property(window, transparent_property)) {
+        repair_transparency(window);
+        /* Let SDL continue processing WM_DISPLAYCHANGE so its display list is
+           refreshed. WM_DWMCOMPOSITIONCHANGED has no SDL-side state to update. */
+        return false;
+    }
     if (capture_refresh_message && message == capture_refresh_message) {
+        if (!has_property(window, capture_property)) return false;
         refresh_taskbar(window);
         return true;
     }
     if (message == WM_TIMER &&
-        wparam == BONGO_CAT_CAPTURE_REFRESH_TIMER) {
+        wparam == BONGO_CAT_CAPTURE_REFRESH_TIMER &&
+        has_property(window, capture_property)) {
         KillTimer(window, BONGO_CAT_CAPTURE_REFRESH_TIMER);
         refresh_taskbar(window);
         return true;
     }
-    if (taskbar_created_message && message == taskbar_created_message)
-        schedule_refresh(window);
+    if (taskbar_created_message && message == taskbar_created_message) {
+        bool capture_window = has_property(window, capture_property);
+        if (capture_window) {
+            refresh_taskbar(window);
+            schedule_refresh(window);
+        }
+        repair_transparency(window);
+        return capture_window;
+    }
     return false;
 }
 #endif
