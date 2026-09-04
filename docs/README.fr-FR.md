@@ -33,7 +33,14 @@
 > [!TIP]
 > Le modèle présenté dans cette démonstration provient de [宇痕冫](https://space.bilibili.com/348616056).
 >
-> 🎁Vous cherchez des modèles **gratuits** ? Rendez-vous sur notre site officiel : [bongocat.pet](https://bongocat.pet/models)
+> 🎁 Vous cherchez des modèles **gratuits** ? Nous collaborons avec des créateurs de modèles talentueux pour vous proposer une grande variété de modèles gratuits, tout en explorant continuellement de nouvelles expériences de bureau amusantes ! Rendez-vous sur notre site officiel : [bongocat.pet](https://bongocat.pet/models)
+
+
+<p align="center">
+  <a href="https://bongocat.pet/models">
+    <img height="1080" src="https://github.com/user-attachments/assets/dedd83ca-742a-4f8c-a64a-69e659fca564" />
+  </a>
+</p>
 
 <p align="center">
     <img src="https://count.getloli.com/@bongocat?name=bongocat&theme=booru-qualityhentais&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto" width="400">
@@ -365,14 +372,16 @@ facile à maintenir, tout en fournissant les performances dont nous avons besoin
 ![Alt](https://repobeats.axiom.co/api/embed/74334755a589dea40c5d31f8d2bcdc6c2bd39d87.svg "Image d'analyse Repobeats")
 
 ## 🙏 Remerciements
+> [!TIP]
+> Chaque pas de BongoCat est porté par l'esprit de l'open source. Nous remercions sincèrement tous les contributeurs de la communauté pour leurs contributions désintéressées (listées ci-dessous par ordre chronologique de contribution). C'est votre soutien qui rend l'accompagnement sur le bureau plus libre et plus authentique.❤️‍🔥
 
-<a href="https://openomy.com/vladelaina/BongoCat" target="_blank" style="display: block; width: 100%;" align="center">
-  <img src="https://openomy.com/svg?repo=vladelaina/BongoCat&chart=bubble" alt="Classement des contributeurs" style="display: block; width: 100%;" />
+
+<a href="https://bongocat.pet">
+    <img src="https://bongocat.pet/co" />
 </a>
 
 
-
-
+[linux.do](https://linux.do/t/topic/2845597)
 ---
 
 <div align="center">
