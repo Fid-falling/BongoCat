@@ -1,6 +1,6 @@
 # 💘 C/C++ × SDL3 × OpenGL を混ぜて、思う存分叩け！Bong~ Bongo Cat!!!
 
-言語を選択 ❯ English • 简体中文 • 繁體中文 • Français • Deutsch • 日本語 • 한국어 • Português • Русский • Español
+言語を選択 ❯ English • 简体中文 • 繁體中文 • Français • Deutsch • 日本語 • 한국어 • Português • Русский • Español • [Bahasa Indonesia](README.id-ID.md)
 
 > [!TIP]
 > デモで使用されているモデルは [宇痕冫](https://space.bilibili.com/348616056) から提供されています。
