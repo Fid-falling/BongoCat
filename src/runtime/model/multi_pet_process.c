@@ -119,27 +119,27 @@ static SDL_Process *create_pet_process(const char *const *args) {
 static bool spawn_pet(BongoCatApp *app, SecondaryPet *pet, size_t index,
     uint64_t now) {
     char model_arg[BONGO_CAT_ID_CAP + 20];
-    char storage_arg[BONGO_CAT_PATH_CAP + 20];
-    char nearby_arg[BONGO_CAT_PATH_CAP + 20];
-    char position_arg[80];
+    char storage_arg[BONGO_CAT_PATH_CAP + 20], nearby_arg[BONGO_CAT_PATH_CAP + 20];
+    char cache_arg[BONGO_CAT_PATH_CAP + 20], position_arg[80];
     int x = app->session.window.x, y = app->session.window.y;
     if (app->window) SDL_GetWindowPosition(app->window, &x, &y);
     snprintf(model_arg, sizeof(model_arg), "--secondary-pet=%s", pet->model_id);
     snprintf(position_arg, sizeof(position_arg), "--secondary-position=%d,%d",
         x + 36 * (int)(index + 1), y + 36 * (int)(index + 1));
-    const char *args[6] = {app->executable_path[0] ? app->executable_path :
-        BONGO_CAT_EXECUTABLE, model_arg, position_arg, NULL, NULL, NULL};
+    const char *args[8] = {app->executable_path[0] ? app->executable_path :
+        BONGO_CAT_EXECUTABLE, model_arg, position_arg, NULL, NULL, NULL, NULL, NULL};
     size_t argument = 3;
     if (app->storage_root[0]) {
         snprintf(storage_arg, sizeof(storage_arg), "--storage-root=%s",
             app->storage_root);
         args[argument++] = storage_arg;
     }
-    if (app->nearby_root[0]) {
+    if (app->nearby_root[0])
         snprintf(nearby_arg, sizeof(nearby_arg), "--nearby-root=%s",
-            app->nearby_root);
-        args[argument++] = nearby_arg;
-    }
+            app->nearby_root), args[argument++] = nearby_arg;
+    if (app->cache_root_override[0])
+        snprintf(cache_arg, sizeof(cache_arg), "--cache-root=%s",
+            app->cache_root_override), args[argument++] = cache_arg;
     bongo_cat_multi_pet_clear_remove_request(app, pet->model_id);
     bongo_cat_multi_pet_clear_pass_through_request(app, pet->model_id);
     bongo_cat_multi_pet_clear_primary_request(app, pet->model_id);

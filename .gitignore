@@ -53,6 +53,11 @@ Desktop.ini
 # Local reference files
 /.reference/
 
+# Local build environment (dependency cache & offline build helper scripts)
+/_deps_cache/
+/run_build_bg.cmd
+/run_offline_build.cmd
+
 /docs/*
 !/docs/
 !/docs/README.zh-CN.md

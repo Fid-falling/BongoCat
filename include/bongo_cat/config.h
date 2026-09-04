@@ -113,6 +113,9 @@ typedef struct BongoCatSettings {
     BongoCatWindowPreferences window;
     BongoCatApplicationPreferences app;
     BongoCatShortcutPreferences shortcuts;
+    /* Optional override for the cache directory. Empty means the platform
+       default cache location is used. Written to settings.json. */
+    char cache_root[BONGO_CAT_PATH_CAP];
     BongoCatBehaviorShortcut behavior_shortcuts[BONGO_CAT_BEHAVIOR_BINDING_CAP];
     size_t behavior_shortcut_count;
     BongoCatModelLabel model_labels[BONGO_CAT_MODEL_CAP];

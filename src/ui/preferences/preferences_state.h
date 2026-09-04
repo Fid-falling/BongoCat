@@ -102,6 +102,7 @@ struct BongoCatPreferences {
     BongoCatPreferencesScrollbar behavior_scrollbar;
     BongoCatPreferencesTextSession behavior_rename;
     BongoCatPreferencesTextSession model_rename;
+    BongoCatPreferencesTextSession cache_path;
     bool native_drag;
     bool chrome_dragging;
     bool live_resize_active;

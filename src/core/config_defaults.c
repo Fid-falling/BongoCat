@@ -199,6 +199,7 @@ void bongo_cat_settings_defaults(BongoCatSettings *config) {
     config->app.tray_visible = true;
     config->app.theme = BONGO_CAT_THEME_AUTO;
     config->app.language = BONGO_CAT_LANG_EN_US;
+    config->cache_root[0] = '\0';
     memcpy(config->extensions_json, "{}", sizeof("{}"));
 }
 

@@ -48,12 +48,15 @@
           "language": "언어",
           "permissionsSettings": "권한 설정",
           "inputMonitoringPermission": "입력 모니터링 권한",
-          "administratorPermission": "관리자"
+          "administratorPermission": "관리자",
+          "cacheDirectory": "캐시 디렉터리"
         },
         "options": {
           "auto": "시스템",
           "lightMode": "라이트",
-          "darkMode": "다크"
+          "darkMode": "다크",
+          "browse": "찾아보기",
+          "clear": "초기화"
         },
         "hints": {
           "showTrayIcon": "활성화하면 시스템 트레이에 앱 아이콘이 표시됩니다.",
@@ -61,7 +64,12 @@
           "inputMonitoringPermission": "시스템의 키보드와 마우스 이벤트를 받으려면 입력 모니터링을 활성화하세요.",
           "inputMonitoringPermissionGuide": "앱이 시스템의 키보드와 마우스 이벤트를 받으려면 입력 모니터링 권한이 필요합니다.\n\n단계:\n1. 시스템 설정 > 개인정보 보호 및 보안 > 입력 모니터링을 엽니다.\n2. BongoCat이 이미 목록에 있으면 선택하고 \"-\" 버튼을 눌러 제거합니다.\n3. \"+\" 버튼을 눌러 BongoCat을 찾아 추가합니다.\n4. 권한을 적용하려면 앱을 다시 시작합니다.",
           "administratorPermission": "앱을 관리자로 실행하면 일부 시스템 키와 입력 이벤트를 더 안정적으로 캡처할 수 있습니다.",
-          "administratorPermissionGuide": "일부 시스템 키와 입력 이벤트를 더 안정적으로 캡처하려면 앱을 관리자로 실행하는 것이 좋습니다.\n\n방법:\n1. 먼저 앱을 종료합니다.\n2. 파일 탐색기에서 앱의 exe 파일 또는 바로 가기를 찾습니다.\n3. 실행 방법을 선택합니다:\n   - 한 번만: 마우스 오른쪽 버튼을 누르고 \"관리자 권한으로 실행\"을 선택합니다.\n   - 항상: 오른쪽 클릭 > 속성 > 호환성 > \"관리자 권한으로 이 프로그램 실행\" 선택 > 확인."
+          "administratorPermissionGuide": "일부 시스템 키와 입력 이벤트를 더 안정적으로 캡처하려면 앱을 관리자로 실행하는 것이 좋습니다.\n\n방법:\n1. 먼저 앱을 종료합니다.\n2. 파일 탐색기에서 앱의 exe 파일 또는 바로 가기를 찾습니다.\n3. 실행 방법을 선택합니다:\n   - 한 번만: 마우스 오른쪽 버튼을 누르고 \"관리자 권한으로 실행\"을 선택합니다.\n   - 항상: 오른쪽 클릭 > 속성 > 호환성 > \"관리자 권한으로 이 프로그램 실행\" 선택 > 확인.",
+          "cacheDirectory": "자산 및 모델 캐시에 사용할 폴더입니다. 비워두면 기본값을 사용합니다.",
+          "defaultCache": "기본값 (자동)",
+          "cacheApplied": "캐시 디렉터리가 업데이트되었습니다",
+          "cacheCancelled": "캐시 디렉터리 선택이 취소되었습니다",
+          "cache초기화": "캐시 디렉터리가 기본값으로 재설정되었습니다"
         },
         "status": {
           "authorized": "허용됨",
@@ -188,8 +196,8 @@
   },
   "native": {
     "multiplePets": "여러 개 동시에 표시",
-    "multiplePetsLimit": "\ub370\uc2a4\ud06c\ud1b1 \ud3ab\uc740 \ud55c \ubc88\uc5d0 \ucd5c\ub300 8\uac1c\uae4c\uc9c0 \ud45c\uc2dc\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4",
-    "removeDesktopPet": "\uc774 \ub370\uc2a4\ud06c\ud1b1 \ud3ab \ub2eb\uae30",
+    "multiplePetsLimit": "데스크톱 펫은 한 번에 최대 8개까지 표시할 수 있습니다",
+    "removeDesktopPet": "이 데스크톱 펫 닫기",
     "modelLoadFailed": "이 모델을 표시할 수 없습니다",
     "noBehaviors": "항목 없음",
     "preferencesWindowTitle": "BongoCat - Settings",

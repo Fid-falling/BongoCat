@@ -48,12 +48,15 @@
           "language": "言語",
           "permissionsSettings": "権限設定",
           "inputMonitoringPermission": "入力監視の権限",
-          "administratorPermission": "管理者"
+          "administratorPermission": "管理者",
+          "cacheDirectory": "キャッシュディレクトリ"
         },
         "options": {
           "auto": "システム",
           "lightMode": "ライト",
-          "darkMode": "ダーク"
+          "darkMode": "ダーク",
+          "browse": "参照",
+          "clear": "リセット"
         },
         "hints": {
           "showTrayIcon": "有効にすると、システムトレイにアプリアイコンを表示します。",
@@ -61,7 +64,12 @@
           "inputMonitoringPermission": "システムからキーボードとマウスのイベントを受け取るには、入力監視を有効にしてください。",
           "inputMonitoringPermissionGuide": "システムからキーボードとマウスのイベントを受け取るには、入力監視の権限が必要です。\n\n手順：\n1. システム設定 > プライバシーとセキュリティ > 入力監視を開きます。\n2. BongoCatがすでに一覧にある場合は選択し、\"-\"ボタンで削除します。\n3. \"+\"ボタンをクリックしてBongoCatを探し、追加します。\n4. 権限を反映するため、アプリを再起動します。",
           "administratorPermission": "管理者として実行すると、一部のシステムキーや入力イベントをより確実に取得できます。",
-          "administratorPermissionGuide": "一部のシステムキーや入力イベントをより確実に取得するため、アプリを管理者として実行することを推奨します。\n\n手順：\n1. まずアプリを終了します。\n2. エクスプローラーでアプリのexeファイルまたはショートカットを探します。\n3. 起動方法を選びます：\n   - 今回のみ：右クリックして\"管理者として実行\"を選びます。\n   - 常に：右クリック > プロパティ > 互換性 > \"管理者としてこのプログラムを実行する\"にチェック > OK。"
+          "administratorPermissionGuide": "一部のシステムキーや入力イベントをより確実に取得するため、アプリを管理者として実行することを推奨します。\n\n手順：\n1. まずアプリを終了します。\n2. エクスプローラーでアプリのexeファイルまたはショートカットを探します。\n3. 起動方法を選びます：\n   - 今回のみ：右クリックして\"管理者として実行\"を選びます。\n   - 常に：右クリック > プロパティ > 互換性 > \"管理者としてこのプログラムを実行する\"にチェック > OK。",
+          "cacheDirectory": "アセットやモデルキャッシュに使用するフォルダ。空の場合はデフォルトを使用します。",
+          "defaultCache": "デフォルト（自動）",
+          "cacheApplied": "キャッシュディレクトリを更新しました",
+          "cacheCancelled": "キャッシュディレクトリの選択をキャンセルしました",
+          "cacheリセット": "キャッシュディレクトリをデフォルトに戻しました"
         },
         "status": {
           "authorized": "許可済み",
@@ -188,8 +196,8 @@
   },
   "native": {
     "multiplePets": "複数を同時に表示",
-    "multiplePetsLimit": "\u4e00\u5ea6\u306b\u8868\u793a\u3067\u304d\u308b\u30c7\u30b9\u30af\u30c8\u30c3\u30d7\u30da\u30c3\u30c8\u306f 8 \u4f53\u307e\u3067\u3067\u3059",
-    "removeDesktopPet": "\u3053\u306e\u30c7\u30b9\u30af\u30c8\u30c3\u30d7\u30da\u30c3\u30c8\u3092\u9589\u3058\u308b",
+    "multiplePetsLimit": "一度に表示できるデスクトップペットは 8 体までです",
+    "removeDesktopPet": "このデスクトップペットを閉じる",
     "modelLoadFailed": "このモデルを表示できません",
     "noBehaviors": "項目がありません",
     "preferencesWindowTitle": "BongoCat - Settings",

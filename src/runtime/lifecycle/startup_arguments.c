@@ -72,6 +72,10 @@ bool bongo_cat_startup_arguments(BongoCatApp *app, int argc, char **argv,
         } else if (strncmp(arg, "--storage-root=", 15) == 0) {
             if (!store_argument(app->storage_root, sizeof(app->storage_root),
                 arg + 15, "Storage", error)) return false;
+        } else if (strncmp(arg, "--cache-root=", 13) == 0) {
+            if (!store_argument(app->cache_root_override,
+                sizeof(app->cache_root_override), arg + 13,
+                "Cache", error)) return false;
         } else if (strncmp(arg, "--nearby-root=", 14) == 0) {
             if (!store_argument(app->nearby_root, sizeof(app->nearby_root),
                 arg + 14, "Nearby model", error)) return false;

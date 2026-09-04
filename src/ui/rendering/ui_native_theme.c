@@ -89,7 +89,13 @@ void bongo_cat_ui_native_theme_apply(SDL_Window *window, bool dark) {
         sizeof(enabled));
     bool transparent = (SDL_GetWindowFlags(window) &
         SDL_WINDOW_TRANSPARENT) != 0;
-    int corner = transparent ? 1 : 2;
+    /* Transparent windows rely on a per-pixel GL mask (bongo_cat_ui_paint_
+       rounded_surface) whose four corners are geometrically symmetric. The
+       DWM system corner preference (DWMWCP_ROUND) is unreliable on borderless
+       windows and frequently fails to clip the right edge, leaving a stray
+       opaque corner there. Disable DWM rounding entirely for transparent
+       windows so the GL mask is the sole, symmetric source of the rounding. */
+    int corner = transparent ? 0 : 2;
     DwmSetWindowAttribute(handle, 33, &corner, sizeof(corner));
     if (transparent) {
         DWORD border = 0xfffffffeu;

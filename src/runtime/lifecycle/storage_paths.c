@@ -111,6 +111,10 @@ bool bongo_cat_storage_paths_prepare(BongoCatApp *app,
     if (!app) return false;
     bool resolved = app->storage_root[0]
         ? isolated_roots(app) : platform_roots(app);
+    if (resolved && app->cache_root_override[0]) {
+        snprintf(app->cache_root, sizeof(app->cache_root),
+            "%s", app->cache_root_override);
+    }
     if (resolved) {
         snprintf(app->primary_state_root, sizeof(app->primary_state_root),
             "%s", app->state_root);
@@ -133,4 +137,24 @@ bool bongo_cat_storage_paths_prepare(BongoCatApp *app,
     bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
         "Application storage directories are unavailable or not writable");
     return false;
+}
+
+bool bongo_cat_storage_paths_apply_cache(BongoCatApp *app,
+    BongoCatError *error) {
+    if (!app) return true;
+    /* A command line --cache-root takes precedence over the settings value. */
+    const char *configured = app->cache_root_override[0]
+        ? app->cache_root_override : app->settings.cache_root;
+    if (!configured || !configured[0]) return true;
+    char default_root[BONGO_CAT_PATH_CAP];
+    snprintf(default_root, sizeof(default_root), "%s", app->cache_root);
+    snprintf(app->cache_root, sizeof(app->cache_root), "%s", configured);
+    if (!writable_directory(app->cache_root)) {
+        snprintf(app->cache_root, sizeof(app->cache_root), "%s", default_root);
+        bongo_cat_error_set(error, BONGO_CAT_ERROR_IO,
+            "Configured cache directory is unavailable or not writable: %s",
+            configured);
+        return false;
+    }
+    return true;
 }

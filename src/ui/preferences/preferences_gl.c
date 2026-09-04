@@ -24,6 +24,10 @@ bool bongo_cat_preferences_gl_create(BongoCatPreferences *value) {
         return false;
     if (!SDL_GL_MakeCurrent(value->app->window, value->app->gl_context))
         return fail(value, SDL_GetError());
+    /* The transparent settings window relies on per-pixel alpha to clip the
+       rounded corners (bongo_cat_ui_paint_rounded_surface). Request an alpha
+       channel explicitly so the corner mask reaches the framebuffer. */
+    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
     if (!SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1))
         return fail(value, SDL_GetError());
     SDL_GLContext context = SDL_GL_CreateContext(value->window);
@@ -31,6 +35,7 @@ bool bongo_cat_preferences_gl_create(BongoCatPreferences *value) {
     if (!context) snprintf(creation_error, sizeof(creation_error), "%s",
         SDL_GetError());
     bool reset = SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0);
+    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 0);
     if (!context)
         return fail(value, creation_error[0] ? creation_error :
             "SDL_GL_CreateContext returned no context");

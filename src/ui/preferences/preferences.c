@@ -228,6 +228,7 @@ bool bongo_cat_preferences_event(BongoCatPreferences *value, const SDL_Event *ev
             event->button.down ? "down" : "up", event->button.x, event->button.y);
     if (bongo_cat_preferences_model_rename_event(value, event)) return true;
     if (bongo_cat_preferences_behavior_rename_event(value, event)) return true;
+    if (bongo_cat_preferences_cache_path_event(value, event)) return true;
     if (bongo_cat_preferences_shortcut_event(value, event)) return true;
     if (event->type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
         bongo_cat_preferences_close(value);

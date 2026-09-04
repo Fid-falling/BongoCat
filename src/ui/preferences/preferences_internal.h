@@ -6,7 +6,7 @@
 #include "ui_catime.h"
 #include <SDL3/SDL.h>
 
-void bongo_cat_preferences_page_settings(BongoCatApp *app,
+void bongo_cat_preferences_page_settings(BongoCatPreferences *value,
     struct nk_context *context);
 void bongo_cat_preferences_page_model(BongoCatPreferences *value,
     struct nk_context *context);
@@ -66,6 +66,12 @@ void bongo_cat_preferences_remove_dialog_clear(const BongoCatApp *app);
 void bongo_cat_preferences_remove_dialog_close(BongoCatApp *app);
 bool bongo_cat_preferences_chrome_drag_allowed(
     const BongoCatPreferences *value);
+void bongo_cat_preferences_cache_path_draw(BongoCatPreferences *value,
+    struct nk_context *context);
+bool bongo_cat_preferences_cache_path_event(BongoCatPreferences *value,
+    const SDL_Event *event);
+void bongo_cat_preferences_cache_path_browse(BongoCatPreferences *value);
+void bongo_cat_preferences_cache_path_cancel(BongoCatPreferences *value);
 
 typedef struct BongoCatImportDialog BongoCatImportDialog;
 BongoCatImportDialog *bongo_cat_preferences_import_create(void);

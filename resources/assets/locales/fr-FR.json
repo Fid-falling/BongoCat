@@ -48,12 +48,15 @@
           "language": "Langue",
           "permissionsSettings": "Paramètres des autorisations",
           "inputMonitoringPermission": "Autorisation de surveillance des entrées",
-          "administratorPermission": "Administrateur"
+          "administratorPermission": "Administrateur",
+          "cacheDirectory": "Répertoire du cache"
         },
         "options": {
           "auto": "Système",
           "lightMode": "Clair",
-          "darkMode": "Sombre"
+          "darkMode": "Sombre",
+          "browse": "Parcourir",
+          "clear": "Réinitialiser"
         },
         "hints": {
           "showTrayIcon": "Lorsque cette option est activée, l'icône de l'application apparaît dans la zone de notification.",
@@ -61,7 +64,12 @@
           "inputMonitoringPermission": "Activez la surveillance des entrées pour recevoir les événements clavier et souris du système.",
           "inputMonitoringPermissionGuide": "L'autorisation de surveillance des entrées est nécessaire pour recevoir les événements clavier et souris du système.\n\nÉtapes :\n1. Ouvrez Réglages Système > Confidentialité et sécurité > Surveillance de l'entrée.\n2. Si BongoCat figure déjà dans la liste, sélectionnez-le et cliquez sur le bouton \"-\" pour le retirer.\n3. Cliquez sur le bouton \"+\" pour rechercher et ajouter BongoCat.\n4. Redémarrez l'application pour appliquer l'autorisation.",
           "administratorPermission": "Exécuter l'application en tant qu'administrateur permet de capturer plus fiablement certaines touches système et certains événements d'entrée.",
-          "administratorPermissionGuide": "Pour capturer plus fiablement certaines touches système et certains événements d'entrée, il est recommandé d'exécuter l'application en tant qu'administrateur.\n\nProcédure :\n1. Quittez d'abord l'application.\n2. Trouvez le fichier exe ou son raccourci dans l'Explorateur de fichiers.\n3. Choisissez le mode de lancement :\n   - Une fois : faites un clic droit et choisissez \"Exécuter en tant qu'administrateur\".\n   - Toujours : clic droit > Propriétés > onglet Compatibilité > cochez \"Exécuter ce programme en tant qu'administrateur\" > OK."
+          "administratorPermissionGuide": "Pour capturer plus fiablement certaines touches système et certains événements d'entrée, il est recommandé d'exécuter l'application en tant qu'administrateur.\n\nProcédure :\n1. Quittez d'abord l'application.\n2. Trouvez le fichier exe ou son raccourci dans l'Explorateur de fichiers.\n3. Choisissez le mode de lancement :\n   - Une fois : faites un clic droit et choisissez \"Exécuter en tant qu'administrateur\".\n   - Toujours : clic droit > Propriétés > onglet Compatibilité > cochez \"Exécuter ce programme en tant qu'administrateur\" > OK.",
+          "cacheDirectory": "Dossier utilisé pour les caches de ressources et de modèles. Laissez vide pour la valeur par défaut.",
+          "defaultCache": "Par défaut (automatique)",
+          "cacheApplied": "Répertoire du cache mis à jour",
+          "cacheCancelled": "Sélection du répertoire de cache annulée",
+          "cacheRéinitialiser": "Répertoire du cache réinitialisé à la valeur par défaut"
         },
         "status": {
           "authorized": "Autorisé",
@@ -188,7 +196,7 @@
   },
   "native": {
     "multiplePets": "Afficher plusieurs modèles",
-    "multiplePetsLimit": "Jusqu'\u00e0 8 mascottes peuvent \u00eatre affich\u00e9es \u00e0 la fois",
+    "multiplePetsLimit": "Jusqu'à 8 mascottes peuvent être affichées à la fois",
     "removeDesktopPet": "Fermer cette mascotte de bureau",
     "modelLoadFailed": "Impossible d'afficher ce modèle",
     "noBehaviors": "Aucun élément",

@@ -202,6 +202,7 @@ BongoCatResult bongo_cat_settings_save(const char *path,
         write_behaviors(doc, root, &canonical) &&
         write_model_labels(doc, root, &canonical) &&
         write_removed_models(doc, root, &canonical) &&
+        yyjson_mut_obj_add_strcpy(doc, root, "cachePath", canonical.cache_root) &&
         yyjson_mut_obj_add_val(doc, root, "extensions", extensions);
     if (!built) {
         yyjson_mut_doc_free(doc);

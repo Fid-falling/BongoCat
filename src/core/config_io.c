@@ -262,6 +262,9 @@ BongoCatResult bongo_cat_settings_load(const char *path,
         read_behaviors(behaviors, &loaded, error) &&
         read_model_labels(models, &loaded, error) &&
         read_removed_models(removed_models, &loaded, error);
+    /* cache_path is optional; missing means the platform default is used. */
+    valid = valid && read_text(root, "cachePath", loaded.cache_root,
+        sizeof(loaded.cache_root), error);
     if (!valid) result = BONGO_CAT_ERROR_FORMAT;
     if (valid) result = read_extensions(extensions_value, &loaded, error);
     yyjson_doc_free(document);

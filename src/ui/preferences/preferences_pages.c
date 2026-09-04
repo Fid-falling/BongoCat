@@ -1,4 +1,5 @@
 #include "preferences_internal.h"
+#include "preferences_state.h"
 #include "preferences_theme.h"
 #include "preferences_widgets.h"
 #include "preferences_notice.h"
@@ -177,9 +178,12 @@ static void page_general(BongoCatApp *app, struct nk_context *context) {
         "Theme"), themes, options->theme);
 }
 
-void bongo_cat_preferences_page_settings(BongoCatApp *app,
+void bongo_cat_preferences_page_settings(BongoCatPreferences *value,
     struct nk_context *context) {
+    BongoCatApp *app = value->app;
     page_display(app, context);
     section_gap(context, 10);
     page_general(app, context);
+    section_gap(context, 10);
+    bongo_cat_preferences_cache_path_draw(value, context);
 }

@@ -1,4 +1,5 @@
 #include "runtime.h"
+#include "storage_paths.h"
 #include "bongo_cat/audio.h"
 #include "bongo_cat/file.h"
 #include "bongo_cat/i18n.h"
@@ -48,6 +49,16 @@ bool bongo_cat_app_initialize(BongoCatApp *app, int argc, char **argv,
     bongo_cat_models_init(&app->models);
     if (!bongo_cat_startup_prepare(app, argc, argv, error)) return false;
     bongo_cat_config_store_load(app);
+    /* The settings cache_path is only known after the config store loads, so
+       re-apply it here. A CLI override was already handled during path prep. */
+    {
+        BongoCatError cache_error = {0};
+        if (bongo_cat_storage_paths_apply_cache(app, &cache_error) == false &&
+            app->cache_root_override[0])
+            return false;
+        if (cache_error.message[0])
+            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", cache_error.message);
+    }
     if (app->secondary_pet) {
         snprintf(app->session.active_model_id,
             sizeof(app->session.active_model_id), "%s",

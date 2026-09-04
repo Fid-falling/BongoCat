@@ -48,12 +48,15 @@
           "language": "语言",
           "permissionsSettings": "权限设置",
           "inputMonitoringPermission": "输入监控权限",
-          "administratorPermission": "管理员身份"
+          "administratorPermission": "管理员身份",
+          "cacheDirectory": "缓存目录"
         },
         "options": {
           "auto": "跟随系统",
           "lightMode": "亮色模式",
-          "darkMode": "暗色模式"
+          "darkMode": "暗色模式",
+          "browse": "浏览",
+          "clear": "重置"
         },
         "hints": {
           "showTrayIcon": "启用后，在系统托盘中显示应用图标。",
@@ -61,7 +64,12 @@
           "inputMonitoringPermission": "开启输入监控权限，以便接收系统的键盘和鼠标事件来响应你的操作。",
           "inputMonitoringPermissionGuide": "开启输入监控权限后，应用才能接收系统的键盘和鼠标事件，从而响应你的操作。\n\n操作方式：\n1. 打开「系统设置」→「隐私与安全性」→「输入监控」。\n2. 若列表中已存在 BongoCat，请先选中它，点击「-」按钮将其删除。\n3. 点击「+」按钮，找到并添加 BongoCat 应用。\n4. 重启应用，以确保权限正式生效。",
           "administratorPermission": "以管理员身份运行应用，可以更稳定地捕获部分系统级按键与输入事件。",
-          "administratorPermissionGuide": "为了能更稳定地捕获部分系统级按键与输入事件，建议以管理员身份运行应用。\n\n操作方式：\n1. 先退出应用。\n2. 在资源管理器中找到应用的 exe 或快捷方式。\n3. 根据需要选择启动方式：\n   • 仅本次：右键并选择「以管理员身份运行」。\n   • 永久默认：右键 → 属性 → 兼容性选项卡 → 勾选「以管理员身份运行此程序」→ 确定。"
+          "administratorPermissionGuide": "为了能更稳定地捕获部分系统级按键与输入事件，建议以管理员身份运行应用。\n\n操作方式：\n1. 先退出应用。\n2. 在资源管理器中找到应用的 exe 或快捷方式。\n3. 根据需要选择启动方式：\n   • 仅本次：右键并选择「以管理员身份运行」。\n   • 永久默认：右键 → 属性 → 兼容性选项卡 → 勾选「以管理员身份运行此程序」→ 确定。",
+          "cacheDirectory": "用于资产和模型缓存的文件夹。留空则使用默认位置。",
+          "defaultCache": "默认（自动）",
+          "cacheApplied": "缓存目录已更新",
+          "cacheCancelled": "缓存目录选择已取消",
+          "cacheReset": "缓存目录已重置为默认"
         },
         "status": {
           "authorized": "已授权",
@@ -188,9 +196,9 @@
   },
   "native": {
     "multiplePets": "同时显示多个",
-    "multiplePetsLimit": "\u6700\u591a\u53ef\u540c\u65f6\u663e\u793a 8 \u4e2a\u684c\u5ba0",
-    "removeDesktopPet": "\u5173\u95ed\u6b64\u684c\u5ba0",
-    "modelLoadFailed": "\u6a21\u578b\u65e0\u6cd5\u663e\u793a",
+    "multiplePetsLimit": "最多可同时显示 8 个桌宠",
+    "removeDesktopPet": "关闭此桌宠",
+    "modelLoadFailed": "模型无法显示",
     "noBehaviors": "暂无可用项目",
     "preferencesWindowTitle": "BongoCat - Settings",
     "startup": {

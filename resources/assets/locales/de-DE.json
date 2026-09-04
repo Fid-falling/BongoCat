@@ -48,12 +48,15 @@
           "language": "Sprache",
           "permissionsSettings": "Berechtigungen",
           "inputMonitoringPermission": "Berechtigung zur Eingabeüberwachung",
-          "administratorPermission": "Administrator"
+          "administratorPermission": "Administrator",
+          "cacheDirectory": "Cache-Verzeichnis"
         },
         "options": {
           "auto": "System",
           "lightMode": "Hell",
-          "darkMode": "Dunkel"
+          "darkMode": "Dunkel",
+          "browse": "Durchsuchen",
+          "clear": "Zurücksetzen"
         },
         "hints": {
           "showTrayIcon": "Wenn aktiviert, wird das Anwendungssymbol im Infobereich angezeigt.",
@@ -61,7 +64,12 @@
           "inputMonitoringPermission": "Aktivieren Sie die Eingabeüberwachung, um Tastatur- und Mausereignisse vom System zu empfangen.",
           "inputMonitoringPermissionGuide": "Die Berechtigung zur Eingabeüberwachung ist erforderlich, damit die Anwendung Tastatur- und Mausereignisse vom System empfangen kann.\n\nSchritte:\n1. Öffnen Sie Systemeinstellungen > Datenschutz & Sicherheit > Eingabeüberwachung.\n2. Falls BongoCat bereits aufgeführt ist, wählen Sie es aus und entfernen Sie es mit der Schaltfläche \"-\".\n3. Klicken Sie auf \"+\", um BongoCat zu suchen und hinzuzufügen.\n4. Starten Sie die Anwendung neu, damit die Berechtigung wirksam wird.",
           "administratorPermission": "Als Administrator kann die Anwendung bestimmte Systemtasten und Eingabeereignisse zuverlässiger erfassen.",
-          "administratorPermissionGuide": "Für eine zuverlässigere Erfassung bestimmter Systemtasten und Eingabeereignisse wird empfohlen, die Anwendung als Administrator auszuführen.\n\nVorgehen:\n1. Beenden Sie zuerst die Anwendung.\n2. Suchen Sie die exe-Datei oder ihre Verknüpfung im Datei-Explorer.\n3. Wählen Sie die Startart:\n   - Einmalig: Rechtsklick und \"Als Administrator ausführen\" wählen.\n   - Immer: Rechtsklick > Eigenschaften > Kompatibilität > \"Programm als Administrator ausführen\" aktivieren > OK."
+          "administratorPermissionGuide": "Für eine zuverlässigere Erfassung bestimmter Systemtasten und Eingabeereignisse wird empfohlen, die Anwendung als Administrator auszuführen.\n\nVorgehen:\n1. Beenden Sie zuerst die Anwendung.\n2. Suchen Sie die exe-Datei oder ihre Verknüpfung im Datei-Explorer.\n3. Wählen Sie die Startart:\n   - Einmalig: Rechtsklick und \"Als Administrator ausführen\" wählen.\n   - Immer: Rechtsklick > Eigenschaften > Kompatibilität > \"Programm als Administrator ausführen\" aktivieren > OK.",
+          "cacheDirectory": "Ordner für Asset- und Modell-Caches. Leer lassen für den Standardwert.",
+          "defaultCache": "Standard (automatisch)",
+          "cacheApplied": "Cache-Verzeichnis aktualisiert",
+          "cacheCancelled": "Auswahl des Cache-Verzeichnisses abgebrochen",
+          "cacheZurücksetzen": "Cache-Verzeichnis auf Standard zurückgesetzt"
         },
         "status": {
           "authorized": "Autorisiert",
@@ -188,8 +196,8 @@
   },
   "native": {
     "multiplePets": "Mehrere gleichzeitig anzeigen",
-    "multiplePetsLimit": "Bis zu 8 Desktop-Begleiter k\u00f6nnen gleichzeitig angezeigt werden",
-    "removeDesktopPet": "Diesen Desktop-Begleiter schlie\u00dfen",
+    "multiplePetsLimit": "Bis zu 8 Desktop-Begleiter können gleichzeitig angezeigt werden",
+    "removeDesktopPet": "Diesen Desktop-Begleiter schließen",
     "modelLoadFailed": "Dieses Modell kann nicht angezeigt werden",
     "noBehaviors": "Keine Einträge",
     "preferencesWindowTitle": "BongoCat - Settings",
