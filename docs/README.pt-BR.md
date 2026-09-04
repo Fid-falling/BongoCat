@@ -9,13 +9,26 @@
 <p align="center">
   Escolha o idioma ❯ <a href="https://github.com/vladelaina/BongoCat/blob/main/README.md">English</a> • <a href="https://github.com/vladelaina/BongoCat/blob/main/docs/README.zh-CN.md">简体中文</a> • <a href="https://github.com/vladelaina/BongoCat/blob/main/docs/README.zh-Hant.md">繁體中文</a> • <a href="https://github.com/vladelaina/BongoCat/blob/main/docs/README.fr-FR.md">Français</a> • <a href="https://github.com/vladelaina/BongoCat/blob/main/docs/README.de-DE.md">Deutsch</a> • <a href="https://github.com/vladelaina/BongoCat/blob/main/docs/README.ja-JP.md">日本語</a> • <a href="https://github.com/vladelaina/BongoCat/blob/main/docs/README.ko-KR.md">한국어</a> • <strong>Português</strong> • <a href="https://github.com/vladelaina/BongoCat/blob/main/docs/README.ru-RU.md">Русский</a> • <a href="https://github.com/vladelaina/BongoCat/blob/main/docs/README.es-ES.md">Español</a> • <a href="https://github.com/vladelaina/BongoCat/blob/main/docs/README.id-ID.md">Bahasa Indonesia</a>
 </p>
+<p align="center">
+  <a href="https://github.com/vladelaina/BongoCat/blob/main/LICENSE"><img src="https://img.shields.io/badge/AGPL--3.0-1fa669?style=flat&logo=gnu&logoColor=white"></a>
+  <a href="https://github.com/vladelaina/BongoCat"><img src="https://img.shields.io/badge/C-A8B9CC?style=flat&logo=c&logoColor=white"></a>
+  <a href="https://discord.gg/vf8jqnattk"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Finvites%2Fvf8jqnattk%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&suffix=%20members&logo=discord&logoColor=white&label=%20&color=7389D8&labelColor=6A7EC2"></a>
+  <a href="https://github.com/vladelaina/BongoCat/blob/main/docs/wechat.png"><img src="https://img.shields.io/badge/WeChat-%2307C160?logo=wechat&logoColor=%2307C160&labelColor=FFFFFF"></a>
+  <a href="https://qm.qq.com/q/cYlRBbvuda"><img src="https://img.shields.io/badge/QQ-%2312B7F5?logo=qq&labelColor=FFFFFF"></a>
+</p>
 
 <div align="center"><video src="https://github.com/user-attachments/assets/75719230-9e49-4124-ae5a-8e35592c5d49" autoplay loop style="border-radius: 8px; max-width: 800px;"></video></div>
 
 > [!TIP]
 > O modelo usado na demonstração é de [宇痕冫](https://space.bilibili.com/348616056).
 >
-> 🎁 Procurando modelos **gratuitos**? Visite nosso site oficial: [bongocat.pet](https://bongocat.pet/models)
+> 🎁 Procurando modelos **gratuitos**? Trabalhamos com criadores de modelos talentosos para trazer uma grande variedade de modelos gratuitos, enquanto exploramos continuamente experiências de desktop ainda mais divertidas! Visite nosso site oficial: [bongocat.pet](https://bongocat.pet/models)
+
+<p align="center">
+  <a href="https://bongocat.pet/models">
+    <img height="1080" src="https://github.com/user-attachments/assets/dedd83ca-742a-4f8c-a64a-69e659fca564" />
+  </a>
+</p>
 
 <p align="center"><img src="https://count.getloli.com/@bongocat?name=bongocat&theme=booru-qualityhentais&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto" width="400"></p>
 
@@ -220,8 +233,17 @@ Não. O BongoCat processa entradas de teclado e mouse localmente para impulsiona
 Não porque Vulkan seja ruim, mas porque o BongoCat não precisa desse nível de complexidade. O aplicativo renderiza principalmente um modelo Live2D, algumas camadas de interface e uma janela de desktop transparente; o OpenGL dá conta disso facilmente e se integra naturalmente com o SDL3 e o renderizador OpenGL do Cubism. Migrar para Vulkan exigiria manter mais código de renderização e sincronização em três plataformas de desktop, sem benefício perceptível para o usuário. Para a carga de trabalho atual do BongoCat, o OpenGL torna o renderizador mais enxuto, mais fácil de depurar e manter, continuando a oferecer o desempenho necessário.
 
 ## 🙏 Agradecimentos especiais
+> [!TIP]
+> Cada passo do BongoCat é movido pelo espírito do código aberto. Agradecemos sinceramente a todos os colaboradores da comunidade por suas contribuições altruístas (listadas abaixo em ordem cronológica de contribuição). É o apoio de vocês que torna a companhia no desktop mais livre e genuína.❤️‍🔥
 
-<a href="https://openomy.com/vladelaina/BongoCat" target="_blank"><img src="https://openomy.com/svg?repo=vladelaina/BongoCat&chart=bubble" alt="Ranking de contribuidores" style="display: block; width: 100%;"></a>
+
+<a href="https://bongocat.pet">
+    <img src="https://bongocat.pet/co" />
+</a>
+
+
+[linux.do](https://linux.do/t/topic/2845597)
+---
 
 <div align="center">
 Copyright © 2026 - **BongoCat**<br>
