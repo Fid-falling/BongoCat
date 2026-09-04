@@ -9,13 +9,26 @@
 <p align="center">
   언어 선택 ❯ <a href="https://github.com/vladelaina/BongoCat/blob/main/README.md">English</a> • <a href="https://github.com/vladelaina/BongoCat/blob/main/docs/README.zh-CN.md">简体中文</a> • <a href="https://github.com/vladelaina/BongoCat/blob/main/docs/README.zh-Hant.md">繁體中文</a> • <a href="https://github.com/vladelaina/BongoCat/blob/main/docs/README.fr-FR.md">Français</a> • <a href="https://github.com/vladelaina/BongoCat/blob/main/docs/README.de-DE.md">Deutsch</a> • <a href="https://github.com/vladelaina/BongoCat/blob/main/docs/README.ja-JP.md">日本語</a> • <strong>한국어</strong> • <a href="https://github.com/vladelaina/BongoCat/blob/main/docs/README.pt-BR.md">Português</a> • <a href="https://github.com/vladelaina/BongoCat/blob/main/docs/README.ru-RU.md">Русский</a> • <a href="https://github.com/vladelaina/BongoCat/blob/main/docs/README.es-ES.md">Español</a> • <a href="https://github.com/vladelaina/BongoCat/blob/main/docs/README.id-ID.md">Bahasa Indonesia</a>
 </p>
+<p align="center">
+  <a href="https://github.com/vladelaina/BongoCat/blob/main/LICENSE"><img src="https://img.shields.io/badge/AGPL--3.0-1fa669?style=flat&logo=gnu&logoColor=white"></a>
+  <a href="https://github.com/vladelaina/BongoCat"><img src="https://img.shields.io/badge/C-A8B9CC?style=flat&logo=c&logoColor=white"></a>
+  <a href="https://discord.gg/vf8jqnattk"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Finvites%2Fvf8jqnattk%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&suffix=%20members&logo=discord&logoColor=white&label=%20&color=7389D8&labelColor=6A7EC2"></a>
+  <a href="https://github.com/vladelaina/BongoCat/blob/main/docs/wechat.png"><img src="https://img.shields.io/badge/WeChat-%2307C160?logo=wechat&logoColor=%2307C160&labelColor=FFFFFF"></a>
+  <a href="https://qm.qq.com/q/cYlRBbvuda"><img src="https://img.shields.io/badge/QQ-%2312B7F5?logo=qq&labelColor=FFFFFF"></a>
+</p>
 
 <div align="center"><video src="https://github.com/user-attachments/assets/75719230-9e49-4124-ae5a-8e35592c5d49" autoplay loop style="border-radius: 8px; max-width: 800px;"></video></div>
 
 > [!TIP]
 > 데모에 사용된 모델은 [宇痕冫](https://space.bilibili.com/348616056)님의 작품입니다.
 >
-> 🎁 **무료** 모델을 찾으시나요? 공식 웹사이트를 방문하세요: [bongocat.pet](https://bongocat.pet/models)
+> 🎁 **무료** 모델을 찾으시나요? 저희는 재능 있는 모델 크리에이터들과 협력하여 다양한 무료 모델을 제공하고, 더 재미있는 데스크톱 경험도 끊임없이 탐색하고 있습니다! 공식 웹사이트를 방문하세요: [bongocat.pet](https://bongocat.pet/models)
+
+<p align="center">
+  <a href="https://bongocat.pet/models">
+    <img height="1080" src="https://github.com/user-attachments/assets/dedd83ca-742a-4f8c-a64a-69e659fca564" />
+  </a>
+</p>
 
 <p align="center"><img src="https://count.getloli.com/@bongocat?name=bongocat&theme=booru-qualityhentais&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto" width="400"></p>
 
@@ -220,8 +233,17 @@ flowchart TB
 Vulkan이 나쁘기 때문이 아니라, BongoCat이 그 정도의 복잡성을 필요로 하지 않기 때문입니다. 애플리케이션은 주로 하나의 Live2D 모델, 소량의 UI 레이어 및 투명 데스크톱 창을 렌더링하며, OpenGL은 이를 쉽게 충족할 수 있고 SDL3 및 Cubism의 OpenGL 렌더러와 자연스럽게 통합됩니다. Vulkan으로 마이그레이션하려면 세 가지 데스크톱 플랫폼에서 더 많은 렌더링 및 동기화 코드를 유지 관리해야 하지만, 사용자에게 눈에 띄는 개선은 없을 것입니다. BongoCat의 현재 워크로드에서 OpenGL은 렌더러를 더 간결하고 디버깅 및 유지 관리하기 쉽게 유지하면서도 필요한 성능을 제공합니다.
 
 ## 🙏 특별 감사
+> [!TIP]
+> BongoCat의 모든 걸음은 오픈 소스 정신으로 이루어집니다. 커뮤니티 기여자분들의 사심 없는 기여에 진심으로 감사드립니다(기여 날짜순 정렬). 여러분의 지원이 데스크톱 동반을 더욱 자유롭고 진심 어린 것으로 만들어 줍니다.❤️‍🔥
 
-<a href="https://openomy.com/vladelaina/BongoCat" target="_blank"><img src="https://openomy.com/svg?repo=vladelaina/BongoCat&chart=bubble" alt="기여자 순위" style="display: block; width: 100%;"></a>
+
+<a href="https://bongocat.pet">
+    <img src="https://bongocat.pet/co" />
+</a>
+
+
+[linux.do](https://linux.do/t/topic/2845597)
+---
 
 <div align="center">
 저작권 © 2026 - **BongoCat**<br>
