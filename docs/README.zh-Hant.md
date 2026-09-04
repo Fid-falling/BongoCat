@@ -35,8 +35,14 @@
 > [!TIP]
 > 本示範所使用的模型來自 [宇痕冫](https://space.bilibili.com/348616056)。
 >
-> 🎁 尋找**免費**模型？請瀏覽我們的官方網站：[bongocat.pet](https://bongocat.pet/models)
+> 🎁 尋找**免費**模型？我們與才華洋溢的模型創作者合作，為您帶來豐富多樣的免費模型，同時持續探索更多有趣的桌面體驗！請瀏覽我們的官方網站：[bongocat.pet](https://bongocat.pet/models)
 
+
+<p align="center">
+  <a href="https://bongocat.pet/models">
+    <img height="1080" src="https://github.com/user-attachments/assets/dedd83ca-742a-4f8c-a64a-69e659fca564" />
+  </a>
+</p>
 
 <p align="center">
     <img src="https://count.getloli.com/@bongocat?name=bongocat&theme=booru-qualityhentais&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto" width="400">
@@ -261,14 +267,16 @@ flowchart TB
 
 
 ## 🙏 特別感謝
+> [!TIP]
+> BongoCat 的每一步都得益於開源精神。我們衷心感謝所有社群貢獻者的無私奉獻（按貢獻日期先後排序列於下方）。正是你們的支持，讓桌面陪伴更加自由與真誠。❤️‍🔥
 
-<a href="https://openomy.com/vladelaina/BongoCat" target="_blank" style="display: block; width: 100%;" align="center">
-  <img src="https://openomy.com/svg?repo=vladelaina/BongoCat&chart=bubble" alt="貢獻者排行榜" style="display: block; width: 100%;" />
+
+<a href="https://bongocat.pet">
+    <img src="https://bongocat.pet/co" />
 </a>
 
 
-
-
+[linux.do](https://linux.do/t/topic/2845597)
 ---
 
 <div align="center">
