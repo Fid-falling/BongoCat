@@ -1,7 +1,6 @@
 #include "bongo_cat/platform.h"
 #include "windows_borderless.h"
 #include "windows_capture.h"
-#include "windows_direct_input.h"
 #include "windows_input.h"
 #include "windows_layered.h"
 #include "windows_startup.h"
@@ -34,7 +33,7 @@ void bongo_cat_platform_configure_preferences_window(SDL_Window *window) {
     bongo_cat_windows_capture_mark_transparent(handle, transparent);
     if (transparent) {
         bongo_cat_windows_capture_install_transparency_handler(handle);
-        bongo_cat_windows_capture_restore_transparency(handle);
+        bongo_cat_windows_capture_repair_transparency(handle);
     }
 }
 
@@ -58,17 +57,18 @@ BongoCatResult bongo_cat_platform_init(BongoCatPlatform *platform, SDL_Window *w
     }
     if (!bongo_cat_windows_input_start(platform)) {
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-            "Global input hooks are unavailable; the window will continue without global input");
+            "Raw Input is unavailable; the window will continue without global input");
     }
     HWND hwnd = native_window(platform);
-    if (!bongo_cat_windows_direct_input_create(platform, hwnd))
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-            "Mver-compatible DirectInput mouse tracking is unavailable");
     SetWindowTextW(hwnd, bongo_cat_windows_instance_title());
     bongo_cat_windows_borderless_install(hwnd);
+    bool transparent = (SDL_GetWindowFlags(window) &
+        SDL_WINDOW_TRANSPARENT) != 0;
+    /* Mark transparency before any OBS style transaction. Removing
+       WS_EX_TOOLWINDOW may recreate the DWM surface, so the configure path
+       must be able to repair it before the window is first shown. */
+    bongo_cat_windows_capture_mark_transparent(hwnd, transparent);
     bongo_cat_windows_capture_configure(hwnd);
-    bongo_cat_windows_capture_mark_transparent(hwnd,
-        (SDL_GetWindowFlags(window) & SDL_WINDOW_TRANSPARENT) != 0);
     SDL_SetWindowsMessageHook(windows_message_hook, NULL);
     if (!SDL_SetWindowResizable(window, true)) {
         SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
@@ -76,6 +76,7 @@ BongoCatResult bongo_cat_platform_init(BongoCatPlatform *platform, SDL_Window *w
     }
     SetWindowPos(hwnd, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE |
         SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    bongo_cat_windows_capture_repair_transparency(hwnd);
     bongo_cat_windows_capture_log(hwnd, "initialized");
     return BONGO_CAT_OK;
 }
@@ -83,7 +84,6 @@ void bongo_cat_platform_shutdown(BongoCatPlatform *platform) {
     if (!platform) return;
     HWND window = native_window(platform);
     if (window) bongo_cat_windows_borderless_uninstall(window);
-    bongo_cat_windows_direct_input_destroy(platform);
     bongo_cat_windows_input_stop(platform);
     bongo_cat_windows_layered_destroy(platform);
     SDL_SetWindowsMessageHook(NULL, NULL);
@@ -138,7 +138,17 @@ void bongo_cat_platform_begin_drag(BongoCatPlatform *platform,
     bongo_cat_windows_begin_drag(hwnd, modal_tick, userdata);
 }
 bool bongo_cat_platform_dynamic_hit_supported(void) { return true; }
+bool bongo_cat_platform_pointer_locked(BongoCatPlatform *platform) {
+    return bongo_cat_windows_input_pointer_locked(platform);
+}
+bool bongo_cat_platform_relative_pointer(BongoCatPlatform *platform,
+    double *x, double *y) {
+    return bongo_cat_windows_input_take_relative(platform, x, y, NULL);
+}
 void bongo_cat_platform_relative_pointer_reset(BongoCatPlatform *platform) {
-    bongo_cat_windows_direct_input_reset(platform);
+    bongo_cat_windows_input_reset_relative(platform);
+}
+void bongo_cat_platform_relative_pointer_release(BongoCatPlatform *platform) {
+    bongo_cat_windows_input_release_relative(platform);
 }
 #endif

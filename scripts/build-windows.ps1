@@ -2,11 +2,18 @@ param(
     [ValidateSet('Debug', 'Release', 'RelWithDebInfo', 'MinSizeRel')]
     [string]$Configuration = 'Release',
     [string]$BuildDir = '',
+    [ValidateSet('x64', 'Win32')]
+    [string]$Architecture = 'x64',
     [ValidateRange(1, 64)]
     [int]$Jobs = 2,
+    [switch]$SkipConfigure,
+    [string[]]$Target = @('bongo_cat'),
     [switch]$RequireCubism,
     [switch]$Package,
-    [switch]$Clean
+    [switch]$Clean,
+    # Reapply defaults to existing caches; -SkipConfigure reuses cached values.
+    [bool]$OptimizeReleaseSize = $true,
+    [bool]$OptimizeReleaseIpo = $true
 )
 
 $ErrorActionPreference = 'Continue'
@@ -22,6 +29,15 @@ if (-not [IO.Path]::IsPathRooted($BuildDir)) {
     $BuildDir = Join-Path $root $BuildDir
 }
 $BuildDir = [IO.Path]::GetFullPath($BuildDir)
+$Target = @($Target | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+if ($Target.Count -eq 0) {
+    Write-Host 'At least one CMake target is required.'
+    exit 1
+}
+if ($Clean -and $SkipConfigure) {
+    Write-Host 'The -Clean and -SkipConfigure options cannot be used together.'
+    exit 1
+}
 $esc = [char]27
 $pink = '38;2;247;125;170'
 $muted = '38;2;80;80;80'
@@ -50,46 +66,32 @@ function Show-FailureLog {
     }
 }
 
+function Write-GitHubBuildAnnotations {
+    param([string]$Path)
+    if ($env:GITHUB_ACTIONS -ne 'true' -or
+        -not (Test-Path -LiteralPath $Path -PathType Leaf)) { return }
+    $pattern = 'FAILED:|fatal error|(?:warning|error) [A-Z]+\d+:|LNK\d+|MSB\d+: error|unresolved external|cannot open file|ninja: build stopped'
+    Get-Content -LiteralPath $Path |
+        Where-Object { $_ -match $pattern } |
+        Select-Object -Last 30 |
+        ForEach-Object {
+            $message = $_.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Windows build failure::$message"
+        }
+}
+
 if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) {
     Write-Host 'Error: CMake was not found in PATH.'
     exit 1
 }
 
-if ($Package) {
-    $makensis = Get-Command makensis.exe -ErrorAction SilentlyContinue
-    if (-not $makensis) {
-        $nsisCandidates = @()
-        foreach ($programFiles in @(${env:ProgramFiles(x86)}, $env:ProgramFiles)) {
-            if ($programFiles) {
-                $nsisCandidates += Join-Path $programFiles 'NSIS\makensis.exe'
-                $nsisCandidates += Join-Path $programFiles 'NSIS\Bin\makensis.exe'
-            }
-        }
-        $uninstallKeys = @(
-            'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*',
-            'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*',
-            'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*')
-        foreach ($key in $uninstallKeys) {
-            Get-ItemProperty -Path $key -Name InstallLocation `
-                -ErrorAction SilentlyContinue | ForEach-Object {
-                    if ($_.InstallLocation) {
-                        $nsisCandidates += Join-Path $_.InstallLocation 'makensis.exe'
-                        $nsisCandidates += Join-Path $_.InstallLocation 'Bin\makensis.exe'
-                    }
-                }
-        }
-        $nsisPath = $nsisCandidates |
-            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
-            Select-Object -First 1
-        if ($nsisPath) {
-            $env:Path = "$(Split-Path $nsisPath -Parent);$env:Path"
-            $makensis = Get-Command makensis.exe -ErrorAction SilentlyContinue
-        }
-    }
-    if (-not $makensis) {
-        Write-Host 'Package build requires NSIS (makensis.exe), but it was not found.'
-        Write-Host 'Install NSIS from https://nsis.sourceforge.io/Download and run again.'
-        Write-Host 'The normal application build does not require NSIS.'
+if ($Package -or $Target -contains 'package-installer') {
+    try {
+        $isccPath = & (Join-Path $root 'packaging/windows/find-inno.ps1')
+        $env:Path = "$(Split-Path $isccPath -Parent);$env:Path"
+        Write-Host "Inno Setup compiler: $isccPath"
+    } catch {
+        Write-Host $_.Exception.Message
         exit 1
     }
 }
@@ -131,6 +133,11 @@ if ($Clean -and (Test-Path -LiteralPath $BuildDir)) {
     }
 }
 
+if ($SkipConfigure -and -not (Test-Path -LiteralPath (Join-Path $BuildDir 'CMakeCache.txt'))) {
+    Write-Host "Cannot skip configuration because no CMake cache exists in: $BuildDir"
+    exit 1
+}
+
 New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 $configureLog = Join-Path $BuildDir 'cmake_config.log'
 $buildLog = Join-Path $BuildDir 'build.log'
@@ -138,39 +145,46 @@ $start = [DateTime]::UtcNow
 
 Write-Host ''
 Write-Host "BongoCat $Configuration build"
-Write-BuildProgress 5 'Configuring project...'
-$configureArgs = @(
-    '-S', $root, '-B', $BuildDir,
-    '-G', 'Visual Studio 17 2022', '-A', 'x64',
-    '-DBONGO_CAT_WARNINGS_AS_ERRORS=ON'
-)
-if ($RequireCubism) { $configureArgs += '-DBONGO_CAT_REQUIRE_CUBISM=ON' }
-$configureWriter = New-Object IO.StreamWriter(
-    $configureLog, $false, (New-Object Text.UTF8Encoding($false)))
-$configureActivity = 0
-$configurePercent = 5
-try {
-    & cmake @configureArgs 2>&1 | ForEach-Object {
-        $configureWriter.WriteLine($_.ToString())
-        $configureActivity++
-        $nextPercent = [Math]::Min(19,
-            5 + [int][Math]::Floor([Math]::Sqrt($configureActivity)))
-        if ($nextPercent -ne $configurePercent) {
-            $configurePercent = $nextPercent
-            Write-BuildProgress $configurePercent 'Configuring project...'
+if ($SkipConfigure) {
+    Write-BuildProgress 20 'Using existing CMake configuration.' -NewLine
+} else {
+    Write-BuildProgress 5 'Configuring project...'
+    $configureArgs = @(
+        '-S', $root, '-B', $BuildDir,
+        '-G', 'Visual Studio 17 2022', '-A', $Architecture,
+        '-DBONGO_CAT_WARNINGS_AS_ERRORS=ON',
+        "-DBONGO_CAT_OPTIMIZE_RELEASE_SIZE=$($OptimizeReleaseSize.ToString().ToUpperInvariant())",
+        "-DBONGO_CAT_OPTIMIZE_RELEASE_IPO=$($OptimizeReleaseIpo.ToString().ToUpperInvariant())"
+    )
+    if ($RequireCubism) { $configureArgs += '-DBONGO_CAT_REQUIRE_CUBISM=ON' }
+    $configureWriter = New-Object IO.StreamWriter(
+        $configureLog, $false, (New-Object Text.UTF8Encoding($false)))
+    $configureActivity = 0
+    $configurePercent = 5
+    try {
+        & cmake @configureArgs 2>&1 | ForEach-Object {
+            $configureWriter.WriteLine($_.ToString())
+            $configureActivity++
+            $nextPercent = [Math]::Min(19,
+                5 + [int][Math]::Floor([Math]::Sqrt($configureActivity)))
+            if ($nextPercent -ne $configurePercent) {
+                $configurePercent = $nextPercent
+                Write-BuildProgress $configurePercent 'Configuring project...'
+            }
         }
+        $configureStatus = $LASTEXITCODE
+    } finally {
+        $configureWriter.Dispose()
     }
-    $configureStatus = $LASTEXITCODE
-} finally {
-    $configureWriter.Dispose()
+    if ($configureStatus -ne 0) {
+        Write-BuildProgress 5 'Configuration failed.' -NewLine
+        Write-GitHubBuildAnnotations $configureLog
+        Show-FailureLog @($configureLog)
+        Write-Host "Full log: $configureLog"
+        exit 1
+    }
+    Write-BuildProgress 20 'Configuration complete.' -NewLine
 }
-if ($configureStatus -ne 0) {
-    Write-BuildProgress 5 'Configuration failed.' -NewLine
-    Show-FailureLog @($configureLog)
-    Write-Host "Full log: $configureLog"
-    exit 1
-}
-Write-BuildProgress 20 'Configuration complete.' -NewLine
 
 Remove-Item -LiteralPath $buildLog -Force -ErrorAction SilentlyContinue
 $projects = @(Get-ChildItem -LiteralPath $BuildDir -Recurse -Filter '*.vcxproj' `
@@ -182,11 +196,11 @@ foreach ($project in $projects) {
 }
 $compileItems = [Math]::Max(1, $compileItems)
 $buildArgs = @('--build', $BuildDir, '--config', $Configuration,
-    '--target', 'bongo_cat', '--parallel', $Jobs)
+    '--target') + $Target + @('--parallel', $Jobs)
 $lastPercent = 20
 $compiled = 0
 $activity = 0
-Write-BuildProgress $lastPercent 'Building BongoCat...'
+Write-BuildProgress $lastPercent ("Building target(s): {0}..." -f ($Target -join ', '))
 $buildWriter = New-Object IO.StreamWriter(
     $buildLog, $false, (New-Object Text.UTF8Encoding($false)))
 try {
@@ -206,7 +220,7 @@ try {
             $lastPercent = $percent
             $message = if ($compiled -gt 0) {
                 "Compiling ($compiled files)..."
-            } else { 'Building BongoCat...' }
+            } else { "Building target(s): $($Target -join ', ')..." }
             Write-BuildProgress $lastPercent $message
         }
     }
@@ -217,20 +231,23 @@ try {
 
 if ($buildStatus -ne 0) {
     Write-BuildProgress $lastPercent 'Build failed.' -NewLine
+    Write-GitHubBuildAnnotations $buildLog
     Show-FailureLog @($buildLog)
     Write-Host "Full log: $buildLog"
     exit $buildStatus
 }
 
-$output = Join-Path (Join-Path $BuildDir $Configuration) 'BongoCat.exe'
-if (-not (Test-Path -LiteralPath $output)) {
-    Write-BuildProgress 95 'BongoCat.exe was not produced.' -NewLine
-    exit 1
+if ($Target -contains 'bongo_cat') {
+    $output = Join-Path (Join-Path $BuildDir $Configuration) 'BongoCat.exe'
+    if (-not (Test-Path -LiteralPath $output)) {
+        Write-BuildProgress 95 'BongoCat.exe was not produced.' -NewLine
+        exit 1
+    }
 }
 $elapsedTotal = [DateTime]::UtcNow - $start
 Write-BuildProgress 100 'Build complete.' -NewLine
 Write-Host ("Build time: {0:mm\:ss}" -f $elapsedTotal)
-Write-Host "Output: $output"
+if ($output) { Write-Host "Output: $output" }
 Write-Host "Logs: $buildLog"
 
 if ($Package) {
@@ -242,8 +259,8 @@ if ($Package) {
     $packageStatus = $LASTEXITCODE
     if ($packageStatus -ne 0) {
         Write-Host 'Package generation failed.'
-        Write-Host 'Ensure NSIS is installed and available in PATH for the installer.'
-        Write-Host "CPack configuration: $(Join-Path $BuildDir 'CPackConfig.cmake')"
+        Write-Host 'Ensure Inno Setup 6.3 or newer is installed (ISCC.exe).'
+        Write-Host "Packaging build directory: $BuildDir"
         exit $packageStatus
     }
     $packageNameFile = Join-Path $BuildDir 'bongocat-package-name.txt'
