@@ -60,6 +60,8 @@ typedef enum BongoCatMenuAction {
     BONGO_CAT_MENU_EXIT,
     BONGO_CAT_MENU_MODEL_ADD,
     BONGO_CAT_MENU_REMOVE_PET,
+    BONGO_CAT_MENU_MIRROR,
+    BONGO_CAT_MENU_VERTICAL_FLIP,
     BONGO_CAT_MENU_MODEL_FIRST = 1000,
     BONGO_CAT_MENU_MOTION_FIRST = 2000,
     BONGO_CAT_MENU_EXPRESSION_FIRST = BONGO_CAT_MENU_MOTION_FIRST + BONGO_CAT_BEHAVIOR_LIMIT,
@@ -68,7 +70,7 @@ typedef enum BongoCatMenuAction {
 typedef void (*BongoCatMenuPreview)(void *userdata, BongoCatMenuAction action);
 
 typedef struct BongoCatMenuLabels {
-    const char *preferences, *hide, *pass_through, *always_on_top;
+    const char *preferences, *mirror, *vertical_flip, *always_on_top;
     const char *window_size, *opacity, *model, *add_model, *exit;
     const char *wheel_size_hint, *wheel_opacity_hint, *motion, *expression;
     const char *const *model_names;
@@ -78,7 +80,7 @@ typedef struct BongoCatMenuLabels {
     size_t model_count, current_model, motion_count;
     size_t expression_count, current_expression;
     float scale_percent, opacity_percent;
-    bool pass_through_checked, always_on_top_checked, dark_theme;
+    bool mirror_checked, always_on_top_checked, dark_theme;
     BongoCatMenuPreview preview;
     void (*preview_tick)(void *userdata);
     BongoCatMenuPreview restore;
@@ -92,6 +94,7 @@ typedef struct BongoCatMenuLabels {
     const char *const *model_cover_directories;
     /* Optional cancellation flag, read after the modal input tick. */
     const bool *close_requested;
+    bool vertical_flip_checked;
 } BongoCatMenuLabels;
 
 typedef void (*BongoCatTrayClick)(void *userdata);
@@ -132,11 +135,15 @@ bool bongo_cat_platform_set_geometry(BongoCatPlatform *platform,
 void bongo_cat_platform_begin_drag(BongoCatPlatform *platform,
     BongoCatModalTick modal_tick, void *userdata);
 bool bongo_cat_platform_dynamic_hit_supported(void);
+/* True when the displayed shape is routed without cursor-position polling. */
+bool bongo_cat_platform_native_hit_test(const BongoCatPlatform *platform);
 void bongo_cat_platform_set_tray_callbacks(void *tray,
     BongoCatTrayClick left_click, BongoCatModalTick modal_tick,
     BongoCatTrayRestore restore, void *userdata);
 bool bongo_cat_platform_single_instance_begin(void);
 bool bongo_cat_platform_single_instance_take_wake(void);
+/* Returns true when a second launch requested the settings window. */
+bool bongo_cat_platform_single_instance_take_settings(void);
 bool bongo_cat_platform_update_shutdown_argument(int argc, char **argv);
 bool bongo_cat_platform_single_instance_take_update_shutdown(void);
 void bongo_cat_platform_single_instance_end(void);

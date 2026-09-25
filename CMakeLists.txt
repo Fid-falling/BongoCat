@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-set(BONGO_CAT_VERSION "1.11.1")
+set(BONGO_CAT_VERSION "1.13.1")
 project(BongoCat VERSION ${BONGO_CAT_VERSION} DESCRIPTION "BongoCat" HOMEPAGE_URL "https://github.com/vladelaina/BongoCat" LANGUAGES C CXX)
 include(cmake/Version.cmake)
 include(FetchContent)
@@ -54,10 +54,17 @@ if(EXISTS "${CUBISM_CORE_HEADER}")
     include(cmake/Cubism.cmake)
     set(BONGO_CAT_LIVE2D_SOURCES
       src/live2d/cubism_bridge.cpp src/live2d/cubism_bridge_load.cpp
+      src/live2d/cubism_render_resources.cpp
       src/live2d/cubism_bridge_visual.cpp
       src/live2d/cubism_expression.cpp
       src/live2d/cubism_model_load.cpp
+      src/live2d/cubism_texture_resolution.cpp
+      src/live2d/cubism_texture_refresh.cpp
+      src/live2d/cubism_texture_refresh_memory.cpp
       src/live2d/cubism_model_renderer.cpp
+      src/live2d/cubism_model_masks.cpp
+      src/live2d/cubism_model_projection.cpp
+      src/live2d/cubism_model_textures.cpp
       src/live2d/cubism_model_idle.cpp
       src/live2d/cubism_model_update.cpp
       src/live2d/cubism_parameter_overrides.cpp
@@ -66,6 +73,7 @@ if(EXISTS "${CUBISM_CORE_HEADER}")
       src/live2d/cubism_motion_selection.cpp
       src/live2d/cubism_motion_state.cpp src/live2d/cubism_viewer_look.cpp
       src/live2d/cubism_model_bounds.cpp
+      src/live2d/cubism_model_frame.cpp
       src/live2d/cubism_model_viewport.cpp
       src/live2d/cubism_model_validate.cpp)
     set(BONGO_CAT_CUBISM_ENABLED ON)

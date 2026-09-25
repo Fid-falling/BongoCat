@@ -52,11 +52,18 @@ static bool read_model(yyjson_val *object, BongoCatModelPreferences *value,
     BongoCatError *error) {
     return read_bool(object, "multiplePets", &value->multiple_pets, error) &&
         read_bool(object, "modelMirrored", &value->mirror, error) &&
+        read_bool(object, "modelFlippedVertically", &value->vertical_flip, error) &&
         read_bool(object, "pointerMirrored", &value->mouse_mirror, error) &&
+        read_bool(object, "pointerFlippedVertically",
+            &value->mouse_vertical_flip, error) &&
         read_bool(object, "centerPointerTracking", &value->mouse_centered,
             error) &&
         read_bool(object, "ignorePointerInput", &value->ignore_mouse, error) &&
         read_bool(object, "gamepadFourHands", &value->gamepad_four_hands, error) &&
+        read_bool(object, "dynamicTextureResolution",
+            &value->dynamic_texture_resolution, error) &&
+        read_float(object, "renderQualityPercent", &value->render_quality_percent,
+            error) &&
         read_int(object, "maximumFps", &value->max_fps, error);
 }
 
@@ -99,6 +106,7 @@ static bool read_app(yyjson_val *object, BongoCatApplicationPreferences *value,
     BongoCatError *error) {
     if (!read_bool(object, "launchAtLogin", &value->autostart, error) ||
         !read_bool(object, "launchAtLoginAsAdmin", &value->autostart_admin, error) ||
+        !read_bool(object, "gameCompatibility", &value->game_compatibility, error) ||
         !read_bool(object, "showTrayIcon", &value->tray_visible, error))
         return false;
     const char *text;

@@ -18,8 +18,17 @@ set(BONGO_CAT_MEDIA_SOURCES
   src/media/audio/audio_playback.c
   src/media/image.c
   src/media/image_decode.c
+  src/media/image_wic_stream.c
+  src/media/image_png_stream.c
+  src/media/image_png_scaled.c
+  src/media/image_texture_cache.c
+  src/media/image_texture_cache_storage.c
+  src/media/image_texture_job.c
   src/media/image_info.c
+  src/media/image_model.c
   src/media/image_mipmap.c
+  src/media/image_upload.c
+  src/media/image_upload_sync.c
   src/media/image_resize.c
   src/media/image_alpha.c
   src/media/stb_image_impl.c)
@@ -57,6 +66,8 @@ set(BONGO_CAT_RUNTIME_UPDATE_SOURCES
   src/runtime/update/update_service.c)
 
 set(BONGO_CAT_RUNTIME_DIAGNOSTIC_SOURCES
+  src/runtime/diagnostics/resource_trace.c
+  src/runtime/diagnostics/model_memory.c
   src/runtime/diagnostics/frame_audit.c
   src/runtime/diagnostics/frame_presentation_audit.c
   src/runtime/diagnostics/live2d_audit.c
@@ -79,6 +90,7 @@ set(BONGO_CAT_RUNTIME_INPUT_SOURCES
 set(BONGO_CAT_RUNTIME_MODEL_SOURCES
   src/runtime/model/model_behavior.c
   src/runtime/model/model_behavior_cache.c
+  src/runtime/model/model_texture_refresh.c
   src/runtime/model/model_behavior_state.c
   src/runtime/model/model_catalog_runtime.c
   src/runtime/model/model_catalog_builtins.c
@@ -169,9 +181,11 @@ set(BONGO_CAT_RUNTIME_SHELL_SOURCES
   src/runtime/shell/tray.c
   src/runtime/shell/window.c
   src/runtime/shell/window_background.c
+  src/runtime/shell/window_corners.c
   src/runtime/shell/window_display.c
   src/runtime/shell/window_drag.c
   src/runtime/shell/window_geometry.c
+  src/runtime/shell/window_frame.c
   src/runtime/shell/window_hit.c
   src/runtime/shell/window_menu_actions.c
   src/runtime/shell/window_menu_behavior.c
@@ -258,6 +272,7 @@ set(BONGO_CAT_UI_PREFERENCES_SOURCES
   src/ui/preferences/preferences_icons.c
   src/ui/preferences/preferences_language.c
   src/ui/preferences/preferences_lifecycle.c
+  src/ui/preferences/preferences_resources.c
   src/ui/preferences/preferences_live_resize.c
   src/ui/preferences/preferences_model.c
   src/ui/preferences/preferences_model_card.c
@@ -292,6 +307,7 @@ set(BONGO_CAT_UI_PREFERENCES_SOURCES
 set(BONGO_CAT_RUNTIME_SOURCES
   src/core/app_state.c
   src/platform/common/memory.c
+  src/platform/common/gl_readback.c
   src/platform/common/update_shutdown.c
   ${BONGO_CAT_MEDIA_SOURCES}
   ${BONGO_CAT_RENDER_SOURCES}

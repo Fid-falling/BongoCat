@@ -151,7 +151,9 @@ typedef struct BongoCatApp {
     int exit_code;
     bool dirty;
     uint64_t last_frame_ns;
+    int startup_display_fps;
     uint64_t render_retry_ns;
+    uint64_t frame_geometry_retry_ns;
     uint64_t smoke_deadline_ns;
     uint64_t hover_deadline_ns;
     uint64_t pointer_hit_deadline_ns;
@@ -194,6 +196,11 @@ typedef struct BongoCatApp {
     bool context_menu_close_requested;
     double pointer_x, pointer_y;
     bool resize_gesture;
+    bool resize_candidate;
+    bool resize_menu_pending;
+    bool resize_target_pending;
+    uint64_t resize_next_ns;
+    float resize_pointer_delta;
     float resize_scale_start, resize_scale_target;
     int resize_base_width, resize_base_height;
     bool resize_pending;
@@ -237,6 +244,8 @@ void bongo_cat_app_shortcuts(BongoCatApp *app, const BongoCatInputEvent *event);
 bool bongo_cat_app_select_model(BongoCatApp *app, const char *id);
 bool bongo_cat_app_select_model_with_error(BongoCatApp *app,
     const char *id, BongoCatError *error);
+bool bongo_cat_app_reload_model_with_error(BongoCatApp *app,
+    BongoCatError *error);
 bool bongo_cat_app_model_active(const BongoCatApp *app, const char *id);
 size_t bongo_cat_app_active_model_count(const BongoCatApp *app);
 bool bongo_cat_app_set_model_active(BongoCatApp *app, const char *id,
